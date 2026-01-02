@@ -8,16 +8,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-/* ===== EXISTING STYLES (UNCHANGED) ===== */
 :root {
   --bg-main:#1f2125;
   --bg-panel:#26292e;
   --text-main:#e6e7ea;
   --text-muted:#9aa0a6;
+
   --row-h:46px;
   --gap:10px;
   --row-h-compact:38px;
   --gap-compact:6px;
+
   --w-match:90px;
   --w-status:46px;
   --w-score:56px;
@@ -26,28 +27,33 @@
 }
 
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
 }
+
 body.compact{
   --row-h:var(--row-h-compact);
   --gap:var(--gap-compact);
   --w-bet:var(--w-bet-compact);
 }
+
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:auto 1fr auto;
 }
+
 .topbar{
   display:flex;
   justify-content:flex-end;
   gap:8px;
   padding:8px 12px;
 }
+
 .toggle{
   background:var(--bg-panel);
   padding:6px 10px;
@@ -56,13 +62,16 @@ body.compact{
   font-weight:600;
   cursor:pointer;
 }
+
 .table-wrapper{overflow-y:auto}
 .bets-scroll{overflow-x:auto}
+
 .table{
   display:grid;
   gap:var(--gap);
   padding:10px;
 }
+
 .th,.match,.label{
   height:var(--row-h);
   display:flex;
@@ -71,9 +80,12 @@ body.compact{
   background:var(--bg-panel);
   font-size:13px;
 }
+
 .th{font-weight:700}
+
 .match{color:var(--text-muted)}
 .match.center{color:var(--text-main);font-weight:700}
+
 .bet{
   height:var(--row-h);
   display:flex;
@@ -84,7 +96,9 @@ body.compact{
   font-size:14px;
   color:#111;
 }
+
 .bet:empty{background:transparent!important}
+
 .sticky{
   position:sticky;
   left:0;
@@ -93,6 +107,7 @@ body.compact{
 }
 .sticky.status{left:var(--w-match)}
 .sticky.score{left:calc(var(--w-match) + var(--w-status))}
+
 .divider{
   grid-column:1/-1;
   height:1px;
@@ -102,15 +117,15 @@ body.compact{
 
 /* ===== GLOW ===== */
 .changed{
-  animation:glowPulse 8s ease-in-out;
+  animation:glowPulse 10s ease-in-out;
 }
 @keyframes glowPulse{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  10%{box-shadow:0 0 24px rgba(255,255,255,.95)}
+  10%{box-shadow:0 0 26px rgba(255,255,255,.95)}
   20%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  40%{box-shadow:0 0 24px rgba(255,255,255,.95)}
+  40%{box-shadow:0 0 26px rgba(255,255,255,.95)}
   50%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  70%{box-shadow:0 0 24px rgba(255,255,255,.95)}
+  70%{box-shadow:0 0 26px rgba(255,255,255,.95)}
   80%{box-shadow:0 0 0 rgba(255,255,255,0)}
   100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
@@ -194,6 +209,7 @@ body.compact{
 </div>
 
 <div class="app">
+
   <div class="topbar">
     <div class="toggle" id="compactToggle">Compact / Normal</div>
     <div class="toggle" id="summaryToggle">Summary</div>
@@ -208,6 +224,7 @@ body.compact{
   <footer class="summary" id="summary">
     <div class="summary-content" id="summaryContent"></div>
   </footer>
+
 </div>
 
 <script>
@@ -217,30 +234,35 @@ const REFRESH_MS=30000;
 /* ===== SOUND ===== */
 let audioCtx, alertBuffer, soundEnabled=false;
 
-async function enableSound(){
+async function initSound(){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   await audioCtx.resume();
 
   const res=await fetch("https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3");
   alertBuffer=await audioCtx.decodeAudioData(await res.arrayBuffer());
-
-  soundEnabled=true;
-  localStorage.setItem("soundEnabled","1");
-  document.getElementById("soundOverlay").remove();
 }
 
 function playAlert(){
-  if(!soundEnabled) return;
+  if(!soundEnabled || !alertBuffer) return;
   const src=audioCtx.createBufferSource();
   src.buffer=alertBuffer;
   src.connect(audioCtx.destination);
   src.start();
 }
 
+/* === FIXED OVERLAY HANDLING === */
 if(localStorage.getItem("soundEnabled")==="1"){
-  enableSound();
+  soundEnabled=true;
+  document.getElementById("soundOverlay").style.display="none";
+  initSound();
 }else{
-  document.getElementById("enableSoundBtn").onclick=enableSound;
+  document.getElementById("enableSoundBtn").onclick=()=>{
+    // hide immediately
+    document.getElementById("soundOverlay").style.display="none";
+    soundEnabled=true;
+    localStorage.setItem("soundEnabled","1");
+    initSound();
+  };
 }
 
 /* ===== CHANGE TRACKING ===== */

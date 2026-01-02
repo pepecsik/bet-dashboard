@@ -8,23 +8,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-:root {
+:root{
   --bg-main:#1f2125;
   --bg-panel:#26292e;
   --text-main:#e6e7ea;
   --text-muted:#9aa0a6;
-
   --row-h:46px;
   --gap:10px;
-
-  --row-h-compact:38px;
-  --gap-compact:6px;
-
   --w-match:90px;
   --w-status:46px;
   --w-score:56px;
   --w-bet:110px;
-  --w-bet-compact:90px;
 }
 
 *{box-sizing:border-box}
@@ -36,25 +30,19 @@ body{
   color:var(--text-main);
 }
 
-body.compact{
-  --row-h:var(--row-h-compact);
-  --gap:var(--gap-compact);
-  --w-bet:var(--w-bet-compact);
-}
-
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:auto 1fr auto;
 }
 
-/* ===== TOP BAR ===== */
 .topbar{
   display:flex;
   justify-content:flex-end;
   gap:8px;
   padding:8px 12px;
 }
+
 .toggle{
   background:var(--bg-panel);
   padding:6px 10px;
@@ -64,7 +52,6 @@ body.compact{
   cursor:pointer;
 }
 
-/* ===== TABLE ===== */
 .table-wrapper{overflow-y:auto}
 .bets-scroll{overflow-x:auto}
 
@@ -82,6 +69,7 @@ body.compact{
   background:var(--bg-panel);
   font-size:13px;
 }
+
 .th{font-weight:700}
 .match{color:var(--text-muted)}
 .match.center{color:var(--text-main);font-weight:700}
@@ -98,7 +86,6 @@ body.compact{
 }
 .bet:empty{background:transparent!important}
 
-/* ===== STICKY LEFT ===== */
 .sticky{
   position:sticky;
   left:0;
@@ -115,17 +102,17 @@ body.compact{
   margin:6px 0;
 }
 
-/* ===== GLOW (10s) ===== */
+/* ===== GLOW ===== */
 .changed{
-  animation:glowPulse 10s ease-in-out;
+  animation:glow 10s ease-in-out;
 }
-@keyframes glowPulse{
+@keyframes glow{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  10%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  10%{box-shadow:0 0 28px rgba(255,255,255,.95)}
   20%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  40%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  40%{box-shadow:0 0 28px rgba(255,255,255,.95)}
   50%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  70%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  70%{box-shadow:0 0 28px rgba(255,255,255,.95)}
   80%{box-shadow:0 0 0 rgba(255,255,255,0)}
   100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
@@ -134,13 +121,8 @@ body.compact{
 .summary{
   background:var(--bg-panel);
   border-top:1px solid #3a3d42;
-  transition:max-height .4s ease,opacity .35s ease;
 }
-.summary.hidden{
-  max-height:0;
-  opacity:0;
-  overflow:hidden;
-}
+.summary.hidden{display:none}
 .summary-content{padding:10px}
 .summary-row{
   display:grid;
@@ -170,7 +152,7 @@ body.compact{
 .sound-overlay{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.8);
+  background:rgba(0,0,0,.85);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -182,11 +164,9 @@ body.compact{
   border-radius:16px;
   text-align:center;
 }
-.sound-box h2{margin:0 0 10px;font-size:16px}
 .sound-box button{
   margin-top:12px;
   padding:10px 16px;
-  font-size:14px;
   font-weight:700;
   border-radius:10px;
   border:none;
@@ -197,18 +177,15 @@ body.compact{
 
 <body>
 
-<!-- 🔔 SOUND OVERLAY -->
 <div class="sound-overlay" id="soundOverlay">
   <div class="sound-box">
-    <h2>🔔 Enable alerts</h2>
-    <div>Get notified when bets change</div>
+    <div style="font-weight:700">Enable alerts</div>
     <button onclick="enableSound()">Enable sound</button>
   </div>
 </div>
 
 <div class="app">
   <div class="topbar">
-    <div class="toggle" onclick="document.body.classList.toggle('compact')">Compact / Normal</div>
     <div class="toggle" onclick="summary.classList.toggle('hidden')">Summary</div>
   </div>
 
@@ -227,39 +204,40 @@ body.compact{
 const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 const REFRESH_MS=30000;
 
-/* ===== SOUND ===== */
-let audioCtx=null, alertBuffer=null, soundEnabled=false;
+let audioCtx=null, buffer=null, soundEnabled=false;
 
 function enableSound(){
   document.getElementById("soundOverlay").style.display="none";
   soundEnabled=true;
-  localStorage.setItem("soundEnabled","1");
+  localStorage.setItem("sound","1");
 
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   audioCtx.resume();
 
-  fetch("https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3")
+  fetch("https://assets.mixkit.co/sfx/preview/mixkit-alarm-tone-996.mp3")
     .then(r=>r.arrayBuffer())
     .then(b=>audioCtx.decodeAudioData(b))
-    .then(buf=>alertBuffer=buf);
+    .then(buf=>{
+      buffer=buf;
+      playSound(); // 🔓 unlock sound
+    });
 }
 
-if(localStorage.getItem("soundEnabled")==="1"){
-  soundEnabled=true;
+if(localStorage.getItem("sound")==="1"){
   document.getElementById("soundOverlay").style.display="none";
   enableSound();
 }
 
-function playAlert(){
-  if(!soundEnabled||!alertBuffer) return;
+function playSound(){
+  if(!soundEnabled||!buffer) return;
   const s=audioCtx.createBufferSource();
-  s.buffer=alertBuffer;
+  s.buffer=buffer;
   s.connect(audioCtx.destination);
   s.start();
 }
 
-/* ===== CHANGE TRACKING ===== */
-let previous=JSON.parse(localStorage.getItem("betState")||"{}");
+/* ===== DATA ===== */
+let prev=JSON.parse(localStorage.getItem("betState")||"{}");
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -285,14 +263,8 @@ function loadData(){
         <div class="match center sticky status">${m.status}</div>
         <div class="match center sticky score">${m.score}</div>
       `;
-      const scoreKey=`score-${r}`;
-      next[scoreKey]=m.score;
-      if(previous[scoreKey]&&previous[scoreKey]!==m.score){
-        table.lastElementChild.classList.add("changed");
-        changed=true;
-      }
       m.cells.forEach((c,i)=>{
-        const key=`bet-${r}-${i}`;
+        const key=`b-${r}-${i}`;
         const val=`${c.value}|${c.color}`;
         next[key]=val;
         const el=document.createElement("div");
@@ -300,7 +272,7 @@ function loadData(){
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
-          if(previous[key]&&previous[key]!==val){
+          if(prev[key]&&prev[key]!==val){
             el.classList.add("changed");
             changed=true;
           }
@@ -309,8 +281,25 @@ function loadData(){
       });
     });
 
-    if(changed) playAlert();
-    previous=next;
+    data.totals.forEach(t=>{
+      const row=document.createElement("div");
+      row.className="summary-row";
+      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+      const vals=document.createElement("div");
+      vals.className="sum-values";
+      t.cells.slice(0,2).forEach(c=>{
+        const cell=document.createElement("div");
+        cell.className="sum-cell";
+        cell.style.background=c.color;
+        cell.textContent="£"+Number(c.value||0).toFixed(2);
+        vals.appendChild(cell);
+      });
+      row.appendChild(vals);
+      summaryContent.appendChild(row);
+    });
+
+    if(changed) playSound();
+    prev=next;
     localStorage.setItem("betState",JSON.stringify(next));
   });
 }

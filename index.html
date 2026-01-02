@@ -151,44 +151,50 @@ body.compact{
   padding:10px;
 }
 
+/* ===== CARD BASE ===== */
+.card{
+  background:#1f2125;
+  border-radius:14px;
+  padding:12px;
+}
+
 /* LEFT — WEEKLY SUMMARY */
 .weekly-summary{
   flex:1;
 }
 
-.summary-row{
+.weekly-summary h4{
+  margin:0 0 10px 0;
+  font-size:14px;
+  font-weight:700;
+}
+
+.week-row{
   display:grid;
-  grid-template-columns:120px auto;
-  gap:8px;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  background:#2a2f35;
+  border-radius:10px;
+  padding:8px 10px;
   margin-bottom:6px;
 }
 
-.sum-label{
+.week-row:last-child{margin-bottom:0}
+
+.week-label{
   font-size:13px;
-  font-weight:700;
-  color:var(--text-muted);
+  font-weight:600;
+  opacity:.75;
 }
 
-.sum-values{display:flex;gap:6px}
-
-.sum-cell{
-  height:32px;
-  min-width:90px;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:13px;
+.week-value{
+  font-size:14px;
   font-weight:800;
-  color:#111;
 }
 
 /* RIGHT — ALL TIME RANKING */
 .alltime-ranking{
   width:260px;
-  background:#1f2125;
-  border-radius:14px;
-  padding:12px;
 }
 
 .alltime-ranking h4{
@@ -250,121 +256,71 @@ body.compact{
 
   <footer class="summary" id="summary">
     <div class="summary-content">
-      <div class="weekly-summary" id="summaryContent"></div>
-      <div class="alltime-ranking" id="ranking">
-        <h4>🏆 All-Time Ranking</h4>
+
+      <!-- WEEKLY SUMMARY -->
+      <div class="weekly-summary card">
+        <h4>📊 Weekly Summary</h4>
+
+        <div class="week-row">
+          <div class="week-label">Total Bets</div>
+          <div class="week-value">€13.75</div>
+        </div>
+
+        <div class="week-row">
+          <div class="week-label">Total Bets PP</div>
+          <div class="week-value">€4.58</div>
+        </div>
+
+        <div class="week-row">
+          <div class="week-label">Total Win</div>
+          <div class="week-value">€1059.35</div>
+        </div>
+
+        <div class="week-row">
+          <div class="week-label">Total Win PP</div>
+          <div class="week-value">€353.12</div>
+        </div>
+
+        <div class="week-row">
+          <div class="week-label">Avg. Win</div>
+          <div class="week-value">€88.28</div>
+        </div>
       </div>
+
+      <!-- ALL TIME RANKING -->
+      <div class="alltime-ranking card">
+        <h4>🏆 All-Time Ranking</h4>
+
+        <div class="rank-row rank-1">
+          <div class="rank-pos">1</div>
+          <div class="rank-name">Snackbar</div>
+          <div class="rank-money">€ 2.00</div>
+          <div class="rank-bets">5 matches right</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">2</div>
+          <div class="rank-name">Timbo</div>
+          <div class="rank-money">€ 0.00</div>
+          <div class="rank-bets">5 matches right</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">3</div>
+          <div class="rank-name">Pepe</div>
+          <div class="rank-money">€ 0.00</div>
+          <div class="rank-bets">3 matches right</div>
+        </div>
+      </div>
+
     </div>
   </footer>
 </div>
 
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
-const REFRESH_MS=30000;
-
-const formatGBP=v=>"£"+Number(v??0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
-
-let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
-
-function loadData(){
-  fetch(API_URL).then(r=>r.json()).then(data=>{
-    const table=document.getElementById("table");
-    const summary=document.getElementById("summaryContent");
-    const ranking=document.getElementById("ranking");
-    const nextState={};
-
-    table.innerHTML="";
-    summary.innerHTML="";
-    ranking.querySelectorAll(".rank-row").forEach(e=>e.remove());
-
-    table.style.gridTemplateColumns=
-      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
-
-    table.innerHTML+=`
-      <div class="th sticky">MATCH</div>
-      <div class="th sticky status"></div>
-      <div class="th sticky score"></div>
-    `;
-
-    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
-
-    data.matches.forEach((m,r)=>{
-      table.innerHTML+=`
-        <div class="match sticky">${m.match}</div>
-        <div class="match center sticky status">${m.status}</div>
-        <div class="match center sticky score">${m.score}</div>
-      `;
-
-      m.cells.forEach((c,i)=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        if(c.value){
-          el.textContent=c.value;
-          el.style.background=c.color;
-        }
-        table.appendChild(el);
-      });
-    });
-
-    table.innerHTML+=`<div class="divider"></div>`;
-
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      table.innerHTML+=`
-        <div class="label sticky">${label}</div>
-        <div class="sticky status"></div>
-        <div class="sticky score"></div>
-      `;
-      data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
-        table.appendChild(el);
-      });
-    });
-
-    data.totals.forEach(t=>{
-      const row=document.createElement("div");
-      row.className="summary-row";
-      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
-      const vals=document.createElement("div");
-      vals.className="sum-values";
-      t.cells.slice(0,2).forEach((c,i)=>{
-        const cell=document.createElement("div");
-        cell.className="sum-cell";
-        cell.style.background=c.color;
-        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
-        vals.appendChild(cell);
-      });
-      row.appendChild(vals);
-      summary.appendChild(row);
-    });
-
-    // TEMP ranking (manual)
-    [
-      {name:"Snackbar", money:2, bets:5},
-      {name:"Timbo", money:0, bets:5},
-      {name:"Pepe", money:0, bets:3},
-    ].forEach((p,i)=>{
-      const row=document.createElement("div");
-      row.className="rank-row"+(i===0?" rank-1":"");
-      row.innerHTML=`
-        <div class="rank-pos">${i+1}</div>
-        <div class="rank-name">${p.name}</div>
-        <div class="rank-money">${formatEUR(p.money)}</div>
-        <div class="rank-bets">${p.bets} bets right</div>
-      `;
-      ranking.appendChild(row);
-    });
-  });
-}
-
-loadData();
-setInterval(loadData,REFRESH_MS);
-
 document.getElementById("compactToggle").onclick=
   ()=>document.body.classList.toggle("compact");
+
 document.getElementById("summaryToggle").onclick=
   ()=>document.getElementById("summary").classList.toggle("hidden");
 </script>

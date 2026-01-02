@@ -1,140 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bet Dashboard</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-:root {
+:root{
   --bg-main:#1f2125;
   --bg-panel:#26292e;
   --text-main:#e6e7ea;
   --text-muted:#9aa0a6;
-
   --row-h:46px;
   --gap:10px;
-
   --row-h-compact:38px;
   --gap-compact:6px;
-
   --w-match:90px;
   --w-status:46px;
   --w-score:56px;
   --w-bet:110px;
   --w-bet-compact:90px;
 }
-
-*{box-sizing:border-box;}
-
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
 }
-
 body.compact{
   --row-h:var(--row-h-compact);
   --gap:var(--gap-compact);
   --w-bet:var(--w-bet-compact);
 }
-
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:auto 1fr auto;
 }
-
 .topbar{
   display:flex;
-  gap:8px;
   justify-content:flex-end;
+  gap:8px;
   padding:8px 12px;
 }
-
 .toggle{
   background:var(--bg-panel);
-  border-radius:8px;
   padding:6px 10px;
-  cursor:pointer;
+  border-radius:8px;
   font-size:13px;
   font-weight:600;
+  cursor:pointer;
 }
-
-.table-wrapper{overflow-y:auto;}
-.bets-scroll{overflow-x:auto;}
-
+.table-wrapper{overflow-y:auto}
+.bets-scroll{overflow-x:auto}
 .table{
   display:grid;
   gap:var(--gap);
   padding:10px;
 }
-
-.th{
-  height:var(--row-h);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--bg-panel);
-  font-weight:700;
-  font-size:13px;
-}
-
-.match,.label{
+.th,.match,.label{
   height:var(--row-h);
   display:flex;
   align-items:center;
   justify-content:center;
   background:var(--bg-panel);
   font-size:13px;
-  color:var(--text-muted);
 }
-
-.match.center{
-  color:var(--text-main);
-  font-weight:700;
-}
-
+.th{font-weight:700}
+.match{color:var(--text-muted)}
+.match.center{color:var(--text-main);font-weight:700}
 .bet{
   height:var(--row-h);
   display:flex;
   align-items:center;
   justify-content:center;
   border-radius:12px;
-  font-weight:700;
   font-size:14px;
+  font-weight:700;
   color:#111;
 }
-
-.bet:empty{background:transparent!important;}
-
-.bet.changed,.match.changed{
-  animation:glowPulse 8s ease-in-out;
-}
-
-@keyframes glowPulse{
-  0%{box-shadow:0 0 0 rgba(255,255,255,0);}
-  10%{box-shadow:0 0 22px rgba(255,255,255,.9);}
-  20%{box-shadow:0 0 0 rgba(255,255,255,0);}
-  40%{box-shadow:0 0 22px rgba(255,255,255,.9);}
-  50%{box-shadow:0 0 0 rgba(255,255,255,0);}
-  70%{box-shadow:0 0 22px rgba(255,255,255,.9);}
-  80%{box-shadow:0 0 0 rgba(255,255,255,0);}
-  100%{box-shadow:0 0 0 rgba(255,255,255,0);}
-}
-
+.bet:empty{background:transparent!important}
 .sticky{
   position:sticky;
   left:0;
-  z-index:10;
+  z-index:5;
   background:var(--bg-panel);
 }
-.sticky.status{left:var(--w-match);}
-.sticky.score{left:calc(var(--w-match) + var(--w-status));}
-
+.sticky.status{left:var(--w-match)}
+.sticky.score{left:calc(var(--w-match) + var(--w-status))}
 .divider{
   grid-column:1/-1;
   height:1px;
@@ -142,38 +98,36 @@ body.compact{
   margin:6px 0;
 }
 
+/* ===== GLOW (ONE-SHOT) ===== */
+.changed{
+  animation:glowPulse 8s ease-in-out;
+}
+@keyframes glowPulse{
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  10%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  20%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  40%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  50%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  70%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  80%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
+}
+
 .summary{
   background:var(--bg-panel);
   border-top:1px solid #3a3d42;
   transition:max-height .4s ease,opacity .35s ease;
 }
-.summary.hidden{
-  max-height:0;
-  opacity:0;
-  overflow:hidden;
-}
-
-.summary-content{padding:10px;}
-
+.summary.hidden{max-height:0;opacity:0;overflow:hidden}
+.summary-content{padding:10px}
 .summary-row{
   display:grid;
   grid-template-columns:120px auto;
   gap:8px;
-  align-items:center;
   margin-bottom:6px;
 }
-
-.sum-label{
-  font-weight:700;
-  font-size:13px;
-  color:var(--text-muted);
-}
-
-.sum-values{
-  display:flex;
-  gap:6px;
-}
-
+.sum-label{font-size:13px;font-weight:700;color:var(--text-muted)}
+.sum-values{display:flex;gap:6px}
 .sum-cell{
   height:32px;
   min-width:90px;
@@ -181,8 +135,8 @@ body.compact{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight:800;
   font-size:13px;
+  font-weight:800;
   color:#111;
 }
 </style>
@@ -191,7 +145,6 @@ body.compact{
 <body>
 
 <div class="app">
-
   <div class="topbar">
     <div class="toggle" id="compactToggle">Compact / Normal</div>
     <div class="toggle" id="summaryToggle">Summary</div>
@@ -206,29 +159,21 @@ body.compact{
   <footer class="summary" id="summary">
     <div class="summary-content" id="summaryContent"></div>
   </footer>
-
 </div>
 
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 const REFRESH_MS=30000;
 
-const formatGBP=v=>"£"+Number(v??0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
-
-const table=document.getElementById("table");
-const summary=document.getElementById("summaryContent");
-const summaryEl=document.getElementById("summary");
-
-let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
-
 const sound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3");
 sound.volume=0.25;
 let soundUnlocked=false;
+["click","touchstart"].forEach(e=>document.body.addEventListener(e,()=>soundUnlocked=true,{once:true}));
 
-["click","touchstart"].forEach(e=>{
-  document.body.addEventListener(e,()=>soundUnlocked=true,{once:true});
-});
+const formatGBP=v=>"£"+Number(v??0).toFixed(2);
+const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
+
+let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -236,7 +181,7 @@ function loadData(){
     const nextState={};
 
     table.innerHTML="";
-    summary.innerHTML="";
+    summaryContent.innerHTML="";
 
     table.style.gridTemplateColumns=
       "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
@@ -249,22 +194,23 @@ function loadData(){
 
     data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
 
-    data.matches.forEach((m,row)=>{
+    data.matches.forEach((m,r)=>{
       table.innerHTML+=`
         <div class="match sticky">${m.match}</div>
         <div class="match center sticky status">${m.status}</div>
         <div class="match center sticky score">${m.score}</div>
       `;
 
-      const scoreKey=`score-${row}`;
+      const scoreKey=`score-${r}`;
       if(previousState[scoreKey] && previousState[scoreKey]!==m.score){
         table.lastElementChild.classList.add("changed");
+        setTimeout(()=>table.lastElementChild.classList.remove("changed"),8200);
         hasChanges=true;
       }
       nextState[scoreKey]=m.score;
 
       m.cells.forEach((c,i)=>{
-        const key=`bet-${row}-${i}`;
+        const key=`bet-${r}-${i}`;
         const val=`${c.value}|${c.color}`;
         nextState[key]=val;
 
@@ -275,6 +221,7 @@ function loadData(){
           el.style.background=c.color;
           if(previousState[key] && previousState[key]!==val){
             el.classList.add("changed");
+            setTimeout(()=>el.classList.remove("changed"),8200);
             hasChanges=true;
           }
         }
@@ -290,7 +237,6 @@ function loadData(){
         <div class="sticky status"></div>
         <div class="sticky score"></div>
       `;
-
       data.betSummary[i].cells.forEach((c,j)=>{
         const key=`summary-${i}-${j}`;
         const val=`${c.value}|${c.color}`;
@@ -302,6 +248,7 @@ function loadData(){
         el.style.background=c.color;
         if(previousState[key] && previousState[key]!==val){
           el.classList.add("changed");
+          setTimeout(()=>el.classList.remove("changed"),8200);
           hasChanges=true;
         }
         table.appendChild(el);
@@ -314,7 +261,6 @@ function loadData(){
       row.innerHTML=`<div class="sum-label">${t.label}</div>`;
       const vals=document.createElement("div");
       vals.className="sum-values";
-
       t.cells.slice(0,2).forEach((c,i)=>{
         const cell=document.createElement("div");
         cell.className="sum-cell";
@@ -322,9 +268,8 @@ function loadData(){
         cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
         vals.appendChild(cell);
       });
-
       row.appendChild(vals);
-      summary.appendChild(row);
+      summaryContent.appendChild(row);
     });
 
     previousState=nextState;
@@ -341,7 +286,7 @@ loadData();
 setInterval(loadData,REFRESH_MS);
 
 document.getElementById("compactToggle").onclick=()=>document.body.classList.toggle("compact");
-document.getElementById("summaryToggle").onclick=()=>summaryEl.classList.toggle("hidden");
+document.getElementById("summaryToggle").onclick=()=>summary.classList.toggle("hidden");
 </script>
 
 </body>

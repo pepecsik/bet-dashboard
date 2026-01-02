@@ -56,7 +56,6 @@ body.compact {
   gap: 8px;
   justify-content: flex-end;
   padding: 8px 12px;
-  background: var(--bg-main);
 }
 
 .toggle {
@@ -69,13 +68,8 @@ body.compact {
 }
 
 /* ===== TABLE ===== */
-.table-wrapper {
-  overflow-y: auto;
-}
-
-.bets-scroll {
-  overflow-x: auto;
-}
+.table-wrapper { overflow-y: auto; }
+.bets-scroll { overflow-x: auto; }
 
 .table {
   display: grid;
@@ -122,9 +116,18 @@ body.compact {
   color: #111;
 }
 
-/* REMOVE BLACK EMPTY PILLS */
-.bet:empty {
-  background: transparent !important;
+/* REMOVE EMPTY BET CELLS */
+.bet:empty { background: transparent !important; }
+
+/* ===== GLOW ON CHANGE ===== */
+.bet.changed {
+  animation: glow 0.7s ease-out;
+}
+
+@keyframes glow {
+  0%   { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  30%  { box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
 }
 
 /* STICKY LEFT */
@@ -154,19 +157,22 @@ body.compact {
   margin: 6px 0;
 }
 
-/* ===== SUMMARY ===== */
+/* ===== SUMMARY (ANIMATED) ===== */
 .summary {
   background: var(--bg-panel);
   border-top: 1px solid #3a3d42;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 300px;
+  opacity: 1;
 }
 
 .summary.hidden {
-  display: none;
+  max-height: 0;
+  opacity: 0;
 }
 
-.summary-content {
-  padding: 10px;
-}
+.summary-content { padding: 10px; }
 
 .summary-row {
   display: grid;
@@ -226,12 +232,11 @@ body.compact {
 const API_URL =
 "https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 
-const formatMoney = v =>
-  v === null || v === undefined ? "" : "£" + Number(v).toFixed(2);
+const formatGBP = v => "£" + Number(v).toFixed(2);
+const formatEUR = v => "€ " + Number(v).toFixed(2);
 
 const summaryEl = document.getElementById("summary");
-const compactToggle = document.getElementById("compactToggle");
-const summaryToggle = document.getElementById("summaryToggle");
+const snapshotKey = "betDashboardSnapshot";
 
 /* ===== INITIAL STATE ===== */
 function applyInitialState() {
@@ -240,34 +245,34 @@ function applyInitialState() {
 
   if (isMobile) {
     document.body.classList.add("compact");
-
-    if (isLandscape) {
-      summaryEl.classList.add("hidden");
-    } else {
-      summaryEl.classList.remove("hidden");
-    }
+    summaryEl.classList.toggle("hidden", isLandscape);
   }
 }
 
 applyInitialState();
+window.addEventListener("orientationchange", () =>
+  setTimeout(applyInitialState, 300)
+);
 
-/* ===== ORIENTATION CHANGE ===== */
-window.addEventListener("orientationchange", () => {
-  setTimeout(applyInitialState, 300);
-});
+document.getElementById("compactToggle").onclick =
+  () => document.body.classList.toggle("compact");
 
-/* ===== TOGGLES ===== */
-compactToggle.onclick = () =>
-  document.body.classList.toggle("compact");
+document.getElementById("summaryToggle").onclick =
+  () => summaryEl.classList.toggle("hidden");
 
-summaryToggle.onclick = () =>
-  summaryEl.classList.toggle("hidden");
-
-/* ===== DATA ===== */
+/* ===== DATA + CHANGE DETECTION ===== */
 fetch(API_URL).then(r => r.json()).then(data => {
 
   const table = document.getElementById("table");
   const summary = document.getElementById("summaryContent");
+
+  const previous = JSON.parse(localStorage.getItem(snapshotKey) || "{}");
+  const current = {};
+
+  const markIfChanged = (el, key, value) => {
+    if (previous[key] !== value) el.classList.add("changed");
+    current[key] = value;
+  };
 
   table.style.gridTemplateColumns =
     "var(--w-match) var(--w-status) var(--w-score) repeat(" +
@@ -283,17 +288,32 @@ fetch(API_URL).then(r => r.json()).then(data => {
     table.innerHTML += `<div class="th">${h}</div>`
   );
 
+  let rowIndex = 0;
+
   data.matches.forEach(m => {
     table.innerHTML += `
       <div class="match sticky">${m.match}</div>
       <div class="match center sticky status">${m.status}</div>
       <div class="match center sticky score">${m.score}</div>
     `;
-    m.cells.forEach(c =>
-      table.innerHTML += c.value
-        ? `<div class="bet" style="background:${c.color}">${c.value}</div>`
-        : `<div></div>`
-    );
+
+    m.cells.forEach((c, i) => {
+      if (!c.value) {
+        table.innerHTML += `<div></div>`;
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = "bet";
+      el.style.background = c.color;
+      el.textContent = c.value;
+
+      const key = `m-${rowIndex}-${i}`;
+      markIfChanged(el, key, c.value + "|" + c.color);
+
+      table.appendChild(el);
+    });
+
+    rowIndex++;
   });
 
   table.innerHTML += `<div class="divider"></div>`;
@@ -304,26 +324,45 @@ fetch(API_URL).then(r => r.json()).then(data => {
       <div class="sticky status"></div>
       <div class="sticky score"></div>
     `;
-    data.betSummary[i].cells.forEach(c =>
-      table.innerHTML += c.value
-        ? `<div class="bet" style="background:${c.color}">${formatMoney(c.value)}</div>`
-        : `<div></div>`
-    );
+
+    data.betSummary[i].cells.forEach((c,j)=>{
+      if (c.value === null) {
+        table.innerHTML += `<div></div>`;
+        return;
+      }
+      const el=document.createElement("div");
+      el.className="bet";
+      el.style.background=c.color;
+      el.textContent=formatGBP(c.value);
+
+      const key=`s-${i}-${j}`;
+      markIfChanged(el,key,c.value+"|"+c.color);
+
+      table.appendChild(el);
+    });
   });
 
   data.totals.forEach(t=>{
     const row=document.createElement("div");
     row.className="summary-row";
     row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+
     const vals=document.createElement("div");
     vals.className="sum-values";
-    t.cells.filter(c=>c.value).forEach(c=>{
-      vals.innerHTML+=`<div class="sum-cell" style="background:${c.color}">${formatMoney(c.value)}</div>`;
+
+    t.cells.slice(0,2).forEach((c,i)=>{
+      const cell=document.createElement("div");
+      cell.className="sum-cell";
+      cell.style.background=c.color;
+      cell.textContent=i===0?formatGBP(c.value??0):formatEUR(c.value??0);
+      vals.appendChild(cell);
     });
+
     row.appendChild(vals);
     summary.appendChild(row);
   });
 
+  localStorage.setItem(snapshotKey, JSON.stringify(current));
 });
 </script>
 

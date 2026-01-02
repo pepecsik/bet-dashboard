@@ -130,28 +130,31 @@ body.compact{
   overflow:hidden;
 }
 
-/* NEW: summary layout */
+/* layout */
 .summary-content{
   display:flex;
   gap:16px;
   padding:10px;
 }
 
-/* LEFT card */
-.summary-card{
-  flex:1;
+/* cards */
+.summary-card,
+.ranking-card{
   background:#1f2125;
   border-radius:14px;
   padding:12px;
 }
 
-.summary-title{
-  font-weight:700;
+.summary-card{flex:1}
+
+.summary-title,
+.ranking-title{
   font-size:14px;
+  font-weight:700;
   margin-bottom:10px;
 }
 
-/* original summary rows (UNCHANGED) */
+/* ORIGINAL SUMMARY ROWS (do not change JS expectations) */
 .summary-row{
   display:grid;
   grid-template-columns:120px auto;
@@ -182,19 +185,8 @@ body.compact{
   color:#111;
 }
 
-/* RIGHT card */
-.ranking-card{
-  width:260px;
-  background:#1f2125;
-  border-radius:14px;
-  padding:12px;
-}
-
-.ranking-title{
-  font-weight:700;
-  font-size:14px;
-  margin-bottom:10px;
-}
+/* RANKING */
+.ranking-card{width:260px}
 
 .rank-row{
   display:grid;
@@ -250,13 +242,13 @@ body.compact{
   <footer class="summary" id="summary">
     <div class="summary-content">
 
-      <!-- WEEKLY SUMMARY (dynamic, original logic) -->
+      <!-- WEEKLY SUMMARY (dynamic, original JS fills this) -->
       <div class="summary-card">
         <div class="summary-title">📊 Weekly Summary</div>
         <div id="summaryContent"></div>
       </div>
 
-      <!-- ALL-TIME RANKING -->
+      <!-- ALL-TIME RANKING (static for now) -->
       <div class="ranking-card">
         <div class="ranking-title">🏆 All-Time Ranking</div>
 
@@ -280,7 +272,6 @@ body.compact{
           <div class="rank-money">€ 0.00</div>
           <div class="rank-bets">3 matches right</div>
         </div>
-
       </div>
 
     </div>
@@ -288,6 +279,94 @@ body.compact{
 </div>
 
 <script>
+const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+const REFRESH_MS=30000;
+
+const formatGBP=v=>"£"+Number(v??0).toFixed(2);
+const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
+
+let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
+
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    const table=document.getElementById("table");
+    const summary=document.getElementById("summaryContent");
+    const nextState={};
+
+    table.innerHTML="";
+    summary.innerHTML="";
+
+    table.style.gridTemplateColumns=
+      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
+
+    table.innerHTML+=`
+      <div class="th sticky">MATCH</div>
+      <div class="th sticky status"></div>
+      <div class="th sticky score"></div>
+    `;
+
+    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
+
+    data.matches.forEach((m,r)=>{
+      table.innerHTML+=`
+        <div class="match sticky">${m.match}</div>
+        <div class="match center sticky status">${m.status}</div>
+        <div class="match center sticky score">${m.score}</div>
+      `;
+
+      m.cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+        }
+        table.appendChild(el);
+      });
+    });
+
+    table.innerHTML+=`<div class="divider"></div>`;
+
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      table.innerHTML+=`
+        <div class="label sticky">${label}</div>
+        <div class="sticky status"></div>
+        <div class="sticky score"></div>
+      `;
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        table.appendChild(el);
+      });
+    });
+
+    data.totals.forEach(t=>{
+      const row=document.createElement("div");
+      row.className="summary-row";
+      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+      const vals=document.createElement("div");
+      vals.className="sum-values";
+      t.cells.slice(0,2).forEach((c,i)=>{
+        const cell=document.createElement("div");
+        cell.className="sum-cell";
+        cell.style.background=c.color;
+        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
+        vals.appendChild(cell);
+      });
+      row.appendChild(vals);
+      summary.appendChild(row);
+    });
+
+    previousState=nextState;
+    localStorage.setItem("betState",JSON.stringify(nextState));
+  });
+}
+
+loadData();
+setInterval(loadData,REFRESH_MS);
+
 document.getElementById("compactToggle").onclick=
   ()=>document.body.classList.toggle("compact");
 

@@ -12,7 +12,7 @@
   --bg-main:#1c1f23;
   --bg-panel:#262a30;
   --bg-panel-soft:#2f343a;
-  --text-main:#e6e7ea;
+  --text-main:#ffffff;
   --text-muted:#9aa0a6;
 
   --row-h:46px;
@@ -97,15 +97,13 @@ body.compact{
 
 .th{
   font-weight:700;
-  color:#f1f3f4;
 }
 
 .match{
-  color:var(--text-muted);
+  color:#ffffff;
 }
 
 .match.center{
-  color:var(--text-main);
   font-weight:700;
 }
 
@@ -123,7 +121,16 @@ body.compact{
     0 4px 12px rgba(0,0,0,.35);
 }
 
-.bet:empty{background:transparent!important}
+.bet:empty{
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+/* ===== PLACEHOLDER (BET/WIN empty cells) ===== */
+.placeholder{
+  background:transparent!important;
+  box-shadow:none!important;
+}
 
 /* ===== STICKY LEFT ===== */
 .sticky{
@@ -131,7 +138,6 @@ body.compact{
   left:0;
   z-index:5;
   background:linear-gradient(180deg,#2f343a,#24282d);
-  box-shadow:inset -1px 0 0 rgba(255,255,255,.04);
 }
 .sticky.status{left:var(--w-match)}
 .sticky.score{left:calc(var(--w-match) + var(--w-status))}
@@ -142,6 +148,19 @@ body.compact{
   height:1px;
   margin:8px 0;
   background:linear-gradient(90deg,transparent,#3a3d42,transparent);
+}
+
+/* ===== GLOW EFFECT ===== */
+.changed{
+  animation:glowPulse 8s ease-in-out;
+}
+@keyframes glowPulse{
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  15%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  55%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  70%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
 /* ===== SUMMARY ===== */
@@ -174,17 +193,16 @@ body.compact{
 }
 
 .summary-card{flex:1}
+.ranking-card{width:260px}
 
 .summary-title,
 .ranking-title{
   font-size:14px;
   font-weight:700;
   margin-bottom:12px;
-  letter-spacing:.3px;
-  color:#f1f3f4;
 }
 
-/* ORIGINAL SUMMARY STRUCTURE */
+/* SUMMARY ROWS */
 .summary-row{
   display:grid;
   grid-template-columns:120px auto;
@@ -210,14 +228,9 @@ body.compact{
   font-size:13px;
   font-weight:800;
   color:#111;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.25),
-    0 4px 12px rgba(0,0,0,.35);
 }
 
 /* ===== RANKING ===== */
-.ranking-card{width:260px}
-
 .rank-row{
   display:grid;
   grid-template-columns:22px 1fr auto;
@@ -231,23 +244,10 @@ body.compact{
 
 .rank-row:last-child{margin-bottom:0}
 
-.rank-pos{
-  grid-row:span 2;
-  font-weight:800;
-}
-
+.rank-pos{grid-row:span 2;font-weight:800}
 .rank-name{font-weight:600}
-
-.rank-money{
-  font-weight:800;
-  color:#7CFF5B;
-}
-
-.rank-bets{
-  grid-column:2/4;
-  font-size:12px;
-  opacity:.65;
-}
+.rank-money{font-weight:800;color:#7CFF5B}
+.rank-bets{grid-column:2/4;font-size:12px;opacity:.65}
 
 .rank-1{
   background:linear-gradient(180deg,#1f3b1f,#273027);
@@ -313,10 +313,13 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£"+Number(v??0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
 
+let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
+
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     const table=document.getElementById("table");
     const summary=document.getElementById("summaryContent");
+    const nextState={};
 
     table.innerHTML="";
     summary.innerHTML="";
@@ -332,19 +335,29 @@ function loadData(){
 
     data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
 
-    data.matches.forEach(m=>{
+    data.matches.forEach((m,r)=>{
       table.innerHTML+=`
         <div class="match sticky">${m.match}</div>
         <div class="match center sticky status">${m.status}</div>
         <div class="match center sticky score">${m.score}</div>
       `;
-      m.cells.forEach(c=>{
+
+      m.cells.forEach((c,i)=>{
+        const key=`bet-${r}-${i}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
+
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
         }
+
+        if(previousState[key] && previousState[key]!==val){
+          el.classList.add("changed");
+        }
+
+        nextState[key]=val;
         table.appendChild(el);
       });
     });
@@ -354,34 +367,56 @@ function loadData(){
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
       table.innerHTML+=`
         <div class="label sticky">${label}</div>
-        <div class="sticky status"></div>
-        <div class="sticky score"></div>
+        <div class="sticky status placeholder"></div>
+        <div class="sticky score placeholder"></div>
       `;
-      data.betSummary[i].cells.forEach(c=>{
+
+      data.betSummary[i].cells.forEach((c,j)=>{
+        const key=`summary-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
         el.textContent=formatGBP(c.value);
         el.style.background=c.color;
+
+        if(previousState[key] && previousState[key]!==val){
+          el.classList.add("changed");
+        }
+
+        nextState[key]=val;
         table.appendChild(el);
       });
     });
 
-    data.totals.forEach(t=>{
+    data.totals.forEach((t,i)=>{
       const row=document.createElement("div");
       row.className="summary-row";
       row.innerHTML=`<div class="sum-label">${t.label}</div>`;
       const vals=document.createElement("div");
       vals.className="sum-values";
-      t.cells.slice(0,2).forEach((c,i)=>{
+
+      t.cells.slice(0,2).forEach((c,j)=>{
+        const key=`total-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const cell=document.createElement("div");
         cell.className="sum-cell";
         cell.style.background=c.color;
-        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
+        cell.textContent=j===0?formatGBP(c.value):formatEUR(c.value);
+
+        if(previousState[key] && previousState[key]!==val){
+          cell.classList.add("changed");
+        }
+
+        nextState[key]=val;
         vals.appendChild(cell);
       });
+
       row.appendChild(vals);
       summary.appendChild(row);
     });
+
+    previousState=nextState;
+    localStorage.setItem("betState",JSON.stringify(nextState));
   });
 }
 

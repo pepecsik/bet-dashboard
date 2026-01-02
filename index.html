@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-/* ===== SAME STYLES AS BEFORE (UNCHANGED) ===== */
-:root{
+/* ===== EXISTING STYLES (UNCHANGED) ===== */
+:root {
   --bg-main:#1f2125;
   --bg-panel:#26292e;
   --text-main:#e6e7ea;
@@ -24,6 +24,7 @@
   --w-bet:110px;
   --w-bet-compact:90px;
 }
+
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -79,8 +80,8 @@ body.compact{
   align-items:center;
   justify-content:center;
   border-radius:12px;
-  font-size:14px;
   font-weight:700;
+  font-size:14px;
   color:#111;
 }
 .bet:empty{background:transparent!important}
@@ -105,21 +106,26 @@ body.compact{
 }
 @keyframes glowPulse{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  10%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  10%{box-shadow:0 0 24px rgba(255,255,255,.95)}
   20%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  40%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  40%{box-shadow:0 0 24px rgba(255,255,255,.95)}
   50%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  70%{box-shadow:0 0 22px rgba(255,255,255,.9)}
+  70%{box-shadow:0 0 24px rgba(255,255,255,.95)}
   80%{box-shadow:0 0 0 rgba(255,255,255,0)}
   100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
+/* ===== SUMMARY ===== */
 .summary{
   background:var(--bg-panel);
   border-top:1px solid #3a3d42;
   transition:max-height .4s ease,opacity .35s ease;
 }
-.summary.hidden{max-height:0;opacity:0;overflow:hidden}
+.summary.hidden{
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+}
 .summary-content{padding:10px}
 .summary-row{
   display:grid;
@@ -127,7 +133,11 @@ body.compact{
   gap:8px;
   margin-bottom:6px;
 }
-.sum-label{font-size:13px;font-weight:700;color:var(--text-muted)}
+.sum-label{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text-muted);
+}
 .sum-values{display:flex;gap:6px}
 .sum-cell{
   height:32px;
@@ -136,14 +146,52 @@ body.compact{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
   font-weight:800;
+  font-size:13px;
   color:#111;
+}
+
+/* ===== SOUND OVERLAY ===== */
+.sound-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.sound-box{
+  background:var(--bg-panel);
+  padding:24px 28px;
+  border-radius:14px;
+  text-align:center;
+}
+.sound-box h2{
+  margin:0 0 10px;
+  font-size:16px;
+}
+.sound-box button{
+  margin-top:12px;
+  padding:10px 16px;
+  font-size:14px;
+  font-weight:700;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
+
+<div class="sound-overlay" id="soundOverlay">
+  <div class="sound-box">
+    <h2>🔔 Enable alerts</h2>
+    <div>Get notified when bets change</div>
+    <button id="enableSoundBtn">Enable sound</button>
+  </div>
+</div>
 
 <div class="app">
   <div class="topbar">
@@ -166,55 +214,42 @@ body.compact{
 const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 const REFRESH_MS=30000;
 
-/* ===== SOUND (PROPERLY UNLOCKED) ===== */
-let audioCtx;
-let soundBuffer;
-let soundReady=false;
+/* ===== SOUND ===== */
+let audioCtx, alertBuffer, soundEnabled=false;
 
-async function initSound(){
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+async function enableSound(){
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   await audioCtx.resume();
 
-  const res = await fetch("https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3");
-  const arr = await res.arrayBuffer();
-  soundBuffer = await audioCtx.decodeAudioData(arr);
+  const res=await fetch("https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3");
+  alertBuffer=await audioCtx.decodeAudioData(await res.arrayBuffer());
 
-  // silent unlock
-  const src = audioCtx.createBufferSource();
-  src.buffer = audioCtx.createBuffer(1,1,22050);
-  src.connect(audioCtx.destination);
-  src.start(0);
-
-  soundReady=true;
+  soundEnabled=true;
+  localStorage.setItem("soundEnabled","1");
+  document.getElementById("soundOverlay").remove();
 }
 
-function playSound(){
-  if(!soundReady) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = soundBuffer;
+function playAlert(){
+  if(!soundEnabled) return;
+  const src=audioCtx.createBufferSource();
+  src.buffer=alertBuffer;
   src.connect(audioCtx.destination);
-  src.start(0);
+  src.start();
 }
 
-// unlock on first interaction
-["click","touchstart","keydown"].forEach(e=>{
-  document.addEventListener(e,()=>{
-    if(!soundReady) initSound();
-  },{once:true});
-});
+if(localStorage.getItem("soundEnabled")==="1"){
+  enableSound();
+}else{
+  document.getElementById("enableSoundBtn").onclick=enableSound;
+}
 
-/* ===== FORMATTING ===== */
-const formatGBP=v=>"£"+Number(v??0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
+/* ===== CHANGE TRACKING ===== */
+let previous=JSON.parse(localStorage.getItem("betState")||"{}");
 
-/* ===== STATE ===== */
-let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
-
-/* ===== LOAD ===== */
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-    let hasChanges=false;
-    const nextState={};
+    let changed=false;
+    const next={};
 
     table.innerHTML="";
     summaryContent.innerHTML="";
@@ -236,84 +271,34 @@ function loadData(){
         <div class="match center sticky status">${m.status}</div>
         <div class="match center sticky score">${m.score}</div>
       `;
-
       const scoreKey=`score-${r}`;
-      if(previousState[scoreKey] && previousState[scoreKey]!==m.score){
+      next[scoreKey]=m.score;
+      if(previous[scoreKey] && previous[scoreKey]!==m.score){
         table.lastElementChild.classList.add("changed");
-        setTimeout(()=>table.lastElementChild.classList.remove("changed"),8200);
-        hasChanges=true;
+        changed=true;
       }
-      nextState[scoreKey]=m.score;
-
       m.cells.forEach((c,i)=>{
         const key=`bet-${r}-${i}`;
         const val=`${c.value}|${c.color}`;
-        nextState[key]=val;
-
+        next[key]=val;
         const el=document.createElement("div");
         el.className="bet";
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
-          if(previousState[key] && previousState[key]!==val){
+          if(previous[key] && previous[key]!==val){
             el.classList.add("changed");
-            setTimeout(()=>el.classList.remove("changed"),8200);
-            hasChanges=true;
+            changed=true;
           }
         }
         table.appendChild(el);
       });
     });
 
-    table.innerHTML+=`<div class="divider"></div>`;
+    if(changed) playAlert();
 
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      table.innerHTML+=`
-        <div class="label sticky">${label}</div>
-        <div class="sticky status"></div>
-        <div class="sticky score"></div>
-      `;
-      data.betSummary[i].cells.forEach((c,j)=>{
-        const key=`summary-${i}-${j}`;
-        const val=`${c.value}|${c.color}`;
-        nextState[key]=val;
-
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
-        if(previousState[key] && previousState[key]!==val){
-          el.classList.add("changed");
-          setTimeout(()=>el.classList.remove("changed"),8200);
-          hasChanges=true;
-        }
-        table.appendChild(el);
-      });
-    });
-
-    data.totals.forEach(t=>{
-      const row=document.createElement("div");
-      row.className="summary-row";
-      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
-      const vals=document.createElement("div");
-      vals.className="sum-values";
-      t.cells.slice(0,2).forEach((c,i)=>{
-        const cell=document.createElement("div");
-        cell.className="sum-cell";
-        cell.style.background=c.color;
-        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
-        vals.appendChild(cell);
-      });
-      row.appendChild(vals);
-      summaryContent.appendChild(row);
-    });
-
-    previousState=nextState;
-    localStorage.setItem("betState",JSON.stringify(nextState));
-
-    if(hasChanges){
-      playSound();
-    }
+    previous=next;
+    localStorage.setItem("betState",JSON.stringify(next));
   });
 }
 

@@ -19,7 +19,7 @@
   --row-h-compact:38px;
   --gap:10px;
 
-  --left-w:210px;
+  --left-w:240px;
   --bet-w:110px;
 }
 
@@ -59,7 +59,7 @@ body.compact{
   cursor:pointer;
 }
 
-/* ===== MAIN AREA ===== */
+/* ===== MAIN ===== */
 .main{
   display:flex;
   gap:12px;
@@ -78,11 +78,29 @@ body.compact{
   gap:6px;
 }
 
-/* left rows */
+/* header */
+.left-header{
+  height:var(--row-h);
+  display:grid;
+  grid-template-columns:1.4fr 44px 56px;
+  gap:6px;
+}
+
+.left-header div{
+  background:var(--bg-soft);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+/* rows */
 .left-row{
   height:var(--row-h);
   display:grid;
-  grid-template-columns:1fr 44px 56px;
+  grid-template-columns:1.4fr 44px 56px;
   gap:6px;
 }
 
@@ -101,6 +119,7 @@ body.compact{
   padding-left:10px;
 }
 
+/* labels */
 .left-label{
   height:var(--row-h);
   background:var(--bg-soft);
@@ -110,6 +129,11 @@ body.compact{
   justify-content:center;
   font-size:13px;
   font-weight:700;
+}
+
+/* divider */
+.left-divider{
+  height:12px;
 }
 
 /* ===== RIGHT CARD ===== */
@@ -133,6 +157,19 @@ body.compact{
   gap:6px;
 }
 
+/* header pills */
+.header-pill{
+  width:var(--bet-w);
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:700;
+}
+
 /* bet pills */
 .bet{
   width:var(--bet-w);
@@ -144,6 +181,11 @@ body.compact{
   font-size:14px;
   font-weight:800;
   color:#111;
+}
+
+/* divider */
+.right-divider{
+  height:12px;
 }
 
 /* ===== GLOW ===== */
@@ -251,6 +293,7 @@ body.compact{
 
   <div class="main">
     <div class="left-card" id="left"></div>
+
     <div class="right-card">
       <div class="rows" id="right"></div>
     </div>
@@ -305,25 +348,30 @@ function loadData(){
     const left=document.getElementById("left");
     const right=document.getElementById("right");
     const summary=document.getElementById("summaryContent");
+
     left.innerHTML="";
     right.innerHTML="";
     summary.innerHTML="";
 
-    // headers
-    const header=document.createElement("div");
-    header.className="row";
+    /* LEFT HEADER */
+    const lh=document.createElement("div");
+    lh.className="left-header";
+    lh.innerHTML="<div>MATCH</div><div></div><div></div>";
+    left.appendChild(lh);
+
+    /* RIGHT HEADER */
+    const rh=document.createElement("div");
+    rh.className="row";
     data.headers.forEach(h=>{
-      const el=document.createElement("div");
-      el.className="bet";
-      el.style.background="#2f343a";
-      el.style.color="#fff";
-      el.textContent=h;
-      header.appendChild(el);
+      const p=document.createElement("div");
+      p.className="header-pill";
+      p.textContent=h;
+      rh.appendChild(p);
     });
-    right.appendChild(header);
+    right.appendChild(rh);
 
     data.matches.forEach((m,i)=>{
-      // left
+      /* left rows */
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -333,7 +381,7 @@ function loadData(){
       `;
       left.appendChild(lr);
 
-      // right
+      /* right rows */
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
@@ -352,7 +400,10 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    // labels
+    /* divider */
+    left.appendChild(Object.assign(document.createElement("div"),{className:"left-divider"}));
+    right.appendChild(Object.assign(document.createElement("div"),{className:"right-divider"}));
+
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
       const lab=document.createElement("div");
       lab.className="left-label";
@@ -361,7 +412,7 @@ function loadData(){
 
       const rr=document.createElement("div");
       rr.className="row";
-      data.betSummary[i].cells.forEach((c,j)=>{
+      data.betSummary[i].cells.forEach(c=>{
         const el=document.createElement("div");
         el.className="bet";
         el.textContent=formatGBP(c.value);
@@ -371,7 +422,7 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    // summary
+    /* summary */
     data.totals.forEach(t=>{
       const row=document.createElement("div");
       row.className="summary-row";

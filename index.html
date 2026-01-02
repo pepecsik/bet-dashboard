@@ -10,22 +10,17 @@
 <style>
 :root{
   --bg-main:#1c1f23;
-  --bg-panel:#262a30;
-  --bg-sticky:#2b3036;
+  --bg-card:#262a30;
+  --bg-soft:#2f343a;
   --text-main:#ffffff;
   --text-muted:#9aa0a6;
 
   --row-h:46px;
+  --row-h-compact:38px;
   --gap:10px;
 
-  --row-h-compact:38px;
-  --gap-compact:6px;
-
-  --w-match:90px;
-  --w-status:46px;
-  --w-score:56px;
-  --w-bet:110px;
-  --w-bet-compact:90px;
+  --left-w:210px;
+  --bet-w:110px;
 }
 
 *{box-sizing:border-box}
@@ -39,8 +34,6 @@ body{
 
 body.compact{
   --row-h:var(--row-h-compact);
-  --gap:var(--gap-compact);
-  --w-bet:var(--w-bet-compact);
 }
 
 .app{
@@ -49,7 +42,7 @@ body.compact{
   grid-template-rows:auto 1fr auto;
 }
 
-/* ===== TOPBAR ===== */
+/* ===== TOP BAR ===== */
 .topbar{
   display:flex;
   justify-content:flex-end;
@@ -58,7 +51,7 @@ body.compact{
 }
 
 .toggle{
-  background:#2b3036;
+  background:#2f343a;
   padding:6px 12px;
   border-radius:10px;
   font-size:13px;
@@ -66,91 +59,94 @@ body.compact{
   cursor:pointer;
 }
 
-/* ===== TABLE ===== */
-.table-wrapper{
-  overflow-y:auto;
-  background:var(--bg-panel);
-}
-
-.bets-scroll{
-  overflow-x:auto;
-  position:relative;
-}
-
-.table{
-  display:grid;
-  gap:var(--gap);
+/* ===== MAIN AREA ===== */
+.main{
+  display:flex;
+  gap:12px;
   padding:12px;
+  overflow:hidden;
 }
 
-.th,.match,.label{
+/* ===== LEFT CARD ===== */
+.left-card{
+  width:var(--left-w);
+  background:var(--bg-card);
+  border-radius:16px;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+/* left rows */
+.left-row{
   height:var(--row-h);
+  display:grid;
+  grid-template-columns:1fr 44px 56px;
+  gap:6px;
+}
+
+.left-cell{
+  background:var(--bg-soft);
+  border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
-  background:#2f343a;
-  border-radius:14px;
   font-size:13px;
-  z-index:1;
+  font-weight:600;
 }
 
-.th{font-weight:700}
-.match{color:#fff}
-.match.center{font-weight:700}
+.left-cell.match{
+  justify-content:flex-start;
+  padding-left:10px;
+}
 
-.bet{
+.left-label{
   height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:14px;
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
+}
+
+/* ===== RIGHT CARD ===== */
+.right-card{
+  flex:1;
+  background:var(--bg-card);
+  border-radius:16px;
+  overflow-x:auto;
+  padding:10px;
+}
+
+.rows{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:max-content;
+}
+
+.row{
+  display:flex;
+  gap:6px;
+}
+
+/* bet pills */
+.bet{
+  width:var(--bet-w);
+  height:var(--row-h);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  font-weight:800;
   color:#111;
 }
 
-.bet:empty{
-  background:transparent!important;
-}
-
-/* ===== STICKY LEFT (SOLID MASK) ===== */
-.sticky{
-  position:sticky;
-  left:0;
-  z-index:10;
-  background:var(--bg-sticky);
-}
-
-.sticky.status{left:var(--w-match)}
-.sticky.score{
-  left:calc(var(--w-match) + var(--w-status));
-  box-shadow: 6px 0 10px -6px rgba(0,0,0,.8);
-}
-
-/* vertical divider */
-.sticky.score::after{
-  content:"";
-  position:absolute;
-  top:-1000px;
-  bottom:-1000px;
-  right:-8px;
-  width:8px;
-  background:linear-gradient(
-    90deg,
-    rgba(0,0,0,.65),
-    rgba(0,0,0,0)
-  );
-}
-
-/* ===== DIVIDER ===== */
-.divider{
-  grid-column:1/-1;
-  height:1px;
-  margin:8px 0;
-  background:#3a3d42;
-}
-
-/* ===== GLOW – 3 PULSES / 10s ===== */
+/* ===== GLOW ===== */
 .changed{
   animation:glowPulse 10s ease-in-out;
 }
@@ -159,13 +155,10 @@ body.compact{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
   10%{box-shadow:0 0 22px rgba(255,255,255,.95)}
   20%{box-shadow:0 0 0 rgba(255,255,255,0)}
-
   40%{box-shadow:0 0 22px rgba(255,255,255,.95)}
   50%{box-shadow:0 0 0 rgba(255,255,255,0)}
-
   70%{box-shadow:0 0 22px rgba(255,255,255,.95)}
   80%{box-shadow:0 0 0 rgba(255,255,255,0)}
-
   100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
@@ -175,18 +168,12 @@ body.compact{
   border-top:1px solid #3a3d42;
 }
 
-.summary.hidden{
-  max-height:0;
-  overflow:hidden;
-}
-
 .summary-content{
   display:flex;
   gap:16px;
   padding:12px;
 }
 
-/* ===== CARDS ===== */
 .summary-card,
 .ranking-card{
   background:#2f343a;
@@ -204,7 +191,6 @@ body.compact{
   margin-bottom:12px;
 }
 
-/* SUMMARY ROWS */
 .summary-row{
   display:grid;
   grid-template-columns:120px auto;
@@ -232,7 +218,7 @@ body.compact{
   color:#111;
 }
 
-/* ===== RANKING ===== */
+/* ranking */
 .rank-row{
   display:grid;
   grid-template-columns:22px 1fr auto;
@@ -245,7 +231,6 @@ body.compact{
 }
 
 .rank-row:last-child{margin-bottom:0}
-
 .rank-pos{grid-row:span 2;font-weight:800}
 .rank-name{font-weight:600}
 .rank-money{font-weight:800;color:#7CFF5B}
@@ -262,18 +247,17 @@ body.compact{
 <div class="app">
   <div class="topbar">
     <div class="toggle" id="compactToggle">Compact / Normal</div>
-    <div class="toggle" id="summaryToggle">Summary</div>
   </div>
 
-  <div class="table-wrapper">
-    <div class="bets-scroll">
-      <div id="table" class="table"></div>
+  <div class="main">
+    <div class="left-card" id="left"></div>
+    <div class="right-card">
+      <div class="rows" id="right"></div>
     </div>
   </div>
 
-  <footer class="summary" id="summary">
+  <footer class="summary">
     <div class="summary-content">
-
       <div class="summary-card">
         <div class="summary-title">📊 Weekly Summary</div>
         <div id="summaryContent"></div>
@@ -303,7 +287,6 @@ body.compact{
           <div class="rank-bets">3 matches right</div>
         </div>
       </div>
-
     </div>
   </footer>
 </div>
@@ -315,110 +298,96 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£"+Number(v??0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
 
-let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
+let prev={};
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-    const table=document.getElementById("table");
+    const left=document.getElementById("left");
+    const right=document.getElementById("right");
     const summary=document.getElementById("summaryContent");
-    const nextState={};
-
-    table.innerHTML="";
+    left.innerHTML="";
+    right.innerHTML="";
     summary.innerHTML="";
 
-    table.style.gridTemplateColumns=
-      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
+    // headers
+    const header=document.createElement("div");
+    header.className="row";
+    data.headers.forEach(h=>{
+      const el=document.createElement("div");
+      el.className="bet";
+      el.style.background="#2f343a";
+      el.style.color="#fff";
+      el.textContent=h;
+      header.appendChild(el);
+    });
+    right.appendChild(header);
 
-    table.innerHTML+=`
-      <div class="th sticky">MATCH</div>
-      <div class="th sticky status"></div>
-      <div class="th sticky score"></div>
-    `;
-
-    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
-
-    data.matches.forEach((m,r)=>{
-      table.innerHTML+=`
-        <div class="match sticky">${m.match}</div>
-        <div class="match center sticky status">${m.status}</div>
-        <div class="match center sticky score">${m.score}</div>
+    data.matches.forEach((m,i)=>{
+      // left
+      const lr=document.createElement("div");
+      lr.className="left-row";
+      lr.innerHTML=`
+        <div class="left-cell match">${m.match}</div>
+        <div class="left-cell">${m.status}</div>
+        <div class="left-cell">${m.score}</div>
       `;
+      left.appendChild(lr);
 
-      m.cells.forEach((c,i)=>{
-        const key=`bet-${r}-${i}`;
+      // right
+      const rr=document.createElement("div");
+      rr.className="row";
+      m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
         const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
         }
-
-        if(previousState[key] && previousState[key]!==val){
-          el.classList.add("changed");
-        }
-
-        nextState[key]=val;
-        table.appendChild(el);
+        if(prev[key] && prev[key]!==val) el.classList.add("changed");
+        prev[key]=val;
+        rr.appendChild(el);
       });
+      right.appendChild(rr);
     });
 
-    table.innerHTML+=`<div class="divider"></div>`;
-
+    // labels
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      table.innerHTML+=`
-        <div class="label sticky">${label}</div>
-        <div class="sticky status placeholder"></div>
-        <div class="sticky score placeholder"></div>
-      `;
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
 
+      const rr=document.createElement("div");
+      rr.className="row";
       data.betSummary[i].cells.forEach((c,j)=>{
-        const key=`summary-${i}-${j}`;
-        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
         el.textContent=formatGBP(c.value);
         el.style.background=c.color;
-
-        if(previousState[key] && previousState[key]!==val){
-          el.classList.add("changed");
-        }
-
-        nextState[key]=val;
-        table.appendChild(el);
+        rr.appendChild(el);
       });
+      right.appendChild(rr);
     });
 
-    data.totals.forEach((t,i)=>{
+    // summary
+    data.totals.forEach(t=>{
       const row=document.createElement("div");
       row.className="summary-row";
       row.innerHTML=`<div class="sum-label">${t.label}</div>`;
       const vals=document.createElement("div");
       vals.className="sum-values";
-
-      t.cells.slice(0,2).forEach((c,j)=>{
-        const key=`total-${i}-${j}`;
-        const val=`${c.value}|${c.color}`;
+      t.cells.slice(0,2).forEach((c,i)=>{
         const cell=document.createElement("div");
         cell.className="sum-cell";
         cell.style.background=c.color;
-        cell.textContent=j===0?formatGBP(c.value):formatEUR(c.value);
-
-        if(previousState[key] && previousState[key]!==val){
-          cell.classList.add("changed");
-        }
-
-        nextState[key]=val;
+        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
         vals.appendChild(cell);
       });
-
       row.appendChild(vals);
       summary.appendChild(row);
     });
-
-    previousState=nextState;
-    localStorage.setItem("betState",JSON.stringify(nextState));
   });
 }
 
@@ -427,9 +396,6 @@ setInterval(loadData,REFRESH_MS);
 
 document.getElementById("compactToggle").onclick=
   ()=>document.body.classList.toggle("compact");
-
-document.getElementById("summaryToggle").onclick=
-  ()=>document.getElementById("summary").classList.toggle("hidden");
 </script>
 
 </body>

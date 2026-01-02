@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bet Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg-main: #1f2125;
+  --bg-panel: #26292e;
+  --text-main: #e6e7ea;
+  --text-muted: #9aa0a6;
+
+  --row-h: 46px;
+  --gap: 10px;
+
+  --row-h-compact: 38px;
+  --gap-compact: 6px;
+
+  --w-match: 90px;
+  --w-status: 46px;
+  --w-score: 56px;
+  --w-bet: 110px;
+  --w-bet-compact: 90px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ===== COMPACT MODE ===== */
+body.compact {
+  --row-h: var(--row-h-compact);
+  --gap: var(--gap-compact);
+  --w-bet: var(--w-bet-compact);
+}
+
+/* ===== APP ===== */
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* ===== TOP BAR ===== */
+.topbar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  background: var(--bg-main);
+}
+
+.toggle {
+  background: var(--bg-panel);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ===== TABLE ===== */
+.table-wrapper {
+  overflow-y: auto;
+}
+
+.bets-scroll {
+  overflow-x: auto;
+}
+
+.table {
+  display: grid;
+  gap: var(--gap);
+  padding: 10px;
+}
+
+/* HEADERS */
+.th {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* LEFT CELLS */
+.match, .label {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.match.center {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+/* BET PILLS */
+.bet {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #111;
+}
+
+/* REMOVE BLACK EMPTY PILLS */
+.bet:empty {
+  background: transparent !important;
+}
+
+/* STICKY LEFT */
+.sticky {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-panel);
+}
+
+.sticky.status { left: var(--w-match); }
+.sticky.score { left: calc(var(--w-match) + var(--w-status)); }
+
+.sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+  z-index: -1;
+}
+
+/* DIVIDER */
+.divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: #3a3d42;
+  margin: 6px 0;
+}
+
+/* ===== SUMMARY ===== */
+.summary {
+  background: var(--bg-panel);
+  border-top: 1px solid #3a3d42;
+}
+
+.summary.hidden {
+  display: none;
+}
+
+.summary-content {
+  padding: 10px;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 120px auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.sum-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sum-values {
+  display: flex;
+  gap: 6px;
+}
+
+.sum-cell {
+  height: 32px;
+  min-width: 90px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: #111;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="toggle" id="compactToggle">Compact / Normal</div>
+    <div class="toggle" id="summaryToggle">Summary</div>
+  </div>
+
+  <div class="table-wrapper">
+    <div class="bets-scroll">
+      <div id="table" class="table"></div>
+    </div>
+  </div>
+
+  <footer class="summary" id="summary">
+    <div class="summary-content" id="summaryContent"></div>
+  </footer>
+
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+
+const formatMoney = v =>
+  v === null || v === undefined ? "" : "£" + Number(v).toFixed(2);
+
+const summaryEl = document.getElementById("summary");
+const compactToggle = document.getElementById("compactToggle");
+const summaryToggle = document.getElementById("summaryToggle");
+
+/* ===== INITIAL STATE ===== */
+function applyInitialState() {
+  const isMobile = window.innerWidth <= 720;
+  const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+
+  if (isMobile) {
+    document.body.classList.add("compact");
+
+    if (isLandscape) {
+      summaryEl.classList.add("hidden");
+    } else {
+      summaryEl.classList.remove("hidden");
+    }
+  }
+}
+
+applyInitialState();
+
+/* ===== ORIENTATION CHANGE ===== */
+window.addEventListener("orientationchange", () => {
+  setTimeout(applyInitialState, 300);
+});
+
+/* ===== TOGGLES ===== */
+compactToggle.onclick = () =>
+  document.body.classList.toggle("compact");
+
+summaryToggle.onclick = () =>
+  summaryEl.classList.toggle("hidden");
+
+/* ===== DATA ===== */
+fetch(API_URL).then(r => r.json()).then(data => {
+
+  const table = document.getElementById("table");
+  const summary = document.getElementById("summaryContent");
+
+  table.style.gridTemplateColumns =
+    "var(--w-match) var(--w-status) var(--w-score) repeat(" +
+    data.headers.length + ", var(--w-bet))";
+
+  table.innerHTML += `
+    <div class="th sticky">MATCH</div>
+    <div class="th sticky status"></div>
+    <div class="th sticky score"></div>
+  `;
+
+  data.headers.forEach(h =>
+    table.innerHTML += `<div class="th">${h}</div>`
+  );
+
+  data.matches.forEach(m => {
+    table.innerHTML += `
+      <div class="match sticky">${m.match}</div>
+      <div class="match center sticky status">${m.status}</div>
+      <div class="match center sticky score">${m.score}</div>
+    `;
+    m.cells.forEach(c =>
+      table.innerHTML += c.value
+        ? `<div class="bet" style="background:${c.color}">${c.value}</div>`
+        : `<div></div>`
+    );
+  });
+
+  table.innerHTML += `<div class="divider"></div>`;
+
+  ["BET","WIN","WIN PP"].forEach((label,i)=>{
+    table.innerHTML += `
+      <div class="label sticky">${label}</div>
+      <div class="sticky status"></div>
+      <div class="sticky score"></div>
+    `;
+    data.betSummary[i].cells.forEach(c =>
+      table.innerHTML += c.value
+        ? `<div class="bet" style="background:${c.color}">${formatMoney(c.value)}</div>`
+        : `<div></div>`
+    );
+  });
+
+  data.totals.forEach(t=>{
+    const row=document.createElement("div");
+    row.className="summary-row";
+    row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+    const vals=document.createElement("div");
+    vals.className="sum-values";
+    t.cells.filter(c=>c.value).forEach(c=>{
+      vals.innerHTML+=`<div class="sum-cell" style="background:${c.color}">${formatMoney(c.value)}</div>`;
+    });
+    row.appendChild(vals);
+    summary.appendChild(row);
+  });
+
+});
+</script>
+
+</body>
+</html>

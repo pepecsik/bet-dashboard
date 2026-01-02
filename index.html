@@ -78,22 +78,21 @@ body.compact{
   gap:6px;
 }
 
-/* header */
+/* single header */
 .left-header{
   height:var(--row-h);
-  display:grid;
-  grid-template-columns:1.4fr 44px 56px;
-  gap:6px;
-}
-
-.left-header div{
   background:var(--bg-soft);
   border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:12px;
+  font-size:13px;
   font-weight:700;
+}
+
+/* spacer */
+.left-divider{
+  height:12px;
 }
 
 /* rows */
@@ -131,11 +130,6 @@ body.compact{
   font-weight:700;
 }
 
-/* divider */
-.left-divider{
-  height:12px;
-}
-
 /* ===== RIGHT CARD ===== */
 .right-card{
   flex:1;
@@ -170,6 +164,11 @@ body.compact{
   font-weight:700;
 }
 
+/* divider */
+.right-divider{
+  height:12px;
+}
+
 /* bet pills */
 .bet{
   width:var(--bet-w);
@@ -181,11 +180,6 @@ body.compact{
   font-size:14px;
   font-weight:800;
   color:#111;
-}
-
-/* divider */
-.right-divider{
-  height:12px;
 }
 
 /* ===== GLOW ===== */
@@ -293,7 +287,6 @@ body.compact{
 
   <div class="main">
     <div class="left-card" id="left"></div>
-
     <div class="right-card">
       <div class="rows" id="right"></div>
     </div>
@@ -356,8 +349,10 @@ function loadData(){
     /* LEFT HEADER */
     const lh=document.createElement("div");
     lh.className="left-header";
-    lh.innerHTML="<div>MATCH</div><div></div><div></div>";
+    lh.textContent="MATCHES";
     left.appendChild(lh);
+
+    left.appendChild(document.createElement("div")).className="left-divider";
 
     /* RIGHT HEADER */
     const rh=document.createElement("div");
@@ -370,8 +365,9 @@ function loadData(){
     });
     right.appendChild(rh);
 
+    right.appendChild(document.createElement("div")).className="right-divider";
+
     data.matches.forEach((m,i)=>{
-      /* left rows */
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -381,7 +377,6 @@ function loadData(){
       `;
       left.appendChild(lr);
 
-      /* right rows */
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
@@ -400,9 +395,8 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* divider */
-    left.appendChild(Object.assign(document.createElement("div"),{className:"left-divider"}));
-    right.appendChild(Object.assign(document.createElement("div"),{className:"right-divider"}));
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
 
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
       const lab=document.createElement("div");
@@ -422,7 +416,6 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* summary */
     data.totals.forEach(t=>{
       const row=document.createElement("div");
       row.className="summary-row";

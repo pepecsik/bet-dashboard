@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+/* ===== VARIABLES ===== */
 :root {
   --bg-main: #1f2125;
   --bg-panel: #26292e;
@@ -68,13 +69,8 @@ body.compact {
 }
 
 /* ===== TABLE ===== */
-.table-wrapper {
-  overflow-y: auto;
-}
-
-.bets-scroll {
-  overflow-x: auto;
-}
+.table-wrapper { overflow-y: auto; }
+.bets-scroll { overflow-x: auto; }
 
 .table {
   display: grid;
@@ -121,28 +117,24 @@ body.compact {
   color: #111;
 }
 
-/* REMOVE EMPTY BET CELLS */
 .bet:empty {
   background: transparent !important;
 }
 
-/* ===== GLOW (SLOW + NEUTRAL) ===== */
+/* ===== GLOW ===== */
 .bet.changed,
 .match.changed {
-  animation: glowPulse 8s ease-out;
+  animation: glowPulse 8s ease-in-out;
 }
 
 @keyframes glowPulse {
   0%   { box-shadow: 0 0 0 rgba(255,255,255,0); }
   10%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
   20%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-
-  40%  { box-shadow: 0 0 18px rgba(255,255,255,0.85); }
+  40%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
   50%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-
-  70%  { box-shadow: 0 0 18px rgba(255,255,255,0.85); }
+  70%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
   80%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-
   100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
 }
 
@@ -155,7 +147,7 @@ body.compact {
 }
 
 .sticky.status { left: var(--w-match); }
-.sticky.score { left: calc(var(--w-match) + var(--w-status)); }
+.sticky.score  { left: calc(var(--w-match) + var(--w-status)); }
 
 .sticky::before {
   content: "";
@@ -186,9 +178,7 @@ body.compact {
   overflow: hidden;
 }
 
-.summary-content {
-  padding: 10px;
-}
+.summary-content { padding: 10px; }
 
 .summary-row {
   display: grid;
@@ -248,139 +238,148 @@ body.compact {
 const API_URL =
 "https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 
+const REFRESH_MS = 30000;
+
+/* ===== SOUND ===== */
+const changeSound = new Audio(
+  "https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3"
+);
+changeSound.volume = 0.25;
+
+let soundUnlocked = false;
+document.body.addEventListener("click", () => soundUnlocked = true, { once:true });
+
 const formatGBP = v => "£" + Number(v ?? 0).toFixed(2);
 const formatEUR = v => "€ " + Number(v ?? 0).toFixed(2);
 
 const summaryEl = document.getElementById("summary");
+const tableEl = document.getElementById("table");
+const summaryContent = document.getElementById("summaryContent");
 
-/* ===== INITIAL STATE ===== */
-function applyInitialState() {
-  const isMobile = window.innerWidth <= 720;
-  const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+/* ===== STATE ===== */
+const previous = JSON.parse(localStorage.getItem("betState") || "{}");
 
-  if (isMobile) {
-    document.body.classList.add("compact");
-    summaryEl.classList.toggle("hidden", isLandscape);
-  }
+function loadData() {
+  fetch(API_URL).then(r => r.json()).then(data => {
+
+    let hasChanges = false;
+    const nextState = {};
+
+    tableEl.innerHTML = "";
+    summaryContent.innerHTML = "";
+
+    tableEl.style.gridTemplateColumns =
+      "var(--w-match) var(--w-status) var(--w-score) repeat(" +
+      data.headers.length + ", var(--w-bet))";
+
+    tableEl.innerHTML += `
+      <div class="th sticky">MATCH</div>
+      <div class="th sticky status"></div>
+      <div class="th sticky score"></div>
+    `;
+
+    data.headers.forEach(h =>
+      tableEl.innerHTML += `<div class="th">${h}</div>`
+    );
+
+    data.matches.forEach((m,rowIdx)=>{
+      tableEl.innerHTML += `
+        <div class="match sticky">${m.match}</div>
+        <div class="match center sticky status">${m.status}</div>
+        <div class="match center sticky score">${m.score}</div>
+      `;
+
+      const scoreKey = `score-${rowIdx}`;
+      if (previous[scoreKey] && previous[scoreKey] !== m.score) {
+        tableEl.lastElementChild.classList.add("changed");
+        hasChanges = true;
+      }
+      nextState[scoreKey] = m.score;
+
+      m.cells.forEach((c,i)=>{
+        const key = `bet-${rowIdx}-${i}`;
+        const val = `${c.value}|${c.color}`;
+        nextState[key] = val;
+
+        const el = document.createElement("div");
+        el.className = "bet";
+
+        if (c.value) {
+          el.textContent = c.value;
+          el.style.background = c.color;
+          if (previous[key] && previous[key] !== val) {
+            el.classList.add("changed");
+            hasChanges = true;
+          }
+        }
+        tableEl.appendChild(el);
+      });
+    });
+
+    tableEl.innerHTML += `<div class="divider"></div>`;
+
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      tableEl.innerHTML += `
+        <div class="label sticky">${label}</div>
+        <div class="sticky status"></div>
+        <div class="sticky score"></div>
+      `;
+
+      data.betSummary[i].cells.forEach((c,j)=>{
+        const key = `summary-${i}-${j}`;
+        const val = `${c.value}|${c.color}`;
+        nextState[key] = val;
+
+        const el = document.createElement("div");
+        el.className = "bet";
+        el.textContent = formatGBP(c.value);
+        el.style.background = c.color;
+
+        if (previous[key] && previous[key] !== val) {
+          el.classList.add("changed");
+          hasChanges = true;
+        }
+        tableEl.appendChild(el);
+      });
+    });
+
+    data.totals.forEach(t=>{
+      const row=document.createElement("div");
+      row.className="summary-row";
+      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+      const vals=document.createElement("div");
+      vals.className="sum-values";
+
+      t.cells.slice(0,2).forEach((c,i)=>{
+        const cell=document.createElement("div");
+        cell.className="sum-cell";
+        cell.style.background=c.color;
+        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
+        vals.appendChild(cell);
+      });
+
+      row.appendChild(vals);
+      summaryContent.appendChild(row);
+    });
+
+    localStorage.setItem("betState", JSON.stringify(nextState));
+
+    if (hasChanges && soundUnlocked) {
+      changeSound.currentTime = 0;
+      changeSound.play().catch(()=>{});
+    }
+  });
 }
-applyInitialState();
 
-window.addEventListener("orientationchange", () =>
-  setTimeout(applyInitialState, 300)
-);
+/* ===== INIT ===== */
+loadData();
+setInterval(loadData, REFRESH_MS);
 
 document.getElementById("compactToggle").onclick =
   () => document.body.classList.toggle("compact");
 
 document.getElementById("summaryToggle").onclick =
   () => summaryEl.classList.toggle("hidden");
-
-/* ===== CHANGE TRACKING ===== */
-const previous = JSON.parse(localStorage.getItem("betState") || "{}");
-
-/* ===== DATA ===== */
-fetch(API_URL).then(r => r.json()).then(data => {
-
-  const table = document.getElementById("table");
-  const summary = document.getElementById("summaryContent");
-  const nextState = {};
-
-  table.style.gridTemplateColumns =
-    "var(--w-match) var(--w-status) var(--w-score) repeat(" +
-    data.headers.length + ", var(--w-bet))";
-
-  table.innerHTML += `
-    <div class="th sticky">MATCH</div>
-    <div class="th sticky status"></div>
-    <div class="th sticky score"></div>
-  `;
-
-  data.headers.forEach(h =>
-    table.innerHTML += `<div class="th">${h}</div>`
-  );
-
-  data.matches.forEach((m,rowIdx) => {
-    table.innerHTML += `
-      <div class="match sticky">${m.match}</div>
-      <div class="match center sticky status">${m.status}</div>
-      <div class="match center sticky score">${m.score}</div>
-    `;
-
-    const scoreKey = `score-${rowIdx}`;
-    nextState[scoreKey] = m.score;
-
-    if (previous[scoreKey] && previous[scoreKey] !== m.score) {
-      table.lastElementChild.classList.add("changed");
-    }
-
-    m.cells.forEach((c,i) => {
-      const key = `bet-${rowIdx}-${i}`;
-      const val = `${c.value}|${c.color}`;
-      nextState[key] = val;
-
-      const el = document.createElement("div");
-      el.className = "bet";
-
-      if (c.value) {
-        el.textContent = c.value;
-        el.style.background = c.color;
-
-        if (previous[key] && previous[key] !== val) {
-          el.classList.add("changed");
-        }
-      }
-      table.appendChild(el);
-    });
-  });
-
-  table.innerHTML += `<div class="divider"></div>`;
-
-  ["BET","WIN","WIN PP"].forEach((label,i)=>{
-    table.innerHTML += `
-      <div class="label sticky">${label}</div>
-      <div class="sticky status"></div>
-      <div class="sticky score"></div>
-    `;
-
-    data.betSummary[i].cells.forEach((c,j)=>{
-      const key = `summary-${i}-${j}`;
-      const val = `${c.value}|${c.color}`;
-      nextState[key] = val;
-
-      const el = document.createElement("div");
-      el.className = "bet";
-      el.textContent = formatGBP(c.value);
-      el.style.background = c.color;
-
-      if (previous[key] && previous[key] !== val) {
-        el.classList.add("changed");
-      }
-      table.appendChild(el);
-    });
-  });
-
-  data.totals.forEach(t=>{
-    const row=document.createElement("div");
-    row.className="summary-row";
-    row.innerHTML=`<div class="sum-label">${t.label}</div>`;
-
-    const vals=document.createElement("div");
-    vals.className="sum-values";
-
-    t.cells.slice(0,2).forEach((c,i)=>{
-      const cell=document.createElement("div");
-      cell.className="sum-cell";
-      cell.style.background=c.color;
-      cell.textContent = i===0 ? formatGBP(c.value) : formatEUR(c.value);
-      vals.appendChild(cell);
-    });
-
-    row.appendChild(vals);
-    summary.appendChild(row);
-  });
-
-  localStorage.setItem("betState", JSON.stringify(nextState));
-});
 </script>
 
 </body>

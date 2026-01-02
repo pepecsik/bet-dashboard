@@ -9,190 +9,222 @@
 
 <style>
 :root {
-  --bg-main:#1f2125;
-  --bg-panel:#26292e;
-  --text-main:#e6e7ea;
-  --text-muted:#9aa0a6;
+  --bg-main: #1f2125;
+  --bg-panel: #26292e;
+  --text-main: #e6e7ea;
+  --text-muted: #9aa0a6;
 
-  --row-h:46px;
-  --gap:10px;
+  --row-h: 46px;
+  --gap: 10px;
 
-  --row-h-compact:38px;
-  --gap-compact:6px;
+  --row-h-compact: 38px;
+  --gap-compact: 6px;
 
-  --w-match:90px;
-  --w-status:46px;
-  --w-score:56px;
-  --w-bet:110px;
-  --w-bet-compact:90px;
+  --w-match: 90px;
+  --w-status: 46px;
+  --w-score: 56px;
+  --w-bet: 110px;
+  --w-bet-compact: 90px;
 }
 
-*{box-sizing:border-box}
+* { box-sizing: border-box; }
 
-body{
-  margin:0;
-  font-family:Inter,system-ui,sans-serif;
-  background:var(--bg-main);
-  color:var(--text-main);
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
 }
 
 /* ===== COMPACT MODE ===== */
-body.compact{
-  --row-h:var(--row-h-compact);
-  --gap:var(--gap-compact);
-  --w-bet:var(--w-bet-compact);
+body.compact {
+  --row-h: var(--row-h-compact);
+  --gap: var(--gap-compact);
+  --w-bet: var(--w-bet-compact);
 }
 
 /* ===== APP ===== */
-.app{
-  height:100vh;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
 }
 
 /* ===== TOP BAR ===== */
-.topbar{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  padding:8px 12px;
+.topbar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 12px;
 }
 
-.toggle{
-  background:var(--bg-panel);
-  border-radius:8px;
-  padding:6px 1010px;
-  cursor:pointer;
-  font-size:13px;
-  font-weight:600;
+.toggle {
+  background: var(--bg-panel);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* ===== TABLE ===== */
-.table-wrapper{overflow-y:auto}
-.bets-scroll{overflow-x:auto}
-
-.table{
-  display:grid;
-  gap:var(--gap);
-  padding:10px;
+.table-wrapper {
+  overflow-y: auto;
 }
 
-.th,.match,.label{
-  height:var(--row-h);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--bg-panel);
-  font-size:13px;
+.bets-scroll {
+  overflow-x: auto;
 }
 
-.th{font-weight:700}
-.match{color:var(--text-muted)}
-.match.center{color:var(--text-main);font-weight:700}
-
-.bet{
-  height:var(--row-h);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:12px;
-  font-weight:700;
-  font-size:14px;
-  color:#111;
-}
-.bet:empty{background:transparent!important}
-
-/* ===== GLOW ===== */
-.changed{
-  animation:glow 6s ease-out;
-}
-@keyframes glow{
-  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  15%{box-shadow:0 0 26px rgba(255,255,255,.95)}
-  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  55%{box-shadow:0 0 22px rgba(255,255,255,.9)}
-  70%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
+.table {
+  display: grid;
+  gap: var(--gap);
+  padding: 10px;
 }
 
-/* ===== STICKY LEFT ===== */
-.sticky{
-  position:sticky;
-  left:0;
-  z-index:5;
-  background:var(--bg-panel);
+/* HEADERS */
+.th {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  font-weight: 700;
+  font-size: 13px;
 }
-.sticky.status{left:var(--w-match)}
-.sticky.score{left:calc(var(--w-match) + var(--w-status))}
+
+/* LEFT CELLS */
+.match, .label {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.match.center {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+/* BET PILLS */
+.bet {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #111;
+}
+
+.bet:empty {
+  background: transparent !important;
+}
+
+/* ===== SCORE GLOW ===== */
+.score-changed {
+  animation: scoreGlow 10s ease-out;
+}
+
+@keyframes scoreGlow {
+  0%   { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  10%  { box-shadow: 0 0 24px rgba(255,255,255,0.9); }
+  20%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
+
+  40%  { box-shadow: 0 0 22px rgba(255,255,255,0.85); }
+  50%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
+
+  70%  { box-shadow: 0 0 22px rgba(255,255,255,0.85); }
+  80%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
+
+  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+
+/* STICKY LEFT */
+.sticky {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-panel);
+}
+
+.sticky.status { left: var(--w-match); }
+.sticky.score { left: calc(var(--w-match) + var(--w-status)); }
+
+.sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+  z-index: -1;
+}
+
+/* DIVIDER */
+.divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: #3a3d42;
+  margin: 6px 0;
+}
 
 /* ===== SUMMARY ===== */
-.summary{
-  background:var(--bg-panel);
-  border-top:1px solid #3a3d42;
-}
-.summary.hidden{display:none}
-.summary-content{padding:10px}
-.summary-row{
-  display:grid;
-  grid-template-columns:120px auto;
-  gap:8px;
-  margin-bottom:6px;
-}
-.sum-label{
-  font-size:13px;
-  font-weight:700;
-  color:var(--text-muted);
-}
-.sum-values{display:flex;gap:6px}
-.sum-cell{
-  height:32px;
-  min-width:90px;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:800;
-  font-size:13px;
-  color:#111;
+.summary {
+  background: var(--bg-panel);
+  border-top: 1px solid #3a3d42;
+  transition: max-height 0.4s ease, opacity 0.35s ease;
 }
 
-/* ===== SOUND OVERLAY ===== */
-.sound-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
+.summary.hidden {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
 }
-.sound-box{
-  background:var(--bg-panel);
-  padding:26px 30px;
-  border-radius:16px;
-  text-align:center;
+
+.summary-content {
+  padding: 10px;
 }
-.sound-box button{
-  margin-top:12px;
-  padding:10px 18px;
-  font-weight:700;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 120px auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.sum-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sum-values {
+  display: flex;
+  gap: 6px;
+}
+
+.sum-cell {
+  height: 32px;
+  min-width: 90px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: #111;
 }
 </style>
 </head>
 
 <body>
 
-<div class="sound-overlay" id="soundOverlay">
-  <div class="sound-box">
-    <div style="font-weight:700">Enable sound alerts</div>
-    <button id="enableSoundBtn">Enable sound</button>
-  </div>
-</div>
-
 <div class="app">
+
   <div class="topbar">
     <div class="toggle" id="compactToggle">Compact / Normal</div>
     <div class="toggle" id="summaryToggle">Summary</div>
@@ -207,115 +239,150 @@ body.compact{
   <footer class="summary" id="summary">
     <div class="summary-content" id="summaryContent"></div>
   </footer>
+
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+
 const REFRESH_MS = 30000;
 
-/* ===== SOUND ENGINE (GUARANTEED) ===== */
-let audioCtx=null;
-let soundEnabled=false;
+const formatGBP = v => "£" + Number(v ?? 0).toFixed(2);
+const formatEUR = v => "€ " + Number(v ?? 0).toFixed(2);
 
-function playBeep(){
-  if(!soundEnabled||!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type="sine";
-  osc.frequency.value=880;
-  gain.gain.value=0.12;
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime+0.25);
+const summaryEl = document.getElementById("summary");
+
+/* ===== NOTIFICATION PERMISSION ===== */
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission();
 }
 
-document.getElementById("enableSoundBtn").onclick=()=>{
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  audioCtx.resume();
-  soundEnabled=true;
-  localStorage.setItem("sound","1");
-  document.getElementById("soundOverlay").style.display="none";
-  playBeep(); // confirmation sound
-};
+/* ===== INITIAL STATE ===== */
+function applyInitialState() {
+  const isMobile = window.innerWidth <= 720;
+  const isLandscape = window.matchMedia("(orientation: landscape)").matches;
 
-if(localStorage.getItem("sound")==="1"){
-  document.getElementById("soundOverlay").style.display="none";
+  if (isMobile) {
+    document.body.classList.add("compact");
+    summaryEl.classList.toggle("hidden", isLandscape);
+  }
 }
+applyInitialState();
 
-/* ===== TOGGLES ===== */
-compactToggle.onclick=()=>document.body.classList.toggle("compact");
-summaryToggle.onclick=()=>summary.classList.toggle("hidden");
+window.addEventListener("orientationchange", () =>
+  setTimeout(applyInitialState, 300)
+);
 
-/* ===== DATA ===== */
-let prev=JSON.parse(localStorage.getItem("betState")||"{}");
+document.getElementById("compactToggle").onclick =
+  () => document.body.classList.toggle("compact");
 
-function loadData(){
-  fetch(API_URL).then(r=>r.json()).then(data=>{
-    let changed=false;
-    const next={};
-    table.innerHTML="";
-    summaryContent.innerHTML="";
+document.getElementById("summaryToggle").onclick =
+  () => summaryEl.classList.toggle("hidden");
 
-    table.style.gridTemplateColumns=
-      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
+/* ===== SCORE STATE ===== */
+let previousScores = JSON.parse(localStorage.getItem("scores") || "{}");
 
-    table.innerHTML+=`
-      <div class="th sticky">MATCH</div>
-      <div class="th sticky status"></div>
-      <div class="th sticky score"></div>
+/* ===== RENDER ===== */
+async function loadData() {
+  const res = await fetch(API_URL);
+  const data = await res.json();
+
+  const table = document.getElementById("table");
+  const summary = document.getElementById("summaryContent");
+
+  table.innerHTML = "";
+  summary.innerHTML = "";
+
+  table.style.gridTemplateColumns =
+    "var(--w-match) var(--w-status) var(--w-score) repeat(" +
+    data.headers.length + ", var(--w-bet))";
+
+  table.innerHTML += `
+    <div class="th sticky">MATCH</div>
+    <div class="th sticky status"></div>
+    <div class="th sticky score"></div>
+  `;
+
+  data.headers.forEach(h =>
+    table.innerHTML += `<div class="th">${h}</div>`
+  );
+
+  const nextScores = {};
+
+  data.matches.forEach((m, i) => {
+    table.innerHTML += `
+      <div class="match sticky">${m.match}</div>
+      <div class="match center sticky status">${m.status}</div>
     `;
-    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
 
-    data.matches.forEach((m,r)=>{
-      table.innerHTML+=`
-        <div class="match sticky">${m.match}</div>
-        <div class="match center sticky status">${m.status}</div>
-        <div class="match center sticky score">${m.score}</div>
-      `;
-      m.cells.forEach((c,i)=>{
-        const key=`b-${r}-${i}`;
-        const val=`${c.value}|${c.color}`;
-        next[key]=val;
-        const el=document.createElement("div");
-        el.className="bet";
-        if(c.value){
-          el.textContent=c.value;
-          el.style.background=c.color;
-          if(prev[key]&&prev[key]!==val){
-            el.classList.add("changed");
-            changed=true;
-          }
-        }
-        table.appendChild(el);
-      });
-    });
+    const scoreKey = `match-${i}`;
+    nextScores[scoreKey] = m.score;
 
-    data.totals.forEach(t=>{
-      const row=document.createElement("div");
-      row.className="summary-row";
-      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
-      const vals=document.createElement("div");
-      vals.className="sum-values";
-      t.cells.slice(0,2).forEach(c=>{
-        const cell=document.createElement("div");
-        cell.className="sum-cell";
-        cell.style.background=c.color;
-        cell.textContent="£"+Number(c.value||0).toFixed(2);
-        vals.appendChild(cell);
-      });
-      row.appendChild(vals);
-      summaryContent.appendChild(row);
-    });
+    const scoreEl = document.createElement("div");
+    scoreEl.className = "match center sticky score";
+    scoreEl.textContent = m.score;
 
-    if(changed) playBeep();
-    prev=next;
-    localStorage.setItem("betState",JSON.stringify(next));
+    if (previousScores[scoreKey] && previousScores[scoreKey] !== m.score) {
+      scoreEl.classList.add("score-changed");
+
+      if (Notification.permission === "granted") {
+        new Notification("⚽ Score update", {
+          body: `${m.match}: ${previousScores[scoreKey]} → ${m.score}`
+        });
+      }
+    }
+
+    table.appendChild(scoreEl);
+
+    m.cells.forEach(c =>
+      table.innerHTML += c.value
+        ? `<div class="bet" style="background:${c.color}">${c.value}</div>`
+        : `<div></div>`
+    );
   });
+
+  table.innerHTML += `<div class="divider"></div>`;
+
+  ["BET","WIN","WIN PP"].forEach((label,i)=>{
+    table.innerHTML += `
+      <div class="label sticky">${label}</div>
+      <div class="sticky status"></div>
+      <div class="sticky score"></div>
+    `;
+    data.betSummary[i].cells.forEach(c =>
+      table.innerHTML += c.value !== null
+        ? `<div class="bet" style="background:${c.color}">${formatGBP(c.value)}</div>`
+        : `<div></div>`
+    );
+  });
+
+  data.totals.forEach(t=>{
+    const row=document.createElement("div");
+    row.className="summary-row";
+    row.innerHTML=`<div class="sum-label">${t.label}</div>`;
+
+    const vals=document.createElement("div");
+    vals.className="sum-values";
+
+    t.cells.slice(0,2).forEach((c,i)=>{
+      const cell=document.createElement("div");
+      cell.className="sum-cell";
+      cell.style.background=c.color;
+      cell.textContent = i===0 ? formatGBP(c.value) : formatEUR(c.value);
+      vals.appendChild(cell);
+    });
+
+    row.appendChild(vals);
+    summary.appendChild(row);
+  });
+
+  previousScores = nextScores;
+  localStorage.setItem("scores", JSON.stringify(nextScores));
 }
 
 loadData();
-setInterval(loadData,REFRESH_MS);
+setInterval(loadData, REFRESH_MS);
 </script>
 
 </body>

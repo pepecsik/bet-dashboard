@@ -56,7 +56,6 @@ body{
   gap:var(--gap);
 }
 
-/* header */
 .left-header{
   height:var(--row-h);
   background:var(--bg-soft);
@@ -68,12 +67,8 @@ body{
   font-weight:700;
 }
 
-/* divider */
-.left-divider{
-  height:8px;
-}
+.left-divider{height:8px}
 
-/* rows */
 .left-row{
   height:var(--row-h);
   display:grid;
@@ -96,7 +91,6 @@ body{
   padding-left:8px;
 }
 
-/* labels */
 .left-label{
   height:var(--row-h);
   background:var(--bg-soft);
@@ -129,7 +123,6 @@ body{
   gap:var(--gap);
 }
 
-/* header pills */
 .header-pill{
   width:var(--bet-w);
   height:var(--row-h);
@@ -142,12 +135,8 @@ body{
   font-weight:700;
 }
 
-/* divider */
-.right-divider{
-  height:8px;
-}
+.right-divider{height:8px}
 
-/* bet pills */
 .bet{
   width:var(--bet-w);
   height:var(--row-h);
@@ -181,10 +170,32 @@ body{
   border-top:1px solid #3a3d42;
 }
 
+.summary-toggle{
+  background:#2f343a;
+  padding:10px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  text-align:center;
+}
+
+.summary-toggle:hover{
+  filter:brightness(1.05);
+}
+
 .summary-content{
   display:flex;
   gap:12px;
   padding:10px;
+  transition:max-height .35s ease, opacity .25s ease;
+  overflow:hidden;
+}
+
+.summary-content.hidden{
+  max-height:0;
+  opacity:0;
+  padding-top:0;
+  padding-bottom:0;
 }
 
 .summary-card,
@@ -267,7 +278,9 @@ body{
   </div>
 
   <footer class="summary">
-    <div class="summary-content">
+    <div class="summary-toggle" id="summaryToggle">Summary</div>
+
+    <div class="summary-content" id="summaryContentWrap">
       <div class="summary-card">
         <div class="summary-title">📊 Weekly Summary</div>
         <div id="summaryContent"></div>
@@ -320,14 +333,12 @@ function loadData(){
     right.innerHTML="";
     summary.innerHTML="";
 
-    /* LEFT HEADER */
     const lh=document.createElement("div");
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* RIGHT HEADER */
     const rh=document.createElement("div");
     rh.className="row";
     data.headers.forEach(h=>{
@@ -409,6 +420,10 @@ function loadData(){
 
 loadData();
 setInterval(loadData,REFRESH_MS);
+
+document.getElementById("summaryToggle").onclick=()=>{
+  document.getElementById("summaryContentWrap").classList.toggle("hidden");
+};
 </script>
 
 </body>

@@ -8,207 +8,182 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-/* ===== VARIABLES ===== */
 :root {
-  --bg-main: #1f2125;
-  --bg-panel: #26292e;
-  --text-main: #e6e7ea;
-  --text-muted: #9aa0a6;
+  --bg-main:#1f2125;
+  --bg-panel:#26292e;
+  --text-main:#e6e7ea;
+  --text-muted:#9aa0a6;
 
-  --row-h: 46px;
-  --gap: 10px;
+  --row-h:46px;
+  --gap:10px;
 
-  --row-h-compact: 38px;
-  --gap-compact: 6px;
+  --row-h-compact:38px;
+  --gap-compact:6px;
 
-  --w-match: 90px;
-  --w-status: 46px;
-  --w-score: 56px;
-  --w-bet: 110px;
-  --w-bet-compact: 90px;
+  --w-match:90px;
+  --w-status:46px;
+  --w-score:56px;
+  --w-bet:110px;
+  --w-bet-compact:90px;
 }
 
-* { box-sizing: border-box; }
+*{box-sizing:border-box;}
 
-body {
-  margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  background: var(--bg-main);
-  color: var(--text-main);
+body{
+  margin:0;
+  font-family:Inter,system-ui,sans-serif;
+  background:var(--bg-main);
+  color:var(--text-main);
 }
 
-/* ===== COMPACT MODE ===== */
-body.compact {
-  --row-h: var(--row-h-compact);
-  --gap: var(--gap-compact);
-  --w-bet: var(--w-bet-compact);
+body.compact{
+  --row-h:var(--row-h-compact);
+  --gap:var(--gap-compact);
+  --w-bet:var(--w-bet-compact);
 }
 
-/* ===== APP ===== */
-.app {
-  height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+.app{
+  height:100vh;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
 }
 
-/* ===== TOP BAR ===== */
-.topbar {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 8px 12px;
+.topbar{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  padding:8px 12px;
 }
 
-.toggle {
-  background: var(--bg-panel);
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+.toggle{
+  background:var(--bg-panel);
+  border-radius:8px;
+  padding:6px 10px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:600;
 }
 
-/* ===== TABLE ===== */
-.table-wrapper { overflow-y: auto; }
-.bets-scroll { overflow-x: auto; }
+.table-wrapper{overflow-y:auto;}
+.bets-scroll{overflow-x:auto;}
 
-.table {
-  display: grid;
-  gap: var(--gap);
-  padding: 10px;
+.table{
+  display:grid;
+  gap:var(--gap);
+  padding:10px;
 }
 
-/* HEADERS */
-.th {
-  height: var(--row-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-panel);
-  font-weight: 700;
-  font-size: 13px;
+.th{
+  height:var(--row-h);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg-panel);
+  font-weight:700;
+  font-size:13px;
 }
 
-/* LEFT CELLS */
-.match, .label {
-  height: var(--row-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-panel);
-  font-size: 13px;
-  color: var(--text-muted);
+.match,.label{
+  height:var(--row-h);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg-panel);
+  font-size:13px;
+  color:var(--text-muted);
 }
 
-.match.center {
-  color: var(--text-main);
-  font-weight: 700;
+.match.center{
+  color:var(--text-main);
+  font-weight:700;
 }
 
-/* BET PILLS */
-.bet {
-  height: var(--row-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #111;
+.bet{
+  height:var(--row-h);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  font-weight:700;
+  font-size:14px;
+  color:#111;
 }
 
-.bet:empty {
-  background: transparent !important;
+.bet:empty{background:transparent!important;}
+
+.bet.changed,.match.changed{
+  animation:glowPulse 8s ease-in-out;
 }
 
-/* ===== GLOW ===== */
-.bet.changed,
-.match.changed {
-  animation: glowPulse 8s ease-in-out;
+@keyframes glowPulse{
+  0%{box-shadow:0 0 0 rgba(255,255,255,0);}
+  10%{box-shadow:0 0 22px rgba(255,255,255,.9);}
+  20%{box-shadow:0 0 0 rgba(255,255,255,0);}
+  40%{box-shadow:0 0 22px rgba(255,255,255,.9);}
+  50%{box-shadow:0 0 0 rgba(255,255,255,0);}
+  70%{box-shadow:0 0 22px rgba(255,255,255,.9);}
+  80%{box-shadow:0 0 0 rgba(255,255,255,0);}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0);}
 }
 
-@keyframes glowPulse {
-  0%   { box-shadow: 0 0 0 rgba(255,255,255,0); }
-  10%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
-  20%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-  40%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
-  50%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-  70%  { box-shadow: 0 0 22px rgba(255,255,255,0.9); }
-  80%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
-  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+.sticky{
+  position:sticky;
+  left:0;
+  z-index:10;
+  background:var(--bg-panel);
+}
+.sticky.status{left:var(--w-match);}
+.sticky.score{left:calc(var(--w-match) + var(--w-status));}
+
+.divider{
+  grid-column:1/-1;
+  height:1px;
+  background:#3a3d42;
+  margin:6px 0;
 }
 
-/* STICKY LEFT */
-.sticky {
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  background: var(--bg-panel);
+.summary{
+  background:var(--bg-panel);
+  border-top:1px solid #3a3d42;
+  transition:max-height .4s ease,opacity .35s ease;
+}
+.summary.hidden{
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
 }
 
-.sticky.status { left: var(--w-match); }
-.sticky.score  { left: calc(var(--w-match) + var(--w-status)); }
+.summary-content{padding:10px;}
 
-.sticky::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--bg-panel);
-  z-index: -1;
+.summary-row{
+  display:grid;
+  grid-template-columns:120px auto;
+  gap:8px;
+  align-items:center;
+  margin-bottom:6px;
 }
 
-/* DIVIDER */
-.divider {
-  grid-column: 1 / -1;
-  height: 1px;
-  background: #3a3d42;
-  margin: 6px 0;
+.sum-label{
+  font-weight:700;
+  font-size:13px;
+  color:var(--text-muted);
 }
 
-/* ===== SUMMARY ===== */
-.summary {
-  background: var(--bg-panel);
-  border-top: 1px solid #3a3d42;
-  transition: max-height 0.4s ease, opacity 0.35s ease;
+.sum-values{
+  display:flex;
+  gap:6px;
 }
 
-.summary.hidden {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-.summary-content { padding: 10px; }
-
-.summary-row {
-  display: grid;
-  grid-template-columns: 120px auto;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.sum-label {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.sum-values {
-  display: flex;
-  gap: 6px;
-}
-
-.sum-cell {
-  height: 32px;
-  min-width: 90px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 13px;
-  color: #111;
+.sum-cell{
+  height:32px;
+  min-width:90px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:13px;
+  color:#111;
 }
 </style>
 </head>
@@ -235,111 +210,101 @@ body.compact {
 </div>
 
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+const REFRESH_MS=30000;
 
-const REFRESH_MS = 30000;
+const formatGBP=v=>"£"+Number(v??0).toFixed(2);
+const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
 
-/* ===== SOUND ===== */
-const changeSound = new Audio(
-  "https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3"
-);
-changeSound.volume = 0.25;
+const table=document.getElementById("table");
+const summary=document.getElementById("summaryContent");
+const summaryEl=document.getElementById("summary");
 
-let soundUnlocked = false;
-document.body.addEventListener("click", () => soundUnlocked = true, { once:true });
+let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
 
-const formatGBP = v => "£" + Number(v ?? 0).toFixed(2);
-const formatEUR = v => "€ " + Number(v ?? 0).toFixed(2);
+const sound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3");
+sound.volume=0.25;
+let soundUnlocked=false;
 
-const summaryEl = document.getElementById("summary");
-const tableEl = document.getElementById("table");
-const summaryContent = document.getElementById("summaryContent");
+["click","touchstart"].forEach(e=>{
+  document.body.addEventListener(e,()=>soundUnlocked=true,{once:true});
+});
 
-/* ===== STATE ===== */
-const previous = JSON.parse(localStorage.getItem("betState") || "{}");
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    let hasChanges=false;
+    const nextState={};
 
-function loadData() {
-  fetch(API_URL).then(r => r.json()).then(data => {
+    table.innerHTML="";
+    summary.innerHTML="";
 
-    let hasChanges = false;
-    const nextState = {};
+    table.style.gridTemplateColumns=
+      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
 
-    tableEl.innerHTML = "";
-    summaryContent.innerHTML = "";
-
-    tableEl.style.gridTemplateColumns =
-      "var(--w-match) var(--w-status) var(--w-score) repeat(" +
-      data.headers.length + ", var(--w-bet))";
-
-    tableEl.innerHTML += `
+    table.innerHTML+=`
       <div class="th sticky">MATCH</div>
       <div class="th sticky status"></div>
       <div class="th sticky score"></div>
     `;
 
-    data.headers.forEach(h =>
-      tableEl.innerHTML += `<div class="th">${h}</div>`
-    );
+    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
 
-    data.matches.forEach((m,rowIdx)=>{
-      tableEl.innerHTML += `
+    data.matches.forEach((m,row)=>{
+      table.innerHTML+=`
         <div class="match sticky">${m.match}</div>
         <div class="match center sticky status">${m.status}</div>
         <div class="match center sticky score">${m.score}</div>
       `;
 
-      const scoreKey = `score-${rowIdx}`;
-      if (previous[scoreKey] && previous[scoreKey] !== m.score) {
-        tableEl.lastElementChild.classList.add("changed");
-        hasChanges = true;
+      const scoreKey=`score-${row}`;
+      if(previousState[scoreKey] && previousState[scoreKey]!==m.score){
+        table.lastElementChild.classList.add("changed");
+        hasChanges=true;
       }
-      nextState[scoreKey] = m.score;
+      nextState[scoreKey]=m.score;
 
       m.cells.forEach((c,i)=>{
-        const key = `bet-${rowIdx}-${i}`;
-        const val = `${c.value}|${c.color}`;
-        nextState[key] = val;
+        const key=`bet-${row}-${i}`;
+        const val=`${c.value}|${c.color}`;
+        nextState[key]=val;
 
-        const el = document.createElement("div");
-        el.className = "bet";
-
-        if (c.value) {
-          el.textContent = c.value;
-          el.style.background = c.color;
-          if (previous[key] && previous[key] !== val) {
+        const el=document.createElement("div");
+        el.className="bet";
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+          if(previousState[key] && previousState[key]!==val){
             el.classList.add("changed");
-            hasChanges = true;
+            hasChanges=true;
           }
         }
-        tableEl.appendChild(el);
+        table.appendChild(el);
       });
     });
 
-    tableEl.innerHTML += `<div class="divider"></div>`;
+    table.innerHTML+=`<div class="divider"></div>`;
 
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      tableEl.innerHTML += `
+      table.innerHTML+=`
         <div class="label sticky">${label}</div>
         <div class="sticky status"></div>
         <div class="sticky score"></div>
       `;
 
       data.betSummary[i].cells.forEach((c,j)=>{
-        const key = `summary-${i}-${j}`;
-        const val = `${c.value}|${c.color}`;
-        nextState[key] = val;
+        const key=`summary-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
+        nextState[key]=val;
 
-        const el = document.createElement("div");
-        el.className = "bet";
-        el.textContent = formatGBP(c.value);
-        el.style.background = c.color;
-
-        if (previous[key] && previous[key] !== val) {
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        if(previousState[key] && previousState[key]!==val){
           el.classList.add("changed");
-          hasChanges = true;
+          hasChanges=true;
         }
-        tableEl.appendChild(el);
+        table.appendChild(el);
       });
     });
 
@@ -359,27 +324,24 @@ function loadData() {
       });
 
       row.appendChild(vals);
-      summaryContent.appendChild(row);
+      summary.appendChild(row);
     });
 
-    localStorage.setItem("betState", JSON.stringify(nextState));
+    previousState=nextState;
+    localStorage.setItem("betState",JSON.stringify(nextState));
 
-    if (hasChanges && soundUnlocked) {
-      changeSound.currentTime = 0;
-      changeSound.play().catch(()=>{});
+    if(hasChanges && soundUnlocked){
+      sound.currentTime=0;
+      sound.play().catch(()=>{});
     }
   });
 }
 
-/* ===== INIT ===== */
 loadData();
-setInterval(loadData, REFRESH_MS);
+setInterval(loadData,REFRESH_MS);
 
-document.getElementById("compactToggle").onclick =
-  () => document.body.classList.toggle("compact");
-
-document.getElementById("summaryToggle").onclick =
-  () => summaryEl.classList.toggle("hidden");
+document.getElementById("compactToggle").onclick=()=>document.body.classList.toggle("compact");
+document.getElementById("summaryToggle").onclick=()=>summaryEl.classList.toggle("hidden");
 </script>
 
 </body>

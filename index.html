@@ -15,12 +15,11 @@
   --text-main:#ffffff;
   --text-muted:#9aa0a6;
 
-  --row-h:46px;
-  --row-h-compact:38px;
-  --gap:10px;
+  --row-h:40px;
+  --gap:6px;
 
-  --left-w:240px;
-  --bet-w:110px;
+  --left-w:230px;
+  --bet-w:104px;
 }
 
 *{box-sizing:border-box}
@@ -28,42 +27,21 @@
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  background:#1c1f23;
+  background:var(--bg-main);
   color:var(--text-main);
-}
-
-body.compact{
-  --row-h:var(--row-h-compact);
 }
 
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows:auto 1fr auto;
-}
-
-/* ===== TOP BAR ===== */
-.topbar{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  padding:10px 14px;
-}
-
-.toggle{
-  background:#2f343a;
-  padding:6px 12px;
-  border-radius:10px;
-  font-size:13px;
-  font-weight:600;
-  cursor:pointer;
+  grid-template-rows:1fr auto;
 }
 
 /* ===== MAIN ===== */
 .main{
   display:flex;
-  gap:12px;
-  padding:12px;
+  gap:10px;
+  padding:10px;
   overflow:hidden;
 }
 
@@ -71,62 +49,62 @@ body.compact{
 .left-card{
   width:var(--left-w);
   background:var(--bg-card);
-  border-radius:16px;
-  padding:10px;
+  border-radius:14px;
+  padding:8px;
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:var(--gap);
 }
 
-/* single header */
+/* header */
 .left-header{
   height:var(--row-h);
   background:var(--bg-soft);
-  border-radius:12px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
 }
 
-/* spacer */
+/* divider */
 .left-divider{
-  height:12px;
+  height:8px;
 }
 
 /* rows */
 .left-row{
   height:var(--row-h);
   display:grid;
-  grid-template-columns:1.4fr 44px 56px;
-  gap:6px;
+  grid-template-columns:1.4fr 42px 52px;
+  gap:var(--gap);
 }
 
 .left-cell{
   background:var(--bg-soft);
-  border-radius:12px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:600;
 }
 
 .left-cell.match{
   justify-content:flex-start;
-  padding-left:10px;
+  padding-left:8px;
 }
 
 /* labels */
 .left-label{
   height:var(--row-h);
   background:var(--bg-soft);
-  border-radius:12px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
 }
 
@@ -134,21 +112,21 @@ body.compact{
 .right-card{
   flex:1;
   background:var(--bg-card);
-  border-radius:16px;
+  border-radius:14px;
   overflow-x:auto;
-  padding:10px;
+  padding:8px;
 }
 
 .rows{
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:var(--gap);
   min-width:max-content;
 }
 
 .row{
   display:flex;
-  gap:6px;
+  gap:var(--gap);
 }
 
 /* header pills */
@@ -156,28 +134,28 @@ body.compact{
   width:var(--bet-w);
   height:var(--row-h);
   background:var(--bg-soft);
-  border-radius:12px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
 }
 
 /* divider */
 .right-divider{
-  height:12px;
+  height:8px;
 }
 
 /* bet pills */
 .bet{
   width:var(--bet-w);
   height:var(--row-h);
-  border-radius:12px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:14px;
+  font-size:13px;
   font-weight:800;
   color:#111;
 }
@@ -189,12 +167,11 @@ body.compact{
 
 @keyframes glowPulse{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  10%{box-shadow:0 0 22px rgba(255,255,255,.95)}
-  20%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  40%{box-shadow:0 0 22px rgba(255,255,255,.95)}
-  50%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  70%{box-shadow:0 0 22px rgba(255,255,255,.95)}
-  80%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  12%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  24%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  48%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  60%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  84%{box-shadow:0 0 18px rgba(255,255,255,.9)}
   100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
@@ -206,36 +183,36 @@ body.compact{
 
 .summary-content{
   display:flex;
-  gap:16px;
-  padding:12px;
+  gap:12px;
+  padding:10px;
 }
 
 .summary-card,
 .ranking-card{
   background:#2f343a;
-  border-radius:16px;
-  padding:14px;
+  border-radius:14px;
+  padding:12px;
 }
 
 .summary-card{flex:1}
-.ranking-card{width:260px}
+.ranking-card{width:250px}
 
 .summary-title,
 .ranking-title{
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
 
 .summary-row{
   display:grid;
-  grid-template-columns:120px auto;
+  grid-template-columns:110px auto;
   gap:8px;
   margin-bottom:6px;
 }
 
 .sum-label{
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
   color:var(--text-muted);
 }
@@ -243,13 +220,13 @@ body.compact{
 .sum-values{display:flex;gap:6px}
 
 .sum-cell{
-  height:32px;
-  min-width:90px;
-  border-radius:12px;
+  height:30px;
+  min-width:86px;
+  border-radius:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:800;
   color:#111;
 }
@@ -257,20 +234,20 @@ body.compact{
 /* ranking */
 .rank-row{
   display:grid;
-  grid-template-columns:22px 1fr auto;
+  grid-template-columns:20px 1fr auto;
   grid-template-rows:auto auto;
   gap:2px 6px;
   background:#343a40;
-  border-radius:12px;
-  padding:10px;
+  border-radius:10px;
+  padding:8px;
   margin-bottom:6px;
 }
 
 .rank-row:last-child{margin-bottom:0}
 .rank-pos{grid-row:span 2;font-weight:800}
-.rank-name{font-weight:600}
+.rank-name{font-weight:600;font-size:13px}
 .rank-money{font-weight:800;color:#7CFF5B}
-.rank-bets{grid-column:2/4;font-size:12px;opacity:.65}
+.rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
 
 .rank-1{
   background:linear-gradient(180deg,#1f3b1f,#273027);
@@ -281,12 +258,9 @@ body.compact{
 <body>
 
 <div class="app">
-  <div class="topbar">
-    <div class="toggle" id="compactToggle">Compact / Normal</div>
-  </div>
-
   <div class="main">
     <div class="left-card" id="left"></div>
+
     <div class="right-card">
       <div class="rows" id="right"></div>
     </div>
@@ -351,7 +325,6 @@ function loadData(){
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
-
     left.appendChild(document.createElement("div")).className="left-divider";
 
     /* RIGHT HEADER */
@@ -364,7 +337,6 @@ function loadData(){
       rh.appendChild(p);
     });
     right.appendChild(rh);
-
     right.appendChild(document.createElement("div")).className="right-divider";
 
     data.matches.forEach((m,i)=>{
@@ -437,9 +409,6 @@ function loadData(){
 
 loadData();
 setInterval(loadData,REFRESH_MS);
-
-document.getElementById("compactToggle").onclick=
-  ()=>document.body.classList.toggle("compact");
 </script>
 
 </body>

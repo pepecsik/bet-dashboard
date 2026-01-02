@@ -13,8 +13,18 @@
   --bg-panel:#26292e;
   --text-main:#e6e7ea;
   --text-muted:#9aa0a6;
+
   --row-h:46px;
   --gap:10px;
+
+  --row-h-compact:38px;
+  --gap-compact:6px;
+
+  --w-match:90px;
+  --w-status:46px;
+  --w-score:56px;
+  --w-bet:110px;
+  --w-bet-compact:90px;
 }
 
 *{box-sizing:border-box}
@@ -26,6 +36,137 @@ body{
   color:var(--text-main);
 }
 
+body.compact{
+  --row-h:var(--row-h-compact);
+  --gap:var(--gap-compact);
+  --w-bet:var(--w-bet-compact);
+}
+
+.app{
+  height:100vh;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+}
+
+/* ===== TOP BAR ===== */
+.topbar{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  padding:8px 12px;
+}
+.toggle{
+  background:var(--bg-panel);
+  padding:6px 10px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+/* ===== TABLE ===== */
+.table-wrapper{overflow-y:auto}
+.bets-scroll{overflow-x:auto}
+
+.table{
+  display:grid;
+  gap:var(--gap);
+  padding:10px;
+}
+
+.th,.match,.label{
+  height:var(--row-h);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg-panel);
+  font-size:13px;
+}
+.th{font-weight:700}
+.match{color:var(--text-muted)}
+.match.center{color:var(--text-main);font-weight:700}
+
+.bet{
+  height:var(--row-h);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  font-weight:700;
+  font-size:14px;
+  color:#111;
+}
+.bet:empty{background:transparent!important}
+
+/* ===== STICKY LEFT ===== */
+.sticky{
+  position:sticky;
+  left:0;
+  z-index:5;
+  background:var(--bg-panel);
+}
+.sticky.status{left:var(--w-match)}
+.sticky.score{left:calc(var(--w-match) + var(--w-status))}
+
+.divider{
+  grid-column:1/-1;
+  height:1px;
+  background:#3a3d42;
+  margin:6px 0;
+}
+
+/* ===== GLOW (10s) ===== */
+.changed{
+  animation:glowPulse 10s ease-in-out;
+}
+@keyframes glowPulse{
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  10%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  20%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  40%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  50%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  70%{box-shadow:0 0 26px rgba(255,255,255,.95)}
+  80%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
+}
+
+/* ===== SUMMARY ===== */
+.summary{
+  background:var(--bg-panel);
+  border-top:1px solid #3a3d42;
+  transition:max-height .4s ease,opacity .35s ease;
+}
+.summary.hidden{
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+}
+.summary-content{padding:10px}
+.summary-row{
+  display:grid;
+  grid-template-columns:120px auto;
+  gap:8px;
+  margin-bottom:6px;
+}
+.sum-label{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text-muted);
+}
+.sum-values{display:flex;gap:6px}
+.sum-cell{
+  height:32px;
+  min-width:90px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:13px;
+  color:#111;
+}
+
+/* ===== SOUND OVERLAY ===== */
 .sound-overlay{
   position:fixed;
   inset:0;
@@ -35,25 +176,19 @@ body{
   justify-content:center;
   z-index:9999;
 }
-
 .sound-box{
   background:var(--bg-panel);
   padding:26px 30px;
   border-radius:16px;
   text-align:center;
 }
-
-.sound-box h2{
-  margin:0 0 10px;
-  font-size:17px;
-}
-
+.sound-box h2{margin:0 0 10px;font-size:16px}
 .sound-box button{
-  margin-top:14px;
-  padding:12px 18px;
-  font-size:15px;
+  margin-top:12px;
+  padding:10px 16px;
+  font-size:14px;
   font-weight:700;
-  border-radius:12px;
+  border-radius:10px;
   border:none;
   cursor:pointer;
 }
@@ -67,64 +202,121 @@ body{
   <div class="sound-box">
     <h2>🔔 Enable alerts</h2>
     <div>Get notified when bets change</div>
-
-    <!-- ✅ INLINE CLICK — CAN NOT FAIL -->
-    <button onclick="enableSoundAndClose()">Enable sound</button>
+    <button onclick="enableSound()">Enable sound</button>
   </div>
 </div>
 
+<div class="app">
+  <div class="topbar">
+    <div class="toggle" onclick="document.body.classList.toggle('compact')">Compact / Normal</div>
+    <div class="toggle" onclick="summary.classList.toggle('hidden')">Summary</div>
+  </div>
+
+  <div class="table-wrapper">
+    <div class="bets-scroll">
+      <div id="table" class="table"></div>
+    </div>
+  </div>
+
+  <footer class="summary" id="summary">
+    <div class="summary-content" id="summaryContent"></div>
+  </footer>
+</div>
+
 <script>
-/* ===== SOUND CORE ===== */
-let audioCtx = null;
-let alertBuffer = null;
-let soundEnabled = false;
+const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
+const REFRESH_MS=30000;
 
-function enableSoundAndClose(){
-  // 1️⃣ Remove overlay immediately (no JS lookup, browser does it)
-  document.getElementById("soundOverlay").style.display = "none";
+/* ===== SOUND ===== */
+let audioCtx=null, alertBuffer=null, soundEnabled=false;
 
-  // 2️⃣ Persist permission
+function enableSound(){
+  document.getElementById("soundOverlay").style.display="none";
+  soundEnabled=true;
   localStorage.setItem("soundEnabled","1");
-  soundEnabled = true;
 
-  // 3️⃣ Init sound (still inside user gesture)
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   audioCtx.resume();
 
   fetch("https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3")
-    .then(r => r.arrayBuffer())
-    .then(b => audioCtx.decodeAudioData(b))
-    .then(buf => alertBuffer = buf);
+    .then(r=>r.arrayBuffer())
+    .then(b=>audioCtx.decodeAudioData(b))
+    .then(buf=>alertBuffer=buf);
 }
 
-/* ===== PLAY ALERT ===== */
+if(localStorage.getItem("soundEnabled")==="1"){
+  soundEnabled=true;
+  document.getElementById("soundOverlay").style.display="none";
+  enableSound();
+}
+
 function playAlert(){
-  if(!soundEnabled || !alertBuffer) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = alertBuffer;
-  src.connect(audioCtx.destination);
-  src.start();
+  if(!soundEnabled||!alertBuffer) return;
+  const s=audioCtx.createBufferSource();
+  s.buffer=alertBuffer;
+  s.connect(audioCtx.destination);
+  s.start();
 }
 
-/* ===== RESTORE STATE ===== */
-if(localStorage.getItem("soundEnabled") === "1"){
-  document.getElementById("soundOverlay").style.display = "none";
-  soundEnabled = true;
+/* ===== CHANGE TRACKING ===== */
+let previous=JSON.parse(localStorage.getItem("betState")||"{}");
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  audioCtx.resume();
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    let changed=false;
+    const next={};
 
-  fetch("https://assets.mixkit.co/sfx/preview/mixkit-warning-alarm-buzzer-991.mp3")
-    .then(r => r.arrayBuffer())
-    .then(b => audioCtx.decodeAudioData(b))
-    .then(buf => alertBuffer = buf);
+    table.innerHTML="";
+    summaryContent.innerHTML="";
+
+    table.style.gridTemplateColumns=
+      "var(--w-match) var(--w-status) var(--w-score) repeat("+data.headers.length+", var(--w-bet))";
+
+    table.innerHTML+=`
+      <div class="th sticky">MATCH</div>
+      <div class="th sticky status"></div>
+      <div class="th sticky score"></div>
+    `;
+    data.headers.forEach(h=>table.innerHTML+=`<div class="th">${h}</div>`);
+
+    data.matches.forEach((m,r)=>{
+      table.innerHTML+=`
+        <div class="match sticky">${m.match}</div>
+        <div class="match center sticky status">${m.status}</div>
+        <div class="match center sticky score">${m.score}</div>
+      `;
+      const scoreKey=`score-${r}`;
+      next[scoreKey]=m.score;
+      if(previous[scoreKey]&&previous[scoreKey]!==m.score){
+        table.lastElementChild.classList.add("changed");
+        changed=true;
+      }
+      m.cells.forEach((c,i)=>{
+        const key=`bet-${r}-${i}`;
+        const val=`${c.value}|${c.color}`;
+        next[key]=val;
+        const el=document.createElement("div");
+        el.className="bet";
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+          if(previous[key]&&previous[key]!==val){
+            el.classList.add("changed");
+            changed=true;
+          }
+        }
+        table.appendChild(el);
+      });
+    });
+
+    if(changed) playAlert();
+    previous=next;
+    localStorage.setItem("betState",JSON.stringify(next));
+  });
 }
 
-/* ===== TEST (remove later) ===== */
-setTimeout(() => {
-  console.log("Triggering test sound");
-  playAlert();
-}, 5000);
+loadData();
+setInterval(loadData,REFRESH_MS);
 </script>
 
 </body>

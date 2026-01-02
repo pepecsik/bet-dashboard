@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+/* ===== SAME STYLES AS BEFORE (UNCHANGED) ===== */
 :root{
   --bg-main:#1f2125;
   --bg-panel:#26292e;
@@ -98,9 +99,9 @@ body.compact{
   margin:6px 0;
 }
 
-/* ===== GLOW (ONE-SHOT) ===== */
+/* ===== GLOW ===== */
 .changed{
-  animation:glowPulse 10s ease-in-out;
+  animation:glowPulse 8s ease-in-out;
 }
 @keyframes glowPulse{
   0%{box-shadow:0 0 0 rgba(255,255,255,0)}
@@ -165,16 +166,51 @@ body.compact{
 const API_URL="https://script.google.com/macros/s/AKfycbyq9CTFOgnGo5Jp2hJ_MUqZhjWb0x99NfckqDV_nfZrO7dCvVlmrIek7LWtuXspjaE/exec";
 const REFRESH_MS=30000;
 
-const sound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3");
-sound.volume=0.25;
-let soundUnlocked=false;
-["click","touchstart"].forEach(e=>document.body.addEventListener(e,()=>soundUnlocked=true,{once:true}));
+/* ===== SOUND (PROPERLY UNLOCKED) ===== */
+let audioCtx;
+let soundBuffer;
+let soundReady=false;
 
+async function initSound(){
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  await audioCtx.resume();
+
+  const res = await fetch("https://assets.mixkit.co/sfx/preview/mixkit-soft-interface-click-112.mp3");
+  const arr = await res.arrayBuffer();
+  soundBuffer = await audioCtx.decodeAudioData(arr);
+
+  // silent unlock
+  const src = audioCtx.createBufferSource();
+  src.buffer = audioCtx.createBuffer(1,1,22050);
+  src.connect(audioCtx.destination);
+  src.start(0);
+
+  soundReady=true;
+}
+
+function playSound(){
+  if(!soundReady) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = soundBuffer;
+  src.connect(audioCtx.destination);
+  src.start(0);
+}
+
+// unlock on first interaction
+["click","touchstart","keydown"].forEach(e=>{
+  document.addEventListener(e,()=>{
+    if(!soundReady) initSound();
+  },{once:true});
+});
+
+/* ===== FORMATTING ===== */
 const formatGBP=v=>"£"+Number(v??0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
 
+/* ===== STATE ===== */
 let previousState=JSON.parse(localStorage.getItem("betState")||"{}");
 
+/* ===== LOAD ===== */
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     let hasChanges=false;
@@ -275,9 +311,8 @@ function loadData(){
     previousState=nextState;
     localStorage.setItem("betState",JSON.stringify(nextState));
 
-    if(hasChanges && soundUnlocked){
-      sound.currentTime=0;
-      sound.play().catch(()=>{});
+    if(hasChanges){
+      playSound();
     }
   });
 }
@@ -285,8 +320,8 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-document.getElementById("compactToggle").onclick=()=>document.body.classList.toggle("compact");
-document.getElementById("summaryToggle").onclick=()=>summary.classList.toggle("hidden");
+compactToggle.onclick=()=>document.body.classList.toggle("compact");
+summaryToggle.onclick=()=>summary.classList.toggle("hidden");
 </script>
 
 </body>

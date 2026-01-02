@@ -126,21 +126,22 @@ body.compact {
   background: transparent !important;
 }
 
-/* ===== GLOW ANIMATION ===== */
-.bet.changed {
-  animation: glowPulse 2.2s ease-out;
+/* ===== GLOW (SLOW + NEUTRAL) ===== */
+.bet.changed,
+.match.changed {
+  animation: glowPulse 5s ease-out;
 }
 
 @keyframes glowPulse {
-  0%   { box-shadow: 0 0 0 rgba(var(--glow), 0); }
-  15%  { box-shadow: 0 0 16px rgba(var(--glow), 0.65); }
-  30%  { box-shadow: 0 0 0 rgba(var(--glow), 0); }
+  0%   { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  12%  { box-shadow: 0 0 18px rgba(255,255,255,0.6); }
+  25%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
 
-  45%  { box-shadow: 0 0 14px rgba(var(--glow), 0.55); }
-  60%  { box-shadow: 0 0 0 rgba(var(--glow), 0); }
+  42%  { box-shadow: 0 0 14px rgba(255,255,255,0.45); }
+  55%  { box-shadow: 0 0 0 rgba(255,255,255,0); }
 
-  75%  { box-shadow: 0 0 12px rgba(var(--glow), 0.45); }
-  100% { box-shadow: 0 0 0 rgba(var(--glow), 0); }
+  72%  { box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
 }
 
 /* STICKY LEFT */
@@ -174,7 +175,7 @@ body.compact {
 .summary {
   background: var(--bg-panel);
   border-top: 1px solid #3a3d42;
-  transition: max-height 0.35s ease, opacity 0.3s ease;
+  transition: max-height 0.4s ease, opacity 0.35s ease;
 }
 
 .summary.hidden {
@@ -261,6 +262,7 @@ function applyInitialState() {
   }
 }
 applyInitialState();
+
 window.addEventListener("orientationchange", () =>
   setTimeout(applyInitialState, 300)
 );
@@ -273,18 +275,6 @@ document.getElementById("summaryToggle").onclick =
 
 /* ===== CHANGE TRACKING ===== */
 const previous = JSON.parse(localStorage.getItem("betState") || "{}");
-
-function glowColorFromBg(bg) {
-  if (!bg) return "255,255,255";
-  const c = bg.replace("#","");
-  const r = parseInt(c.substr(0,2),16);
-  const g = parseInt(c.substr(2,2),16);
-  const b = parseInt(c.substr(4,2),16);
-
-  if (g > r && g > b) return "46,204,113";
-  if (r > g && r > b) return "239,68,68";
-  return "255,255,255";
-}
 
 /* ===== DATA ===== */
 fetch(API_URL).then(r => r.json()).then(data => {
@@ -315,13 +305,10 @@ fetch(API_URL).then(r => r.json()).then(data => {
     `;
 
     const scoreKey = `score-${rowIdx}`;
-    const scoreVal = m.score;
-    nextState[scoreKey] = scoreVal;
+    nextState[scoreKey] = m.score;
 
-    const scoreEl = table.lastElementChild;
-    if (previous[scoreKey] && previous[scoreKey] !== scoreVal) {
-      scoreEl.classList.add("changed");
-      scoreEl.style.setProperty("--glow", "46,204,113");
+    if (previous[scoreKey] && previous[scoreKey] !== m.score) {
+      table.lastElementChild.classList.add("changed");
     }
 
     m.cells.forEach((c,i) => {
@@ -331,13 +318,13 @@ fetch(API_URL).then(r => r.json()).then(data => {
 
       const el = document.createElement("div");
       el.className = "bet";
+
       if (c.value) {
         el.textContent = c.value;
         el.style.background = c.color;
 
         if (previous[key] && previous[key] !== val) {
           el.classList.add("changed");
-          el.style.setProperty("--glow", glowColorFromBg(c.color));
         }
       }
       table.appendChild(el);
@@ -365,7 +352,6 @@ fetch(API_URL).then(r => r.json()).then(data => {
 
       if (previous[key] && previous[key] !== val) {
         el.classList.add("changed");
-        el.style.setProperty("--glow", glowColorFromBg(c.color));
       }
       table.appendChild(el);
     });

@@ -14,6 +14,9 @@
   --bg-soft:#2f343a;
   --bg-row:#343a40;
 
+  --text-main:#ffffff;
+  --text-muted:#9aa0a6;
+
   --row-h:40px;
   --gap:6px;
 
@@ -30,7 +33,7 @@ body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
-  color:#fff;
+  color:var(--text-main);
 }
 
 .app{
@@ -39,17 +42,17 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* ===== MOBILE START ZOOMED OUT ===== */
-@media (max-width:768px){
+/* MOBILE ZOOM OUT */
+@media (max-width: 768px){
   .app{
-    transform:scale(0.78);
-    transform-origin:top left;
-    width:128%;
-    height:128%;
+    transform: scale(0.78);
+    transform-origin: top left;
+    width: 128%;
+    height: 128%;
   }
 }
 
-/* ===== MAIN ===== */
+/* MAIN */
 .main{
   display:flex;
   gap:10px;
@@ -57,7 +60,7 @@ body{
   overflow:hidden;
 }
 
-/* ===== LEFT CARD ===== */
+/* LEFT CARD */
 .left-card{
   width:var(--left-w);
   background:var(--bg-card);
@@ -68,8 +71,7 @@ body{
   gap:var(--gap);
 }
 
-.left-header,
-.left-label{
+.left-header{
   height:var(--row-h);
   background:var(--bg-soft);
   border-radius:10px;
@@ -100,10 +102,22 @@ body{
 }
 
 .left-cell.match{
+  justify-content:center;
   text-align:center;
 }
 
-/* ===== RIGHT CARD ===== */
+.left-label{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+/* RIGHT CARD */
 .right-card{
   flex:1;
   background:var(--bg-card);
@@ -150,22 +164,22 @@ body{
   color:#111;
 }
 
-/* ===== GLOW (RESTORED – 3 STRONG PULSES) ===== */
+/* GLOW */
 .changed{
   animation:glowPulse 10s ease-in-out;
 }
 
 @keyframes glowPulse{
-  0%   {box-shadow:0 0 0 rgba(255,255,255,0)}
-  10%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
-  20%  {box-shadow:0 0 0 rgba(255,255,255,0)}
-  45%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
-  55%  {box-shadow:0 0 0 rgba(255,255,255,0)}
-  80%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
-  100% {box-shadow:0 0 0 rgba(255,255,255,0)}
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  15%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  45%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  60%{box-shadow:0 0 0 rgba(255,255,255,0)}
+  75%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
-/* ===== SUMMARY ===== */
+/* SUMMARY */
 .summary{
   background:var(--bg-card);
   border-top:1px solid #3a3d42;
@@ -173,14 +187,16 @@ body{
 
 .summary-toggle{
   background:var(--bg-soft);
-  padding:8px;
+  padding:8px 12px;
   cursor:pointer;
   display:flex;
+  align-items:center;
   justify-content:center;
 }
 
 .summary-toggle::before{
   content:"▼";
+  font-size:14px;
   transition:transform .25s ease;
 }
 
@@ -192,18 +208,29 @@ body{
   display:flex;
   gap:12px;
   padding:10px;
+  transition:max-height .35s ease, opacity .25s ease;
+  overflow:hidden;
 }
 
 .summary-content.hidden{
-  display:none;
+  max-height:0;
+  opacity:0;
+  padding-top:0;
+  padding-bottom:0;
 }
 
-/* ===== WEEKLY SUMMARY ===== */
+/* WEEKLY SUMMARY */
 .weekly-card{
   width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px;
   padding:12px;
+}
+
+.weekly-title{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:8px;
 }
 
 .week-row{
@@ -219,16 +246,23 @@ body{
   font-weight:700;
 }
 
+.week-label{color:#fff}
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
-.week-eur{opacity:.6}
+.week-eur{margin-left:6px;opacity:.6}
 
-/* ===== RANKING ===== */
+/* RANKING */
 .ranking-card{
   width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px;
   padding:12px;
+}
+
+.ranking-title{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:10px;
 }
 
 .rank-row{
@@ -242,7 +276,9 @@ body{
   margin-bottom:6px;
 }
 
-.rank-money{color:#7CFF5B;font-weight:800}
+.rank-pos{grid-row:span 2;font-weight:800}
+.rank-name{font-weight:600;font-size:13px}
+.rank-money{font-weight:800;color:#7CFF5B}
 .rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
 </style>
 </head>
@@ -260,8 +296,9 @@ body{
 
     <div class="summary-content" id="summaryContentWrap">
       <div class="weekly-card" id="weeklyCard"></div>
+
       <div class="ranking-card">
-        <div style="font-weight:700;margin-bottom:8px">🏆 All-Time Ranking</div>
+        <div class="ranking-title">🏆 All-Time Ranking</div>
         <div id="rankingBody"></div>
       </div>
     </div>
@@ -286,55 +323,75 @@ function loadData(){
 
     left.innerHTML="";
     right.innerHTML="";
-    weekly.innerHTML="";
+    weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
-    // MATCHES HEADER
-    left.innerHTML+='<div class="left-header">MATCHES</div><div class="left-divider"></div>';
+    /* MATCH HEADER */
+    const lh=document.createElement("div");
+    lh.className="left-header";
+    lh.textContent="MATCHES";
+    left.appendChild(lh);
+    left.appendChild(document.createElement("div")).className="left-divider";
 
-    // COLUMN HEADERS
-    const hr=document.createElement("div");
-    hr.className="row";
+    /* PLAYER HEADERS */
+    const headerRow=document.createElement("div");
+    headerRow.className="row";
     data.headers.forEach(h=>{
-      const d=document.createElement("div");
-      d.className="header-pill";
-      d.textContent=h;
-      hr.appendChild(d);
+      const p=document.createElement("div");
+      p.className="header-pill";
+      p.textContent=h;
+      headerRow.appendChild(p);
     });
-    right.appendChild(hr);
+    right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    // MATCH ROWS
+    /* MATCH ROWS */
     data.matches.forEach((m,i)=>{
-      const sk=`score-${i}`;
+      const scoreKey=`score-${i}`;
 
       const lr=document.createElement("div");
       lr.className="left-row";
-      lr.innerHTML=`<div class="left-cell match">${m.match}</div><div class="left-cell">${m.status}</div><div class="left-cell">${m.score}</div>`;
-      if(prevScore[sk] && prevScore[sk]!==m.score) lr.lastChild.classList.add("changed");
-      prevScore[sk]=m.score;
+      lr.innerHTML=`
+        <div class="left-cell match">${m.match}</div>
+        <div class="left-cell">${m.status}</div>
+        <div class="left-cell">${m.score}</div>
+      `;
+
+      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
+        lr.lastElementChild.classList.add("changed");
+      }
+      prevScore[scoreKey]=m.score;
+
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
-        const k=`b-${i}-${j}`, v=`${c.value}|${c.color}`;
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-        if(c.value){el.textContent=c.value;el.style.background=c.color;}
-        if(prev[k] && prev[k]!==v) el.classList.add("changed");
-        prev[k]=v;
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+        }
+        if(prev[key] && prev[key]!==val) el.classList.add("changed");
+        prev[key]=val;
         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
+    /* BET / WIN / WIN PP */
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    // BET / WIN / WIN PP
-    ["BET","WIN","WIN PP"].forEach((lbl,i)=>{
-      left.innerHTML+=`<div class="left-label">${lbl}</div>`;
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
+
       const rr=document.createElement("div");
       rr.className="row";
       data.betSummary[i].cells.forEach(c=>{
@@ -347,22 +404,23 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    // WEEKLY
+    /* WEEKLY SUMMARY */
     data.totals.forEach(t=>{
+      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`
         <div class="week-row">
-          <div>${t.label}</div>
-          <div class="week-gbp ${t.label.includes('WIN')?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+          <div class="week-label">${t.label}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
           <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
         </div>`;
     });
 
-    // RANKING (DYNAMIC)
-    data.ranking.forEach(r=>{
+    /* RANKING – CLEAN & STABLE */
+    data.ranking.forEach((r,i)=>{
       ranking.innerHTML+=`
         <div class="rank-row">
-          <div>${r.rank}</div>
-          <div>${r.name}</div>
+          <div class="rank-pos">${i+1}</div>
+          <div class="rank-name">${r.name}</div>
           <div class="rank-money">${formatGBP(r.money)}</div>
           <div class="rank-bets">${r.matchesRight} matches right</div>
         </div>`;
@@ -374,8 +432,8 @@ loadData();
 setInterval(loadData,REFRESH_MS);
 
 document.getElementById("summaryToggle").onclick=()=>{
-  summaryContentWrap.classList.toggle("hidden");
-  summaryToggle.classList.toggle("open");
+  document.getElementById("summaryContentWrap").classList.toggle("hidden");
+  document.getElementById("summaryToggle").classList.toggle("open");
 };
 </script>
 

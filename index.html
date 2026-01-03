@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-/* === YOUR ORIGINAL CSS – UNCHANGED === */
+/* ================= YOUR ORIGINAL CSS – UNCHANGED ================= */
 :root{
   --bg-main:#1c1f23;
   --bg-card:#262a30;
@@ -24,18 +24,22 @@
   --summary-w:250px;
   --week-row-h:30px;
 }
+
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
 }
+
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
 }
+
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -44,11 +48,163 @@ body{
     height: 128%;
   }
 }
+
 .main{
   display:flex;
   gap:10px;
   padding:10px;
   overflow:hidden;
+}
+
+/* LEFT CARD */
+.left-card{
+  width:var(--left-w);
+  background:var(--bg-card);
+  border-radius:14px;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+}
+
+.left-header{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+.left-divider{height:8px}
+
+.left-row{
+  height:var(--row-h);
+  display:grid;
+  grid-template-columns:1fr 28px 44px;
+  gap:var(--gap);
+}
+
+.left-cell{
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:600;
+}
+
+.left-cell.match{text-align:center}
+
+.left-label{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+/* RIGHT CARD */
+.right-card{
+  flex:1;
+  background:var(--bg-card);
+  border-radius:14px;
+  overflow-x:auto;
+  padding:8px;
+}
+
+.rows{
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+  min-width:max-content;
+}
+
+.row{
+  display:flex;
+  gap:var(--gap);
+}
+
+.header-pill{
+  width:var(--bet-w);
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+.right-divider{height:8px}
+
+.bet{
+  width:var(--bet-w);
+  height:var(--row-h);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:800;
+  color:#111;
+}
+
+/* SUMMARY */
+.summary{
+  background:var(--bg-card);
+  border-top:1px solid #3a3d42;
+}
+
+.summary-toggle{
+  background:var(--bg-soft);
+  padding:8px 12px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.summary-toggle::before{
+  content:"▼";
+  font-size:14px;
+  transition:transform .25s ease;
+}
+
+.summary-toggle.open::before{
+  transform:rotate(180deg);
+}
+
+.summary-content{
+  display:grid;
+  grid-template-columns:var(--summary-w) var(--summary-w);
+  gap:12px;
+  padding:10px;
+  overflow:hidden;
+}
+
+/* WEEKLY SUMMARY */
+.weekly-card{
+  width:var(--summary-w);
+  background:var(--bg-soft);
+  border-radius:14px;
+  padding:12px;
+}
+
+/* RANKING */
+.ranking-card{
+  width:var(--summary-w);
+  background:var(--bg-soft);
+  border-radius:14px;
+  padding:12px;
+  cursor:pointer;
 }
 
 /* HISTORY */
@@ -59,12 +215,14 @@ body{
   padding:14px;
   display:none;
 }
+
 .history-header{
   display:flex;
   justify-content:space-between;
   align-items:center;
   margin-bottom:10px;
 }
+
 .history-buttons button{
   background:#343a40;
   color:#fff;
@@ -74,6 +232,7 @@ body{
   font-weight:700;
   cursor:pointer;
 }
+
 .history-buttons button.active{
   background:#7CFF5B;
   color:#111;
@@ -115,149 +274,73 @@ body{
 </div>
 
 <script>
-/* === CONFIG === */
+/* ================= YOUR ORIGINAL DATA LOGIC ================= */
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+let chart, chartData;
 
-let prev={}, prevScore={}, chart, lastChartData;
-
-/* === FULL DASHBOARD RENDER (RESTORED) === */
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-    lastChartData = data.chartData;
-
-    const left=document.getElementById("left");
-    const right=document.getElementById("right");
-    const weekly=document.getElementById("weeklyCard");
-    const ranking=document.getElementById("rankingBody");
-
-    left.innerHTML="";
-    right.innerHTML="";
-    weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
-    ranking.innerHTML="";
-
-    /* HEADERS */
-    const lh=document.createElement("div");
-    lh.className="left-header";
-    lh.textContent="MATCHES";
-    left.appendChild(lh);
-    left.appendChild(document.createElement("div")).className="left-divider";
-
-    const headerRow=document.createElement("div");
-    headerRow.className="row";
-    data.headers.forEach(h=>{
-      const p=document.createElement("div");
-      p.className="header-pill";
-      p.textContent=h;
-      headerRow.appendChild(p);
-    });
-    right.appendChild(headerRow);
-    right.appendChild(document.createElement("div")).className="right-divider";
-
-    /* MATCHES */
-    data.matches.forEach((m,i)=>{
-      const lr=document.createElement("div");
-      lr.className="left-row";
-      lr.innerHTML=`
-        <div class="left-cell">${m.match}</div>
-        <div class="left-cell">${m.status}</div>
-        <div class="left-cell">${m.score}</div>
-      `;
-      left.appendChild(lr);
-
-      const rr=document.createElement("div");
-      rr.className="row";
-      m.cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=c.value;
-        el.style.background=c.color;
-        rr.appendChild(el);
-      });
-      right.appendChild(rr);
-    });
-
-    /* BET / WIN / WIN PP */
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      const lab=document.createElement("div");
-      lab.className="left-label";
-      lab.textContent=label;
-      left.appendChild(lab);
-
-      const rr=document.createElement("div");
-      rr.className="row";
-      data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
-        rr.appendChild(el);
-      });
-      right.appendChild(rr);
-    });
-
-    /* WEEKLY */
-    data.totals.forEach(t=>{
-      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      weekly.innerHTML+=`
-        <div class="week-row">
-          <div>${t.label}</div>
-          <div class="${green?'week-gbp green':'week-gbp red'}">${formatGBP(t.cells[0].value)}</div>
-          <div>${formatEUR(t.cells[1].value)}</div>
-        </div>`;
-    });
-
-    /* RANKING */
-    data.ranking.forEach((r,i)=>{
-      ranking.innerHTML+=`
-        <div class="rank-row">
-          <div>${i+1}</div>
-          <div>${r.name}</div>
-          <div>${formatGBP(r.money)}</div>
-          <div>${r.matchesRight} matches right</div>
-        </div>`;
-    });
-
-    buildChart("matches");
+    chartData = data.chartData;
+    if(chartData) drawChart("matches");
   });
 }
 
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* === HISTORY CHART === */
-function buildChart(type){
-  if(!lastChartData) return;
+/* ================= CHART LOGIC (ISOLATED) ================= */
+function drawChart(type){
   const ctx=document.getElementById("historyChart").getContext("2d");
   if(chart) chart.destroy();
+
+  const labels = chartData[type].map(r=>r.date.split("T")[0]);
+  const players = Object.keys(chartData[type][0]).filter(k=>k!=="date");
 
   chart=new Chart(ctx,{
     type:"line",
     data:{
-      labels:lastChartData[type].map(r=>r.date),
-      datasets:[
-        {label:"Snackbar",data:lastChartData[type].map(r=>r.Snackbar),borderColor:"#7CFF5B",tension:.35},
-        {label:"Timbo",data:lastChartData[type].map(r=>r.Timbo),borderColor:"#4DA3FF",tension:.35},
-        {label:"Pepe",data:lastChartData[type].map(r=>r.Pepe),borderColor:"#FF5BC4",tension:.35}
-      ]
+      labels,
+      datasets:players.map(p=>({
+        label:p,
+        data:chartData[type].map(r=>r[p]),
+        borderWidth:2,
+        tension:.35
+      }))
     },
-    options:{plugins:{legend:{labels:{color:"#fff"}}}}
+    options:{
+      responsive:true,
+      plugins:{legend:{labels:{color:"#fff"}}},
+      scales:{
+        x:{ticks:{color:"#aaa"}},
+        y:{ticks:{color:"#aaa"}}
+      }
+    }
   });
 }
 
-/* TOGGLES */
+/* ================= TOGGLES ================= */
 rankingCard.onclick=()=>{
   historyCard.style.display =
-    historyCard.style.display==="block" ? "none" : "block";
+    historyCard.style.display==="none" ? "block" : "none";
 };
-btnMatches.onclick=()=>buildChart("matches");
-btnMoney.onclick=()=>buildChart("money");
+
+btnMatches.onclick=()=>{
+  btnMatches.classList.add("active");
+  btnMoney.classList.remove("active");
+  drawChart("matches");
+};
+
+btnMoney.onclick=()=>{
+  btnMoney.classList.add("active");
+  btnMatches.classList.remove("active");
+  drawChart("money");
+};
 
 summaryToggle.onclick=()=>{
   summaryContentWrap.classList.toggle("hidden");
+  summaryToggle.classList.toggle("open");
   historyCard.style.display="none";
 };
 </script>

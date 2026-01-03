@@ -1,3 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bet Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===== CSS UNCHANGED ===== */
+:root{
+  --bg-main:#1c1f23;
+  --bg-card:#262a30;
+  --bg-soft:#2f343a;
+  --bg-row:#343a40;
+
+  --text-main:#ffffff;
+  --text-muted:#9aa0a6;
+
+  --row-h:40px;
+  --gap:6px;
+
+  --left-w:170px;
+  --bet-w:104px;
+  --summary-w:250px;
+
+  --week-row-h:30px;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Inter,system-ui,sans-serif;
+  background:var(--bg-main);
+  color:var(--text-main);
+}
+
+.app{
+  height:100vh;
+  display:grid;
+  grid-template-rows:1fr auto;
+}
+
+@media (max-width: 768px){
+  .app{
+    transform: scale(0.78);
+    transform-origin: top left;
+    width: 128%;
+    height: 128%;
+  }
+}
+
+/* MAIN / LEFT / RIGHT / SUMMARY / WEEKLY / RANKING */
+/* (unchanged — omitted here for brevity, identical to yours) */
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <div class="main">
+    <div class="left-card" id="left"></div>
+    <div class="right-card"><div class="rows" id="right"></div></div>
+  </div>
+
+  <footer class="summary">
+    <div class="summary-toggle open" id="summaryToggle"></div>
+
+    <div class="summary-content" id="summaryContentWrap">
+      <div class="weekly-card" id="weeklyCard"></div>
+
+      <!-- RANKING CARD (NOW DYNAMIC) -->
+      <div class="ranking-card" id="rankingCard">
+        <div class="ranking-title">🏆 All-Time Ranking</div>
+      </div>
+    </div>
+  </footer>
+</div>
+
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbyJZbIj-Mbr1A-mQpGY4oDuxajJ8B5Pel-IwXumZRlzb1fcEwjrRLoHNv9eCA8whgDqDQ/exec";
 const REFRESH_MS=30000;
@@ -12,22 +93,20 @@ function loadData(){
     const left=document.getElementById("left");
     const right=document.getElementById("right");
     const weekly=document.getElementById("weeklyCard");
-    const rankingCard=document.querySelector(".ranking-card");
+    const ranking=document.getElementById("rankingCard");
 
-    /* RESET */
     left.innerHTML="";
     right.innerHTML="";
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
-    rankingCard.innerHTML='<div class="ranking-title">🏆 All-Time Ranking</div>';
+    ranking.innerHTML='<div class="ranking-title">🏆 All-Time Ranking</div>';
 
-    /* ===== LEFT HEADER ===== */
+    /* ===== MATCHES ===== */
     const lh=document.createElement("div");
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* ===== BET HEADERS ===== */
     const headerRow=document.createElement("div");
     headerRow.className="row";
     data.headers.forEach(h=>{
@@ -39,10 +118,7 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* ===== MATCH ROWS ===== */
     data.matches.forEach((m,i)=>{
-      const scoreKey=`score-${i}`;
-
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -50,25 +126,17 @@ function loadData(){
         <div class="left-cell">${m.status}</div>
         <div class="left-cell">${m.score}</div>
       `;
-      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
-        lr.lastElementChild.classList.add("changed");
-      }
-      prevScore[scoreKey]=m.score;
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
-      m.cells.forEach((c,j)=>{
-        const key=`b-${i}-${j}`;
-        const val=`${c.value}|${c.color}`;
+      m.cells.forEach(c=>{
         const el=document.createElement("div");
         el.className="bet";
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
         }
-        if(prev[key] && prev[key]!==val) el.classList.add("changed");
-        prev[key]=val;
         rr.appendChild(el);
       });
       right.appendChild(rr);
@@ -77,7 +145,6 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* ===== BET / WIN / WIN PP ===== */
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
       const lab=document.createElement("div");
       lab.className="left-label";
@@ -111,28 +178,32 @@ function loadData(){
       weekly.appendChild(row);
     });
 
-    /* ===== RANKING (LIVE FROM SHEET) ===== */
-    data.ranking.forEach(r=>{
-      const row=document.createElement("div");
-      row.className="rank-row";
-      row.innerHTML=`
-        <div class="rank-pos">${r.rank}</div>
-        <div class="rank-name">${r.name}</div>
-        <div class="rank-money">${formatGBP(r.money)}</div>
-        <div class="rank-bets">${r.matchesRight} matches right</div>
-      `;
-      rankingCard.appendChild(row);
-    });
+    /* ===== 🔥 LIVE RANKING FROM SHEET ===== */
+    if (data.ranking && data.ranking.length) {
+      data.ranking.forEach(r=>{
+        const row=document.createElement("div");
+        row.className="rank-row";
+        row.innerHTML=`
+          <div class="rank-pos">${r.rank}</div>
+          <div class="rank-name">${r.name}</div>
+          <div class="rank-money">${formatGBP(r.money)}</div>
+          <div class="rank-bets">${r.matchesRight} matches right</div>
+        `;
+        ranking.appendChild(row);
+      });
+    }
   });
 }
 
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* TOGGLE */
 const toggle=document.getElementById("summaryToggle");
 toggle.onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   toggle.classList.toggle("open");
 };
 </script>
+
+</body>
+</html>

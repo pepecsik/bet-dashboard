@@ -20,7 +20,9 @@
   --row-h:40px;
   --gap:6px;
 
-  --left-w:230px;
+  /* 🔹 LEFT CARD NOW ~75% WIDTH */
+  --left-w:170px;
+
   --bet-w:104px;
   --summary-w:250px;
 
@@ -42,7 +44,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* ===== MOBILE START MORE ZOOMED OUT ===== */
+/* ===== MOBILE START ZOOMED OUT ===== */
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -187,13 +189,14 @@ body{
   border-top:1px solid #3a3d42;
 }
 
-/* triangle toggle */
+/* 🔺 CENTERED TRIANGLE TOGGLE */
 .summary-toggle{
   background:var(--bg-soft);
   padding:8px 12px;
   cursor:pointer;
   display:flex;
   align-items:center;
+  justify-content:center;
 }
 
 .summary-toggle::before{

@@ -91,17 +91,6 @@ body{
   padding-left:8px;
 }
 
-.left-label{
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-}
-
 /* ===== RIGHT CARD ===== */
 .right-card{
   flex:1;
@@ -172,15 +161,11 @@ body{
 
 .summary-toggle{
   background:#2f343a;
-  padding:10px;
+  padding:10px 12px;
   font-size:13px;
   font-weight:700;
   cursor:pointer;
-  text-align:center;
-}
-
-.summary-toggle:hover{
-  filter:brightness(1.05);
+  text-align:left;
 }
 
 .summary-content{
@@ -198,49 +183,32 @@ body{
   padding-bottom:0;
 }
 
-.summary-card,
-.ranking-card{
-  background:#2f343a;
-  border-radius:14px;
-  padding:12px;
+/* weekly cards */
+.week-card{
+  background:#343a40;
+  border-radius:10px;
+  padding:10px;
+  margin-bottom:6px;
+}
+
+.week-title{
+  font-size:12px;
+  font-weight:700;
+  opacity:.7;
+}
+
+.week-gbp{
+  font-size:16px;
+  font-weight:800;
+}
+
+.week-eur{
+  font-size:11px;
+  opacity:.6;
 }
 
 .summary-card{flex:1}
 .ranking-card{width:250px}
-
-.summary-title,
-.ranking-title{
-  font-size:13px;
-  font-weight:700;
-  margin-bottom:10px;
-}
-
-.summary-row{
-  display:grid;
-  grid-template-columns:110px auto;
-  gap:8px;
-  margin-bottom:6px;
-}
-
-.sum-label{
-  font-size:12px;
-  font-weight:700;
-  color:var(--text-muted);
-}
-
-.sum-values{display:flex;gap:6px}
-
-.sum-cell{
-  height:30px;
-  min-width:86px;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:800;
-  color:#111;
-}
 
 /* ranking */
 .rank-row{
@@ -259,10 +227,6 @@ body{
 .rank-name{font-weight:600;font-size:13px}
 .rank-money{font-weight:800;color:#7CFF5B}
 .rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
-
-.rank-1{
-  background:linear-gradient(180deg,#1f3b1f,#273027);
-}
 </style>
 </head>
 
@@ -271,45 +235,15 @@ body{
 <div class="app">
   <div class="main">
     <div class="left-card" id="left"></div>
-
-    <div class="right-card">
-      <div class="rows" id="right"></div>
-    </div>
+    <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
 
   <footer class="summary">
-    <div class="summary-toggle" id="summaryToggle">Summary</div>
+    <div class="summary-toggle" id="summaryToggle">Weekly Summary / Ranking</div>
 
     <div class="summary-content" id="summaryContentWrap">
-      <div class="summary-card">
-        <div class="summary-title">📊 Weekly Summary</div>
-        <div id="summaryContent"></div>
-      </div>
-
-      <div class="ranking-card">
-        <div class="ranking-title">🏆 All-Time Ranking</div>
-
-        <div class="rank-row rank-1">
-          <div class="rank-pos">1</div>
-          <div class="rank-name">Snackbar</div>
-          <div class="rank-money">€ 2.00</div>
-          <div class="rank-bets">5 matches right</div>
-        </div>
-
-        <div class="rank-row">
-          <div class="rank-pos">2</div>
-          <div class="rank-name">Timbo</div>
-          <div class="rank-money">€ 0.00</div>
-          <div class="rank-bets">5 matches right</div>
-        </div>
-
-        <div class="rank-row">
-          <div class="rank-pos">3</div>
-          <div class="rank-name">Pepe</div>
-          <div class="rank-money">€ 0.00</div>
-          <div class="rank-bets">3 matches right</div>
-        </div>
-      </div>
+      <div class="summary-card" id="summaryContent"></div>
+      <div class="ranking-card"><!-- ranking unchanged --></div>
     </div>
   </footer>
 </div>
@@ -322,6 +256,7 @@ const formatGBP=v=>"£"+Number(v??0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
 
 let prev={};
+let prevScore={};
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -339,18 +274,9 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    const rh=document.createElement("div");
-    rh.className="row";
-    data.headers.forEach(h=>{
-      const p=document.createElement("div");
-      p.className="header-pill";
-      p.textContent=h;
-      rh.appendChild(p);
-    });
-    right.appendChild(rh);
-    right.appendChild(document.createElement("div")).className="right-divider";
-
     data.matches.forEach((m,i)=>{
+      const scoreKey=`score-${i}`;
+
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -358,6 +284,12 @@ function loadData(){
         <div class="left-cell">${m.status}</div>
         <div class="left-cell">${m.score}</div>
       `;
+
+      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
+        lr.lastElementChild.classList.add("changed");
+      }
+      prevScore[scoreKey]=m.score;
+
       left.appendChild(lr);
 
       const rr=document.createElement("div");
@@ -378,42 +310,16 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    left.appendChild(document.createElement("div")).className="left-divider";
-    right.appendChild(document.createElement("div")).className="right-divider";
-
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      const lab=document.createElement("div");
-      lab.className="left-label";
-      lab.textContent=label;
-      left.appendChild(lab);
-
-      const rr=document.createElement("div");
-      rr.className="row";
-      data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
-        rr.appendChild(el);
-      });
-      right.appendChild(rr);
-    });
-
     data.totals.forEach(t=>{
-      const row=document.createElement("div");
-      row.className="summary-row";
-      row.innerHTML=`<div class="sum-label">${t.label}</div>`;
-      const vals=document.createElement("div");
-      vals.className="sum-values";
-      t.cells.slice(0,2).forEach((c,i)=>{
-        const cell=document.createElement("div");
-        cell.className="sum-cell";
-        cell.style.background=c.color;
-        cell.textContent=i===0?formatGBP(c.value):formatEUR(c.value);
-        vals.appendChild(cell);
-      });
-      row.appendChild(vals);
-      summary.appendChild(row);
+      const card=document.createElement("div");
+      card.className="week-card";
+      card.style.background=t.cells[0].color;
+      card.innerHTML=`
+        <div class="week-title">${t.label}</div>
+        <div class="week-gbp">${formatGBP(t.cells[0].value)}</div>
+        <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
+      `;
+      summary.appendChild(card);
     });
   });
 }

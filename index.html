@@ -257,6 +257,7 @@ body{
   background:var(--bg-soft);
   border-radius:14px;
   padding:12px;
+  cursor:pointer;
 }
 
 .ranking-title{
@@ -280,6 +281,48 @@ body{
 .rank-name{font-weight:600;font-size:13px}
 .rank-money{font-weight:800;color:#7CFF5B}
 .rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
+
+/* CHART CARD */
+.chart-card{
+  width:100%;
+  background:var(--bg-soft);
+  border-radius:14px;
+  padding:12px;
+  display:none;
+}
+
+.chart-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.chart-title{
+  font-size:13px;
+  font-weight:700;
+}
+
+.chart-toggle{
+  display:flex;
+  gap:6px;
+}
+
+.chart-btn{
+  background:var(--bg-row);
+  border:none;
+  color:var(--text-muted);
+  padding:4px 10px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.chart-btn.active{
+  background:#3a3f46;
+  color:#fff;
+}
 </style>
 </head>
 
@@ -297,10 +340,23 @@ body{
     <div class="summary-content" id="summaryContentWrap">
       <div class="weekly-card" id="weeklyCard"></div>
 
-      <div class="ranking-card">
+      <div class="ranking-card" id="rankingCard">
         <div class="ranking-title">🏆 All-Time Ranking</div>
         <div id="rankingBody"></div>
       </div>
+
+      <!-- CHART CARD (hidden by default) -->
+      <div class="chart-card" id="chartCard">
+        <div class="chart-header">
+          <div class="chart-title" id="chartTitle">📈 Performance</div>
+          <div class="chart-toggle">
+            <button class="chart-btn active">Matches</button>
+            <button class="chart-btn">Money</button>
+          </div>
+        </div>
+        <canvas id="performanceChart" height="180"></canvas>
+      </div>
+
     </div>
   </footer>
 </div>
@@ -326,14 +382,12 @@ function loadData(){
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
-    /* MATCH HEADER */
     const lh=document.createElement("div");
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* PLAYER HEADERS */
     const headerRow=document.createElement("div");
     headerRow.className="row";
     data.headers.forEach(h=>{
@@ -345,7 +399,6 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCH ROWS */
     data.matches.forEach((m,i)=>{
       const scoreKey=`score-${i}`;
 
@@ -382,7 +435,6 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* BET / WIN / WIN PP */
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
@@ -404,7 +456,6 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* WEEKLY SUMMARY */
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`
@@ -415,7 +466,6 @@ function loadData(){
         </div>`;
     });
 
-    /* RANKING – CLEAN & STABLE */
     data.ranking.forEach((r,i)=>{
       ranking.innerHTML+=`
         <div class="rank-row">
@@ -434,6 +484,12 @@ setInterval(loadData,REFRESH_MS);
 document.getElementById("summaryToggle").onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   document.getElementById("summaryToggle").classList.toggle("open");
+  document.getElementById("chartCard").style.display="none";
+};
+
+document.getElementById("rankingCard").onclick=()=>{
+  const chart=document.getElementById("chartCard");
+  chart.style.display = chart.style.display==="none" ? "block" : "none";
 };
 </script>
 

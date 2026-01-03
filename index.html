@@ -42,7 +42,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* MOBILE ZOOM OUT */
+/* MOBILE */
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -71,7 +71,110 @@ body{
   gap:var(--gap);
 }
 
-/* ... LEFT / RIGHT styles unchanged ... */
+.left-header{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+.left-divider{height:8px}
+
+.left-row{
+  height:var(--row-h);
+  display:grid;
+  grid-template-columns:1fr 28px 44px;
+  gap:var(--gap);
+}
+
+.left-cell{
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:600;
+}
+
+.left-cell.match{text-align:center}
+
+.left-label{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+/* RIGHT CARD */
+.right-card{
+  flex:1;
+  background:var(--bg-card);
+  border-radius:14px;
+  overflow-x:auto;
+  padding:8px;
+}
+
+.rows{
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+  min-width:max-content;
+}
+
+.row{
+  display:flex;
+  gap:var(--gap);
+}
+
+.header-pill{
+  width:var(--bet-w);
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+}
+
+.right-divider{height:8px}
+
+.bet{
+  width:var(--bet-w);
+  height:var(--row-h);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:800;
+  color:#111;
+}
+
+/* GLOW */
+.changed{
+  animation:glowPulse 10s ease-in-out;
+}
+
+@keyframes glowPulse{
+  0%{box-shadow:none}
+  15%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  30%{box-shadow:none}
+  45%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  60%{box-shadow:none}
+  75%{box-shadow:0 0 18px rgba(255,255,255,.9)}
+  100%{box-shadow:none}
+}
 
 /* SUMMARY */
 .summary{
@@ -114,19 +217,42 @@ body{
   padding-bottom:0;
 }
 
-/* TOP ROW (Weekly + Ranking) */
+/* TOP ROW: weekly + ranking */
 .summary-top{
   display:flex;
   gap:12px;
 }
 
-/* WEEKLY SUMMARY */
+/* WEEKLY */
 .weekly-card{
   width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px;
   padding:12px;
 }
+
+.weekly-title{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.week-row{
+  height:var(--week-row-h);
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  align-items:center;
+  background:var(--bg-row);
+  border-radius:8px;
+  padding:0 8px;
+  margin-bottom:4px;
+  font-size:11px;
+  font-weight:700;
+}
+
+.week-gbp.red{color:#ff4d4d}
+.week-gbp.green{color:#7CFF5B}
+.week-eur{opacity:.6;margin-left:6px}
 
 /* RANKING */
 .ranking-card{
@@ -137,7 +263,13 @@ body{
   cursor:pointer;
 }
 
-/* CHART CARD */
+.ranking-title{
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:10px;
+}
+
+/* HISTORY CHART */
 .chart-card{
   width:calc(var(--summary-w) * 2 + 12px);
   background:var(--bg-soft);
@@ -148,8 +280,8 @@ body{
 
 .chart-header{
   display:flex;
-  align-items:center;
   justify-content:space-between;
+  align-items:center;
   margin-bottom:10px;
 }
 
@@ -171,13 +303,8 @@ body{
   border-radius:8px;
   font-size:11px;
   font-weight:700;
-  cursor:pointer;
 }
-
-.chart-btn.active{
-  background:#3a3f46;
-  color:#fff;
-}
+.chart-btn.active{color:#fff;background:#3a3f46}
 </style>
 </head>
 
@@ -199,11 +326,13 @@ body{
 
         <div class="ranking-card" id="rankingCard">
           <div class="ranking-title">🏆 All-Time Ranking</div>
-          <div id="rankingBody"></div>
+          <div class="rank-row"><div class="rank-pos">1</div><div class="rank-name">Snackbar</div><div class="rank-money">£ 2.00</div><div class="rank-bets">5 matches right</div></div>
+          <div class="rank-row"><div class="rank-pos">2</div><div class="rank-name">Timbo</div><div class="rank-money">£ 0.00</div><div class="rank-bets">5 matches right</div></div>
+          <div class="rank-row"><div class="rank-pos">3</div><div class="rank-name">Pepe</div><div class="rank-money">£ 0.00</div><div class="rank-bets">3 matches right</div></div>
         </div>
       </div>
 
-      <!-- HISTORY CHART -->
+      <!-- HISTORY -->
       <div class="chart-card" id="chartCard">
         <div class="chart-header">
           <div class="chart-title">📈 History</div>
@@ -220,15 +349,16 @@ body{
 </div>
 
 <script>
-document.getElementById("summaryToggle").onclick=()=>{
+const toggle=document.getElementById("summaryToggle");
+toggle.onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
-  document.getElementById("summaryToggle").classList.toggle("open");
+  toggle.classList.toggle("open");
   document.getElementById("chartCard").style.display="none";
 };
 
 document.getElementById("rankingCard").onclick=()=>{
-  const chart=document.getElementById("chartCard");
-  chart.style.display = chart.style.display==="none" ? "block" : "none";
+  const c=document.getElementById("chartCard");
+  c.style.display=c.style.display==="none"?"block":"none";
 };
 </script>
 

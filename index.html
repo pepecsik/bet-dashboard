@@ -101,10 +101,7 @@ body{
   font-weight:600;
 }
 
-.left-cell.match{
-  justify-content:center;
-  text-align:center;
-}
+.left-cell.match{text-align:center}
 
 .left-label{
   height:var(--row-h);
@@ -206,7 +203,7 @@ body{
 
 .summary-content{
   display:grid;
-  grid-template-columns: var(--summary-w) var(--summary-w);
+  grid-template-columns:var(--summary-w) var(--summary-w);
   gap:12px;
   padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
@@ -342,12 +339,14 @@ function loadData(){
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
+    /* MATCH HEADER */
     const lh=document.createElement("div");
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
+    /* PLAYER HEADERS */
     const headerRow=document.createElement("div");
     headerRow.className="row";
     data.headers.forEach(h=>{
@@ -359,7 +358,10 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
+    /* MATCH ROWS */
     data.matches.forEach((m,i)=>{
+      const scoreKey=`score-${i}`;
+
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -367,22 +369,55 @@ function loadData(){
         <div class="left-cell">${m.status}</div>
         <div class="left-cell">${m.score}</div>
       `;
+
+      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
+        lr.lastElementChild.classList.add("changed");
+      }
+      prevScore[scoreKey]=m.score;
+
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
-      m.cells.forEach(c=>{
+      m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
         if(c.value){
           el.textContent=c.value;
           el.style.background=c.color;
         }
+        if(prev[key] && prev[key]!==val) el.classList.add("changed");
+        prev[key]=val;
         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
+    /* BET / WIN / WIN PP */
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    /* WEEKLY SUMMARY */
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`
@@ -393,6 +428,7 @@ function loadData(){
         </div>`;
     });
 
+    /* RANKING */
     data.ranking.forEach((r,i)=>{
       ranking.innerHTML+=`
         <div class="rank-row">
@@ -408,13 +444,12 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-// Toggle history on ranking click
+/* TOGGLES */
 document.getElementById("rankingCard").onclick=()=>{
   const h=document.getElementById("historyCard");
   h.style.display = h.style.display==="none" ? "block" : "none";
 };
 
-// Hide history when summary collapses
 document.getElementById("summaryToggle").onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   document.getElementById("summaryToggle").classList.toggle("open");

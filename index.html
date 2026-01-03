@@ -42,7 +42,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* MOBILE */
+/* MOBILE ZOOM OUT */
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -101,7 +101,10 @@ body{
   font-weight:600;
 }
 
-.left-cell.match{text-align:center}
+.left-cell.match{
+  justify-content:center;
+  text-align:center;
+}
 
 .left-label{
   height:var(--row-h);
@@ -167,13 +170,13 @@ body{
 }
 
 @keyframes glowPulse{
-  0%{box-shadow:none}
+  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
   15%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  30%{box-shadow:none}
+  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
   45%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  60%{box-shadow:none}
+  60%{box-shadow:0 0 0 rgba(255,255,255,0)}
   75%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  100%{box-shadow:none}
+  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
 /* SUMMARY */
@@ -203,7 +206,6 @@ body{
 
 .summary-content{
   display:flex;
-  flex-direction:column;
   gap:12px;
   padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
@@ -217,13 +219,7 @@ body{
   padding-bottom:0;
 }
 
-/* TOP ROW: weekly + ranking */
-.summary-top{
-  display:flex;
-  gap:12px;
-}
-
-/* WEEKLY */
+/* WEEKLY SUMMARY */
 .weekly-card{
   width:var(--summary-w);
   background:var(--bg-soft);
@@ -250,9 +246,10 @@ body{
   font-weight:700;
 }
 
+.week-label{color:#fff}
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
-.week-eur{opacity:.6;margin-left:6px}
+.week-eur{margin-left:6px;opacity:.6}
 
 /* RANKING */
 .ranking-card{
@@ -260,7 +257,6 @@ body{
   background:var(--bg-soft);
   border-radius:14px;
   padding:12px;
-  cursor:pointer;
 }
 
 .ranking-title{
@@ -269,42 +265,21 @@ body{
   margin-bottom:10px;
 }
 
-/* HISTORY CHART */
-.chart-card{
-  width:calc(var(--summary-w) * 2 + 12px);
-  background:var(--bg-soft);
-  border-radius:14px;
-  padding:12px;
-  display:none;
-}
-
-.chart-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:10px;
-}
-
-.chart-title{
-  font-size:13px;
-  font-weight:700;
-}
-
-.chart-toggle{
-  display:flex;
-  gap:6px;
-}
-
-.chart-btn{
+.rank-row{
+  display:grid;
+  grid-template-columns:20px 1fr auto;
+  grid-template-rows:auto auto;
+  gap:2px 6px;
   background:var(--bg-row);
-  border:none;
-  color:var(--text-muted);
-  padding:4px 10px;
-  border-radius:8px;
-  font-size:11px;
-  font-weight:700;
+  border-radius:10px;
+  padding:8px;
+  margin-bottom:6px;
 }
-.chart-btn.active{color:#fff;background:#3a3f46}
+
+.rank-pos{grid-row:span 2;font-weight:800}
+.rank-name{font-weight:600;font-size:13px}
+.rank-money{font-weight:800;color:#7CFF5B}
+.rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
 </style>
 </head>
 
@@ -320,45 +295,145 @@ body{
     <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
+      <div class="weekly-card" id="weeklyCard"></div>
 
-      <div class="summary-top">
-        <div class="weekly-card" id="weeklyCard"></div>
-
-        <div class="ranking-card" id="rankingCard">
-          <div class="ranking-title">🏆 All-Time Ranking</div>
-          <div class="rank-row"><div class="rank-pos">1</div><div class="rank-name">Snackbar</div><div class="rank-money">£ 2.00</div><div class="rank-bets">5 matches right</div></div>
-          <div class="rank-row"><div class="rank-pos">2</div><div class="rank-name">Timbo</div><div class="rank-money">£ 0.00</div><div class="rank-bets">5 matches right</div></div>
-          <div class="rank-row"><div class="rank-pos">3</div><div class="rank-name">Pepe</div><div class="rank-money">£ 0.00</div><div class="rank-bets">3 matches right</div></div>
-        </div>
+      <div class="ranking-card">
+        <div class="ranking-title">🏆 All-Time Ranking</div>
+        <div id="rankingBody"></div>
       </div>
-
-      <!-- HISTORY -->
-      <div class="chart-card" id="chartCard">
-        <div class="chart-header">
-          <div class="chart-title">📈 History</div>
-          <div class="chart-toggle">
-            <button class="chart-btn active">Matches</button>
-            <button class="chart-btn">Money</button>
-          </div>
-        </div>
-        <canvas id="performanceChart" height="180"></canvas>
-      </div>
-
     </div>
   </footer>
 </div>
 
 <script>
-const toggle=document.getElementById("summaryToggle");
-toggle.onclick=()=>{
-  document.getElementById("summaryContentWrap").classList.toggle("hidden");
-  toggle.classList.toggle("open");
-  document.getElementById("chartCard").style.display="none";
-};
+const API_URL="https://script.google.com/macros/s/AKfycbyJZbIj-Mbr1A-mQpGY4oDuxajJ8B5Pel-IwXumZRlzb1fcEwjrRLoHNv9eCA8whgDqDQ/exec";
+const REFRESH_MS=30000;
 
-document.getElementById("rankingCard").onclick=()=>{
-  const c=document.getElementById("chartCard");
-  c.style.display=c.style.display==="none"?"block":"none";
+const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
+const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+
+let prev={}, prevScore={};
+
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    const left=document.getElementById("left");
+    const right=document.getElementById("right");
+    const weekly=document.getElementById("weeklyCard");
+    const ranking=document.getElementById("rankingBody");
+
+    left.innerHTML="";
+    right.innerHTML="";
+    weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
+    ranking.innerHTML="";
+
+    /* MATCH HEADER */
+    const lh=document.createElement("div");
+    lh.className="left-header";
+    lh.textContent="MATCHES";
+    left.appendChild(lh);
+    left.appendChild(document.createElement("div")).className="left-divider";
+
+    /* PLAYER HEADERS */
+    const headerRow=document.createElement("div");
+    headerRow.className="row";
+    data.headers.forEach(h=>{
+      const p=document.createElement("div");
+      p.className="header-pill";
+      p.textContent=h;
+      headerRow.appendChild(p);
+    });
+    right.appendChild(headerRow);
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    /* MATCH ROWS */
+    data.matches.forEach((m,i)=>{
+      const scoreKey=`score-${i}`;
+
+      const lr=document.createElement("div");
+      lr.className="left-row";
+      lr.innerHTML=`
+        <div class="left-cell match">${m.match}</div>
+        <div class="left-cell">${m.status}</div>
+        <div class="left-cell">${m.score}</div>
+      `;
+
+      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
+        lr.lastElementChild.classList.add("changed");
+      }
+      prevScore[scoreKey]=m.score;
+
+      left.appendChild(lr);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
+        const el=document.createElement("div");
+        el.className="bet";
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+        }
+        if(prev[key] && prev[key]!==val) el.classList.add("changed");
+        prev[key]=val;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    /* BET / WIN / WIN PP */
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    /* WEEKLY SUMMARY */
+    data.totals.forEach(t=>{
+      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      weekly.innerHTML+=`
+        <div class="week-row">
+          <div class="week-label">${t.label}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+          <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
+        </div>`;
+    });
+
+    /* RANKING – CLEAN & STABLE */
+    data.ranking.forEach((r,i)=>{
+      ranking.innerHTML+=`
+        <div class="rank-row">
+          <div class="rank-pos">${i+1}</div>
+          <div class="rank-name">${r.name}</div>
+          <div class="rank-money">${formatGBP(r.money)}</div>
+          <div class="rank-bets">${r.matchesRight} matches right</div>
+        </div>`;
+    });
+  });
+}
+
+loadData();
+setInterval(loadData,REFRESH_MS);
+
+document.getElementById("summaryToggle").onclick=()=>{
+  document.getElementById("summaryContentWrap").classList.toggle("hidden");
+  document.getElementById("summaryToggle").classList.toggle("open");
 };
 </script>
 

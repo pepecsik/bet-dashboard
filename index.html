@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-/* === EVERYTHING BELOW IS YOUR ORIGINAL CSS – UNCHANGED === */
+/* === YOUR ORIGINAL CSS – UNCHANGED === */
 :root{
   --bg-main:#1c1f23;
   --bg-card:#262a30;
@@ -24,22 +24,18 @@
   --summary-w:250px;
   --week-row-h:30px;
 }
-
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
 }
-
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
 }
-
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -48,16 +44,12 @@ body{
     height: 128%;
   }
 }
-
 .main{
   display:flex;
   gap:10px;
   padding:10px;
   overflow:hidden;
 }
-
-/* LEFT / RIGHT / SUMMARY / RANKING CSS — unchanged */
-/* ... (intentionally untouched for safety) ... */
 
 /* HISTORY */
 .history-card{
@@ -108,7 +100,6 @@ body{
         <div id="rankingBody"></div>
       </div>
 
-      <!-- HISTORY -->
       <div class="history-card" id="historyCard">
         <div class="history-header">
           📈 History
@@ -124,7 +115,7 @@ body{
 </div>
 
 <script>
-/* === YOUR ORIGINAL JS – UNCHANGED === */
+/* === CONFIG === */
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -133,75 +124,141 @@ const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
 let prev={}, prevScore={}, chart, lastChartData;
 
+/* === FULL DASHBOARD RENDER (RESTORED) === */
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     lastChartData = data.chartData;
-    buildChart("matches");
 
-    /* EVERYTHING ELSE = YOUR EXISTING RENDER LOGIC */
-    /* untouched on purpose */
+    const left=document.getElementById("left");
+    const right=document.getElementById("right");
+    const weekly=document.getElementById("weeklyCard");
+    const ranking=document.getElementById("rankingBody");
+
+    left.innerHTML="";
+    right.innerHTML="";
+    weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
+    ranking.innerHTML="";
+
+    /* HEADERS */
+    const lh=document.createElement("div");
+    lh.className="left-header";
+    lh.textContent="MATCHES";
+    left.appendChild(lh);
+    left.appendChild(document.createElement("div")).className="left-divider";
+
+    const headerRow=document.createElement("div");
+    headerRow.className="row";
+    data.headers.forEach(h=>{
+      const p=document.createElement("div");
+      p.className="header-pill";
+      p.textContent=h;
+      headerRow.appendChild(p);
+    });
+    right.appendChild(headerRow);
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    /* MATCHES */
+    data.matches.forEach((m,i)=>{
+      const lr=document.createElement("div");
+      lr.className="left-row";
+      lr.innerHTML=`
+        <div class="left-cell">${m.match}</div>
+        <div class="left-cell">${m.status}</div>
+        <div class="left-cell">${m.score}</div>
+      `;
+      left.appendChild(lr);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      m.cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=c.value;
+        el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    /* BET / WIN / WIN PP */
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    /* WEEKLY */
+    data.totals.forEach(t=>{
+      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      weekly.innerHTML+=`
+        <div class="week-row">
+          <div>${t.label}</div>
+          <div class="${green?'week-gbp green':'week-gbp red'}">${formatGBP(t.cells[0].value)}</div>
+          <div>${formatEUR(t.cells[1].value)}</div>
+        </div>`;
+    });
+
+    /* RANKING */
+    data.ranking.forEach((r,i)=>{
+      ranking.innerHTML+=`
+        <div class="rank-row">
+          <div>${i+1}</div>
+          <div>${r.name}</div>
+          <div>${formatGBP(r.money)}</div>
+          <div>${r.matchesRight} matches right</div>
+        </div>`;
+    });
+
+    buildChart("matches");
   });
 }
 
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* === TOGGLES (unchanged) === */
-document.getElementById("rankingCard").onclick=()=>{
-  const h=document.getElementById("historyCard");
-  h.style.display = h.style.display==="none" ? "block" : "none";
-};
-
-document.getElementById("summaryToggle").onclick=()=>{
-  document.getElementById("summaryContentWrap").classList.toggle("hidden");
-  document.getElementById("summaryToggle").classList.toggle("open");
-  document.getElementById("historyCard").style.display="none";
-};
-
-/* === CHART (ISOLATED, SAFE) === */
+/* === HISTORY CHART === */
 function buildChart(type){
   if(!lastChartData) return;
-
   const ctx=document.getElementById("historyChart").getContext("2d");
   if(chart) chart.destroy();
-
-  const labels=lastChartData[type].map(r=>r.date.split("T")[0]);
-  const players=["Snackbar","Timbo","Pepe"];
-  const colors={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
 
   chart=new Chart(ctx,{
     type:"line",
     data:{
-      labels,
-      datasets:players.map(p=>({
-        label:p,
-        data:lastChartData[type].map(r=>r[p]),
-        borderColor:colors[p],
-        backgroundColor:colors[p],
-        tension:.35
-      }))
+      labels:lastChartData[type].map(r=>r.date),
+      datasets:[
+        {label:"Snackbar",data:lastChartData[type].map(r=>r.Snackbar),borderColor:"#7CFF5B",tension:.35},
+        {label:"Timbo",data:lastChartData[type].map(r=>r.Timbo),borderColor:"#4DA3FF",tension:.35},
+        {label:"Pepe",data:lastChartData[type].map(r=>r.Pepe),borderColor:"#FF5BC4",tension:.35}
+      ]
     },
-    options:{
-      responsive:true,
-      plugins:{legend:{labels:{color:"#fff"}}},
-      scales:{
-        x:{ticks:{color:"#aaa"}},
-        y:{ticks:{color:"#aaa"}}
-      }
-    }
+    options:{plugins:{legend:{labels:{color:"#fff"}}}}
   });
 }
 
-/* BUTTONS */
-btnMatches.onclick=()=>{
-  btnMatches.classList.add("active");
-  btnMoney.classList.remove("active");
-  buildChart("matches");
+/* TOGGLES */
+rankingCard.onclick=()=>{
+  historyCard.style.display =
+    historyCard.style.display==="block" ? "none" : "block";
 };
-btnMoney.onclick=()=>{
-  btnMoney.classList.add("active");
-  btnMatches.classList.remove("active");
-  buildChart("money");
+btnMatches.onclick=()=>buildChart("matches");
+btnMoney.onclick=()=>buildChart("money");
+
+summaryToggle.onclick=()=>{
+  summaryContentWrap.classList.toggle("hidden");
+  historyCard.style.display="none";
 };
 </script>
 

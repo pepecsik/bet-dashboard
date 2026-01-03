@@ -161,21 +161,6 @@ body{
   color:#111;
 }
 
-/* GLOW */
-.changed{
-  animation:glowPulse 10s ease-in-out;
-}
-
-@keyframes glowPulse{
-  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  15%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  45%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  60%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  75%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
-}
-
 /* SUMMARY */
 .summary{
   background:var(--bg-card);
@@ -203,6 +188,7 @@ body{
 
 .summary-content{
   display:flex;
+  flex-direction:column; /* ⬅️ THIS IS THE FIX */
   gap:12px;
   padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
@@ -214,6 +200,12 @@ body{
   opacity:0;
   padding-top:0;
   padding-bottom:0;
+}
+
+/* TOP ROW */
+.summary-top{
+  display:flex;
+  gap:12px;
 }
 
 /* WEEKLY */
@@ -233,7 +225,7 @@ body{
   cursor:pointer;
 }
 
-/* HISTORY (EMPTY PLACEHOLDER) */
+/* HISTORY */
 .history-card{
   width:calc(var(--summary-w) * 2 + 12px);
   background:var(--bg-soft);
@@ -258,17 +250,20 @@ body{
     <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
-      <div class="weekly-card" id="weeklyCard"></div>
 
-      <div class="ranking-card" id="rankingCard">
-        <div class="ranking-title">🏆 All-Time Ranking</div>
-        <div id="rankingBody"></div>
+      <div class="summary-top">
+        <div class="weekly-card" id="weeklyCard"></div>
+
+        <div class="ranking-card" id="rankingCard">
+          <div class="ranking-title">🏆 All-Time Ranking</div>
+          <div id="rankingBody"></div>
+        </div>
       </div>
 
-      <!-- EMPTY HISTORY -->
       <div class="history-card" id="historyCard">
-        📈 History (chart coming here)
+        📈 History (chart will come here)
       </div>
+
     </div>
   </footer>
 </div>
@@ -279,8 +274,6 @@ const REFRESH_MS=30000;
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
-
-let prev={}, prevScore={};
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -311,7 +304,7 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    data.matches.forEach((m,i)=>{
+    data.matches.forEach(m=>{
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.innerHTML=`
@@ -330,27 +323,6 @@ function loadData(){
           el.textContent=c.value;
           el.style.background=c.color;
         }
-        rr.appendChild(el);
-      });
-      right.appendChild(rr);
-    });
-
-    left.appendChild(document.createElement("div")).className="left-divider";
-    right.appendChild(document.createElement("div")).className="right-divider";
-
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      const lab=document.createElement("div");
-      lab.className="left-label";
-      lab.textContent=label;
-      left.appendChild(lab);
-
-      const rr=document.createElement("div");
-      rr.className="row";
-      data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
         rr.appendChild(el);
       });
       right.appendChild(rr);

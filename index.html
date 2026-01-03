@@ -1,327 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bet Dashboard</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-:root{
-  --bg-main:#1c1f23;
-  --bg-card:#262a30;
-  --bg-soft:#2f343a;
-  --bg-row:#343a40;
-
-  --text-main:#ffffff;
-  --text-muted:#9aa0a6;
-
-  --row-h:40px;
-  --gap:6px;
-
-  --left-w:170px;
-  --bet-w:104px;
-  --summary-w:250px;
-  --week-row-h:30px;
-}
-
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  font-family:Inter,system-ui,sans-serif;
-  background:var(--bg-main);
-  color:var(--text-main);
-}
-
-.app{
-  height:100vh;
-  display:grid;
-  grid-template-rows:1fr auto;
-}
-
-/* Mobile zoom-out */
-@media (max-width:768px){
-  .app{
-    transform:scale(0.78);
-    transform-origin:top left;
-    width:128%;
-    height:128%;
-  }
-}
-
-.main{
-  display:flex;
-  gap:10px;
-  padding:10px;
-  overflow:hidden;
-}
-
-/* LEFT CARD */
-.left-card{
-  width:var(--left-w);
-  background:var(--bg-card);
-  border-radius:14px;
-  padding:8px;
-  display:flex;
-  flex-direction:column;
-  gap:var(--gap);
-}
-
-.left-header{
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-}
-
-.left-divider{height:8px}
-
-.left-row{
-  height:var(--row-h);
-  display:grid;
-  grid-template-columns:1fr 26px 44px;
-  gap:var(--gap);
-}
-
-.left-cell{
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:600;
-}
-
-.left-cell.match{
-  text-align:center;
-  justify-content:center;
-}
-
-.left-label{
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-}
-
-/* RIGHT CARD */
-.right-card{
-  flex:1;
-  background:var(--bg-card);
-  border-radius:14px;
-  overflow-x:auto;
-  padding:8px;
-}
-
-.rows{
-  display:flex;
-  flex-direction:column;
-  gap:var(--gap);
-  min-width:max-content;
-}
-
-.row{
-  display:flex;
-  gap:var(--gap);
-}
-
-.header-pill{
-  width:var(--bet-w);
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-}
-
-.right-divider{height:8px}
-
-.bet{
-  width:var(--bet-w);
-  height:var(--row-h);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:13px;
-  font-weight:800;
-  color:#111;
-}
-
-/* SUMMARY */
-.summary{
-  background:var(--bg-card);
-  border-top:1px solid #3a3d42;
-}
-
-.summary-toggle{
-  background:var(--bg-soft);
-  padding:8px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.summary-toggle::before{
-  content:"▼";
-  font-size:14px;
-  transition:transform .25s ease;
-}
-
-.summary-toggle.open::before{
-  transform:rotate(180deg);
-}
-
-.summary-content{
-  display:flex;
-  gap:12px;
-  padding:10px;
-  overflow:hidden;
-}
-
-.summary-content.hidden{
-  display:none;
-}
-
-/* WEEKLY */
-.weekly-card,
-.ranking-card{
-  width:var(--summary-w);
-  background:var(--bg-soft);
-  border-radius:14px;
-  padding:12px;
-}
-
-.weekly-title,
-.ranking-title{
-  font-size:13px;
-  font-weight:700;
-  margin-bottom:8px;
-}
-
-.week-row{
-  height:var(--week-row-h);
-  display:grid;
-  grid-template-columns:1fr auto auto;
-  align-items:center;
-  background:var(--bg-row);
-  border-radius:8px;
-  padding:0 8px;
-  margin-bottom:4px;
-  font-size:11px;
-  font-weight:700;
-}
-
-.week-label{
-  color:#fff;
-}
-
-.week-gbp.red{color:#ff4d4d}
-.week-gbp.green{color:#7CFF5B}
-.week-eur{opacity:.6}
-
-/* RANKING */
-.rank-row{
-  display:grid;
-  grid-template-columns:20px 1fr auto;
-  grid-template-rows:auto auto;
-  gap:2px 6px;
-  background:var(--bg-row);
-  border-radius:10px;
-  padding:8px;
-  margin-bottom:6px;
-}
-
-.rank-pos{grid-row:span 2;font-weight:800}
-.rank-name{font-weight:600}
-.rank-money{font-weight:800;color:#7CFF5B}
-.rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
-</style>
-</head>
-
-<body>
-
-<div class="app">
-  <div class="main">
-    <div class="left-card" id="left"></div>
-    <div class="right-card"><div class="rows" id="right"></div></div>
-  </div>
-
-  <footer class="summary">
-    <div class="summary-toggle open" id="summaryToggle"></div>
-    <div class="summary-content" id="summaryContentWrap">
-      <div class="weekly-card" id="weeklyCard"></div>
-      <div class="ranking-card">
-        <div class="ranking-title">🏆 All-Time Ranking</div>
-        <div class="rank-row"><div class="rank-pos">1</div><div class="rank-name">Snackbar</div><div class="rank-money">£ 2.00</div><div class="rank-bets">5 matches right</div></div>
-        <div class="rank-row"><div class="rank-pos">2</div><div class="rank-name">Timbo</div><div class="rank-money">£ 0.00</div><div class="rank-bets">5 matches right</div></div>
-        <div class="rank-row"><div class="rank-pos">3</div><div class="rank-name">Pepe</div><div class="rank-money">£ 0.00</div><div class="rank-bets">3 matches right</div></div>
-      </div>
-    </div>
-  </footer>
-</div>
-
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbyJZbIj-Mbr1A-mQpGY4oDuxajJ8B5Pel-IwXumZRlzb1fcEwjrRLoHNv9eCA8whgDqDQ/exec";
 const REFRESH_MS=30000;
 
-const formatGBP=v=>"£"+Number(v??0).toFixed(2);
+const formatGBP=v=>"£ "+Number(v??0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v??0).toFixed(2);
+
+let prev={}, prevScore={};
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     const left=document.getElementById("left");
     const right=document.getElementById("right");
     const weekly=document.getElementById("weeklyCard");
+    const rankingCard=document.querySelector(".ranking-card");
 
+    /* RESET */
     left.innerHTML="";
     right.innerHTML="";
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
+    rankingCard.innerHTML='<div class="ranking-title">🏆 All-Time Ranking</div>';
 
+    /* ===== LEFT HEADER ===== */
     const lh=document.createElement("div");
     lh.className="left-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    const hr=document.createElement("div");
-    hr.className="row";
+    /* ===== BET HEADERS ===== */
+    const headerRow=document.createElement("div");
+    headerRow.className="row";
     data.headers.forEach(h=>{
       const p=document.createElement("div");
       p.className="header-pill";
       p.textContent=h;
-      hr.appendChild(p);
+      headerRow.appendChild(p);
     });
-    right.appendChild(hr);
+    right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    data.matches.forEach(m=>{
+    /* ===== MATCH ROWS ===== */
+    data.matches.forEach((m,i)=>{
+      const scoreKey=`score-${i}`;
+
       const lr=document.createElement("div");
       lr.className="left-row";
-      lr.innerHTML=`<div class="left-cell match">${m.match}</div><div class="left-cell">${m.status}</div><div class="left-cell">${m.score}</div>`;
+      lr.innerHTML=`
+        <div class="left-cell match">${m.match}</div>
+        <div class="left-cell">${m.status}</div>
+        <div class="left-cell">${m.score}</div>
+      `;
+      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
+        lr.lastElementChild.classList.add("changed");
+      }
+      prevScore[scoreKey]=m.score;
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
-      m.cells.forEach(c=>{
+      m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-        if(c.value){ el.textContent=c.value; el.style.background=c.color; }
+        if(c.value){
+          el.textContent=c.value;
+          el.style.background=c.color;
+        }
+        if(prev[key] && prev[key]!==val) el.classList.add("changed");
+        prev[key]=val;
         rr.appendChild(el);
       });
       right.appendChild(rr);
@@ -330,11 +77,12 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
+    /* ===== BET / WIN / WIN PP ===== */
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      const l=document.createElement("div");
-      l.className="left-label";
-      l.textContent=label;
-      left.appendChild(l);
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
 
       const rr=document.createElement("div");
       rr.className="row";
@@ -348,14 +96,32 @@ function loadData(){
       right.appendChild(rr);
     });
 
+    /* ===== WEEKLY SUMMARY ===== */
     data.totals.forEach(t=>{
+      const forceGreen=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      const isGreen=forceGreen || t.cells[0].color.toLowerCase().includes("green");
+
       const row=document.createElement("div");
       row.className="week-row";
-      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      row.innerHTML=`<div class="week-label">${t.label}</div>
-        <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
-        <div class="week-eur">${formatEUR(t.cells[1].value)}</div>`;
+      row.innerHTML=`
+        <div class="week-label">${t.label}</div>
+        <div class="week-gbp ${isGreen?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+        <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
+      `;
       weekly.appendChild(row);
+    });
+
+    /* ===== RANKING (LIVE FROM SHEET) ===== */
+    data.ranking.forEach(r=>{
+      const row=document.createElement("div");
+      row.className="rank-row";
+      row.innerHTML=`
+        <div class="rank-pos">${r.rank}</div>
+        <div class="rank-name">${r.name}</div>
+        <div class="rank-money">${formatGBP(r.money)}</div>
+        <div class="rank-bets">${r.matchesRight} matches right</div>
+      `;
+      rankingCard.appendChild(row);
     });
   });
 }
@@ -363,12 +129,10 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
+/* TOGGLE */
 const toggle=document.getElementById("summaryToggle");
 toggle.onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   toggle.classList.toggle("open");
 };
 </script>
-
-</body>
-</html>

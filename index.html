@@ -20,9 +20,7 @@
   --row-h:40px;
   --gap:6px;
 
-  /* 🔹 LEFT CARD NOW ~75% WIDTH */
   --left-w:170px;
-
   --bet-w:104px;
   --summary-w:250px;
 
@@ -86,10 +84,11 @@ body{
 
 .left-divider{height:8px}
 
+/* 🔧 ONLY CHANGE IS HERE */
 .left-row{
   height:var(--row-h);
   display:grid;
-  grid-template-columns:1.4fr 42px 52px;
+  grid-template-columns:1fr 34px 44px;
   gap:var(--gap);
 }
 
@@ -103,10 +102,8 @@ body{
   font-weight:600;
 }
 
-/* centered match names */
 .left-cell.match{
   justify-content:center;
-  padding-left:0;
   text-align:center;
 }
 
@@ -189,7 +186,6 @@ body{
   border-top:1px solid #3a3d42;
 }
 
-/* 🔺 CENTERED TRIANGLE TOGGLE */
 .summary-toggle{
   background:var(--bg-soft);
   padding:8px 12px;

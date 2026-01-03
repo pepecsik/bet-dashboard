@@ -24,7 +24,7 @@
   --bet-w:104px;
   --summary-w:250px;
 
-  --week-row-h:30px; /* smaller so 5 rows = 3 ranking rows */
+  --week-row-h:30px;
 }
 
 *{box-sizing:border-box}
@@ -94,6 +94,17 @@ body{
 .left-cell.match{
   justify-content:flex-start;
   padding-left:8px;
+}
+
+.left-label{
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
 }
 
 /* ===== RIGHT CARD ===== */
@@ -205,38 +216,26 @@ body{
 .week-row{
   height:var(--week-row-h);
   display:grid;
-  grid-template-columns:1fr auto;
-  grid-template-rows:auto auto;
+  grid-template-columns:1fr auto auto;
+  align-items:center;
   background:var(--bg-row);
   border-radius:8px;
-  padding:6px 8px;
+  padding:0 8px;
   margin-bottom:4px;
+  font-size:11px;
+  font-weight:700;
 }
 
 .week-row:last-child{margin-bottom:0}
 
-.week-label{
-  font-size:11px;
-  font-weight:700;
-  opacity:.7;
-}
-
-.week-gbp{
-  font-size:13px;
-  font-weight:800;
-  grid-row:1;
-  grid-column:2;
-  text-align:right;
-}
+.week-label{opacity:.7}
 
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
 .week-eur{
-  font-size:10px;
+  margin-left:6px;
   opacity:.6;
-  grid-column:2;
-  text-align:right;
 }
 
 /* ===== RANKING ===== */
@@ -288,9 +287,9 @@ body{
 
       <div class="ranking-card">
         <div class="ranking-title">🏆 All-Time Ranking</div>
-        <div class="rank-row"><div class="rank-pos">1</div><div class="rank-name">Snackbar</div><div class="rank-money">€ 2.00</div><div class="rank-bets">5 matches right</div></div>
-        <div class="rank-row"><div class="rank-pos">2</div><div class="rank-name">Timbo</div><div class="rank-money">€ 0.00</div><div class="rank-bets">5 matches right</div></div>
-        <div class="rank-row"><div class="rank-pos">3</div><div class="rank-name">Pepe</div><div class="rank-money">€ 0.00</div><div class="rank-bets">3 matches right</div></div>
+        <div class="rank-row"><div class="rank-pos">1</div><div class="rank-name">Snackbar</div><div class="rank-money">£ 2.00</div><div class="rank-bets">5 matches right</div></div>
+        <div class="rank-row"><div class="rank-pos">2</div><div class="rank-name">Timbo</div><div class="rank-money">£ 0.00</div><div class="rank-bets">5 matches right</div></div>
+        <div class="rank-row"><div class="rank-pos">3</div><div class="rank-name">Pepe</div><div class="rank-money">£ 0.00</div><div class="rank-bets">3 matches right</div></div>
       </div>
     </div>
   </footer>
@@ -366,12 +365,33 @@ function loadData(){
       right.appendChild(rr);
     });
 
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div");
+      lab.className="left-label";
+      lab.textContent=label;
+      left.appendChild(lab);
+
+      const rr=document.createElement("div");
+      rr.className="row";
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        el.textContent=formatGBP(c.value);
+        el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
     data.totals.forEach(t=>{
       const row=document.createElement("div");
       row.className="week-row";
 
-      const forceGreen = ["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      const isGreen = forceGreen || t.cells[0].color.toLowerCase().includes("green");
+      const forceGreen=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      const isGreen=forceGreen || t.cells[0].color.toLowerCase().includes("green");
 
       row.innerHTML=`
         <div class="week-label">${t.label}</div>

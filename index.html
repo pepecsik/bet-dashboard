@@ -42,13 +42,13 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* ===== MOBILE START ZOOMED OUT ===== */
+/* ===== MOBILE START MORE ZOOMED OUT ===== */
 @media (max-width: 768px){
   .app{
-    transform: scale(0.83);
+    transform: scale(0.78);
     transform-origin: top left;
-    width: 120.5%;
-    height: 120.5%;
+    width: 128%;
+    height: 128%;
   }
 }
 
@@ -101,7 +101,7 @@ body{
   font-weight:600;
 }
 
-/* ✅ CENTER MATCH NAMES */
+/* centered match names */
 .left-cell.match{
   justify-content:center;
   padding-left:0;
@@ -187,13 +187,23 @@ body{
   border-top:1px solid #3a3d42;
 }
 
+/* triangle toggle */
 .summary-toggle{
   background:var(--bg-soft);
-  padding:10px 12px;
-  font-size:13px;
-  font-weight:700;
+  padding:8px 12px;
   cursor:pointer;
-  text-align:left;
+  display:flex;
+  align-items:center;
+}
+
+.summary-toggle::before{
+  content:"▼";
+  font-size:14px;
+  transition:transform .25s ease;
+}
+
+.summary-toggle.open::before{
+  transform:rotate(180deg);
 }
 
 .summary-content{
@@ -294,7 +304,7 @@ body{
   </div>
 
   <footer class="summary">
-    <div class="summary-toggle" id="summaryToggle">Weekly Summary / Ranking</div>
+    <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
       <div class="weekly-card" id="weeklyCard"></div>
@@ -420,8 +430,10 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-document.getElementById("summaryToggle").onclick=()=>{
+const toggle=document.getElementById("summaryToggle");
+toggle.onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
+  toggle.classList.toggle("open");
 };
 </script>
 

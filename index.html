@@ -71,7 +71,8 @@ body{
   gap:var(--gap);
 }
 
-.left-header{
+.left-header,
+.left-label{
   height:var(--row-h);
   background:var(--bg-soft);
   border-radius:10px;
@@ -104,17 +105,6 @@ body{
 .left-cell.match{
   justify-content:center;
   text-align:center;
-}
-
-.left-label{
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
 }
 
 /* ===== RIGHT CARD ===== */
@@ -162,6 +152,26 @@ body{
   font-size:13px;
   font-weight:800;
   color:#111;
+}
+
+/* ===== STRONG GLOW — 3 PULSES / 10s ===== */
+.changed{
+  animation: glowPulseStrong 10s ease-in-out;
+}
+
+@keyframes glowPulseStrong{
+  0%,10%,33%,43%,66%,76%,100%{
+    box-shadow:0 0 0 rgba(255,255,255,0);
+  }
+  20%{
+    box-shadow:0 0 22px rgba(255,255,255,0.95);
+  }
+  53%{
+    box-shadow:0 0 22px rgba(255,255,255,0.95);
+  }
+  86%{
+    box-shadow:0 0 22px rgba(255,255,255,0.95);
+  }
 }
 
 /* ===== SUMMARY ===== */
@@ -309,12 +319,10 @@ function loadData(){
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
-    const lh=document.createElement("div");
-    lh.className="left-header";
-    lh.textContent="MATCHES";
-    left.appendChild(lh);
-    left.appendChild(document.createElement("div")).className="left-divider";
+    // MATCH HEADER
+    left.innerHTML += '<div class="left-header">MATCHES</div><div class="left-divider"></div>';
 
+    // HEADERS
     const headerRow=document.createElement("div");
     headerRow.className="row";
     data.headers.forEach(h=>{
@@ -326,16 +334,14 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
+    // MATCH ROWS
     data.matches.forEach(m=>{
-      const lr=document.createElement("div");
-      lr.className="left-row";
-      lr.innerHTML=`
-        <div class="left-cell match">${m.match}</div>
-        <div class="left-cell">${m.status}</div>
-        <div class="left-cell">${m.score}</div>
-      `;
-      left.appendChild(lr);
-
+      left.innerHTML += `
+        <div class="left-row">
+          <div class="left-cell match">${m.match}</div>
+          <div class="left-cell">${m.status}</div>
+          <div class="left-cell">${m.score}</div>
+        </div>`;
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach(c=>{
@@ -350,15 +356,12 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    left.appendChild(document.createElement("div")).className="left-divider";
+    left.innerHTML += '<div class="left-divider"></div>';
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    ["BET","WIN","WIN PP"].forEach((_,i)=>{
-      const lab=document.createElement("div");
-      lab.className="left-label";
-      lab.textContent=data.betSummary[i].label;
-      left.appendChild(lab);
-
+    // FIXED LABELS
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      left.innerHTML += `<div class="left-label">${label}</div>`;
       const rr=document.createElement("div");
       rr.className="row";
       data.betSummary[i].cells.forEach(c=>{
@@ -371,18 +374,20 @@ function loadData(){
       right.appendChild(rr);
     });
 
+    // WEEKLY SUMMARY
     data.totals.forEach(t=>{
-      const isGreen=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      weekly.innerHTML+=`
+      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      weekly.innerHTML += `
         <div class="week-row">
           <div class="week-label">${t.label}</div>
-          <div class="week-gbp ${isGreen?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
           <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
         </div>`;
     });
 
+    // RANKING
     data.ranking.forEach(r=>{
-      ranking.innerHTML+=`
+      ranking.innerHTML += `
         <div class="rank-row">
           <div class="rank-pos">${r.rank}</div>
           <div class="rank-name">${r.name}</div>

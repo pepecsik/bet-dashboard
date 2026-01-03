@@ -14,8 +14,6 @@
   --bg-soft:#2f343a;
   --bg-row:#343a40;
 
-  --text-main:#ffffff;
-
   --row-h:40px;
   --gap:6px;
 
@@ -32,7 +30,7 @@ body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
-  color:var(--text-main);
+  color:#fff;
 }
 
 .app{
@@ -42,10 +40,10 @@ body{
 }
 
 /* ===== MOBILE START ZOOMED OUT ===== */
-@media (max-width: 768px){
+@media (max-width:768px){
   .app{
-    transform: scale(0.78);
-    transform-origin: top left;
+    transform:scale(0.78);
+    transform-origin:top left;
     width:128%;
     height:128%;
   }
@@ -70,7 +68,8 @@ body{
   gap:var(--gap);
 }
 
-.left-header,.left-label{
+.left-header,
+.left-label{
   height:var(--row-h);
   background:var(--bg-soft);
   border-radius:10px;
@@ -100,7 +99,9 @@ body{
   font-weight:600;
 }
 
-.left-cell.match{text-align:center}
+.left-cell.match{
+  text-align:center;
+}
 
 /* ===== RIGHT CARD ===== */
 .right-card{
@@ -135,6 +136,8 @@ body{
   font-weight:700;
 }
 
+.right-divider{height:8px}
+
 .bet{
   width:var(--bet-w);
   height:var(--row-h);
@@ -147,14 +150,19 @@ body{
   color:#111;
 }
 
-/* ===== STRONG GLOW (3 pulses / 10s) ===== */
+/* ===== GLOW (RESTORED – 3 STRONG PULSES) ===== */
 .changed{
-  animation:glowPulseStrong 10s ease-in-out;
+  animation:glowPulse 10s ease-in-out;
 }
 
-@keyframes glowPulseStrong{
-  0%,10%,33%,43%,66%,76%,100%{box-shadow:none}
-  20%,53%,86%{box-shadow:0 0 22px rgba(255,255,255,.95)}
+@keyframes glowPulse{
+  0%   {box-shadow:0 0 0 rgba(255,255,255,0)}
+  10%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
+  20%  {box-shadow:0 0 0 rgba(255,255,255,0)}
+  45%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
+  55%  {box-shadow:0 0 0 rgba(255,255,255,0)}
+  80%  {box-shadow:0 0 22px rgba(255,255,255,.95)}
+  100% {box-shadow:0 0 0 rgba(255,255,255,0)}
 }
 
 /* ===== SUMMARY ===== */
@@ -173,26 +181,25 @@ body{
 
 .summary-toggle::before{
   content:"▼";
-  transition:transform .25s;
+  transition:transform .25s ease;
 }
 
-.summary-toggle.open::before{transform:rotate(180deg)}
+.summary-toggle.open::before{
+  transform:rotate(180deg);
+}
 
 .summary-content{
   display:flex;
   gap:12px;
   padding:10px;
-  overflow:hidden;
 }
 
 .summary-content.hidden{
-  max-height:0;
-  opacity:0;
-  padding:0;
+  display:none;
 }
 
-/* ===== WEEKLY ===== */
-.weekly-card,.ranking-card{
+/* ===== WEEKLY SUMMARY ===== */
+.weekly-card{
   width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px;
@@ -203,6 +210,7 @@ body{
   height:var(--week-row-h);
   display:grid;
   grid-template-columns:1fr auto auto;
+  align-items:center;
   background:var(--bg-row);
   border-radius:8px;
   padding:0 8px;
@@ -211,22 +219,31 @@ body{
   font-weight:700;
 }
 
-.week-gbp.green{color:#7CFF5B}
 .week-gbp.red{color:#ff4d4d}
-.week-eur{opacity:.6;margin-left:6px}
+.week-gbp.green{color:#7CFF5B}
+.week-eur{opacity:.6}
+
+/* ===== RANKING ===== */
+.ranking-card{
+  width:var(--summary-w);
+  background:var(--bg-soft);
+  border-radius:14px;
+  padding:12px;
+}
 
 .rank-row{
   display:grid;
   grid-template-columns:20px 1fr auto;
   grid-template-rows:auto auto;
+  gap:2px 6px;
   background:var(--bg-row);
   border-radius:10px;
   padding:8px;
   margin-bottom:6px;
 }
-.rank-pos{grid-row:span 2;font-weight:800}
+
 .rank-money{color:#7CFF5B;font-weight:800}
-.rank-bets{grid-column:2/4;font-size:11px;opacity:.6}
+.rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
 </style>
 </head>
 
@@ -240,10 +257,11 @@ body{
 
   <footer class="summary">
     <div class="summary-toggle open" id="summaryToggle"></div>
+
     <div class="summary-content" id="summaryContentWrap">
       <div class="weekly-card" id="weeklyCard"></div>
       <div class="ranking-card">
-        <div style="font-weight:700;margin-bottom:10px">🏆 All-Time Ranking</div>
+        <div style="font-weight:700;margin-bottom:8px">🏆 All-Time Ranking</div>
         <div id="rankingBody"></div>
       </div>
     </div>
@@ -257,7 +275,7 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
-let prevBets={}, prevScores={};
+let prev={}, prevScore={};
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -266,12 +284,15 @@ function loadData(){
     const weekly=document.getElementById("weeklyCard");
     const ranking=document.getElementById("rankingBody");
 
-    left.innerHTML='<div class="left-header">MATCHES</div><div class="left-divider"></div>';
+    left.innerHTML="";
     right.innerHTML="";
-    weekly.innerHTML='<div style="font-weight:700;margin-bottom:8px">📊 Weekly Summary</div>';
+    weekly.innerHTML="";
     ranking.innerHTML="";
 
-    // headers
+    // MATCHES HEADER
+    left.innerHTML+='<div class="left-header">MATCHES</div><div class="left-divider"></div>';
+
+    // COLUMN HEADERS
     const hr=document.createElement("div");
     hr.className="row";
     data.headers.forEach(h=>{
@@ -281,44 +302,39 @@ function loadData(){
       hr.appendChild(d);
     });
     right.appendChild(hr);
+    right.appendChild(document.createElement("div")).className="right-divider";
 
-    // matches
+    // MATCH ROWS
     data.matches.forEach((m,i)=>{
-      const scoreKey=`s-${i}`;
+      const sk=`score-${i}`;
+
       const lr=document.createElement("div");
       lr.className="left-row";
-      lr.innerHTML=`<div class="left-cell match">${m.match}</div>
-        <div class="left-cell">${m.status}</div>
-        <div class="left-cell">${m.score}</div>`;
-
-      if(prevScores[scoreKey] && prevScores[scoreKey]!==m.score){
-        lr.lastElementChild.classList.add("changed");
-      }
-      prevScores[scoreKey]=m.score;
+      lr.innerHTML=`<div class="left-cell match">${m.match}</div><div class="left-cell">${m.status}</div><div class="left-cell">${m.score}</div>`;
+      if(prevScore[sk] && prevScore[sk]!==m.score) lr.lastChild.classList.add("changed");
+      prevScore[sk]=m.score;
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
-        const key=`b-${i}-${j}`;
+        const k=`b-${i}-${j}`, v=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-        if(c.value){
-          el.textContent=c.value;
-          el.style.background=c.color;
-        }
-        if(prevBets[key] && prevBets[key]!==c.value){
-          el.classList.add("changed");
-        }
-        prevBets[key]=c.value;
+        if(c.value){el.textContent=c.value;el.style.background=c.color;}
+        if(prev[k] && prev[k]!==v) el.classList.add("changed");
+        prev[k]=v;
         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
-    // labels
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      left.innerHTML+=`<div class="left-label">${label}</div>`;
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
+
+    // BET / WIN / WIN PP
+    ["BET","WIN","WIN PP"].forEach((lbl,i)=>{
+      left.innerHTML+=`<div class="left-label">${lbl}</div>`;
       const rr=document.createElement("div");
       rr.className="row";
       data.betSummary[i].cells.forEach(c=>{
@@ -331,21 +347,21 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    // weekly
+    // WEEKLY
     data.totals.forEach(t=>{
       weekly.innerHTML+=`
         <div class="week-row">
           <div>${t.label}</div>
-          <div class="week-gbp ${t.label.includes("WIN")?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+          <div class="week-gbp ${t.label.includes('WIN')?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
           <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
         </div>`;
     });
 
-    // ranking
+    // RANKING (DYNAMIC)
     data.ranking.forEach(r=>{
       ranking.innerHTML+=`
         <div class="rank-row">
-          <div class="rank-pos">${r.rank}</div>
+          <div>${r.rank}</div>
           <div>${r.name}</div>
           <div class="rank-money">${formatGBP(r.money)}</div>
           <div class="rank-bets">${r.matchesRight} matches right</div>
@@ -357,7 +373,7 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-summaryToggle.onclick=()=>{
+document.getElementById("summaryToggle").onclick=()=>{
   summaryContentWrap.classList.toggle("hidden");
   summaryToggle.classList.toggle("open");
 };

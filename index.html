@@ -28,6 +28,7 @@ if ("serviceWorker" in navigator) {
 <title>Bet Dashboard</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 :root{
@@ -334,8 +335,19 @@ body{
       </div>
 
       <div class="history-card" id="historyCard">
-        📈 History (chart will come here)
-      </div>
+
+       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span>📈 History</span>
+        <div>
+         <button id="btnMatches" class="active">Matches</button>
+         <button id="btnMoney">Money</button>
+        </div>
+       </div>
+
+      <canvas id="historyChart" height="120"></canvas>
+
+     </div>
+
     </div>
   </footer>
 </div>
@@ -347,7 +359,8 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
-let prev={}, prevScore={};
+/* 🔹 NEW: chart state (does NOTHING yet visually) */
+let prev={}, prevScore={}, chartDataCache=null, historyChart=null;
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
@@ -360,6 +373,11 @@ function loadData(){
     right.innerHTML="";
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
+
+    /* 🔹 NEW: store chart data safely (no rendering yet) */
+    if(data.chartData){
+      chartDataCache = data.chartData;
+    }
 
     /* MATCH HEADER */
     const lh=document.createElement("div");
@@ -466,7 +484,7 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* TOGGLES */
+/* TOGGLES (UNCHANGED) */
 document.getElementById("rankingCard").onclick=()=>{
   const h=document.getElementById("historyCard");
   h.style.display = h.style.display==="none" ? "block" : "none";

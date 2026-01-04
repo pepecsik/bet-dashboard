@@ -359,7 +359,7 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
-/* 🔹 NEW: chart state (does NOTHING yet visually) */
+/* STATE */
 let prev={}, prevScore={}, chartDataCache=null, historyChart=null;
 
 function loadData(){
@@ -374,7 +374,7 @@ function loadData(){
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
-    /* 🔹 NEW: store chart data safely (no rendering yet) */
+    /* STORE CHART DATA */
     if(data.chartData){
       chartDataCache = data.chartData;
     }
@@ -484,10 +484,14 @@ function loadData(){
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* TOGGLES (UNCHANGED) */
+/* =========================
+   TOGGLES
+   ========================= */
 document.getElementById("rankingCard").onclick=()=>{
   const h=document.getElementById("historyCard");
-  h.style.display = h.style.display==="none" ? "block" : "none";
+  const open = h.style.display === "none" || !h.style.display;
+  h.style.display = open ? "block" : "none";
+  if(open) drawHistoryChart("matches");
 };
 
 document.getElementById("summaryToggle").onclick=()=>{
@@ -495,7 +499,77 @@ document.getElementById("summaryToggle").onclick=()=>{
   document.getElementById("summaryToggle").classList.toggle("open");
   document.getElementById("historyCard").style.display="none";
 };
+
+/* =========================
+   HISTORY BUTTONS
+   ========================= */
+const btnMatches = document.getElementById("btnMatches");
+const btnMoney = document.getElementById("btnMoney");
+
+if(btnMatches && btnMoney){
+  btnMatches.onclick = ()=>{
+    btnMatches.classList.add("active");
+    btnMoney.classList.remove("active");
+    drawHistoryChart("matches");
+  };
+
+  btnMoney.onclick = ()=>{
+    btnMoney.classList.add("active");
+    btnMatches.classList.remove("active");
+    drawHistoryChart("money");
+  };
+}
+
+/* =========================
+   HISTORY CHART
+   ========================= */
+function drawHistoryChart(type){
+  if(!chartDataCache) return;
+
+  const canvas=document.getElementById("historyChart");
+  if(!canvas) return;
+
+  const ctx=canvas.getContext("2d");
+  if(historyChart) historyChart.destroy();
+
+  const source=chartDataCache[type];
+  if(!source || !source.length) return;
+
+  const labels=source.map(r=>new Date(r.date).toLocaleDateString());
+
+  const players=["Snackbar","Timbo","Pepe"];
+  const colors={
+    Snackbar:"#7CFF5B",
+    Timbo:"#4DA3FF",
+    Pepe:"#FF5BC4"
+  };
+
+  historyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels,
+      datasets:players.map(p=>({
+        label:p,
+        data:source.map(r=>r[p]),
+        borderColor:colors[p],
+        backgroundColor:colors[p],
+        tension:0.35,
+        fill:false
+      }))
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#fff"}}},
+      scales:{
+        x:{ticks:{color:"#aaa"}},
+        y:{ticks:{color:"#aaa"}}
+      }
+    }
+  });
+}
 </script>
+
 
 </body>
 </html>

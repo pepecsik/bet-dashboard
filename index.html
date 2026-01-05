@@ -312,6 +312,10 @@ body{
   padding:14px;
   font-weight:700;
   display:none;
+
+  height:260px;          /* ✅ FIXED HEIGHT */
+  overflow:hidden;       /* ✅ STOP GROWING */
+}
 }
 </style>
 </head>
@@ -525,49 +529,63 @@ if(btnMatches && btnMoney){
    HISTORY CHART
    ========================= */
 function drawHistoryChart(type){
-  if(!chartDataCache) return;
+  // ✅ Prevent re-drawing the same chart
+  if(historyChart && historyChart._type === type) return;
 
-  const canvas=document.getElementById("historyChart");
+  const canvas = document.getElementById("historyChart");
   if(!canvas) return;
 
-  const ctx=canvas.getContext("2d");
-  if(historyChart) historyChart.destroy();
+  const ctx = canvas.getContext("2d");
 
-  const source=chartDataCache[type];
+  // 🔥 Destroy old chart BEFORE creating a new one
+  if(historyChart){
+    historyChart.destroy();
+    historyChart = null;
+  }
+
+  const source = chartDataCache[type];
   if(!source || !source.length) return;
 
-  const labels=source.map(r=>new Date(r.date).toLocaleDateString());
+  const labels = source.map(r =>
+    new Date(r.date).toLocaleDateString()
+  );
 
-  const players=["Snackbar","Timbo","Pepe"];
-  const colors={
+  const players = ["Snackbar","Timbo","Pepe"];
+  const colors = {
     Snackbar:"#7CFF5B",
     Timbo:"#4DA3FF",
     Pepe:"#FF5BC4"
   };
 
-  historyChart=new Chart(ctx,{
+  // ✅ Create chart
+  historyChart = new Chart(ctx,{
     type:"line",
     data:{
       labels,
-      datasets:players.map(p=>({
-        label:p,
-        data:source.map(r=>r[p]),
-        borderColor:colors[p],
-        backgroundColor:colors[p],
-        tension:0.35,
-        fill:false
+      datasets: players.map(p => ({
+        label: p,
+        data: source.map(r => r[p]),
+        borderColor: colors[p],
+        backgroundColor: colors[p],
+        tension: 0.35,
+        fill: false
       }))
     },
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:"#fff"}}},
+      plugins:{
+        legend:{ labels:{ color:"#fff" } }
+      },
       scales:{
-        x:{ticks:{color:"#aaa"}},
-        y:{ticks:{color:"#aaa"}}
+        x:{ ticks:{ color:"#aaa" } },
+        y:{ ticks:{ color:"#aaa" } }
       }
     }
   });
+
+  // ✅ IMPORTANT: remember what type this chart is
+  historyChart._type = type;
 }
 </script>
 

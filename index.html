@@ -44,7 +44,7 @@ if ("serviceWorker" in navigator) {
   --row-h:40px;
   --gap:6px;
 
-  --left-w:170px;
+  --left-w:190px;
   --bet-w:104px;
   --summary-w:250px;
 
@@ -52,8 +52,8 @@ if ("serviceWorker" in navigator) {
 }
 
 .team-logo{
-  width:30px;
-  height:30px;
+  width:34px;
+  height:34px;
   object-fit:contain;
 }
 .match-teams{
@@ -379,26 +379,26 @@ const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
    TEAM LOGOS
    ========================= */
 const TEAM_LOGOS = {
-  ARS: "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
-  AVI: "https://upload.wikimedia.org/wikipedia/en/9/9a/Aston_Villa_FC_crest.svg",
-  BOU: "https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth.svg",
-  BRE: "https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg",
-  BRI: "https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg",
-  BUR: "https://upload.wikimedia.org/wikipedia/commons/2/2a/Burnley_FC_crest.svg",
-  CHE: "https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg",
-  CPA: "https://upload.wikimedia.org/wikipedia/en/0/0c/Crystal_Palace_FC_logo.svg",
-  EVE: "https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg",
-  FUL: "https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg",
-  LEE: "https://upload.wikimedia.org/wikipedia/en/0/03/Leeds_United_Logo.svg",
-  LIV: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
-  CTY: "https://media.api-sports.io/football/teams/50.png",
-  MAN: "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg",
-  NWC: "https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg",
-  NOT: "https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_FC_logo.svg",
-  SUN: "https://upload.wikimedia.org/wikipedia/en/5/58/Sunderland_AFC.svg",
-  TOT: "https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg",
-  WHA: "https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg",
-  WOL: "https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg"
+  ARS: "https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/64px-Arsenal_FC.svg.png",
+  AVI: "https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/Aston_Villa_FC_crest.svg/64px-Aston_Villa_FC_crest.svg.png",
+  BOU: "https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/AFC_Bournemouth.svg/64px-AFC_Bournemouth.svg.png",
+  BRE: "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/64px-Brentford_FC_crest.svg.png",
+  BRI: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/64px-Brighton_%26_Hove_Albion_logo.svg.png",
+  BUR: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/64px-Burnley_FC_Logo.svg.png",
+  CHE: "https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/64px-Chelsea_FC.svg.png",
+  CPA: "https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Crystal_Palace_FC_logo.svg/64px-Crystal_Palace_FC_logo.svg.png",
+  EVE: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/64px-Everton_FC_logo.svg.png",
+  FUL: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/64px-Fulham_FC_%28shield%29.svg.png",
+  LEE: "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/Leeds_United_Logo.svg/64px-Leeds_United_Logo.svg.png",
+  LIV: "https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/64px-Liverpool_FC.svg.png",
+  CTY: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/64px-Manchester_City_FC_badge.svg.png",
+  MAN: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/64px-Manchester_United_FC_crest.svg.png",
+  NWC: "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/64px-Newcastle_United_Logo.svg.png",
+  NOT: "https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/Nottingham_Forest_FC_logo.svg/64px-Nottingham_Forest_FC_logo.svg.png",
+  SUN: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/Sunderland_AFC.svg/64px-Sunderland_AFC.svg.png",
+  TOT: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/64px-Tottenham_Hotspur.svg.png",
+  WHA: "https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/64px-West_Ham_United_FC_logo.svg.png",
+  WOL: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/64px-Wolverhampton_Wanderers.svg.png"
 };
 
 function renderTeam(code){

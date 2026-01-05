@@ -656,7 +656,20 @@ function drawHistoryChart(type){
   options: {
     plugins: {
       datalabels: {
-        formatter: value => `+${value}`,
+        formatter: (value, ctx) => {
+          const data = ctx.dataset.data;
+          const index = ctx.dataIndex;
+
+          // 🚫 hide first point
+          if (index === 0) return null;
+
+          const diff = value - data[index - 1];
+
+          // 🚫 show ONLY positive gains
+          if (diff <= 0) return null;
+
+          return `+${diff}`;
+        },
 
         // same color as line
         color: ctx => ctx.dataset.borderColor,
@@ -667,12 +680,7 @@ function drawHistoryChart(type){
         },
 
         align: "top",
-        offset: 6,
-
-        // ✅ ONLY show last data point
-        display: ctx =>
-          ctx.dataIndex === ctx.dataset.data.length - 1 &&
-          ctx.dataset.data[ctx.dataIndex] !== 0
+        offset: 6
       }
     }
   }

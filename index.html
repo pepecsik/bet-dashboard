@@ -55,10 +55,10 @@ if ("serviceWorker" in navigator) {
   width:34px;
   height:34px;
   object-fit:contain;
- 
-  border-radius:50%;
-  background:#fff;
-  padding:3px;
+
+  background:rgba(255,255,255,0.06);
+  border-radius:8px;
+  padding:4px;
 }
 .match-teams{
   display:flex;
@@ -458,7 +458,9 @@ function loadData(){
 
       const lr=document.createElement("div");
       lr.className="left-row";
-      const [home, away] = m.match.split(" - ");
+      const [home, away] = m.match
+       .split("-")
+       .map(t => t.trim().toUpperCase());
 
       lr.innerHTML = `
         <div class="left-cell match">

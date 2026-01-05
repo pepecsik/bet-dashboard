@@ -28,7 +28,6 @@ if ("serviceWorker" in navigator) {
 <title>Bet Dashboard</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
 <style>
@@ -640,37 +639,56 @@ function drawHistoryChart(type){
   };
 
   // ✅ Create chart
-  historyChart = new Chart(ctx,{
-    type:"line",
-    data:{
-      labels,
-      datasets: players.map(p => ({
-        label: p,
-        data: source.map(r => r[p]),
-        borderColor: colors[p],
-        backgroundColor: colors[p],
-        tension: 0.35,
-        fill: false
-      }))
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{
-        legend:{ labels:{ color:"#fff" } }
-      },
-      scales:{
-        x:{ ticks:{ color:"#aaa" } },
-        y:{ ticks:{ color:"#aaa" } }
+  historyChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels,
+    datasets: players.map(p => ({
+      label: p,
+      data: source.map(r => r[p]),
+      borderColor: colors[p],
+      backgroundColor: colors[p],
+      tension: 0.3,
+      pointRadius: 5,
+      pointHoverRadius: 6
+    }))
+  },
+  options: {
+    plugins: {
+      datalabels: {
+        formatter: value => `+${value}`,
+
+        // same color as line
+        color: ctx => ctx.dataset.borderColor,
+
+        font: {
+          weight: "bold",
+          size: 10
+        },
+
+        align: "top",
+        offset: 6,
+
+        // ✅ ONLY show last data point
+        display: ctx =>
+          ctx.dataIndex === ctx.dataset.data.length - 1 &&
+          ctx.dataset.data[ctx.dataIndex] !== 0
       }
     }
-  });
+  }
+});
 
   // ✅ IMPORTANT: remember what type this chart is
   historyChart._type = type;
 }
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<script>
+  Chart.register(ChartDataLabels);
+</script>
 
 </body>
 </html>

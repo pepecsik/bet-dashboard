@@ -51,6 +51,18 @@ if ("serviceWorker" in navigator) {
   --week-row-h:30px;
 }
 
+.team-logo{
+  width:22px;
+  height:22px;
+  object-fit:contain;
+}
+.match-teams{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
 *{box-sizing:border-box}
 
 body{
@@ -316,7 +328,7 @@ body{
   height:260px;          /* ✅ FIXED HEIGHT */
   overflow:hidden;       /* ✅ STOP GROWING */
 }
-}
+ 
 </style>
 </head>
 
@@ -363,7 +375,40 @@ const REFRESH_MS=30000;
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+/* =========================
+   TEAM LOGOS
+   ========================= */
+const TEAM_LOGOS = {
+  ARS: "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
+  AVI: "https://upload.wikimedia.org/wikipedia/en/9/9a/Aston_Villa_FC_crest.svg",
+  BOU: "https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth.svg",
+  BRE: "https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg",
+  BRI: "https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg",
+  BUR: "https://upload.wikimedia.org/wikipedia/commons/2/2a/Burnley_FC_crest.svg",
+  CHE: "https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg",
+  CPA: "https://upload.wikimedia.org/wikipedia/en/0/0c/Crystal_Palace_FC_logo.svg",
+  EVE: "https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg",
+  FUL: "https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg",
+  LEE: "https://upload.wikimedia.org/wikipedia/en/0/03/Leeds_United_Logo.svg",
+  LIV: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
+  CTY: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
+  MAN: "https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg",
+  NWC: "https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg",
+  NOT: "https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_FC_logo.svg",
+  SUN: "https://upload.wikimedia.org/wikipedia/en/5/58/Sunderland_AFC.svg",
+  TOT: "https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg",
+  WHA: "https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg",
+  WOL: "https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg"
+};
 
+function renderTeam(code){
+  const logo = TEAM_LOGOS[code];
+  return logo
+    ? `<img src="${logo}" alt="${code}" class="team-logo">`
+    : `<span>${code}</span>`;
+}
+
+ 
 /* STATE */
 let prev={}, prevScore={}, chartDataCache=null, historyChart=null;
 
@@ -409,11 +454,20 @@ function loadData(){
 
       const lr=document.createElement("div");
       lr.className="left-row";
-      lr.innerHTML=`
-        <div class="left-cell match">${m.match}</div>
+      const [home, away] = m.match.split(" - ");
+
+      lr.innerHTML = `
+        <div class="left-cell match">
+          <div class="match-teams">
+            ${renderTeam(home)}
+            <span>vs</span>
+            ${renderTeam(away)}
+          </div>
+        </div>
         <div class="left-cell">${m.status}</div>
         <div class="left-cell">${m.score}</div>
       `;
+
 
       if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
         lr.lastElementChild.classList.add("changed");

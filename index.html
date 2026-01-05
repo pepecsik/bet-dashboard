@@ -543,40 +543,35 @@ function loadData(){
     });
 
     /* WEEKLY SUMMARY */
-data.totals.forEach(t => {
-  const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+    data.totals.forEach(t=>{
+      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
+      weekly.innerHTML+=`
+        <div class="week-row">
+          <div class="week-label">${t.label}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
+          <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
+        </div>`;
+    });
 
-  weekly.innerHTML += `
-    <div class="week-row">
-      <div class="week-label">${t.label}</div>
-      <div class="week-gbp ${green ? "green" : "red"}">
-        ${formatGBP(t.cells[0].value)}
-      </div>
-      <div class="week-eur">
-        ${formatEUR(t.cells[1].value)}
-      </div>
-    </div>
-  `;
-});
+    /* RANKING */
+    data.ranking.forEach((r, i) => {
+      const medal =
+        i === 0 ? "🥇" :
+        i === 1 ? "🥈" :
+        i === 2 ? "🥉" :
+        (i + 1);
 
-/* RANKING */
-data.ranking.forEach((r, i) => {
-  const medal =
-    i === 0 ? "🥇" :
-    i === 1 ? "🥈" :
-    i === 2 ? "🥉" :
-    (i + 1);
+      ranking.innerHTML += `
+        <div class="rank-row">
+          <div class="rank-pos">${medal}</div>
+          <div class="rank-name">${r.name}</div>
+          <div class="rank-money">${formatGBP(r.money)}</div>
+          <div class="rank-bets">${r.matchesRight} matches right</div>
+        </div>
+        });
+      });
+    }
 
-  ranking.innerHTML += `
-    <div class="rank-row">
-      <div class="rank-pos">${medal}</div>
-      <div class="rank-name">${r.name}</div>
-      <div class="rank-money">${formatGBP(r.money)}</div>
-      <div class="rank-bets">${r.matchesRight} matches right</div>
-    </div>
-  `;
-});
-   
 loadData();
 setInterval(loadData,REFRESH_MS);
 

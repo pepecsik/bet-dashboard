@@ -554,22 +554,16 @@ function loadData(){
     });
 
     /* RANKING */
-    data.ranking.forEach((r, i) => {
-      const medal =
-        i === 0 ? "🥇" :
-        i === 1 ? "🥈" :
-        i === 2 ? "🥉" :
-        (i + 1);
-
-      ranking.innerHTML += `
+    data.ranking.forEach((r,i)=>{
+      ranking.innerHTML+=`
         <div class="rank-row">
-          <div class="rank-pos">${medal}</div>
+          <div class="rank-pos">${i+1}</div>
           <div class="rank-name">${r.name}</div>
           <div class="rank-money">${formatGBP(r.money)}</div>
           <div class="rank-bets">${r.matchesRight} matches right</div>
-        </div>
-        });
-      });
+        </div>`;
+    });
+  });
 }
 
 loadData();

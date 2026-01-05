@@ -393,16 +393,16 @@ const TEAM_LOGOS = {
   BRI: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/64px-Brighton_%26_Hove_Albion_logo.svg.png",
   BUR: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/64px-Burnley_FC_Logo.svg.png",
   CHE: "https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/64px-Chelsea_FC.svg.png",
-  CPA: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Crystal_Palace_FC_logo.svg/64px-Crystal_Palace_FC_logo.svg.png",
+  CPA: "https://media.api-sports.io/football/teams/52.png",
   EVE: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/64px-Everton_FC_logo.svg.png",
   FUL: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/64px-Fulham_FC_%28shield%29.svg.png",
-  LEE: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Leeds_United_Logo.svg/64px-Leeds_United_Logo.svg.png",
+  LEE: "https://media.api-sports.io/football/teams/63.png",
   LIV: "https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/64px-Liverpool_FC.svg.png",
   CTY: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/64px-Manchester_City_FC_badge.svg.png",
   MAN: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/64px-Manchester_United_FC_crest.svg.png",
   NWC: "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/64px-Newcastle_United_Logo.svg.png",
   NOT: "https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/Nottingham_Forest_FC_logo.svg/64px-Nottingham_Forest_FC_logo.svg.png",
-  SUN: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Sunderland_A.F.C._logo.svg/64px-Sunderland_A.F.C._logo.svg.png",
+  SUN: "https://media.api-sports.io/football/teams/71.png",
   TOT: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/64px-Tottenham_Hotspur.svg.png",
   WHA: "https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/64px-West_Ham_United_FC_logo.svg.png",
   WOL: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/64px-Wolverhampton_Wanderers.svg.png"
@@ -419,8 +419,8 @@ function renderTeam(raw){
   const logo = TEAM_LOGOS[code];
 
   return logo
-    ? `<img src="${logo}" alt="${code}" class="team-logo">`
-    : `<span class="team-fallback">${raw}</span>`;
+  ? `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.style.display='none'">`
+  : `<span class="team-fallback">${raw}</span>`;
 }
  
 /* STATE */

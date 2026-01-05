@@ -52,15 +52,18 @@ if ("serviceWorker" in navigator) {
 }
 
 .team-logo{
-  width:34px;
-  height:34px;
+  width:38px;
+  height:38px;
   object-fit:contain;
-
-  background:rgba(255,255,255,0.06);
-  border-radius:8px;
-  padding:4px;
 }
-.match-teams{
+ 
+ .team-fallback{
+  font-size:12px;
+  font-weight:700;
+  opacity:.6;
+}
+
+ .match-teams{
   display:flex;
   align-items:center;
   justify-content:center;
@@ -405,13 +408,20 @@ const TEAM_LOGOS = {
   WOL: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/64px-Wolverhampton_Wanderers.svg.png"
 };
 
-function renderTeam(code){
+function renderTeam(raw){
+  if(!raw) return "";
+
+  const code = raw
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g,"");
+
   const logo = TEAM_LOGOS[code];
+
   return logo
     ? `<img src="${logo}" alt="${code}" class="team-logo">`
-    : `<span>${code}</span>`;
+    : `<span class="team-fallback">${raw}</span>`;
 }
-
  
 /* STATE */
 let prev={}, prevScore={}, chartDataCache=null, historyChart=null;

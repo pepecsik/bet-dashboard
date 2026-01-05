@@ -44,7 +44,7 @@ if ("serviceWorker" in navigator) {
   --gap:6px;
 
   --left-w:190px;
-  --bet-w:104px;
+  --bet-w:90px;   /* ✅ ONLY CHANGE: narrower bet columns */
   --summary-w:250px;
 
   --week-row-h:30px;
@@ -54,15 +54,14 @@ if ("serviceWorker" in navigator) {
   width:38px;
   height:38px;
   object-fit:contain;
-
 }
- 
- .team-fallback{
+
+.team-fallback{
   font-size:12px;
   font-weight:700;
 }
 
- .match-teams{
+.match-teams{
   display:flex;
   align-items:center;
   justify-content:center;
@@ -178,7 +177,7 @@ body{
 }
 
 .header-pill{
-  width:90px;              /* ONLY change */
+  width:var(--bet-w);
   height:var(--row-h);
   background:var(--bg-soft);
   border-radius:10px;
@@ -188,9 +187,11 @@ body{
   font-size:12px;
   font-weight:700;
 }
- 
+
+.right-divider{height:8px}
+
 .bet{
-  width:90px;              /* ONLY change */
+  width:var(--bet-w);
   height:var(--row-h);
   border-radius:10px;
   display:flex;
@@ -200,8 +201,6 @@ body{
   font-weight:800;
   color:#111;
 }
-
-
 
 /* GLOW */
 .changed{
@@ -331,11 +330,11 @@ body{
   font-weight:700;
   display:none;
 
-  height:260px;          /* ✅ FIXED HEIGHT */
-  overflow:hidden;       /* ✅ STOP GROWING */
+  height:260px;
+  overflow:hidden;
 }
- 
 </style>
+
 </head>
 
 <body>

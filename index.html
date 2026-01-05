@@ -60,7 +60,7 @@ if ("serviceWorker" in navigator) {
  .team-fallback{
   font-size:12px;
   font-weight:700;
-  opacity:.6;
+  opacity:.7;
 }
 
  .match-teams{
@@ -418,10 +418,22 @@ function renderTeam(raw){
 
   const logo = TEAM_LOGOS[code];
 
-  return logo
-  ? `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.style.display='none'">`
-  : `<span class="team-fallback">${raw}</span>`;
+  // If no logo in map → show code
+  if(!logo){
+    return `<span class="team-fallback">${code}</span>`;
+  }
+
+  // Try logo, fallback to code if image fails
+  return `
+    <img
+      src="${logo}"
+      alt="${code}"
+      class="team-logo"
+      onerror="this.outerHTML='<span class=team-fallback>${code}</span>'"
+    >
+  `;
 }
+
  
 /* STATE */
 let prev={}, prevScore={}, chartDataCache=null, historyChart=null;

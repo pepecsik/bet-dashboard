@@ -43,8 +43,10 @@ if ("serviceWorker" in navigator) {
   --row-h:40px;
   --gap:6px;
 
-  --left-w:190px;
-  --bet-w:90px;   /* ✅ ONLY CHANGE: narrower bet columns */
+  /* ✅ UPDATED: Wider to fit the new score pill nicely */
+  --left-w:230px; 
+  
+  --bet-w:90px;   
   --summary-w:250px;
 
   --week-row-h:30px;
@@ -546,13 +548,15 @@ function loadData(){
 
     /* MATCH ROWS */
     data.matches.forEach((m,i)=>{
-      const scoreKey=`score-${i}`;
+      // We don't need the scoreKey anymore since we removed the glow animation
 
       const lr=document.createElement("div");
       
-      /* ✅ NEW GRID LAYOUT: 2 Columns (Teams | Combined Pill) */
+      /* ✅ NEW GRID LAYOUT: Adjusted for wider card */
+      // 1fr = Teams take remaining space
+      // 95px = Fixed space for the Status/Score pill
       lr.className="left-row";
-      lr.style.gridTemplateColumns = "1fr 90px"; 
+      lr.style.gridTemplateColumns = "1fr 95px"; 
 
       const [home, away] = m.match
         .split("-")
@@ -582,7 +586,7 @@ function loadData(){
             display:flex; 
             justify-content:space-between; 
             align-items:center; 
-            padding:0 8px; 
+            padding:0 10px; 
             background:var(--bg-soft);
         ">
            
@@ -612,11 +616,6 @@ function loadData(){
 
         </div>
       `;
-
-      if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
-        lr.lastElementChild.classList.add("changed");
-      }
-      prevScore[scoreKey]=m.score;
 
       left.appendChild(lr);
 
@@ -686,6 +685,7 @@ function loadData(){
     });
   });
 }
+ 
 // Show skeletons immediately
 renderSkeletons();
 

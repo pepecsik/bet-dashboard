@@ -354,42 +354,54 @@ body{
   margin-bottom: var(--gap);
 }
 
-/* === STICKY SCROLLING === */
+/* === MASTER SCROLL SYSTEM (The Fix) === */
 
-/* 1. Make the cards scrollable vertically */
+/* 1. The Main Container controls ALL scrolling */
+.main {
+  display: flex;
+  gap: 10px; 
+  padding: 10px;
+  
+  /* This enables the single Master Scrollbar */
+  overflow: auto; 
+  height: 100%; 
+  align-items: flex-start; /* Crucial for sticky columns */
+  position: relative;
+}
+
+/* 2. Unlock the Cards (Remove internal scrolling) */
 .left-card, .right-card {
-  overflow-y: auto;       /* Allow vertical scroll */
-  max-height: 100%;       /* Fill the available height */
-  scrollbar-width: none;  /* Firefox: Hide scrollbars */
-  position: relative;     /* Needed for sticky context */
+  height: auto !important;      /* Let them grow as tall as needed */
+  overflow: visible !important; /* Disable internal scrollbars */
+  flex-shrink: 0;               /* Prevent them from squashing */
 }
 
-/* Chrome/Safari: Hide scrollbars */
-.left-card::-webkit-scrollbar, .right-card::-webkit-scrollbar {
-  display: none;
+/* 3. Freeze the Left Card (Horizontal Sticky) */
+.left-card {
+  position: sticky;
+  left: 10px;            /* Stick to the left edge */
+  z-index: 20;           /* Sit ON TOP of the right card when scrolling */
+  margin-right: -10px;   /* Pull the gap closer so it looks connected */
+  box-shadow: 6px 0 12px rgba(0,0,0,0.3); /* Shadow to separate layers */
 }
 
-/* 2. The Sticky Class */
+/* 4. Freeze the Headers (Vertical Sticky) */
 .sticky-header {
   position: sticky;
-  top: 0;
-  z-index: 50;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* Shadow to show depth */
+  top: 0;               /* Stick to the top of the screen */
+  z-index: 30;          /* Sit ON TOP of everything */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* Specific styling for Left Header */
+/* Fix for the Left Header background transparency */
 .left-header.sticky-header {
+  /* Ensure it has a solid background so rows don't show behind it */
   background: var(--bg-soft); 
-  margin-bottom: 0; 
-  /* Fix for flex gap: add a tiny border to separate it */
   border-bottom: 1px solid var(--bg-main);
-}
-
-/* Specific styling for Right Header Row */
-.row.sticky-header {
-  background: var(--bg-card); /* Needs solid background to cover items scrolling under */
-  padding-bottom: 8px;        /* Add padding so it looks like a header */
-  margin-bottom: 0;
+  /* Account for the card padding */
+  margin-top: -8px; 
+  padding-top: 8px;
+  border-radius: 10px 10px 0 0;
 }
  
 </style>
@@ -684,35 +696,6 @@ renderSkeletons();
 // Then load real data
 loadData();
 setInterval(loadData,REFRESH_MS);
-
-/* =========================
-   SYNC SCROLLING (HOVER METHOD)
-   ========================= */
-// We use 'mouseover' to decide which side controls the scroll.
-// This prevents them from fighting each other.
-
-const leftCard = document.getElementById("left");
-const rightCard = document.getElementById("right").parentNode; // Get the .right-card container
-
-let activeSide = null;
-
-// 1. Detect which side the mouse is over
-leftCard.addEventListener('mouseenter', () => { activeSide = 'left'; });
-rightCard.addEventListener('mouseenter', () => { activeSide = 'right'; });
-
-// 2. Sync Left -> Right
-leftCard.addEventListener('scroll', () => {
-  if (activeSide === 'left') {
-    rightCard.scrollTop = leftCard.scrollTop;
-  }
-});
-
-// 3. Sync Right -> Left
-rightCard.addEventListener('scroll', () => {
-  if (activeSide === 'right') {
-    leftCard.scrollTop = rightCard.scrollTop;
-  }
-});
 
 /* =========================
    TOGGLES

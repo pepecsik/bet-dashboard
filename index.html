@@ -126,23 +126,28 @@ body{
 .pl-btn:hover { transform: translateY(-50%) scale(1.1); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
 
-/* === NEW: BRAND LOGO BUTTON (RIGHT SIDE) === */
+/* === BRAND LOGO BUTTON (CSS MASK FIX) === */
 .brand-btn {
   position: absolute;
   right: 12px;  
   top: 50%;
   transform: translateY(-50%);
-  /* INCREASED SIZE */
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
   background: transparent;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  
+  /* THIS HIDES THE WHITE CORNERS */
+  border-radius: 8px; 
+  overflow: hidden; 
+  
+  /* Optional shadow for 3D pop */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 .brand-logo { 
   width: 100%; height: 100%; 
-  object-fit: contain; 
-  /* ZOOM IN TO REMOVE TRANSPARENT EDGES */
-  transform: scale(1.4);
+  object-fit: cover; 
+  /* ZOOM IN SLIGHTLY TO HIDE BORDERS */
+  transform: scale(1.15);
 }
 
 .left-divider{height:8px}
@@ -214,7 +219,8 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:14px; 
+  /* INCREASED FONT SIZE HERE */
+  font-size:16px; 
   font-weight:700;
 }
 

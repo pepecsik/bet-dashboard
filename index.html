@@ -333,6 +333,27 @@ body{
   height:260px;
   overflow:hidden;
 }
+
+/* SKELETON ANIMATION */
+.skeleton {
+  background: var(--bg-soft);
+  background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  color: transparent !important;
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.sk-row {
+  height: var(--row-h);
+  margin-bottom: var(--gap);
+}
+ 
 </style>
 
 </head>
@@ -436,6 +457,56 @@ function renderTeam(raw){
 /* STATE */
 let prev={}, prevScore={}, chartDataCache=null, historyChart=null;
 
+function renderSkeletons() {
+  const left = document.getElementById("left");
+  const right = document.getElementById("right");
+  
+  // Clear any existing content
+  left.innerHTML = "";
+  right.innerHTML = "";
+
+  // 1. Fake Header (Left)
+  const lh = document.createElement("div");
+  lh.className = "left-header skeleton";
+  left.appendChild(lh);
+  left.appendChild(document.createElement("div")).className = "left-divider";
+
+  // 2. Fake Header (Right)
+  const rh = document.createElement("div");
+  rh.className = "row";
+  // Create 5 fake player columns
+  for(let i=0; i<5; i++){
+    const p = document.createElement("div");
+    p.className = "header-pill skeleton";
+    rh.appendChild(p);
+  }
+  right.appendChild(rh);
+  right.appendChild(document.createElement("div")).className = "right-divider";
+
+  // 3. Fake Rows (Create 10 dummy matches)
+  for (let i = 0; i < 10; i++) {
+    // Left Card Skeletons
+    const lr = document.createElement("div");
+    lr.className = "left-row sk-row"; 
+    lr.innerHTML = `
+      <div class="left-cell skeleton" style="flex:1"></div>
+      <div class="left-cell skeleton" style="width:28px"></div>
+      <div class="left-cell skeleton" style="width:44px"></div>
+    `;
+    left.appendChild(lr);
+
+    // Right Card Skeletons
+    const rr = document.createElement("div");
+    rr.className = "row sk-row";
+    for(let j=0; j<5; j++){
+       const b = document.createElement("div");
+       b.className = "bet skeleton";
+       rr.appendChild(b);
+    }
+    right.appendChild(rr);
+  }
+}
+ 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     const left=document.getElementById("left");
@@ -572,6 +643,10 @@ function loadData(){
   });
 }
 
+// Show skeletons immediately
+renderSkeletons();
+
+// Then load real data
 loadData();
 setInterval(loadData,REFRESH_MS);
 

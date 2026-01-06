@@ -555,9 +555,15 @@ function loadData(){
 
     /* RANKING */
     data.ranking.forEach((r,i)=>{
+      // Define the medals
+      const medals = ["🥇", "🥈", "🥉"];
+      
+      // Use the medal if it exists for this index, otherwise use the number
+      const rankDisplay = medals[i] || (i + 1);
+
       ranking.innerHTML+=`
         <div class="rank-row">
-          <div class="rank-pos">${i+1}</div>
+          <div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div>
           <div class="rank-name">${r.name}</div>
           <div class="rank-money">${formatGBP(r.money)}</div>
           <div class="rank-bets">${r.matchesRight} matches right</div>

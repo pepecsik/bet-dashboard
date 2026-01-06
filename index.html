@@ -300,34 +300,34 @@ body{
   border: 1px solid #3a3d42;
   transform: translateY(20px); transition: transform 0.3s ease;
   display:flex; flex-direction:column;
-  max-height: 85vh; /* Prevent modal from being too tall */
+  max-height: 85vh; 
 }
 .modal-overlay.active .modal-card { transform: translateY(0); }
 
 /* HEADER */
 .modal-header {
-  background: #262a30; padding: 20px 16px 16px 16px;
+  background: #262a30; padding: 16px;
   text-align: center;
   position: relative; /* For back button positioning */
 }
-.modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; }
+.modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
 .modal-sub { font-size: 13px; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px; }
 
-/* BACK BUTTON */
+/* ✅ NEW: REAL BACK BUTTON STYLE */
 .modal-back-btn {
   position: absolute;
-  left: 16px;
-  top: 20px;
-  background: transparent;
-  border: none;
-  color: #9aa0a6;
-  font-size: 20px;
+  left: 16px; top: 50%; transform: translateY(-50%);
+  background: #343a40; /* Pill Color */
+  color: #ccc;
+  border: 1px solid #4a4f55;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
+  transition: all 0.2s;
 }
-.modal-back-btn:hover { color: #fff; }
+.modal-back-btn:hover { background: #4a4f55; color: #fff; }
 
 /* FLOATING TABS */
 .modal-tabs { 
@@ -374,43 +374,39 @@ body{
 .event-icon { font-size: 16px; width: 24px; text-align: center; }
 .event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
 
-/* === TABLE STYLES (FIXED ALIGNMENT) === */
-.league-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-/* Force Center Alignment for Headers */
-.league-table th { 
-  color: #9aa0a6; 
-  text-align: center; /* Default Center */
-  padding-bottom: 8px; 
-  border-bottom: 1px solid #3a3d42; 
-  font-weight:700; 
+/* === TABLE STYLES (CSS GRID) === */
+/* This grid definition is shared by Header and Rows so they align perfectly */
+.tbl-grid {
+  display: grid;
+  grid-template-columns: 25px 1fr 30px 35px 35px 50px; /* Locked Widths */
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
 }
-.league-table th:first-child, .league-table th:nth-child(2) { text-align: left; } /* Rank & Team Left */
-.league-table th:last-child { text-align: right; } /* Form Right */
 
-/* Force Center Alignment for Data */
-.league-table td { 
-  padding: 8px 0; 
-  border-bottom: 1px solid #2f343a; 
-  color: #fff; 
-  font-weight: 600; 
-  overflow:hidden; 
-  white-space:nowrap; 
-  text-overflow:ellipsis;
-  text-align: center; /* Default Center */
+/* Header Row (Fixed at top) */
+.tbl-header {
+  background: #262a30;
+  padding: 10px 20px; /* Matches modal padding side */
+  border-bottom: 1px solid #3a3d42;
+  color: #9aa0a6; font-weight: 700;
 }
-.league-table td:first-child, .league-table td:nth-child(2) { text-align: left; } /* Rank & Team Left */
-.league-table td:last-child { text-align: right; } /* Form Right */
 
-/* COLUMN WIDTHS */
-.col-rank { width: 25px; text-align: left; color: #9aa0a6; }
-.col-team { width: auto; /* Flex space */ }
-.col-mp { width: 30px; }
-.col-gd { width: 35px; color: #9aa0a6; }
-.col-pts { width: 35px; color: #7CFF5B; font-weight: 800; }
-.col-form { width: 50px; }
+/* Data Rows (Scrollable) */
+.tbl-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #2f343a;
+  color: #fff; font-weight: 600;
+}
 
-.tbl-team-wrap { display: flex; align-items: center; gap: 8px; }
+/* Alignment Helpers */
+.ta-c { text-align: center; }
+.ta-r { text-align: right; }
+.ta-l { text-align: left; }
+
+.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
+.txt-green { color: #7CFF5B; font-weight: 800; }
 
 /* FORM DOTS */
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
@@ -458,7 +454,7 @@ body{
   <div class="modal-card" onclick="event.stopPropagation()">
     
     <div class="modal-header">
-      <button class="modal-back-btn" onclick="closeModal('matchModal')">←</button>
+      <button class="modal-back-btn" onclick="closeModal('matchModal')">Back</button>
       <div class="modal-title" id="mTitle">MATCH TITLE</div>
       <div class="modal-sub" id="mStatus">19:30</div>
     </div>
@@ -498,26 +494,26 @@ body{
 
 <div class="modal-overlay" id="tableModal" onclick="closeModal('tableModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-header" style="padding-bottom:20px;">
-      <button class="modal-back-btn" onclick="closeModal('tableModal')">←</button>
-      <div class="modal-title">Premier League Table</div>
+    
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
+      <div class="modal-title">Premier League</div>
       <div class="modal-sub">Live Standings</div>
     </div>
-    <div class="tab-content active" style="padding-top:0;">
-      <table class="league-table">
-        <thead>
-          <tr>
-            <th class="col-rank">#</th>
-            <th class="col-team">Team</th>
-            <th class="col-mp">MP</th>
-            <th class="col-gd">GD</th>
-            <th class="col-pts">Pts</th>
-            <th class="col-form" style="text-align:right">Form</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+
+    <div class="tbl-header tbl-grid">
+      <div class="ta-l">#</div>
+      <div class="ta-l">Team</div>
+      <div class="ta-c">MP</div>
+      <div class="ta-c">GD</div>
+      <div class="ta-r">Pts</div>
+      <div class="ta-r">Form</div>
     </div>
+
+    <div class="tab-content active" style="padding-top:0;">
+      <div id="tableBody"></div>
+    </div>
+
   </div>
 </div>
 
@@ -758,33 +754,30 @@ function openTable() {
   tbody.innerHTML = "";
   
   if(!tableCache || tableCache.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</td></tr>";
+    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
   } else {
     tableCache.forEach(t => {
       let formDots = "";
       if(t.form) {
         formDots = t.form.split('').map(char => {
-          let css = 'dot-D';
-          if(char === 'W') css = 'dot-W';
-          if(char === 'L') css = 'dot-L';
+          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
           return `<span class="form-dot ${css}"></span>`;
         }).join('');
       }
 
+      // Generate DIV ROW instead of TR/TD
       tbody.innerHTML += `
-        <tr>
-          <td class="col-rank">${t.rank}</td>
-          <td class="col-team">
-            <div class="tbl-team-wrap">
-              <img src="${t.logo}" class="tbl-logo">
-              <span>${t.team}</span>
-            </div>
-          </td>
-          <td class="col-mp">${t.mp}</td>
-          <td class="col-gd">${t.gd > 0 ? '+'+t.gd : t.gd}</td>
-          <td class="col-pts">${t.pts}</td>
-          <td class="col-form"><div class="tbl-form-wrap">${formDots}</div></td>
-        </tr>
+        <div class="tbl-row tbl-grid">
+          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
+          <div class="tbl-team-wrap">
+            <img src="${t.logo}" class="tbl-logo">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
+          </div>
+          <div class="ta-c">${t.mp}</div>
+          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
+          <div class="ta-r txt-green">${t.pts}</div>
+          <div class="tbl-form-wrap">${formDots}</div>
+        </div>
       `;
     });
   }

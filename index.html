@@ -313,11 +313,11 @@ body{
 .modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
 .modal-sub { font-size: 13px; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px; }
 
-/* ✅ NEW: REAL BACK BUTTON STYLE */
+/* BACK BUTTON */
 .modal-back-btn {
   position: absolute;
   left: 16px; top: 50%; transform: translateY(-50%);
-  background: #343a40; /* Pill Color */
+  background: #343a40; 
   color: #ccc;
   border: 1px solid #4a4f55;
   padding: 6px 12px;
@@ -328,6 +328,14 @@ body{
   transition: all 0.2s;
 }
 .modal-back-btn:hover { background: #4a4f55; color: #fff; }
+
+/* HEADER RIGHT LOGO (PL) */
+.modal-header-logo {
+  position: absolute;
+  right: 16px; top: 50%; transform: translateY(-50%);
+  height: 32px; width: auto; 
+  opacity: 0.9;
+}
 
 /* FLOATING TABS */
 .modal-tabs { 
@@ -375,24 +383,22 @@ body{
 .event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
 
 /* === TABLE STYLES (CSS GRID) === */
-/* This grid definition is shared by Header and Rows so they align perfectly */
 .tbl-grid {
   display: grid;
-  grid-template-columns: 25px 1fr 30px 35px 35px 50px; /* Locked Widths */
+  /* Updated Grid: # | Team | MP | Pts | GD | Form */
+  grid-template-columns: 25px 1fr 30px 35px 35px 50px; 
   gap: 4px;
   align-items: center;
   font-size: 11px;
 }
 
-/* Header Row (Fixed at top) */
 .tbl-header {
   background: #262a30;
-  padding: 10px 20px; /* Matches modal padding side */
+  padding: 10px 20px; 
   border-bottom: 1px solid #3a3d42;
   color: #9aa0a6; font-weight: 700;
 }
 
-/* Data Rows (Scrollable) */
 .tbl-row {
   padding: 8px 0;
   border-bottom: 1px solid #2f343a;
@@ -499,15 +505,14 @@ body{
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
       <div class="modal-title">Premier League</div>
       <div class="modal-sub">Live Standings</div>
+      <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
     </div>
 
     <div class="tbl-header tbl-grid">
       <div class="ta-l">#</div>
       <div class="ta-l">Team</div>
       <div class="ta-c">MP</div>
-      <div class="ta-c">GD</div>
-      <div class="ta-r">Pts</div>
-      <div class="ta-r">Form</div>
+      <div class="ta-r">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
     </div>
 
     <div class="tab-content active" style="padding-top:0;">
@@ -765,7 +770,7 @@ function openTable() {
         }).join('');
       }
 
-      // Generate DIV ROW instead of TR/TD
+      // Generate DIV ROW matching grid
       tbody.innerHTML += `
         <div class="tbl-row tbl-grid">
           <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
@@ -774,8 +779,8 @@ function openTable() {
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
           </div>
           <div class="ta-c">${t.mp}</div>
-          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
           <div class="ta-r txt-green">${t.pts}</div>
+          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
           <div class="tbl-form-wrap">${formDots}</div>
         </div>
       `;

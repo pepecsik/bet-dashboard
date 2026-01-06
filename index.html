@@ -107,7 +107,7 @@ body{
   position: relative; 
 }
 
-/* PREMIER LEAGUE BUTTON */
+/* PREMIER LEAGUE BUTTON (LEFT CARD) */
 .pl-btn {
   position: absolute;
   left: 10px;  
@@ -241,7 +241,7 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* WEEKLY ROW ALIGNMENT (FIXED) */
+/* WEEKLY ROW ALIGNMENT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
@@ -329,12 +329,16 @@ body{
 }
 .modal-back-btn:hover { background: #4a4f55; color: #fff; }
 
-/* HEADER RIGHT LOGO (PL) */
+/* ✅ HEADER RIGHT LOGO (White Circle, matches PL Btn) */
 .modal-header-logo {
   position: absolute;
   right: 16px; top: 50%; transform: translateY(-50%);
-  height: 32px; width: auto; 
-  opacity: 0.9;
+  width: 28px; height: 28px;
+  background: #ffffff; /* WHITE BG */
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  object-fit: contain;
 }
 
 /* FLOATING TABS */
@@ -382,12 +386,13 @@ body{
 .event-icon { font-size: 16px; width: 24px; text-align: center; }
 .event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
 
-/* === TABLE STYLES (CSS GRID) === */
+/* === TABLE STYLES (GRID ALIGNMENT) === */
 .tbl-grid {
   display: grid;
-  /* Updated Grid: # | Team | MP | Pts | GD | Form */
-  grid-template-columns: 25px 1fr 30px 35px 35px 50px; 
-  gap: 4px;
+  /* Columns: Rank | Team | MP | Pts | GD | Form */
+  grid-template-columns: 25px 1fr 35px 35px 35px 50px; 
+  /* ✅ INCREASED GAP FOR SPACING */
+  gap: 8px; 
   align-items: center;
   font-size: 11px;
 }
@@ -406,6 +411,7 @@ body{
 }
 
 /* Alignment Helpers */
+/* ✅ CENTER ALIGNMENT FOR STATS */
 .ta-c { text-align: center; }
 .ta-r { text-align: right; }
 .ta-l { text-align: left; }
@@ -512,7 +518,7 @@ body{
       <div class="ta-l">#</div>
       <div class="ta-l">Team</div>
       <div class="ta-c">MP</div>
-      <div class="ta-r">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
+      <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
     </div>
 
     <div class="tab-content active" style="padding-top:0;">
@@ -779,7 +785,7 @@ function openTable() {
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
           </div>
           <div class="ta-c">${t.mp}</div>
-          <div class="ta-r txt-green">${t.pts}</div>
+          <div class="ta-c txt-green">${t.pts}</div>
           <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
           <div class="tbl-form-wrap">${formDots}</div>
         </div>

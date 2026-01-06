@@ -104,7 +104,21 @@ body{
   justify-content:center;
   font-size:12px;
   font-weight:700;
+  gap: 10px; /* Space between text and button */
 }
+
+/* PREMIER LEAGUE BUTTON */
+.pl-btn {
+  background: #38003c; /* PL Purple */
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex; align-items: center;
+  border: 1px solid #00ff85; /* PL Green */
+  transition: transform 0.2s;
+}
+.pl-btn:active { transform: scale(0.95); }
+.pl-logo { height: 16px; width: auto; }
 
 .left-divider{height:8px}
 
@@ -221,23 +235,17 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* ✅ FIXED WEEKLY ROW ALIGNMENT (Corrected Widths) */
+/* WEEKLY ROW ALIGNMENT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  /* 90px + 1fr + 65px fits inside the 250px card comfortably */
   grid-template-columns: 90px 1fr 65px;
   align-items:center;
   background:var(--bg-row); border-radius:8px;
-  /* Reduced side padding to 4px to give text more space */
   padding:0 4px; 
   margin-bottom:4px; font-size:11px; font-weight:700;
 }
-.week-label{
-  color:#fff;
-  white-space: nowrap; /* Forces one line */
-  overflow: hidden;    /* Safety cut-off */
-}
+.week-label{ color:#fff; white-space: nowrap; overflow: hidden; }
 .week-gbp { text-align: right; padding-right: 6px; }
 .week-eur { text-align: right; opacity:.6; }
 .week-gbp.red{color:#ff4d4d}
@@ -286,6 +294,7 @@ body{
   border: 1px solid #3a3d42;
   transform: translateY(20px); transition: transform 0.3s ease;
   display:flex; flex-direction:column;
+  max-height: 85vh; /* Prevent modal from being too tall */
 }
 .modal-overlay.active .modal-card { transform: translateY(0); }
 
@@ -314,7 +323,7 @@ body{
 }
 
 /* CONTENT */
-.tab-content { display: none; padding: 20px; min-height: 200px; }
+.tab-content { display: none; padding: 20px; overflow-y: auto; }
 .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 
@@ -341,6 +350,16 @@ body{
 }
 .event-icon { font-size: 16px; width: 24px; text-align: center; }
 .event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
+
+/* === TABLE STYLES === */
+.league-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.league-table th { color: #9aa0a6; text-align: left; padding-bottom: 8px; border-bottom: 1px solid #3a3d42; }
+.league-table td { padding: 8px 0; border-bottom: 1px solid #2f343a; color: #fff; font-weight: 600; }
+.tbl-rank { width: 20px; text-align: center; color: #9aa0a6; }
+.tbl-team { display: flex; align-items: center; gap: 8px; }
+.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
+.tbl-pts { color: #7CFF5B; font-weight: 800; text-align: right; }
+.tbl-gd { color: #9aa0a6; text-align: center; width: 30px; }
 
 </style>
 </head>
@@ -377,7 +396,7 @@ body{
   </footer>
 </div>
 
-<div class="modal-overlay" id="matchModal" onclick="closeModal()">
+<div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
     
     <div class="modal-header">
@@ -391,60 +410,53 @@ body{
     </div>
 
     <div id="tab-stats" class="tab-content active">
-      
       <div class="stat-row">
-        <div class="stat-label">
-          <span id="pHome">50%</span> <span>Possession</span> <span id="pAway">50%</span>
-        </div>
-        <div class="stat-bar-track">
-          <div class="stat-bar-fill" id="barPoss" style="width:50%"></div>
-        </div>
+        <div class="stat-label"><span id="pHome">50%</span> <span>Possession</span> <span id="pAway">50%</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="barPoss" style="width:50%"></div></div>
       </div>
-
       <div class="stat-row">
-        <div class="stat-label">
-          <span id="sHome">0</span> <span>Shots on Target</span> <span id="sAway">0</span>
-        </div>
-        <div class="stat-bar-track">
-           <div class="stat-bar-fill" id="barShots" style="width:50%"></div>
-        </div>
+        <div class="stat-label"><span id="sHome">0</span> <span>Shots on Target</span> <span id="sAway">0</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="barShots" style="width:50%"></div></div>
       </div>
-
       <div class="stat-row">
-        <div class="stat-label">
-          <span id="soHome">0</span> <span>Shots off Target</span> <span id="soAway">0</span>
-        </div>
-        <div class="stat-bar-track">
-           <div class="stat-bar-fill" id="barShotsOff" style="width:50%"></div>
-        </div>
+        <div class="stat-label"><span id="soHome">0</span> <span>Shots off Target</span> <span id="soAway">0</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="barShotsOff" style="width:50%"></div></div>
       </div>
-
       <div class="stat-row">
-        <div class="stat-label">
-          <span id="cHome">0</span> <span>Corners</span> <span id="cAway">0</span>
-        </div>
-        <div class="stat-bar-track">
-          <div class="stat-bar-fill" id="barCorners" style="width:50%"></div>
-        </div>
+        <div class="stat-label"><span id="cHome">0</span> <span>Corners</span> <span id="cAway">0</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="barCorners" style="width:50%"></div></div>
       </div>
-
     </div>
 
     <div id="tab-summary" class="tab-content">
-      <div class="event-item">
-        <div class="event-icon">⚽</div>
-        <div class="event-text" id="mScorers">-</div>
-      </div>
-      <div class="event-item">
-        <div class="event-icon">🟨</div>
-        <div class="event-text" id="mYellow">0 Yellow</div>
-      </div>
-      <div class="event-item">
-        <div class="event-icon">🟥</div>
-        <div class="event-text" id="mRed">0 Red</div>
-      </div>
+      <div class="event-item"><div class="event-icon">⚽</div><div class="event-text" id="mScorers">-</div></div>
+      <div class="event-item"><div class="event-icon">🟨</div><div class="event-text" id="mYellow">0 Yellow</div></div>
+      <div class="event-item"><div class="event-icon">🟥</div><div class="event-text" id="mRed">0 Red</div></div>
     </div>
 
+  </div>
+</div>
+
+<div class="modal-overlay" id="tableModal" onclick="closeModal('tableModal')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header" style="padding-bottom:20px;">
+      <div class="modal-title">Premier League Table</div>
+      <div class="modal-sub">Live Standings</div>
+    </div>
+    <div class="tab-content active" style="padding-top:0;">
+      <table class="league-table">
+        <thead>
+          <tr>
+            <th class="tbl-rank">#</th>
+            <th>Team</th>
+            <th>MP</th>
+            <th class="tbl-gd">GD</th>
+            <th class="tbl-pts">Pts</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -487,7 +499,7 @@ function renderTeam(raw){
   return `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
-let prev={}, chartDataCache=null, historyChart=null;
+let prev={}, chartDataCache=null, historyChart=null, tableCache=null;
 
 function renderSkeletons() {
   const left = document.getElementById("left");
@@ -538,10 +550,18 @@ function loadData(){
     ranking.innerHTML="";
 
     if(data.chartData) chartDataCache = data.chartData;
+    if(data.leagueTable) tableCache = data.leagueTable;
 
     /* HEADERS */
     const lh=document.createElement("div");
-    lh.className="left-header"; lh.textContent="MATCHES";
+    lh.className="left-header"; 
+    // PL Button
+    lh.innerHTML = `
+      <span>MATCHES</span>
+      <div class="pl-btn" onclick="openTable()">
+        <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      </div>
+    `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
@@ -561,7 +581,6 @@ function loadData(){
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
       
-      // CLICK FOR MODAL
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
@@ -633,7 +652,6 @@ function switchTab(tab, e) {
 }
 
 function openModal(m) {
-  // 1. LOGOS HEADER
   const [homeCode, awayCode] = m.match.split("-");
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
@@ -644,37 +662,20 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
-  // 2. SUMMARY TAB
-  const stats = m.stats || { 
-    scorers:"", yellow:0, red:0, 
-    h_poss:50, a_poss:50, 
-    h_shots:0, a_shots:0, 
-    h_corners:0, a_corners:0,
-    h_shotsOff:0, a_shotsOff:0 
-  };
+  const stats = m.stats || { scorers:"", yellow:0, red:0, h_poss:50, a_poss:50, h_shots:0, a_shots:0, h_corners:0, a_corners:0, h_shotsOff:0, a_shotsOff:0 };
   
-  document.getElementById("mScorers").innerHTML = stats.scorers ? 
-    `<span style="color:#fff">${stats.scorers}</span>` : 
-    `<span style="color:#9aa0a6">No Goals</span>`;
-
+  document.getElementById("mScorers").innerHTML = stats.scorers ? `<span style="color:#fff">${stats.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
   document.getElementById("mYellow").textContent = (stats.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (stats.red||0) + " Red Cards";
 
-  // 3. STATS TAB
   const setStat = (type, h, a) => {
     document.getElementById(type + "Home").textContent = h;
     document.getElementById(type + "Away").textContent = a;
     let total = h + a;
     let pct = (total === 0) ? 50 : (h / total) * 100;
     if(type === 'p') pct = h; 
-    
-    // Select specific bar
     let id = "";
-    if(type==='p') id="barPoss";
-    if(type==='s') id="barShots";
-    if(type==='so') id="barShotsOff";
-    if(type==='c') id="barCorners";
-
+    if(type==='p') id="barPoss"; if(type==='s') id="barShots"; if(type==='so') id="barShotsOff"; if(type==='c') id="barCorners";
     document.getElementById(id).style.width = pct + "%";
   };
 
@@ -686,8 +687,33 @@ function openModal(m) {
   document.getElementById("matchModal").classList.add("active");
 }
 
-function closeModal() {
-  document.getElementById("matchModal").classList.remove("active");
+function openTable() {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+  
+  if(!tableCache || tableCache.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</td></tr>";
+  } else {
+    tableCache.forEach(t => {
+      tbody.innerHTML += `
+        <tr>
+          <td class="tbl-rank">${t.rank}</td>
+          <td class="tbl-team">
+            <img src="${t.logo}" class="tbl-logo">
+            <span>${t.team}</span>
+          </td>
+          <td>${t.mp}</td>
+          <td class="tbl-gd">${t.gd > 0 ? '+'+t.gd : t.gd}</td>
+          <td class="tbl-pts">${t.pts}</td>
+        </tr>
+      `;
+    });
+  }
+  document.getElementById("tableModal").classList.add("active");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("active");
 }
 
 renderSkeletons();

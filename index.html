@@ -104,21 +104,27 @@ body{
   justify-content:center;
   font-size:12px;
   font-weight:700;
-  gap: 10px; /* Space between text and button */
+  position: relative; 
 }
 
 /* PREMIER LEAGUE BUTTON */
 .pl-btn {
-  background: #38003c; /* PL Purple */
-  border-radius: 6px;
-  padding: 4px 8px;
+  position: absolute;
+  left: 10px;  
+  top: 50%;
+  transform: translateY(-50%);
   cursor: pointer;
-  display: flex; align-items: center;
-  border: 1px solid #00ff85; /* PL Green */
   transition: transform 0.2s;
+  
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  overflow: hidden; 
+  background: #38003c; 
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.1); 
 }
-.pl-btn:active { transform: scale(0.95); }
-.pl-logo { height: 16px; width: auto; }
+.pl-btn:hover { transform: translateY(-50%) scale(1.1); }
+.pl-logo { width: 100%; height: 100%; object-fit: cover; }
 
 .left-divider{height:8px}
 
@@ -235,7 +241,7 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* WEEKLY ROW ALIGNMENT */
+/* WEEKLY ROW ALIGNMENT (FIXED) */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
@@ -353,13 +359,23 @@ body{
 
 /* === TABLE STYLES === */
 .league-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.league-table th { color: #9aa0a6; text-align: left; padding-bottom: 8px; border-bottom: 1px solid #3a3d42; }
+.league-table th { color: #9aa0a6; text-align: left; padding-bottom: 8px; border-bottom: 1px solid #3a3d42; font-weight:700; }
 .league-table td { padding: 8px 0; border-bottom: 1px solid #2f343a; color: #fff; font-weight: 600; }
 .tbl-rank { width: 20px; text-align: center; color: #9aa0a6; }
 .tbl-team { display: flex; align-items: center; gap: 8px; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-.tbl-pts { color: #7CFF5B; font-weight: 800; text-align: right; }
+.tbl-pts { color: #7CFF5B; font-weight: 800; text-align: right; padding-right:4px;}
 .tbl-gd { color: #9aa0a6; text-align: center; width: 30px; }
+
+/* FORM DOTS */
+.tbl-form { display: flex; gap: 2px; justify-content: flex-end; }
+.form-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block;
+}
+.dot-W { background-color: #7CFF5B; } /* Green */
+.dot-D { background-color: #9aa0a6; } /* Grey */
+.dot-L { background-color: #ff4d4d; } /* Red */
 
 </style>
 </head>
@@ -452,6 +468,7 @@ body{
             <th>MP</th>
             <th class="tbl-gd">GD</th>
             <th class="tbl-pts">Pts</th>
+            <th style="text-align:right">Form</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -555,12 +572,11 @@ function loadData(){
     /* HEADERS */
     const lh=document.createElement("div");
     lh.className="left-header"; 
-    // PL Button
     lh.innerHTML = `
-      <span>MATCHES</span>
       <div class="pl-btn" onclick="openTable()">
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
       </div>
+      <span>MATCHES</span>
     `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
@@ -692,9 +708,20 @@ function openTable() {
   tbody.innerHTML = "";
   
   if(!tableCache || tableCache.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</td></tr>";
   } else {
     tableCache.forEach(t => {
+      // Helper to generate dots
+      let formDots = "";
+      if(t.form) {
+        formDots = t.form.split('').map(char => {
+          let css = 'dot-D';
+          if(char === 'W') css = 'dot-W';
+          if(char === 'L') css = 'dot-L';
+          return `<span class="form-dot ${css}"></span>`;
+        }).join('');
+      }
+
       tbody.innerHTML += `
         <tr>
           <td class="tbl-rank">${t.rank}</td>
@@ -705,6 +732,7 @@ function openTable() {
           <td>${t.mp}</td>
           <td class="tbl-gd">${t.gd > 0 ? '+'+t.gd : t.gd}</td>
           <td class="tbl-pts">${t.pts}</td>
+          <td class="tbl-form">${formDots}</td>
         </tr>
       `;
     });

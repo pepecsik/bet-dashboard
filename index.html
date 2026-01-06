@@ -650,25 +650,52 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    /* HEADERS */
+    /* --- LEFT HEADER WITH DATE (UPDATED) --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
+    
+    // Check if data.date exists, otherwise use placeholder or nothing
+    const dateText = data.date ? data.date : "Live";
+    
     lh.innerHTML = `
       <div class="pl-btn" onclick="openTable()">
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
       </div>
-      <span>MATCHES</span>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
+         <span>MATCHES</span>
+         <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:2px;">${dateText}</span>
+      </div>
     `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
+    /* --- RIGHT HEADER WITH MERGED PILLS (UPDATED) --- */
     const headerRow=document.createElement("div");
     headerRow.className="row"; 
-    data.headers.forEach(h=>{
-      const p=document.createElement("div");
-      p.className="header-pill"; p.textContent=h;
-      headerRow.appendChild(p);
-    });
+    
+    // Loop through headers and merge duplicates
+    let i = 0;
+    while(i < data.headers.length) {
+       const current = data.headers[i];
+       let count = 1;
+       // Look ahead for duplicates
+       while(i + count < data.headers.length && data.headers[i + count] === current){
+         count++;
+       }
+       
+       const p = document.createElement("div");
+       p.className = "header-pill";
+       p.textContent = current;
+       
+       // Calculate width: (Standard Width * Count) + (Gap * (Count-1))
+       if(count > 1){
+         p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
+       }
+       
+       headerRow.appendChild(p);
+       i += count; // Skip the merged ones
+    }
+
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 

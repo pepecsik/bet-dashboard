@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
  
-<!-- PWA / Android -->
 <link rel="manifest" href="/bet-dashboard/manifest.json">
 <meta name="theme-color" content="#134d2b">
 
-<!-- iOS Home Screen -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Juice Bets">
@@ -27,8 +25,7 @@ if ("serviceWorker" in navigator) {
  
 <title>Bet Dashboard</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 :root{
@@ -39,35 +36,17 @@ if ("serviceWorker" in navigator) {
 
   --text-main:#ffffff;
   --text-muted:#9aa0a6;
+  --accent-orange: #ff9f43; /* LiveScore Orange */
 
   --row-h:40px;
   --gap:6px;
 
-  /* ✅ UPDATED: Wider to fit the new score pill nicely */
+  /* YOUR SETTINGS */
   --left-w:230px; 
-  
   --bet-w:90px;   
   --summary-w:250px;
 
   --week-row-h:30px;
-}
-
-.team-logo{
-  width:38px;
-  height:38px;
-  object-fit:contain;
-}
-
-.team-fallback{
-  font-size:12px;
-  font-weight:700;
-}
-
-.match-teams{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
 }
 
 *{box-sizing:border-box}
@@ -85,7 +64,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* MOBILE ZOOM OUT */
+/* MOBILE ZOOM */
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
@@ -95,7 +74,7 @@ body{
   }
 }
 
-/* MAIN */
+/* MAIN LAYOUT */
 .main{
   display:flex;
   gap:10px;
@@ -112,7 +91,11 @@ body{
   display:flex;
   flex-direction:column;
   gap:var(--gap);
+  overflow-y:auto; 
+  max-height:100%;
+  scrollbar-width:none;
 }
+.left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
   height:var(--row-h);
@@ -130,9 +113,11 @@ body{
 .left-row{
   height:var(--row-h);
   display:grid;
-  grid-template-columns:1fr 28px 44px;
+  grid-template-columns:1fr 90px; /* YOUR 2-COL LAYOUT */
   gap:var(--gap);
+  transition: background 0.2s;
 }
+.left-row:active { background: rgba(255,255,255,0.05); }
 
 .left-cell{
   background:var(--bg-soft);
@@ -143,7 +128,6 @@ body{
   font-size:12px;
   font-weight:600;
 }
-
 .left-cell.match{text-align:center}
 
 .left-label{
@@ -157,14 +141,21 @@ body{
   font-weight:700;
 }
 
+.team-logo{ width:38px; height:38px; object-fit:contain; }
+.team-fallback{ font-size:12px; font-weight:700; }
+.match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
+
 /* RIGHT CARD */
 .right-card{
   flex:1;
   background:var(--bg-card);
   border-radius:14px;
   overflow-x:auto;
+  overflow-y:auto;
   padding:8px;
+  scrollbar-width:none;
 }
+.right-card::-webkit-scrollbar { display: none; }
 
 .rows{
   display:flex;
@@ -173,10 +164,7 @@ body{
   min-width:max-content;
 }
 
-.row{
-  display:flex;
-  gap:var(--gap);
-}
+.row{ display:flex; gap:var(--gap); }
 
 .header-pill{
   width:var(--bet-w);
@@ -204,136 +192,71 @@ body{
   color:#111;
 }
 
-/* GLOW */
-.changed{
-  animation:glowPulse 10s ease-in-out;
+/* STICKY HEADERS */
+.sticky-header {
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.left-header.sticky-header {
+  background: var(--bg-soft); margin-bottom: 0;
+  border-bottom: 1px solid var(--bg-main);
+}
+.row.sticky-header {
+  background: var(--bg-card); padding-bottom: 8px; margin-bottom: 0;
 }
 
-@keyframes glowPulse{
-  0%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  15%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  30%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  45%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  60%{box-shadow:0 0 0 rgba(255,255,255,0)}
-  75%{box-shadow:0 0 18px rgba(255,255,255,.9)}
-  100%{box-shadow:0 0 0 rgba(255,255,255,0)}
-}
-
-/* SUMMARY */
-.summary{
-  background:var(--bg-card);
-  border-top:1px solid #3a3d42;
-}
+/* SUMMARY & FOOTER */
+.summary{ background:var(--bg-card); border-top:1px solid #3a3d42; }
 
 .summary-toggle{
-  background:var(--bg-soft);
-  padding:8px 12px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  background:var(--bg-soft); padding:8px 12px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
 }
-
 .summary-toggle::before{
-  content:"▼";
-  font-size:14px;
-  transition:transform .25s ease;
+  content:"▼"; font-size:14px; transition:transform .25s ease;
 }
-
-.summary-toggle.open::before{
-  transform:rotate(180deg);
-}
+.summary-toggle.open::before{ transform:rotate(180deg); }
 
 .summary-content{
-  display:grid;
-  grid-template-columns:var(--summary-w) var(--summary-w);
-  gap:12px;
-  padding:10px;
+  display:grid; grid-template-columns:var(--summary-w) var(--summary-w);
+  gap:12px; padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
   overflow:hidden;
 }
+.summary-content.hidden{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; }
 
-.summary-content.hidden{
-  max-height:0;
-  opacity:0;
-  padding-top:0;
-  padding-bottom:0;
+.weekly-card, .ranking-card{
+  width:var(--summary-w); background:var(--bg-soft);
+  border-radius:14px; padding:12px;
 }
+.ranking-card{ cursor:pointer; }
 
-/* WEEKLY SUMMARY */
-.weekly-card{
-  width:var(--summary-w);
-  background:var(--bg-soft);
-  border-radius:14px;
-  padding:12px;
-}
-
-.weekly-title{
-  font-size:13px;
-  font-weight:700;
-  margin-bottom:8px;
-}
+.weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 .week-row{
-  height:var(--week-row-h);
-  display:grid;
-  grid-template-columns:1fr auto auto;
-  align-items:center;
-  background:var(--bg-row);
-  border-radius:8px;
-  padding:0 8px;
-  margin-bottom:4px;
-  font-size:11px;
-  font-weight:700;
+  height:var(--week-row-h); display:grid;
+  grid-template-columns:1fr auto auto; align-items:center;
+  background:var(--bg-row); border-radius:8px;
+  padding:0 8px; margin-bottom:4px; font-size:11px; font-weight:700;
 }
-
 .week-label{color:#fff}
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 .week-eur{margin-left:6px;opacity:.6}
 
-/* RANKING */
-.ranking-card{
-  width:var(--summary-w);
-  background:var(--bg-soft);
-  border-radius:14px;
-  padding:12px;
-  cursor:pointer;
-}
-
-.ranking-title{
-  font-size:13px;
-  font-weight:700;
-  margin-bottom:10px;
-}
-
 .rank-row{
-  display:grid;
-  grid-template-columns:20px 1fr auto;
-  grid-template-rows:auto auto;
-  gap:2px 6px;
-  background:var(--bg-row);
-  border-radius:10px;
-  padding:8px;
-  margin-bottom:6px;
+  display:grid; grid-template-columns:20px 1fr auto; grid-template-rows:auto auto;
+  gap:2px 6px; background:var(--bg-row); border-radius:10px;
+  padding:8px; margin-bottom:6px;
 }
-
 .rank-pos{grid-row:span 2;font-weight:800}
 .rank-name{font-weight:600;font-size:13px}
 .rank-money{font-weight:800;color:#7CFF5B}
 .rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
 
-/* HISTORY */
 .history-card{
-  grid-column:1 / -1;
-  background:var(--bg-soft);
-  border-radius:14px;
-  padding:14px;
-  font-weight:700;
-  display:none;
-
-  height:260px;
-  overflow:hidden;
+  grid-column:1 / -1; background:var(--bg-soft); border-radius:14px;
+  padding:14px; font-weight:700; display:none; height:260px; overflow:hidden;
 }
 
 /* SKELETON ANIMATION */
@@ -342,24 +265,79 @@ body{
   background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  color: transparent !important;
-  border-radius: 10px;
+  color: transparent !important; border-radius: 10px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sk-row { height: var(--row-h); margin-bottom: var(--gap); }
+
+/* === NEW: MODAL & STATS CSS === */
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.modal-overlay.active { opacity: 1; pointer-events: all; }
+
+.modal-card {
+  background: #1c1f23; width: 90%; max-width: 380px;
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+  border: 1px solid #3a3d42;
+  transform: translateY(20px); transition: transform 0.3s ease;
+  display:flex; flex-direction:column;
+}
+.modal-overlay.active .modal-card { transform: translateY(0); }
+
+/* HEADER */
+.modal-header {
+  background: #262a30; padding: 16px; text-align: center;
+  border-bottom: 1px solid #3a3d42;
+}
+.modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px; }
+
+/* TABS */
+.modal-tabs { display: flex; background: #2f343a; padding: 6px; gap:6px; }
+.tab-btn {
+  flex: 1; padding: 10px; font-size: 12px; font-weight: 700;
+  color: #9aa0a6; cursor: pointer; text-align: center;
+  border-radius: 8px; transition: background 0.2s;
+}
+.tab-btn.active { background: #3a3d42; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+/* CONTENT */
+.tab-content { display: none; padding: 20px; min-height: 200px; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+/* STAT BARS */
+.stat-row { margin-bottom: 18px; }
+.stat-label { 
+  display: flex; justify-content: space-between; 
+  font-size: 12px; font-weight: 700; color: #ddd; margin-bottom: 8px; 
+}
+.stat-bar-track {
+  height: 8px; background: #343a40; border-radius: 4px;
+  position: relative; overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%; background: var(--accent-orange);
+  border-radius: 4px; transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+/* EVENT ITEMS (Scorers/Cards) */
+.event-item {
+  display: flex; align-items: center; gap: 12px;
+  background: #262a30; padding: 12px; border-radius: 10px; margin-bottom: 8px;
+  border: 1px solid #2f343a;
 }
+.event-icon { font-size: 16px; width: 24px; text-align: center; }
+.event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
 
-.sk-row {
-  height: var(--row-h);
-  margin-bottom: var(--gap);
-}
- 
 </style>
-
 </head>
-
 <body>
 
 <div class="app">
@@ -373,14 +351,13 @@ body{
 
     <div class="summary-content" id="summaryContentWrap">
       <div class="weekly-card" id="weeklyCard"></div>
-
+      
       <div class="ranking-card" id="rankingCard">
         <div class="ranking-title">🏆 All-Time Ranking</div>
         <div id="rankingBody"></div>
       </div>
 
       <div class="history-card" id="historyCard">
-
        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span>📈 History</span>
         <div>
@@ -388,95 +365,127 @@ body{
          <button id="btnMoney">Money</button>
         </div>
        </div>
-
-      <canvas id="historyChart" height="120"></canvas>
-
-     </div>
-
+       <canvas id="historyChart" height="120"></canvas>
+      </div>
     </div>
   </footer>
 </div>
 
+<div class="modal-overlay" id="matchModal" onclick="closeModal()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    
+    <div class="modal-header">
+      <div class="modal-title" id="mTitle">MATCH TITLE</div>
+      <div class="modal-sub" id="mStatus">19:30</div>
+    </div>
+
+    <div class="modal-tabs">
+      <div class="tab-btn active" onclick="switchTab('summary', event)">Summary</div>
+      <div class="tab-btn" onclick="switchTab('stats', event)">Stats</div>
+    </div>
+
+    <div id="tab-summary" class="tab-content active">
+      <div class="event-item">
+        <div class="event-icon">⚽</div>
+        <div class="event-text" id="mScorers">-</div>
+      </div>
+      <div class="event-item">
+        <div class="event-icon">🟨</div>
+        <div class="event-text" id="mYellow">0 Yellow</div>
+      </div>
+      <div class="event-item">
+        <div class="event-icon">🟥</div>
+        <div class="event-text" id="mRed">0 Red</div>
+      </div>
+    </div>
+
+    <div id="tab-stats" class="tab-content">
+      
+      <div class="stat-row">
+        <div class="stat-label">
+          <span id="pHome">50%</span> <span>Possession</span> <span id="pAway">50%</span>
+        </div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill" id="barPoss" style="width:50%"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">
+          <span id="sHome">0</span> <span>Shots on Target</span> <span id="sAway">0</span>
+        </div>
+        <div class="stat-bar-track">
+           <div class="stat-bar-fill" id="barShots" style="width:50%"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">
+          <span id="cHome">0</span> <span>Corners</span> <span id="cAway">0</span>
+        </div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill" id="barCorners" style="width:50%"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
 <script>
+// REPLACE WITH YOUR DEPLOYED WEB APP URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
-/* =========================
-   TEAM LOGOS
-   ========================= */
-const TEAM_LOGOS = {
-  ARS: "https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/64px-Arsenal_FC.svg.png",
-  AVI: "https://media.api-sports.io/football/teams/66.png",
-  BOU: "https://media.api-sports.io/football/teams/35.png",
-  BRE: "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/64px-Brentford_FC_crest.svg.png",
-  BRI: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/64px-Brighton_%26_Hove_Albion_logo.svg.png",
-  BUR: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/64px-Burnley_FC_Logo.svg.png",
-  CHE: "https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/64px-Chelsea_FC.svg.png",
-  CPA: "https://media.api-sports.io/football/teams/52.png",
-  EVE: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/64px-Everton_FC_logo.svg.png",
-  FUL: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/64px-Fulham_FC_%28shield%29.svg.png",
-  LEE: "https://media.api-sports.io/football/teams/63.png",
-  LIV: "https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/64px-Liverpool_FC.svg.png",
-  CTY: "https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/64px-Manchester_City_FC_badge.svg.png",
-  MAN: "https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/64px-Manchester_United_FC_crest.svg.png",
-  NWC: "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/64px-Newcastle_United_Logo.svg.png",
-  NOT: "https://media.api-sports.io/football/teams/65.png",
-  SUN: "https://logos-world.net/wp-content/uploads/2020/06/Sunderland-Logo.png",
-  TOT: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/64px-Tottenham_Hotspur.svg.png",
-  WHA: "https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/64px-West_Ham_United_FC_logo.svg.png",
-  WOL: "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/64px-Wolverhampton_Wanderers.svg.png"
+
+const TEAM_LOGOS={
+ ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/64px-Arsenal_FC.svg.png",
+ AVI:"https://media.api-sports.io/football/teams/66.png",
+ BOU:"https://media.api-sports.io/football/teams/35.png",
+ BRE:"https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/64px-Brentford_FC_crest.svg.png",
+ BRI:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/64px-Brighton_%26_Hove_Albion_logo.svg.png",
+ BUR:"https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/64px-Burnley_FC_Logo.svg.png",
+ CHE:"https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/64px-Chelsea_FC.svg.png",
+ CPA:"https://media.api-sports.io/football/teams/52.png",
+ EVE:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/64px-Everton_FC_logo.svg.png",
+ FUL:"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/64px-Fulham_FC_%28shield%29.svg.png",
+ LEE:"https://media.api-sports.io/football/teams/63.png",
+ LIV:"https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/64px-Liverpool_FC.svg.png",
+ CTY:"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/64px-Manchester_City_FC_badge.svg.png",
+ MAN:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/64px-Manchester_United_FC_crest.svg.png",
+ NWC:"https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/64px-Newcastle_United_Logo.svg.png",
+ NOT:"https://media.api-sports.io/football/teams/65.png",
+ SUN:"https://logos-world.net/wp-content/uploads/2020/06/Sunderland-Logo.png",
+ TOT:"https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/64px-Tottenham_Hotspur.svg.png",
+ WHA:"https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/64px-West_Ham_United_FC_logo.svg.png",
+ WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/64px-Wolverhampton_Wanderers.svg.png"
 };
 
 function renderTeam(raw){
   if(!raw) return "";
-
-  const code = raw
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z]/g,"");
-
+  const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
-
-  // If no logo in map → show code
-  if(!logo){
-    return `<span class="team-fallback">${code}</span>`;
-  }
-
-  // Try logo, fallback to code if image fails
-  return `
-    <img
-      src="${logo}"
-      alt="${code}"
-      class="team-logo"
-      onerror="this.outerHTML='<span class=team-fallback>${code}</span>'"
-    >
-  `;
+  if(!logo) return `<span class="team-fallback">${code}</span>`;
+  return `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
- 
-/* STATE */
-let prev={}, prevScore={}, chartDataCache=null, historyChart=null;
+let prev={}, chartDataCache=null, historyChart=null;
 
 function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
+  left.innerHTML = ""; right.innerHTML = "";
   
-  // Clear any existing content
-  left.innerHTML = "";
-  right.innerHTML = "";
-
-  // 1. Fake Header (Left)
   const lh = document.createElement("div");
   lh.className = "left-header skeleton";
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
 
-  // 2. Fake Header (Right)
   const rh = document.createElement("div");
   rh.className = "row";
-  // Create 5 fake player columns
   for(let i=0; i<5; i++){
     const p = document.createElement("div");
     p.className = "header-pill skeleton";
@@ -485,19 +494,12 @@ function renderSkeletons() {
   right.appendChild(rh);
   right.appendChild(document.createElement("div")).className = "right-divider";
 
-  // 3. Fake Rows (Create 10 dummy matches)
   for (let i = 0; i < 10; i++) {
-    // Left Card Skeletons
     const lr = document.createElement("div");
     lr.className = "left-row sk-row"; 
-    lr.innerHTML = `
-      <div class="left-cell skeleton" style="flex:1"></div>
-      <div class="left-cell skeleton" style="width:28px"></div>
-      <div class="left-cell skeleton" style="width:44px"></div>
-    `;
+    lr.innerHTML = `<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`;
     left.appendChild(lr);
 
-    // Right Card Skeletons
     const rr = document.createElement("div");
     rr.className = "row sk-row";
     for(let j=0; j<5; j++){
@@ -508,7 +510,7 @@ function renderSkeletons() {
     right.appendChild(rr);
   }
 }
- 
+
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     const left=document.getElementById("left");
@@ -516,102 +518,54 @@ function loadData(){
     const weekly=document.getElementById("weeklyCard");
     const ranking=document.getElementById("rankingBody");
 
-    left.innerHTML="";
-    right.innerHTML="";
+    left.innerHTML=""; right.innerHTML="";
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
-    /* STORE CHART DATA */
-    if(data.chartData){
-      chartDataCache = data.chartData;
-    }
+    if(data.chartData) chartDataCache = data.chartData;
 
-    /* MATCH HEADER (STICKY) */
+    /* HEADERS */
     const lh=document.createElement("div");
-    lh.className="left-header sticky-header";
-    lh.textContent="MATCHES";
+    lh.className="left-header sticky-header"; lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* PLAYER HEADERS (STICKY) */
     const headerRow=document.createElement("div");
-    headerRow.className="row sticky-header";
-    headerRow.id = "rightHeaderRow"; 
+    headerRow.className="row sticky-header"; headerRow.id = "rightHeaderRow"; 
     data.headers.forEach(h=>{
       const p=document.createElement("div");
-      p.className="header-pill";
-      p.textContent=h;
+      p.className="header-pill"; p.textContent=h;
       headerRow.appendChild(p);
     });
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCH ROWS */
+    /* MATCHES */
     data.matches.forEach((m,i)=>{
       const lr=document.createElement("div");
-      
-      /* GRID LAYOUT */
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
-
-      const [home, away] = m.match
-        .split("-")
-        .map(t => t.trim().toUpperCase());
-
-      /* BADGE LOGIC */
-      const isLive = m.status.includes("'") || m.status === "HT" || m.status === "1H" || m.status === "2H" || m.status === "LIVE";
       
+      // ✨ ADD CLICK FOR MODAL
+      lr.style.cursor = "pointer";
+      lr.onclick = () => openModal(m);
+
+      const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
+      const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
       const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
       const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
-
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
       lr.innerHTML = `
         <div class="left-cell match">
-          <div class="match-teams">
-            ${renderTeam(home)}
-            <span>-</span>
-            ${renderTeam(away)}
-          </div>
+          <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
         </div>
-
-        <div class="left-cell" style="
-            display:flex; 
-            justify-content:center; /* ✅ CENTERED */
-            gap: 6px;               /* ✅ FIXED GAP BETWEEN ITEMS */
-            align-items:center; 
-            padding:0 2px;
-            background:var(--bg-soft);
-        ">
-           
-           <span style="
-              color:${badgeColor}; 
-              background:${badgeBg};
-              border:${badgeBorder};
-              padding: 2px 4px; 
-              border-radius:5px; 
-              font-size:11px; 
-              font-weight:800;
-              min-width:36px;
-              text-align:center;
-              display:flex; align-items:center; justify-content:center;
-           ">
-             ${m.status}
-           </span>
-
-           <span style="
-              color:#fff; 
-              font-size:12px; 
-              font-weight:700; 
-              white-space: nowrap;
-           ">
-             ${displayScore}
-           </span>
-
+        <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
+           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
         </div>
       `;
-
       left.appendChild(lr);
 
       const rr=document.createElement("div");
@@ -621,32 +575,22 @@ function loadData(){
         const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-        if(c.value){
-          el.textContent=c.value;
-          el.style.background=c.color;
-        }
+        if(c.value){ el.textContent=c.value; el.style.background=c.color; }
         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
-    /* REST OF THE FUNCTION */
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
-      const lab=document.createElement("div");
-      lab.className="left-label";
-      lab.textContent=label;
+      const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
       left.appendChild(lab);
-
-      const rr=document.createElement("div");
-      rr.className="row";
+      const rr=document.createElement("div"); rr.className="row";
       data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div");
-        el.className="bet";
-        el.textContent=formatGBP(c.value);
-        el.style.background=c.color;
+        const el=document.createElement("div"); el.className="bet";
+        el.textContent=formatGBP(c.value); el.style.background=c.color;
         rr.appendChild(el);
       });
       right.appendChild(rr);
@@ -654,117 +598,104 @@ function loadData(){
 
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      weekly.innerHTML+=`
-        <div class="week-row">
-          <div class="week-label">${t.label}</div>
-          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div>
-          <div class="week-eur">${formatEUR(t.cells[1].value)}</div>
-        </div>`;
+      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div><div class="week-eur">${formatEUR(t.cells[1].value)}</div></div>`;
     });
 
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
       const rankDisplay = medals[i] || (i + 1);
-
-      ranking.innerHTML+=`
-        <div class="rank-row">
-          <div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div>
-          <div class="rank-name">${r.name}</div>
-          <div class="rank-money">${formatGBP(r.money)}</div>
-          <div class="rank-bets">${r.matchesRight} matches right</div>
-        </div>`;
+      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
     });
   });
 }
- 
-// Show skeletons immediately
-renderSkeletons();
 
-// Then load real data
+// === MODAL FUNCTIONS ===
+function switchTab(tab, e) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function openModal(m) {
+  document.getElementById("mTitle").textContent = m.match;
+  document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
+  
+  // Summary
+  const stats = m.stats || { scorers:"", yellow:0, red:0, h_poss:50, a_poss:50, h_shots:0, a_shots:0, h_corners:0, a_corners:0 };
+  
+  document.getElementById("mScorers").textContent = stats.scorers || "No Goals";
+  document.getElementById("mYellow").textContent = (stats.yellow||0) + " Yellow Cards";
+  document.getElementById("mRed").textContent = (stats.red||0) + " Red Cards";
+
+  // Stats Helper
+  const setStat = (type, h, a) => {
+    document.getElementById(type + "Home").textContent = h;
+    document.getElementById(type + "Away").textContent = a;
+    let total = h + a;
+    let pct = (total === 0) ? 50 : (h / total) * 100;
+    if(type === 'p') pct = h; // Possession is already %
+    
+    document.getElementById("bar" + (type === 'p' ? 'Poss' : (type === 's' ? 'Shots' : 'Corners'))).style.width = pct + "%";
+  };
+
+  setStat('p', stats.h_poss, stats.a_poss);
+  setStat('s', stats.h_shots, stats.a_shots);
+  setStat('c', stats.h_corners, stats.a_corners);
+
+  document.getElementById("matchModal").classList.add("active");
+}
+
+function closeModal() {
+  document.getElementById("matchModal").classList.remove("active");
+}
+
+renderSkeletons();
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-/* =========================
-   TOGGLES
-   ========================= */
+// === TOGGLES ===
 document.getElementById("rankingCard").onclick=()=>{
   const h=document.getElementById("historyCard");
   const open = h.style.display === "none" || !h.style.display;
   h.style.display = open ? "block" : "none";
   if(open) drawHistoryChart("matches");
 };
-
 document.getElementById("summaryToggle").onclick=()=>{
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   document.getElementById("summaryToggle").classList.toggle("open");
   document.getElementById("historyCard").style.display="none";
 };
 
-/* =========================
-   HISTORY BUTTONS
-   ========================= */
+// === HISTORY ===
 const btnMatches = document.getElementById("btnMatches");
 const btnMoney = document.getElementById("btnMoney");
-
 if(btnMatches && btnMoney){
-  btnMatches.onclick = ()=>{
-    btnMatches.classList.add("active");
-    btnMoney.classList.remove("active");
-    drawHistoryChart("matches");
-  };
-
-  btnMoney.onclick = ()=>{
-    btnMoney.classList.add("active");
-    btnMatches.classList.remove("active");
-    drawHistoryChart("money");
-  };
+  btnMatches.onclick = ()=>{ btnMatches.classList.add("active"); btnMoney.classList.remove("active"); drawHistoryChart("matches"); };
+  btnMoney.onclick = ()=>{ btnMoney.classList.add("active"); btnMatches.classList.remove("active"); drawHistoryChart("money"); };
 }
 
-/* =========================
-   HISTORY CHART
-   ========================= */
 function drawHistoryChart(type){
-  // ✅ Prevent re-drawing the same chart
   if(historyChart && historyChart._type === type) return;
-
   const canvas = document.getElementById("historyChart");
   if(!canvas) return;
-
   const ctx = canvas.getContext("2d");
-
-  // 🔥 Destroy old chart BEFORE creating a new one
-  if(historyChart){
-    historyChart.destroy();
-    historyChart = null;
-  }
-
-  const source = chartDataCache[type];
+  if(historyChart){ historyChart.destroy(); historyChart = null; }
+  const source = chartDataCache ? chartDataCache[type] : null;
   if(!source || !source.length) return;
 
-  const labels = source.map(r =>
-    new Date(r.date).toLocaleDateString()
-  );
-
+  const labels = source.map(r => new Date(r.date).toLocaleDateString());
   const players = ["Snackbar","Timbo","Pepe"];
-  const colors = {
-    Snackbar:"#7CFF5B",
-    Timbo:"#4DA3FF",
-    Pepe:"#FF5BC4"
-  };
+  const colors = { Snackbar:"#7CFF5B", Timbo:"#4DA3FF", Pepe:"#FF5BC4" };
 
-  // ✅ Create chart
   historyChart = new Chart(ctx, {
   type: "line",
   data: {
     labels,
     datasets: players.map(p => ({
-      label: p,
-      data: source.map(r => r[p]),
-      borderColor: colors[p],
-      backgroundColor: colors[p],
-      tension: 0.3,
-      pointRadius: 5,
-      pointHoverRadius: 6
+      label: p, data: source.map(r => r[p]),
+      borderColor: colors[p], backgroundColor: colors[p],
+      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
     }))
   },
   options: {
@@ -773,44 +704,25 @@ function drawHistoryChart(type){
         formatter: (value, ctx) => {
           const data = ctx.dataset.data;
           const index = ctx.dataIndex;
-
-          // 🚫 hide first point
           if (index === 0) return null;
-
           const diff = value - data[index - 1];
-
-          // 🚫 show ONLY positive gains
           if (diff <= 0) return null;
-
           return `+${diff}`;
         },
-
-        // same color as line
         color: ctx => ctx.dataset.borderColor,
-
-        font: {
-          weight: "bold",
-          size: 10
-        },
-
-        align: "top",
-        offset: 6
+        font: { weight: "bold", size: 10 },
+        align: "top", offset: 6
       }
     }
   }
 });
-
-  // ✅ IMPORTANT: remember what type this chart is
   historyChart._type = type;
 }
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-<script>
-  Chart.register(ChartDataLabels);
-</script>
+<script>Chart.register(ChartDataLabels);</script>
 
 </body>
 </html>

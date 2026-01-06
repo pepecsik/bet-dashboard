@@ -548,29 +548,25 @@ function loadData(){
 
     /* MATCH ROWS */
     data.matches.forEach((m,i)=>{
-      // We don't need the scoreKey anymore since we removed the glow animation
-
       const lr=document.createElement("div");
       
-      /* ✅ NEW GRID LAYOUT: Adjusted for wider card */
-      // 1fr = Teams take remaining space
-      // 95px = Fixed space for the Status/Score pill
+      /* GRID LAYOUT */
       lr.className="left-row";
-      lr.style.gridTemplateColumns = "1fr 95px"; 
+      // 1fr = Teams
+      // 90px = Fixed space for the Status/Score pill
+      lr.style.gridTemplateColumns = "1fr 90px"; 
 
       const [home, away] = m.match
         .split("-")
         .map(t => t.trim().toUpperCase());
 
-      /* ✅ BADGE LOGIC */
-      // If status has a quote (34') or HT/LIVE -> It is LIVE (Green)
+      /* BADGE LOGIC */
       const isLive = m.status.includes("'") || m.status === "HT" || m.status === "1H" || m.status === "2H" || m.status === "LIVE";
       
       const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
       const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
 
-      // If there is no score yet (e.g. game not started), show empty string
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
       lr.innerHTML = `
@@ -586,7 +582,7 @@ function loadData(){
             display:flex; 
             justify-content:space-between; 
             align-items:center; 
-            padding:0 10px; 
+            padding:0 6px; /* TIGHTER PADDING */
             background:var(--bg-soft);
         ">
            
@@ -594,11 +590,11 @@ function loadData(){
               color:${badgeColor}; 
               background:${badgeBg};
               border:${badgeBorder};
-              padding: 2px 6px; 
+              padding: 2px 4px; 
               border-radius:5px; 
               font-size:11px; 
               font-weight:800;
-              min-width:40px;
+              min-width:36px; /* SLIGHTLY NARROWER MIN-WIDTH */
               text-align:center;
               display:flex; align-items:center; justify-content:center;
            ">
@@ -607,9 +603,10 @@ function loadData(){
 
            <span style="
               color:#fff; 
-              font-size:13px; 
+              font-size:12px; /* SMALLER FONT */
               font-weight:700; 
               margin-left:4px;
+              white-space: nowrap; /* PREVENTS WRAPPING */
            ">
              ${displayScore}
            </span>
@@ -630,14 +627,12 @@ function loadData(){
           el.textContent=c.value;
           el.style.background=c.color;
         }
-        if(prev[key] && prev[key]!==val) el.classList.add("changed");
-        prev[key]=val;
         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
-    /* BET / WIN / WIN PP */
+    /* REST OF THE FUNCTION (Dividers, Bets, Summary, Ranking) */
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
@@ -659,7 +654,6 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* WEEKLY SUMMARY */
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`
@@ -670,7 +664,6 @@ function loadData(){
         </div>`;
     });
 
-    /* RANKING */
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
       const rankDisplay = medals[i] || (i + 1);

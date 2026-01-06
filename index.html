@@ -115,7 +115,7 @@ body{
   transform: translateY(-50%);
   cursor: pointer;
   transition: transform 0.2s;
-  
+   
   width: 28px; height: 28px;
   border-radius: 50%;
   overflow: hidden; 
@@ -329,12 +329,12 @@ body{
 }
 .modal-back-btn:hover { background: #4a4f55; color: #fff; }
 
-/* ✅ HEADER RIGHT LOGO (White Circle, matches PL Btn) */
+/* HEADER RIGHT LOGO */
 .modal-header-logo {
   position: absolute;
   right: 16px; top: 50%; transform: translateY(-50%);
   width: 28px; height: 28px;
-  background: #ffffff; /* WHITE BG */
+  background: #ffffff; 
   border-radius: 50%;
   padding: 2px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -362,20 +362,64 @@ body{
 .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 
-/* STAT BARS */
-.stat-row { margin-bottom: 18px; }
+/* === UPDATED DUAL STAT BARS (LIVESCORE STYLE) === */
+.stat-row { 
+  margin-bottom: 22px; 
+}
 .stat-label { 
-  display: flex; justify-content: space-between; 
-  font-size: 12px; font-weight: 700; color: #ddd; margin-bottom: 8px; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-end; 
+  font-size: 13px; 
+  font-weight: 800; 
+  color: #fff; 
+  margin-bottom: 6px; 
+  padding: 0 4px;
 }
-.stat-bar-track {
-  height: 8px; background: #343a40; border-radius: 4px;
-  position: relative; overflow: hidden;
+.stat-name { 
+  font-size: 11px; 
+  font-weight: 600; 
+  color: #9aa0a6; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;
 }
-.stat-bar-fill {
-  height: 100%; background: var(--accent-orange);
-  border-radius: 4px; transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+
+/* Flex container for the two bars */
+.stat-bar-container {
+  display: flex;
+  gap: 8px; /* Gap in the middle */
+  height: 6px;
+  width: 100%;
 }
+
+/* Individual track (Left and Right side) */
+.sb-track {
+  flex: 1;
+  background: #2f343a; /* Dark background */
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* The actual colored fill */
+.sb-fill {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  background: #9aa0a6; /* Default Grey (Loser) */
+}
+
+/* Home fills from Right -> Left */
+.sb-track.home .sb-fill { right: 0; }
+
+/* Away fills from Left -> Right */
+.sb-track.away .sb-fill { left: 0; }
+
+/* Winner Color Modifier */
+.sb-fill.orange { background: var(--accent-orange) !important; }
+
 
 /* EVENT ITEMS */
 .event-item {
@@ -391,7 +435,6 @@ body{
   display: grid;
   /* Columns: Rank | Team | MP | Pts | GD | Form */
   grid-template-columns: 25px 1fr 35px 35px 35px 50px; 
-  /* ✅ INCREASED GAP FOR SPACING */
   gap: 8px; 
   align-items: center;
   font-size: 11px;
@@ -411,7 +454,6 @@ body{
 }
 
 /* Alignment Helpers */
-/* ✅ CENTER ALIGNMENT FOR STATS */
 .ta-c { text-align: center; }
 .ta-r { text-align: right; }
 .ta-l { text-align: left; }
@@ -476,24 +518,7 @@ body{
       <div class="tab-btn" onclick="switchTab('summary', event)">Summary</div>
     </div>
 
-    <div id="tab-stats" class="tab-content active">
-      <div class="stat-row">
-        <div class="stat-label"><span id="pHome">50%</span> <span>Possession</span> <span id="pAway">50%</span></div>
-        <div class="stat-bar-track"><div class="stat-bar-fill" id="barPoss" style="width:50%"></div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-label"><span id="sHome">0</span> <span>Shots on Target</span> <span id="sAway">0</span></div>
-        <div class="stat-bar-track"><div class="stat-bar-fill" id="barShots" style="width:50%"></div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-label"><span id="soHome">0</span> <span>Shots off Target</span> <span id="soAway">0</span></div>
-        <div class="stat-bar-track"><div class="stat-bar-fill" id="barShotsOff" style="width:50%"></div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-label"><span id="cHome">0</span> <span>Corners</span> <span id="cAway">0</span></div>
-        <div class="stat-bar-track"><div class="stat-bar-fill" id="barCorners" style="width:50%"></div></div>
-      </div>
-    </div>
+    <div id="tab-stats" class="tab-content active"></div>
 
     <div id="tab-summary" class="tab-content">
       <div class="event-item"><div class="event-icon">⚽</div><div class="event-text" id="mScorers">-</div></div>
@@ -573,7 +598,7 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
-  
+   
   const lh = document.createElement("div");
   lh.className = "left-header"; 
   lh.innerHTML = `
@@ -653,7 +678,7 @@ function loadData(){
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
-      
+       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
@@ -726,6 +751,8 @@ function switchTab(tab, e) {
 
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
+  
+  // 1. Set Header Info
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
        <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
@@ -735,35 +762,76 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
-  const stats = m.stats || { scorers:"", yellow:0, red:0, h_poss:50, a_poss:50, h_shots:0, a_shots:0, h_corners:0, a_corners:0, h_shotsOff:0, a_shotsOff:0 };
-  
-  document.getElementById("mScorers").innerHTML = stats.scorers ? `<span style="color:#fff">${stats.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
-  document.getElementById("mYellow").textContent = (stats.yellow||0) + " Yellow Cards";
-  document.getElementById("mRed").textContent = (stats.red||0) + " Red Cards";
+  // 2. Prepare Stats Object (Default to 0 if missing)
+  const s = m.stats || {};
+  const statsList = [
+    { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
+    { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
+    { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
+    { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
+  ];
 
-  const setStat = (type, h, a) => {
-    document.getElementById(type + "Home").textContent = h;
-    document.getElementById(type + "Away").textContent = a;
-    let total = h + a;
-    let pct = (total === 0) ? 50 : (h / total) * 100;
-    if(type === 'p') pct = h; 
-    let id = "";
-    if(type==='p') id="barPoss"; if(type==='s') id="barShots"; if(type==='so') id="barShotsOff"; if(type==='c') id="barCorners";
-    document.getElementById(id).style.width = pct + "%";
-  };
+  // 3. Generate HTML for Stats with DUAL BARS (LiveScore Style)
+  const container = document.getElementById("tab-stats");
+  container.innerHTML = ""; // Clear previous
 
-  setStat('p', stats.h_poss, stats.a_poss);
-  setStat('s', stats.h_shots, stats.a_shots);
-  setStat('so', stats.h_shotsOff, stats.a_shotsOff);
-  setStat('c', stats.h_corners, stats.a_corners);
+  statsList.forEach(stat => {
+    // Calculate Percentages for the Bar Width
+    let total = stat.h + stat.a;
+    let hPct = 0, aPct = 0;
+
+    if (total === 0) {
+      hPct = 0; aPct = 0; // Empty bars if no data
+    } else {
+      hPct = (stat.h / total) * 100;
+      aPct = (stat.a / total) * 100;
+      
+      // Special case for Possession if API returns 50/50 raw numbers
+      if(stat.isPct && total > 100) {
+         hPct = stat.h; aPct = stat.a;
+      }
+    }
+
+    // Determine Colors (Higher value gets Orange, Lower gets Grey)
+    const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
+    const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
+
+    const hText = stat.isPct ? stat.h + "%" : stat.h;
+    const aText = stat.isPct ? stat.a + "%" : stat.a;
+
+    const html = `
+      <div class="stat-row">
+        <div class="stat-label">
+          <span>${hText}</span>
+          <span class="stat-name">${stat.label}</span>
+          <span>${aText}</span>
+        </div>
+        <div class="stat-bar-container">
+          <div class="sb-track home">
+            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
+          </div>
+          <div class="sb-track away">
+            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.innerHTML += html;
+  });
+
+  // 4. Update Summary Tab Info
+  document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
+  document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
+  document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
 
   document.getElementById("matchModal").classList.add("active");
 }
 
+
 function openTable() {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-  
+   
   if(!tableCache || tableCache.length === 0) {
     tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
   } else {

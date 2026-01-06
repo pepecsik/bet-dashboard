@@ -195,7 +195,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:12px;
+  font-size:14px; /* INCREASED FONT SIZE */
   font-weight:700;
 }
 
@@ -663,13 +663,13 @@ function loadData(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
          <span>MATCHES</span>
-         <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:2px;">${dateText}</span>
+         <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
       </div>
     `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER WITH MERGED PILLS (UPDATED) --- */
+    /* --- RIGHT HEADER WITH MERGED PILLS --- */
     const headerRow=document.createElement("div");
     headerRow.className="row"; 
     

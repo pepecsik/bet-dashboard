@@ -44,8 +44,8 @@ if ("serviceWorker" in navigator) {
   --left-w:230px; 
   --bet-w:80px;   
   
-  /* UPDATED: Made summary cards narrower */
-  --summary-w:220px; 
+  /* Adjusted for tighter fit on mobile */
+  --summary-w:200px; 
 
   --week-row-h:30px;
 }
@@ -109,7 +109,7 @@ body{
   position: relative; 
 }
 
-/* PREMIER LEAGUE BUTTON (LEFT CARD) */
+/* PREMIER LEAGUE BUTTON */
 .pl-btn {
   position: absolute;
   left: 10px;  
@@ -252,20 +252,30 @@ body{
 }
 .summary-toggle.open::before{ transform:rotate(180deg); }
 
-/* UPDATED SUMMARY CONTENT TO SCROLL HORIZONTALLY ON MOBILE */
+/* Main Container: Stack items vertically (Top Row then Chart) */
 .summary-content{
-  display:flex; 
+  display:flex;
+  flex-direction: column; /* Vertical Stack */
   gap:12px; 
   padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
-  overflow-x:auto; /* Allows scrolling if cards are too wide */
-  scrollbar-width: none;
+  overflow:hidden;
 }
-.summary-content::-webkit-scrollbar { display: none; }
 .summary-content.hidden{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; }
 
+/* The Row containing Weekly + Ranking */
+.summary-top-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  overflow-x: auto; /* Horizontal scroll if screen is too small */
+  scrollbar-width: none;
+}
+.summary-top-row::-webkit-scrollbar { display: none; }
+
 .weekly-card, .ranking-card{
-  min-width:var(--summary-w); /* Using min-width to prevent squishing */
+  flex: 1; /* Both cards grow equally to fill width */
+  min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
 }
@@ -289,16 +299,15 @@ body{
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
-/* UPDATED RANKING ROW - TIGHTER */
+/* RANKING ROW */
 .rank-row{
   display:grid; 
-  /* Reduced 1st col width */
   grid-template-columns:18px 1fr auto; 
   grid-template-rows:auto auto;
-  gap:2px 4px; /* Tighter gap */
+  gap:2px 4px; 
   background:var(--bg-row); 
   border-radius:10px;
-  padding:6px 8px; /* Tighter padding */
+  padding:6px 8px; 
   margin-bottom:6px;
 }
 .rank-pos{grid-row:span 2;font-weight:800; font-size: 1.1em;}
@@ -306,9 +315,9 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
+/* HISTORY CARD (Full Width below top row) */
 .history-card{
-  /* Fix chart width */
-  min-width: 100%; 
+  width: 100%; 
   background:var(--bg-soft); border-radius:14px;
   padding:14px; font-weight:700; display:none; height:260px; overflow:hidden;
 }
@@ -523,11 +532,13 @@ body{
     <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
-      <div class="weekly-card" id="weeklyCard"></div>
       
-      <div class="ranking-card" id="rankingCard">
-        <div class="ranking-title">🏆 All-Time Ranking</div>
-        <div id="rankingBody"></div>
+      <div class="summary-top-row">
+        <div class="weekly-card" id="weeklyCard"></div>
+        <div class="ranking-card" id="rankingCard">
+          <div class="ranking-title">🏆 All-Time Ranking</div>
+          <div id="rankingBody"></div>
+        </div>
       </div>
 
       <div class="history-card" id="historyCard">
@@ -540,6 +551,7 @@ body{
        </div>
        <canvas id="historyChart" height="120"></canvas>
       </div>
+
     </div>
   </footer>
 </div>

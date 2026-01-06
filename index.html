@@ -238,8 +238,16 @@ body{
   color:#111;
 }
 
-/* SUMMARY & FOOTER */
-.summary{ background:var(--bg-card); border-top:1px solid #3a3d42; }
+/* === SUMMARY & FOOTER (UPDATED ROUNDED STYLE) === */
+.summary { 
+  background: var(--bg-card); 
+  
+  /* ROUNDED STYLE UPDATE */
+  margin: 0 10px 10px 10px; /* Spacing from screen edges */
+  border-radius: 14px;      /* Rounded Corners */
+  overflow: hidden;         /* Clips the content inside */
+  border: 1px solid #2f343a; /* Subtle border to match top cards */
+}
 
 .summary-toggle{
   background:var(--bg-soft); padding:8px 12px; cursor:pointer;

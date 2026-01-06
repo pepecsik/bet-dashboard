@@ -684,33 +684,35 @@ renderSkeletons();
 // Then load real data
 loadData();
 setInterval(loadData,REFRESH_MS);
+
 /* =========================
-   SYNC SCROLLING
+   SYNC SCROLLING (HOVER METHOD)
    ========================= */
-setTimeout(() => {
-  const leftCard = document.querySelector(".left-card");
-  const rightCard = document.querySelector(".right-card");
-  let isSyncingLeft = false;
-  let isSyncingRight = false;
+// We use 'mouseover' to decide which side controls the scroll.
+// This prevents them from fighting each other.
 
-  if(leftCard && rightCard){
-    leftCard.onscroll = function() {
-      if (!isSyncingLeft) {
-        isSyncingRight = true;
-        rightCard.scrollTop = this.scrollTop;
-      }
-      isSyncingLeft = false;
-    };
+const leftCard = document.getElementById("left");
+const rightCard = document.getElementById("right").parentNode; // Get the .right-card container
 
-    rightCard.onscroll = function() {
-      if (!isSyncingRight) {
-        isSyncingLeft = true;
-        leftCard.scrollTop = this.scrollTop;
-      }
-      isSyncingRight = false;
-    };
+let activeSide = null;
+
+// 1. Detect which side the mouse is over
+leftCard.addEventListener('mouseenter', () => { activeSide = 'left'; });
+rightCard.addEventListener('mouseenter', () => { activeSide = 'right'; });
+
+// 2. Sync Left -> Right
+leftCard.addEventListener('scroll', () => {
+  if (activeSide === 'left') {
+    rightCard.scrollTop = leftCard.scrollTop;
   }
-}, 1000);
+});
+
+// 3. Sync Right -> Left
+rightCard.addEventListener('scroll', () => {
+  if (activeSide === 'right') {
+    leftCard.scrollTop = rightCard.scrollTop;
+  }
+});
 
 /* =========================
    TOGGLES

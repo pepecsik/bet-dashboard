@@ -38,13 +38,18 @@ if ("serviceWorker" in navigator) {
   --text-muted:#9aa0a6;
   --accent-orange: #ff9f43;
 
-  --row-h:40px;
+  /* ✅ TWEAK 1: Taller rows for logo breathing room (Was 40px) */
+  --row-h:50px;
+  
   --gap:6px;
 
+  /* Widths */
   --left-w:230px; 
-  --bet-w:90px;   
+  
+  /* ✅ TWEAK 2: Narrower bet pills (Was 90px) */
+  --bet-w:70px;   
+  
   --summary-w:250px;
-
   --week-row-h:30px;
 }
 
@@ -473,7 +478,7 @@ function renderSkeletons() {
   left.innerHTML = ""; right.innerHTML = "";
   
   const lh = document.createElement("div");
-  lh.className = "left-header"; // NO STICKY
+  lh.className = "left-header"; 
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
 
@@ -524,7 +529,7 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
 
     const headerRow=document.createElement("div");
-    headerRow.className="row"; // NO STICKY
+    headerRow.className="row"; 
     data.headers.forEach(h=>{
       const p=document.createElement("div");
       p.className="header-pill"; p.textContent=h;

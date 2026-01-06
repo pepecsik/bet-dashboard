@@ -126,6 +126,24 @@ body{
 .pl-btn:hover { transform: translateY(-50%) scale(1.1); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
 
+/* === NEW: BRAND LOGO BUTTON (RIGHT SIDE) === */
+.brand-btn {
+  position: absolute;
+  right: 10px;  
+  top: 50%;
+  transform: translateY(-50%);
+  /* Matches size of PL button */
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  /* No white background or shadow, so the shaped logo floats */
+  background: transparent;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+.brand-logo { 
+  width: 100%; height: 100%; 
+  object-fit: contain; 
+}
+
 .left-divider{height:8px}
 
 .left-row{
@@ -195,7 +213,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:14px; /* INCREASED FONT SIZE */
+  font-size:14px; 
   font-weight:700;
 }
 
@@ -605,6 +623,9 @@ function renderSkeletons() {
       <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
     </div>
     <span>MATCHES</span>
+    <div class="brand-btn">
+       <img src="apple-touch-icon.png" class="brand-logo">
+    </div>
   `;
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
@@ -650,7 +671,7 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    /* --- LEFT HEADER WITH DATE (UPDATED) --- */
+    /* --- LEFT HEADER WITH DATE + LOGO (UPDATED) --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
     
@@ -664,6 +685,9 @@ function loadData(){
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
          <span>MATCHES</span>
          <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
+      </div>
+      <div class="brand-btn">
+         <img src="apple-touch-icon.png" class="brand-logo">
       </div>
     `;
     left.appendChild(lh);

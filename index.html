@@ -42,11 +42,9 @@ if ("serviceWorker" in navigator) {
   --gap:6px;
 
   --left-w:230px; 
-  
-  /* ✅ TWEAK 1: 80px (90% width) - Perfect Balance */
   --bet-w:80px;   
-  
   --summary-w:250px;
+
   --week-row-h:30px;
 }
 
@@ -142,12 +140,10 @@ body{
   font-weight:700;
 }
 
-/* ✅ TWEAK 2: Drop Shadow makes dark logos (Spurs) pop against dark bg */
 .team-logo{ 
   width:38px; height:38px; object-fit:contain; 
   filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); 
 }
-
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
@@ -406,6 +402,15 @@ body{
 
       <div class="stat-row">
         <div class="stat-label">
+          <span id="soHome">0</span> <span>Shots off Target</span> <span id="soAway">0</span>
+        </div>
+        <div class="stat-bar-track">
+           <div class="stat-bar-fill" id="barShotsOff" style="width:50%"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">
           <span id="cHome">0</span> <span>Corners</span> <span id="cAway">0</span>
         </div>
         <div class="stat-bar-track">
@@ -469,6 +474,7 @@ function renderTeam(raw){
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
+  // Drop shadow is now in CSS class .team-logo
   return `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
@@ -524,7 +530,7 @@ function loadData(){
 
     if(data.chartData) chartDataCache = data.chartData;
 
-    /* HEADERS - NO STICKY */
+    /* HEADERS */
     const lh=document.createElement("div");
     lh.className="left-header"; lh.textContent="MATCHES";
     left.appendChild(lh);
@@ -630,7 +636,13 @@ function openModal(m) {
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
   // 2. SUMMARY TAB
-  const stats = m.stats || { scorers:"", yellow:0, red:0, h_poss:50, a_poss:50, h_shots:0, a_shots:0, h_corners:0, a_corners:0 };
+  const stats = m.stats || { 
+    scorers:"", yellow:0, red:0, 
+    h_poss:50, a_poss:50, 
+    h_shots:0, a_shots:0, 
+    h_corners:0, a_corners:0,
+    h_shotsOff:0, a_shotsOff:0 
+  };
   
   document.getElementById("mScorers").innerHTML = stats.scorers ? 
     `<span style="color:#fff">${stats.scorers}</span>` : 
@@ -647,11 +659,19 @@ function openModal(m) {
     let pct = (total === 0) ? 50 : (h / total) * 100;
     if(type === 'p') pct = h; 
     
-    document.getElementById("bar" + (type === 'p' ? 'Poss' : (type === 's' ? 'Shots' : 'Corners'))).style.width = pct + "%";
+    // Select specific bar
+    let id = "";
+    if(type==='p') id="barPoss";
+    if(type==='s') id="barShots";
+    if(type==='so') id="barShotsOff";
+    if(type==='c') id="barCorners";
+
+    document.getElementById(id).style.width = pct + "%";
   };
 
   setStat('p', stats.h_poss, stats.a_poss);
   setStat('s', stats.h_shots, stats.a_shots);
+  setStat('so', stats.h_shotsOff, stats.a_shotsOff);
   setStat('c', stats.h_corners, stats.a_corners);
 
   document.getElementById("matchModal").classList.add("active");

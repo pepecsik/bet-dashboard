@@ -43,7 +43,9 @@ if ("serviceWorker" in navigator) {
 
   --left-w:230px; 
   --bet-w:80px;   
-  --summary-w:250px;
+  
+  /* UPDATED: Made summary cards narrower */
+  --summary-w:220px; 
 
   --week-row-h:30px;
 }
@@ -126,7 +128,7 @@ body{
 .pl-btn:hover { transform: translateY(-50%) scale(1.1); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
 
-/* === BRAND LOGO BUTTON (CSS MASK FIX) === */
+/* BRAND LOGO BUTTON */
 .brand-btn {
   position: absolute;
   right: 12px;  
@@ -135,18 +137,13 @@ body{
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
   background: transparent;
-  
-  /* THIS HIDES THE WHITE CORNERS */
   border-radius: 8px; 
   overflow: hidden; 
-  
-  /* Optional shadow for 3D pop */
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 .brand-logo { 
   width: 100%; height: 100%; 
   object-fit: cover; 
-  /* ZOOM IN SLIGHTLY TO HIDE BORDERS */
   transform: scale(1.15);
 }
 
@@ -219,7 +216,6 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  /* INCREASED FONT SIZE HERE */
   font-size:16px; 
   font-weight:700;
 }
@@ -238,15 +234,13 @@ body{
   color:#111;
 }
 
-/* === SUMMARY & FOOTER (UPDATED ROUNDED STYLE) === */
+/* === SUMMARY & FOOTER === */
 .summary { 
   background: var(--bg-card); 
-  
-  /* ROUNDED STYLE UPDATE */
-  margin: 0 10px 10px 10px; /* Spacing from screen edges */
-  border-radius: 14px;      /* Rounded Corners */
-  overflow: hidden;         /* Clips the content inside */
-  border: 1px solid #2f343a; /* Subtle border to match top cards */
+  margin: 0 10px 10px 10px; 
+  border-radius: 14px;      
+  overflow: hidden;         
+  border: 1px solid #2f343a; 
 }
 
 .summary-toggle{
@@ -258,16 +252,21 @@ body{
 }
 .summary-toggle.open::before{ transform:rotate(180deg); }
 
+/* UPDATED SUMMARY CONTENT TO SCROLL HORIZONTALLY ON MOBILE */
 .summary-content{
-  display:grid; grid-template-columns:var(--summary-w) var(--summary-w);
-  gap:12px; padding:10px;
+  display:flex; 
+  gap:12px; 
+  padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
-  overflow:hidden;
+  overflow-x:auto; /* Allows scrolling if cards are too wide */
+  scrollbar-width: none;
 }
+.summary-content::-webkit-scrollbar { display: none; }
 .summary-content.hidden{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; }
 
 .weekly-card, .ranking-card{
-  width:var(--summary-w); background:var(--bg-soft);
+  min-width:var(--summary-w); /* Using min-width to prevent squishing */
+  background:var(--bg-soft);
   border-radius:14px; padding:12px;
 }
 .ranking-card{ cursor:pointer; }
@@ -290,18 +289,27 @@ body{
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
+/* UPDATED RANKING ROW - TIGHTER */
 .rank-row{
-  display:grid; grid-template-columns:20px 1fr auto; grid-template-rows:auto auto;
-  gap:2px 6px; background:var(--bg-row); border-radius:10px;
-  padding:8px; margin-bottom:6px;
+  display:grid; 
+  /* Reduced 1st col width */
+  grid-template-columns:18px 1fr auto; 
+  grid-template-rows:auto auto;
+  gap:2px 4px; /* Tighter gap */
+  background:var(--bg-row); 
+  border-radius:10px;
+  padding:6px 8px; /* Tighter padding */
+  margin-bottom:6px;
 }
-.rank-pos{grid-row:span 2;font-weight:800}
-.rank-name{font-weight:600;font-size:13px}
-.rank-money{font-weight:800;color:#7CFF5B}
-.rank-bets{grid-column:2/4;font-size:11px;opacity:.65}
+.rank-pos{grid-row:span 2;font-weight:800; font-size: 1.1em;}
+.rank-name{font-weight:600;font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
+.rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
 .history-card{
-  grid-column:1 / -1; background:var(--bg-soft); border-radius:14px;
+  /* Fix chart width */
+  min-width: 100%; 
+  background:var(--bg-soft); border-radius:14px;
   padding:14px; font-weight:700; display:none; height:260px; overflow:hidden;
 }
 

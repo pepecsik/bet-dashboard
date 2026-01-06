@@ -362,7 +362,7 @@ body{
 .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 
-/* === UPDATED DUAL STAT BARS (LIVESCORE STYLE) === */
+/* === NEW DUAL STAT BARS (LiveScore Style) === */
 .stat-row { 
   margin-bottom: 22px; 
 }
@@ -419,7 +419,6 @@ body{
 
 /* Winner Color Modifier */
 .sb-fill.orange { background: var(--accent-orange) !important; }
-
 
 /* EVENT ITEMS */
 .event-item {
@@ -762,7 +761,7 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
-  // 2. Prepare Stats Object (Default to 0 if missing)
+  // 2. Prepare Stats Object
   const s = m.stats || {};
   const statsList = [
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
@@ -771,28 +770,28 @@ function openModal(m) {
     { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
   ];
 
-  // 3. Generate HTML for Stats with DUAL BARS (LiveScore Style)
+  // 3. Generate HTML for Stats (Dual Bar Logic)
   const container = document.getElementById("tab-stats");
   container.innerHTML = ""; // Clear previous
 
   statsList.forEach(stat => {
-    // Calculate Percentages for the Bar Width
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
 
+    // Calculate Percentages
     if (total === 0) {
-      hPct = 0; aPct = 0; // Empty bars if no data
+      hPct = 0; aPct = 0;
     } else {
       hPct = (stat.h / total) * 100;
       aPct = (stat.a / total) * 100;
       
-      // Special case for Possession if API returns 50/50 raw numbers
+      // Fix for Possession if already in %
       if(stat.isPct && total > 100) {
          hPct = stat.h; aPct = stat.a;
       }
     }
 
-    // Determine Colors (Higher value gets Orange, Lower gets Grey)
+    // Determine Colors (Winner gets Orange)
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
 
@@ -819,14 +818,12 @@ function openModal(m) {
     container.innerHTML += html;
   });
 
-  // 4. Update Summary Tab Info
   document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
   document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
 
   document.getElementById("matchModal").classList.add("active");
 }
-
 
 function openTable() {
   const tbody = document.getElementById("tableBody");
@@ -844,7 +841,6 @@ function openTable() {
         }).join('');
       }
 
-      // Generate DIV ROW matching grid
       tbody.innerHTML += `
         <div class="tbl-row tbl-grid">
           <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>

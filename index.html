@@ -353,6 +353,44 @@ body{
   height: var(--row-h);
   margin-bottom: var(--gap);
 }
+
+/* === STICKY SCROLLING === */
+
+/* 1. Make the cards scrollable vertically */
+.left-card, .right-card {
+  overflow-y: auto;       /* Allow vertical scroll */
+  max-height: 100%;       /* Fill the available height */
+  scrollbar-width: none;  /* Firefox: Hide scrollbars */
+  position: relative;     /* Needed for sticky context */
+}
+
+/* Chrome/Safari: Hide scrollbars */
+.left-card::-webkit-scrollbar, .right-card::-webkit-scrollbar {
+  display: none;
+}
+
+/* 2. The Sticky Class */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* Shadow to show depth */
+}
+
+/* Specific styling for Left Header */
+.left-header.sticky-header {
+  background: var(--bg-soft); 
+  margin-bottom: 0; 
+  /* Fix for flex gap: add a tiny border to separate it */
+  border-bottom: 1px solid var(--bg-main);
+}
+
+/* Specific styling for Right Header Row */
+.row.sticky-header {
+  background: var(--bg-card); /* Needs solid background to cover items scrolling under */
+  padding-bottom: 8px;        /* Add padding so it looks like a header */
+  margin-bottom: 0;
+}
  
 </style>
 
@@ -524,16 +562,17 @@ function loadData(){
       chartDataCache = data.chartData;
     }
 
-    /* MATCH HEADER */
+    /* MATCH HEADER - ADDED STICKY CLASS HERE */
     const lh=document.createElement("div");
-    lh.className="left-header";
+    lh.className="left-header sticky-header"; 
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* PLAYER HEADERS */
+    /* PLAYER HEADERS - ADDED STICKY CLASS HERE */
     const headerRow=document.createElement("div");
-    headerRow.className="row";
+    headerRow.className="row sticky-header";
+    headerRow.id = "rightHeaderRow"; 
     data.headers.forEach(h=>{
       const p=document.createElement("div");
       p.className="header-pill";
@@ -550,8 +589,8 @@ function loadData(){
       const lr=document.createElement("div");
       lr.className="left-row";
       const [home, away] = m.match
-       .split("-")
-       .map(t => t.trim().toUpperCase());
+        .split("-")
+        .map(t => t.trim().toUpperCase());
 
       lr.innerHTML = `
         <div class="left-cell match">
@@ -564,7 +603,6 @@ function loadData(){
         <div class="left-cell">${m.status}</div>
         <div class="left-cell">${m.score}</div>
       `;
-
 
       if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
         lr.lastElementChild.classList.add("changed");
@@ -626,10 +664,7 @@ function loadData(){
 
     /* RANKING */
     data.ranking.forEach((r,i)=>{
-      // Define the medals
       const medals = ["🥇", "🥈", "🥉"];
-      
-      // Use the medal if it exists for this index, otherwise use the number
       const rankDisplay = medals[i] || (i + 1);
 
       ranking.innerHTML+=`
@@ -649,6 +684,33 @@ renderSkeletons();
 // Then load real data
 loadData();
 setInterval(loadData,REFRESH_MS);
+/* =========================
+   SYNC SCROLLING
+   ========================= */
+setTimeout(() => {
+  const leftCard = document.querySelector(".left-card");
+  const rightCard = document.querySelector(".right-card");
+  let isSyncingLeft = false;
+  let isSyncingRight = false;
+
+  if(leftCard && rightCard){
+    leftCard.onscroll = function() {
+      if (!isSyncingLeft) {
+        isSyncingRight = true;
+        rightCard.scrollTop = this.scrollTop;
+      }
+      isSyncingLeft = false;
+    };
+
+    rightCard.onscroll = function() {
+      if (!isSyncingRight) {
+        isSyncingLeft = true;
+        leftCard.scrollTop = this.scrollTop;
+      }
+      isSyncingRight = false;
+    };
+  }
+}, 1000);
 
 /* =========================
    TOGGLES

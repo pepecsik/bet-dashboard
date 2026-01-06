@@ -524,16 +524,17 @@ function loadData(){
       chartDataCache = data.chartData;
     }
 
-    /* MATCH HEADER */
+    /* MATCH HEADER (STICKY) */
     const lh=document.createElement("div");
-    lh.className="left-header";
+    lh.className="left-header sticky-header";
     lh.textContent="MATCHES";
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* PLAYER HEADERS */
+    /* PLAYER HEADERS (STICKY) */
     const headerRow=document.createElement("div");
-    headerRow.className="row";
+    headerRow.className="row sticky-header";
+    headerRow.id = "rightHeaderRow"; 
     data.headers.forEach(h=>{
       const p=document.createElement("div");
       p.className="header-pill";
@@ -548,10 +549,25 @@ function loadData(){
       const scoreKey=`score-${i}`;
 
       const lr=document.createElement("div");
+      
+      /* ✅ NEW GRID LAYOUT: 2 Columns (Teams | Combined Pill) */
       lr.className="left-row";
+      lr.style.gridTemplateColumns = "1fr 90px"; 
+
       const [home, away] = m.match
-       .split("-")
-       .map(t => t.trim().toUpperCase());
+        .split("-")
+        .map(t => t.trim().toUpperCase());
+
+      /* ✅ BADGE LOGIC */
+      // If status has a quote (34') or HT/LIVE -> It is LIVE (Green)
+      const isLive = m.status.includes("'") || m.status === "HT" || m.status === "1H" || m.status === "2H" || m.status === "LIVE";
+      
+      const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
+      const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
+      const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
+
+      // If there is no score yet (e.g. game not started), show empty string
+      const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
       lr.innerHTML = `
         <div class="left-cell match">
@@ -561,10 +577,41 @@ function loadData(){
             ${renderTeam(away)}
           </div>
         </div>
-        <div class="left-cell">${m.status}</div>
-        <div class="left-cell">${m.score}</div>
-      `;
 
+        <div class="left-cell" style="
+            display:flex; 
+            justify-content:space-between; 
+            align-items:center; 
+            padding:0 8px; 
+            background:var(--bg-soft);
+        ">
+           
+           <span style="
+              color:${badgeColor}; 
+              background:${badgeBg};
+              border:${badgeBorder};
+              padding: 2px 6px; 
+              border-radius:5px; 
+              font-size:11px; 
+              font-weight:800;
+              min-width:40px;
+              text-align:center;
+              display:flex; align-items:center; justify-content:center;
+           ">
+             ${m.status}
+           </span>
+
+           <span style="
+              color:#fff; 
+              font-size:13px; 
+              font-weight:700; 
+              margin-left:4px;
+           ">
+             ${displayScore}
+           </span>
+
+        </div>
+      `;
 
       if(prevScore[scoreKey] && prevScore[scoreKey]!==m.score){
         lr.lastElementChild.classList.add("changed");
@@ -626,10 +673,7 @@ function loadData(){
 
     /* RANKING */
     data.ranking.forEach((r,i)=>{
-      // Define the medals
       const medals = ["🥇", "🥈", "🥉"];
-      
-      // Use the medal if it exists for this index, otherwise use the number
       const rankDisplay = medals[i] || (i + 1);
 
       ranking.innerHTML+=`
@@ -642,7 +686,6 @@ function loadData(){
     });
   });
 }
-
 // Show skeletons immediately
 renderSkeletons();
 

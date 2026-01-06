@@ -38,16 +38,13 @@ if ("serviceWorker" in navigator) {
   --text-muted:#9aa0a6;
   --accent-orange: #ff9f43;
 
-  /* ✅ TWEAK 1: Taller rows for logo breathing room (Was 40px) */
   --row-h:50px;
-  
   --gap:6px;
 
-  /* Widths */
   --left-w:230px; 
   
-  /* ✅ TWEAK 2: Narrower bet pills (Was 90px) */
-  --bet-w:70px;   
+  /* ✅ TWEAK 1: 80px (90% width) - Perfect Balance */
+  --bet-w:80px;   
   
   --summary-w:250px;
   --week-row-h:30px;
@@ -145,7 +142,12 @@ body{
   font-weight:700;
 }
 
-.team-logo{ width:38px; height:38px; object-fit:contain; }
+/* ✅ TWEAK 2: Drop Shadow makes dark logos (Spurs) pop against dark bg */
+.team-logo{ 
+  width:38px; height:38px; object-fit:contain; 
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); 
+}
+
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 

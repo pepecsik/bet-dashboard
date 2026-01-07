@@ -752,7 +752,7 @@ function loadData(){
     let indices = [];
     if(data.headers){
         indices = data.headers.map((_, i) => i);
-        // Filter out empty headers (Gaps)
+        // Filter out empty headers (Gaps) so they don't show on screen
         indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
     }
 
@@ -781,8 +781,7 @@ function loadData(){
         const greensA = greenCounts[a];
         const greensB = greenCounts[b];
         
-        // --- NEW: VALID BET THRESHOLD ---
-        // If a column has fewer than 3 bets, treat it as empty/test (push to right)
+        // A column is "Valid" if it has at least 3 bets
         const hasBetsA = betCounts[a] >= 3;
         const hasBetsB = betCounts[b] >= 3;
 

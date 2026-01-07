@@ -392,7 +392,6 @@ body{
   animation: bigWinAnim 5s ease-out forwards;
 }
 
-
 /* === ANIMATIONS === */
 
 /* 1. GREEN (Winner) - Static Green + Glow */
@@ -648,53 +647,74 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- SORT COLUMNS BASED ON PENDING GAMES (Fewest left -> Move Left) --- */
+    /* --- INTELLIGENT SORTING LOGIC --- */
     const numCols = data.headers.length;
     const colStats = [];
 
-    // Calculate Pending Count for each column index
     for(let c=0; c<numCols; c++) {
         let pending = 0;
+        let isDead = false;
         let hasBets = false;
         
+        // Scan matches to count pending games and check dead status
         data.matches.forEach(m => {
-            // FIX: Only count if cell actually has a bet (value exists)
-            // AND the match is not finished (FT)
-            if (m.cells[c] && m.cells[c].value) {
+            const cell = m.cells[c];
+            // Only count "Real" Bets (ignore empty cells)
+            if (cell && cell.value) {
                 hasBets = true;
+                
+                // Dead Check (Red background)
+                if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
+                    isDead = true;
+                }
+                
+                // Pending Check (Not FT)
                 const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-                if (matchStatus !== "FT") pending++;
+                if (matchStatus !== "FT") {
+                    pending++;
+                }
             }
         });
 
-        // Store stats (If no bets, push to end with high number 9999)
+        // CALCULATE SORT SCORE (Lower is Better/Left)
+        // Order: Green (0) < Orange (1-2) < Alive (>2) < Dead (999)
+        let sortScore = 9999; 
+
+        if (!hasBets) {
+             sortScore = 10000; // Empty columns last
+        } else if (isDead) {
+             sortScore = 5000 + pending; // Dead columns far right (5000+)
+        } else {
+             // Alive columns: Score = Pending count.
+             // 0 Pending (Green) = 0 (First)
+             // 1 Pending (Orange) = 1 (Second)
+             // 8 Pending (Alive) = 8 (Later)
+             sortScore = pending;
+        }
+
         colStats.push({
             originalIndex: c,
-            header: data.headers[c],
-            pending: hasBets ? pending : 9999,
-            hasBets: hasBets
+            score: sortScore
         });
     }
 
-    // Sort: Lowest pending first (Ascending)
-    colStats.sort((a, b) => a.pending - b.pending);
+    // Sort Ascending (Green -> Orange -> Alive -> Dead)
+    colStats.sort((a, b) => a.score - b.score);
 
-    // REBUILD DATA OBJECTS IN NEW ORDER
+    // REBUILD DATA OBJECTS
     const newHeaders = colStats.map(x => data.headers[x.originalIndex]);
     
-    // Reorder Match Cells
+    // Reorder Matches
     data.matches.forEach(m => {
-        const newCells = colStats.map(x => m.cells[x.originalIndex]);
-        m.cells = newCells;
+        m.cells = colStats.map(x => m.cells[x.originalIndex]);
     });
 
-    // Reorder Summary Rows (BETS, WIN, WIN PP)
+    // Reorder Summary Rows
     data.betSummary.forEach(s => {
-        const newCells = colStats.map(x => s.cells[x.originalIndex]);
-        s.cells = newCells;
+        s.cells = colStats.map(x => s.cells[x.originalIndex]);
     });
 
-    // Apply new headers
+    // Apply
     data.headers = newHeaders;
 
 
@@ -707,7 +727,6 @@ function loadData(){
        const currentName = data.headers[i];
        let count = 1;
        
-       // Look ahead for merged columns (names must match AND remain adjacent after sorting)
        while(i + count < data.headers.length && data.headers[i + count] === currentName){
          count++;
        }
@@ -737,12 +756,10 @@ function loadData(){
             colHasBets = true;
             hasBets = true;
 
-            // FIX: Dead check - ensure it's not White (#ffffff) or default
             if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
               colIsDead = true;
             }
 
-            // Check if Pending
             if(matchStatus !== "FT") {
               colPending++;
             }
@@ -753,10 +770,8 @@ function loadData(){
                  allDead = false; 
                  hasAlive = true;
                  
-                 // If this specific column is a WINNER (0 pending), add its winnings
                  if (colPending === 0) {
                      hasGreen = true;
-                     // Sum money from the WIN row (Index 1 in betSummary)
                      if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
                          totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
                      }
@@ -774,10 +789,8 @@ function loadData(){
            if (hasGreen) {
                p.classList.add("status-green");
                
-               // Use setTimeout to fire confetti after the element is in the DOM
                setTimeout(() => { 
                    fireScreenBlaster(p); 
-                   // Only show Big Win if amount > 0
                    if(totalWinAmount > 0) {
                        showBigWin(formatGBP(totalWinAmount)); 
                    }

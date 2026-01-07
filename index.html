@@ -58,12 +58,15 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
+  overflow: hidden; 
 }
 
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 768px){
@@ -426,12 +429,20 @@ body{
   border: 1px solid #992222;
 }
 
-/* FIX: MODAL HIDDEN BY DEFAULT */
-.modal-overlay { display: none; }
+/* FIX: MODAL HIDDEN BY DEFAULT & HIGH Z-INDEX */
+.modal-overlay { 
+  display: none; 
+  z-index: 3000; /* Ensure on top of everything */
+}
+.modal-overlay.active { display: flex; }
 
 </style>
 </head>
 <body>
+
+<div id="bigWinOverlay" class="big-win-overlay">
+  <div id="bigWinText" class="big-win-text"></div>
+</div>
 
 <div class="app">
   <div class="main">
@@ -465,10 +476,6 @@ body{
 
     </div>
   </footer>
-</div>
-
-<div id="bigWinOverlay" class="big-win-overlay">
-  <div id="bigWinText" class="big-win-text"></div>
 </div>
 
 <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
@@ -666,14 +673,18 @@ function loadData(){
             if (cell && cell.value) {
                 hasBets = true;
                 
-                // Dead Check (Red background)
-                if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-                    isDead = true;
-                }
+                // Color Checks
+                const bg = cell.color ? cell.color.toLowerCase() : "";
+                const isGreen = bg === '#00ff00' || bg === 'green' || bg === '#7cff5b';
+                const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
+
+                // Dead Check
+                if(isRed) isDead = true;
                 
-                // Pending Check (Not FT)
+                // PENDING LOGIC:
+                // If Match is NOT FT, and NOT Green, and NOT Red -> It is pending.
                 const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-                if (matchStatus !== "FT") {
+                if (matchStatus !== "FT" && !isGreen && !isRed) {
                     pending++;
                 }
             }
@@ -741,16 +752,14 @@ function loadData(){
        let allDead = true;
        let hasBets = false;
        
-       // Calculate Total Win Amount ONLY for winning columns in this group
        let totalWinAmount = 0;
 
        for(let k = 0; k < count; k++) {
-         const colIdx = i + k; // This is now the index in the SORTED arrays
+         const colIdx = i + k; 
          let colPending = 0;
          let colIsDead = false;
          let colHasBets = false;
 
-         // Check matches for this specific column
          data.matches.forEach(m => {
             const cell = m.cells[colIdx];
             const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
@@ -760,11 +769,13 @@ function loadData(){
             colHasBets = true;
             hasBets = true;
 
-            if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-              colIsDead = true;
-            }
+            const bg = cell.color ? cell.color.toLowerCase() : "";
+            const isGreen = bg === '#00ff00' || bg === 'green' || bg === '#7cff5b';
+            const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
 
-            if(matchStatus !== "FT") {
+            if(isRed) colIsDead = true;
+
+            if (matchStatus !== "FT" && !isGreen && !isRed) {
               colPending++;
             }
          });

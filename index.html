@@ -45,7 +45,7 @@ if ("serviceWorker" in navigator) {
 
   --left-w:230px; 
   --bet-w:80px;   
-   
+    
   --summary-w:200px; 
 
   --week-row-h:30px;
@@ -242,8 +242,8 @@ body{
 .summary { 
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
-  border-radius: 14px;      
-  overflow: hidden;           
+  border-radius: 14px;       
+  overflow: hidden;            
   border: 1px solid #2f343a; 
 }
 
@@ -292,7 +292,7 @@ body{
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
   cursor:pointer;
-   
+    
   /* FIX: Forces the card to fill the height provided by the row */
   display: flex;
   flex-direction: column; 
@@ -573,7 +573,7 @@ body{
     <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
-       
+        
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
@@ -702,7 +702,7 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
-    
+   
   const lh = document.createElement("div");
   lh.className = "left-header"; 
   lh.innerHTML = `
@@ -859,11 +859,8 @@ function loadData(){
                }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
-           } else if (!allDead && hasAlive) {
-               // Alive but > 2 games left
-           } else if (allDead) {
-               p.classList.add("status-red");
-           }
+           } 
+           // RED HEADER LOGIC REMOVED HERE
        }
 
        if(count > 1){
@@ -1094,7 +1091,7 @@ function openModal(m) {
 function openTable() {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-    
+   
   if(!tableCache || tableCache.length === 0) {
     tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
   } else {

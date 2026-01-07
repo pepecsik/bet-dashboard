@@ -522,12 +522,13 @@ body{
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
 /* TABLE MODAL GRID - FIXED ALIGNMENT */
-/* Changed columns to be slightly wider for stats so the centered headers don't overflow */
+/* FIX: WIDENED THE COLUMNS SO TEXT CAN CENTER PROPERLY */
 .tbl-grid { 
   display: grid; 
-  grid-template-columns: 25px 1fr 35px 35px 35px 60px; 
+  /* # | Team | MP | Pts | GD | Form */
+  grid-template-columns: 24px 1fr 34px 34px 38px 65px; 
   align-items: center; 
-  gap: 4px; 
+  gap: 2px; /* Tighter gap */
 }
 .tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }

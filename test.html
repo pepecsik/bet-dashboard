@@ -751,20 +751,19 @@ function loadData(){
     const weekly=document.getElementById("weeklyCard");
     const ranking=document.getElementById("rankingBody");
 
+    // Clear Screen
     left.innerHTML=""; right.innerHTML="";
     weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
     ranking.innerHTML="";
 
+    // Save caches
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    /* --- LEFT HEADER WITH DATE + LOGO (UPDATED) --- */
+    // --- 1. RENDER HEADER (Date/Logo) ---
+    const dateText = data.date ? data.date : "Live";
     const lh=document.createElement("div");
     lh.className="left-header"; 
-     
-    // Check if data.date exists, otherwise use placeholder or nothing
-    const dateText = data.date ? data.date : "Live";
-     
     lh.innerHTML = `
       <div class="pl-btn" onclick="openTable()">
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
@@ -773,124 +772,90 @@ function loadData(){
           <span>MATCHES</span>
           <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
       </div>
-      <div class="brand-btn">
-         <img src="apple-touch-icon.png" class="brand-logo">
-      </div>
+      <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
     `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
-    const headerRow = document.createElement("div");
-    headerRow.className = "row";
-     
-    let i = 0;
-    while(i < data.headers.length) {
-       const currentName = data.headers[i];
-       let count = 1;
-       
-       while(i + count < data.headers.length && data.headers[i + count] === currentName){
-         count++;
-       }
-       
-       let hasGreen = false;
-       let hasOrange = false;
-       let hasAlive = false;
-       let allDead = true;
-       let hasBets = false;
-       
-       // Calculate Total Win Amount ONLY for winning columns
-       let totalWinAmount = 0;
 
-       for(let k = 0; k < count; k++) {
-         const colIdx = i + k;
-         let colPending = 0;
-         let colIsDead = false;
-         let colHasBets = false;
+    // --- 2. INTELLIGENT SORTING LOGIC ---
+    
+    // Create an array of indices [0, 1, 2, 3...] representing the original columns
+    let indices = data.headers.map((_, i) => i);
 
-         // Check matches for this specific column
-         data.matches.forEach(m => {
-            const cell = m.cells[colIdx];
-            const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-             
-            if(!cell || !cell.value) return; 
-             
-            colHasBets = true;
-            hasBets = true;
+    // If we have the new stats from Google Script, use them to sort!
+    if (data.columnStats) {
+      indices.sort((a, b) => {
+        const statA = data.columnStats[a];
+        const statB = data.columnStats[b];
 
-            if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-              colIsDead = true;
-            }
+        // LOGIC:
+        // 1. "DEAD" always goes to the bottom (Right)
+        // 2. "ALIVE" with 0 pending (Winner) goes to top (Left)
+        // 3. Lower 'pending' count is better (1 vs 2)
 
-            if(matchStatus !== "FT") {
-              colPending++;
-            }
-         });
+        // Assign a "Score" (Lower score = Left side)
+        const getScore = (s) => {
+          if (s.status === "DEAD") return 9999; // Dead is worst
+          return s.pending; // 0 is best, 1 is next, 2 is next, etc.
+        };
 
-         if(colHasBets) {
-             if(!colIsDead) {
-                 allDead = false; 
-                 hasAlive = true;
-                 
-                 // If this specific column is a WINNER (0 pending), add its winnings
-                 if (colPending === 0) {
-                     hasGreen = true;
-                     if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
-                         totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
-                     }
-                 }
-                 else if (colPending <= 2) hasOrange = true;
-             }
-         }
-       }
-
-       const p = document.createElement("div");
-       p.className = "header-pill";
-       p.textContent = currentName;
-       
-       if (hasBets) {
-           if (hasGreen) {
-               p.classList.add("status-green");
-               
-               // Use setTimeout to fire confetti after the element is in the DOM
-               setTimeout(() => { 
-                   fireScreenBlaster(p); 
-                   showBigWin(formatGBP(totalWinAmount)); // SHOW INTELLIGENT BIG MONEY!
-               }, 500); 
-           } else if (hasOrange) {
-               p.classList.add("status-orange");
-           } else if (!allDead && hasAlive) {
-               // Alive but > 2 games left
-           } else if (allDead) {
-               p.classList.add("status-red");
-           }
-       }
-
-       if(count > 1){
-         p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
-       }
-       
-       headerRow.appendChild(p);
-       i += count; 
+        return getScore(statA) - getScore(statB);
+      });
     }
 
+
+    // --- 3. RENDER RIGHT HEADER PILLS (Using Sorted Order) ---
+    const headerRow = document.createElement("div");
+    headerRow.className = "row";
+    
+    // Calculate total wins for confetti logic
+    let totalWinAmount = 0;
+
+    indices.forEach(originalIndex => {
+        const p = document.createElement("div");
+        p.className = "header-pill";
+        p.textContent = data.headers[originalIndex]; // Get name using sorted index
+        
+        // Use stats to determine color
+        if (data.columnStats) {
+            const s = data.columnStats[originalIndex];
+            
+            if (s.status === "DEAD") {
+                p.classList.add("status-red");
+            } else if (s.pending === 0) {
+                p.classList.add("status-green");
+                // Check if we should add winnings
+                if(data.betSummary && data.betSummary[1]) {
+                    totalWinAmount += (data.betSummary[1].cells[originalIndex].value || 0);
+                }
+                setTimeout(() => fireScreenBlaster(p), 500);
+            } else if (s.pending <= 2) {
+                p.classList.add("status-orange");
+            }
+        }
+        
+        headerRow.appendChild(p);
+    });
+
+    if(totalWinAmount > 0) showBigWin(formatGBP(totalWinAmount));
+    
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCHES */
-    data.matches.forEach((m,i)=>{
+
+    // --- 4. RENDER MATCHES (Using Sorted Order) ---
+    data.matches.forEach((m, i) => {
+      // Left Card (Teams)
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
-       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
       const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
       const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
-      const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
-      const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
       lr.innerHTML = `
@@ -898,20 +863,22 @@ function loadData(){
           <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
         </div>
         <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
-           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
-           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
+           <span style="color:${badgeColor};background:${isLive?"rgba(124,255,91,0.15)":"transparent"};border:1px solid ${isLive?"#7CFF5B":"transparent"};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;">${displayScore}</span>
         </div>
       `;
       left.appendChild(lr);
 
+      // Right Card (Bets - Sorted)
       const rr=document.createElement("div");
       rr.className="row";
-      m.cells.forEach((c,j)=>{
-        const key=`b-${i}-${j}`;
-        const val=`${c.value}|${c.color}`;
+      
+      // Loop through our SORTED indices
+      indices.forEach(originalIndex => {
+        const c = m.cells[originalIndex]; // Get bet using sorted index
         const el=document.createElement("div");
         el.className="bet";
-        if(c.value){ el.textContent=c.value; el.style.background=c.color; }
+        if(c && c.value){ el.textContent=c.value; el.style.background=c.color; }
         rr.appendChild(el);
       });
       right.appendChild(rr);
@@ -920,18 +887,26 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+
+    // --- 5. RENDER BET SUMMARY ROWS (Sorted) ---
+    ["BET","WIN","WIN PP"].forEach((label, rowIndex)=>{
       const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
       left.appendChild(lab);
+      
       const rr=document.createElement("div"); rr.className="row";
-      data.betSummary[i].cells.forEach(c=>{
-        const el=document.createElement("div"); el.className="bet";
-        el.textContent=formatGBP(c.value); el.style.background=c.color;
-        rr.appendChild(el);
+      
+      // Sort these too!
+      indices.forEach(originalIndex => {
+         const c = data.betSummary[rowIndex].cells[originalIndex];
+         const el=document.createElement("div"); 
+         el.className="bet";
+         el.textContent=formatGBP(c.value); el.style.background=c.color;
+         rr.appendChild(el);
       });
       right.appendChild(rr);
     });
 
+    // --- 6. WEEKLY & RANKING ---
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div><div class="week-eur">${formatEUR(t.cells[1].value)}</div></div>`;
@@ -939,263 +914,9 @@ function loadData(){
 
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
-      const rankDisplay = medals[i] || (i + 1);
-      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${medals[i]||(i+1)}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
     });
   });
-}
-
-// === BIG WIN OVERLAY LOGIC ===
-function showBigWin(amountText) {
-  const overlay = document.getElementById("bigWinOverlay");
-  const text = document.getElementById("bigWinText");
-   
-  if (!overlay || !text) return;
-   
-  // If already active, don't restart logic to avoid glitches
-  if (overlay.classList.contains('big-win-active')) return;
-
-  text.textContent = amountText;
-   
-  // Add animation class
-  overlay.classList.add("big-win-active");
-   
-  // Remove class after animation (5s)
-  setTimeout(() => {
-    overlay.classList.remove("big-win-active");
-  }, 5000);
-}
-
-// === CONFETTI: 2 SECONDS, 80% DENSITY ===
-function fireScreenBlaster(element) {
-  if(element.dataset.fired) return;
-  element.dataset.fired = "true";
-   
-  var end = Date.now() + 2000; // 2 seconds
-
-  (function frame() {
-    // Left Cannon
-    confetti({
-      particleCount: 4, 
-      angle: 60,
-      spread: 55,
-      origin: { x: 0, y: 0.6 }, 
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-        });
-    
-    // Right Cannon
-    confetti({
-      particleCount: 4, 
-      angle: 120,
-      spread: 55,
-      origin: { x: 1, y: 0.6 }, 
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-        });
-
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 3000);
-    }
-  }());
-}
-
-// === MODAL FUNCTIONS ===
-function switchTab(tab, e) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  e.target.classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
-}
-
-function openModal(m) {
-  const [homeCode, awayCode] = m.match.split("-");
-   
-  // 1. Set Header Info
-  document.getElementById("mTitle").innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
-       <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
-       <span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span>
-       <div style="transform:scale(1.3);">${renderTeam(awayCode)}</div>
-    </div>
-  `;
-  document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
-   
-  // 2. Prepare Stats Object
-  const s = m.stats || {};
-  const statsList = [
-    { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
-    { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
-    { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
-    { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
-  ];
-
-  // 3. Generate HTML for Stats (Dual Bar Logic)
-  const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; // Clear previous
-
-  statsList.forEach(stat => {
-    let total = stat.h + stat.a;
-    let hPct = 0, aPct = 0;
-
-    // Calculate Percentages
-    if (total === 0) {
-      hPct = 0; aPct = 0;
-    } else {
-      hPct = (stat.h / total) * 100;
-      aPct = (stat.a / total) * 100;
-       
-      // Fix for Possession if already in %
-      if(stat.isPct && total > 100) {
-         hPct = stat.h; aPct = stat.a;
-      }
-    }
-
-    // Determine Colors (Winner gets Orange)
-    const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
-    const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
-
-    const hText = stat.isPct ? stat.h + "%" : stat.h;
-    const aText = stat.isPct ? stat.a + "%" : stat.a;
-
-    const html = `
-      <div class="stat-row">
-        <div class="stat-label">
-          <span>${hText}</span>
-          <span class="stat-name">${stat.label}</span>
-          <span>${aText}</span>
-        </div>
-        <div class="stat-bar-container">
-          <div class="sb-track home">
-            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
-          </div>
-          <div class="sb-track away">
-            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
-          </div>
-        </div>
-      </div>
-    `;
-    container.innerHTML += html;
-  });
-
-  document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
-  document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
-  document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
-
-  document.getElementById("matchModal").classList.add("active");
-}
-
-function openTable() {
-  const tbody = document.getElementById("tableBody");
-  tbody.innerHTML = "";
-    
-  if(!tableCache || tableCache.length === 0) {
-    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
-  } else {
-    tableCache.forEach(t => {
-      let formDots = "";
-      if(t.form) {
-        formDots = t.form.split('').map(char => {
-          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
-          return `<span class="form-dot ${css}"></span>`;
-        }).join('');
-      }
-
-      tbody.innerHTML += `
-        <div class="tbl-row tbl-grid">
-          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
-          <div class="tbl-team-wrap">
-            <img src="${t.logo}" class="tbl-logo">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
-          </div>
-          <div class="ta-c">${t.mp}</div>
-          <div class="ta-c txt-green">${t.pts}</div>
-          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
-          <div class="tbl-form-wrap">${formDots}</div>
-        </div>
-      `;
-    });
-  }
-  document.getElementById("tableModal").classList.add("active");
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
-}
-
-renderSkeletons();
-loadData();
-setInterval(loadData,REFRESH_MS);
-
-// === TOGGLES ===
-document.getElementById("rankingCard").onclick=()=>{
-  const h=document.getElementById("historyCard");
-  const open = h.style.display === "none" || !h.style.display;
-  h.style.display = open ? "block" : "none";
-  if(open) drawHistoryChart("matches");
-};
-document.getElementById("summaryToggle").onclick=()=>{
-  document.getElementById("summaryContentWrap").classList.toggle("hidden");
-  document.getElementById("summaryToggle").classList.toggle("open");
-  document.getElementById("historyCard").style.display="none";
-};
-
-// === HISTORY ===
-const btnMatches = document.getElementById("btnMatches");
-const btnMoney = document.getElementById("btnMoney");
-if(btnMatches && btnMoney){
-  btnMatches.onclick = ()=>{ btnMatches.classList.add("active"); btnMoney.classList.remove("active"); drawHistoryChart("matches"); };
-  btnMoney.onclick = ()=>{ btnMoney.classList.add("active"); btnMatches.classList.remove("active"); drawHistoryChart("money"); };
-}
-
-function drawHistoryChart(type){
-  if(historyChart && historyChart._type === type) return;
-  const canvas = document.getElementById("historyChart");
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if(historyChart){ historyChart.destroy(); historyChart = null; }
-  const source = chartDataCache ? chartDataCache[type] : null;
-  if(!source || !source.length) return;
-
-  const labels = source.map(r => new Date(r.date).toLocaleDateString());
-  const players = ["Snackbar","Timbo","Pepe"];
-  const colors = { Snackbar:"#7CFF5B", Timbo:"#4DA3FF", Pepe:"#FF5BC4" };
-
-  historyChart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels,
-    datasets: players.map(p => ({
-      label: p, data: source.map(r => r[p]),
-      borderColor: colors[p], backgroundColor: colors[p],
-      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
-    }))
-  },
-  options: {
-    plugins: {
-      datalabels: {
-        formatter: (value, ctx) => {
-          const data = ctx.dataset.data;
-          const index = ctx.dataIndex;
-          if (index === 0) return null;
-          const diff = value - data[index - 1];
-          if (diff <= 0) return null;
-          return `+${diff}`;
-        },
-        color: ctx => ctx.dataset.borderColor,
-        font: { weight: "bold", size: 10 },
-        align: "top", offset: 6
-      }
-    }
-  }
-});
-  historyChart._type = type;
 }
 </script>
 

@@ -274,7 +274,8 @@ body{
   width: 100%;
   overflow-x: auto; /* Horizontal scroll if screen is too small */
   scrollbar-width: none;
-  align-items: stretch; /* FIX: Forces both cards to be equal height */
+  /* STRETCH: Forces both cards to equal height */
+  align-items: stretch; 
 }
 .summary-top-row::-webkit-scrollbar { display: none; }
 
@@ -284,7 +285,6 @@ body{
   min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
-  height: 100%; /* Force fill */
 }
 
 .ranking-card{
@@ -294,10 +294,9 @@ body{
   border-radius:14px; padding:12px;
   cursor:pointer;
   
-  /* FIX: Forces the card to fill the height provided by the row */
+  /* REVERTED TO PREVIOUS WORKING LAYOUT: Flex column fills height naturally */
   display: flex;
-  flex-direction: column;
-  height: 100%; /* Force fill */
+  flex-direction: column; 
 }
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
@@ -552,6 +551,7 @@ body{
 }
 
 /* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
+/* 0.25s duration + 1px movement = "Shivering" but not "Seizure" */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -562,6 +562,7 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
+  /* 0.25s is slower than 0.1s, creating a nervous shiver */
   animation: nervousShiver 0.25s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
@@ -863,7 +864,7 @@ function loadData(){
                p.classList.add("status-green");
                
                // Use setTimeout to fire confetti after the element is in the DOM
-               setTimeout(() => { fireScreenBlaster(p); }, 500); 
+               setTimeout(() => { fireConfetti(p); }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
@@ -953,46 +954,29 @@ function loadData(){
   });
 }
 
-// === TUNED SCREEN BLASTER (80% Strength, 2 Seconds) ===
-function fireScreenBlaster(element) {
-  // Only fire if not recently fired (2.5s cooldown)
+// === SAFE & BIG CONFETTI FUNCTION ===
+function fireConfetti(element) {
+  // Only fire if we haven't fired recently
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 2000; // 2 Seconds Duration
+  const rect = element.getBoundingClientRect();
+  const x = (rect.left + rect.width / 2) / window.innerWidth;
+  const y = (rect.top + rect.height / 2) / window.innerHeight;
 
-  (function frame() {
-    // Left Cannon
-    confetti({
-      particleCount: 4, // 80% Density (Was 5)
-      angle: 60,
-      spread: 55,
-      origin: { x: 0, y: 0.6 }, 
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-    });
-    
-    // Right Cannon
-    confetti({
-      particleCount: 4, // 80% Density (Was 5)
-      angle: 120,
-      spread: 55,
-      origin: { x: 1, y: 0.6 },
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-    });
+  // Single HEAVY impact burst
+  confetti({
+    origin: { x: x, y: y },
+    zIndex: 2100, // Very high Z-Index
+    particleCount: 100, // Instant heavy burst
+    spread: 360, // Explode in all directions
+    startVelocity: 40,
+    scalar: 1.5, // 150% Size (Easy to see!)
+    colors: ['#7CFF5B', '#ffffff', '#FFD700', '#20ff00']
+  });
 
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    } else {
-      // Reset after 2.5 seconds (so it's ready again almost immediately)
-      setTimeout(() => { element.dataset.fired = ""; }, 2500);
-    }
-  }());
+  // Reset fire flag after 2.5 seconds (so you can test again quickly)
+  setTimeout(() => { element.dataset.fired = ""; }, 2500);
 }
 
 // === MODAL FUNCTIONS ===

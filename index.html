@@ -298,14 +298,6 @@ body{
   flex-direction: column; 
 }
 
-/* FIX: Ranking Body fills the available vertical space and spreads items */
-#rankingBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between; 
-}
-
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 /* WEEKLY ROW ALIGNMENT */
@@ -358,193 +350,37 @@ body{
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
-/* === MODAL & STATS CSS === */
-
-/* FIX: Use display:none to prevent layout leakage at bottom */
-.modal-overlay {
+/* === BIG WIN OVERLAY === */
+.big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
-  display: none; /* Default to hidden */
-  align-items: center; justify-content: center;
-  z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; /* Click through */
+  z-index: 2200; /* Above modals and confetti */
+  opacity: 0;
 }
-/* When active, switch to flex and fade in */
-.modal-overlay.active { display: flex; opacity: 1; pointer-events: all; }
 
-.modal-card {
-  background: #1c1f23; width: 90%; max-width: 380px;
-  border-radius: 20px; overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-  border: 1px solid #3a3d42;
-  transform: translateY(20px); transition: transform 0.3s ease;
-  display:flex; flex-direction:column;
-  max-height: 85vh; 
-}
-.modal-overlay.active .modal-card { transform: translateY(0); }
-
-/* HEADER */
-.modal-header {
-  background: #262a30; padding: 16px;
+.big-win-text {
+  font-size: 13vw; /* Huge Responsive Font */
+  font-weight: 900;
+  color: #7CFF5B;
+  text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px #7CFF5B;
   text-align: center;
-  position: relative; /* For back button positioning */
-}
-.modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
-.modal-sub { font-size: 13px; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px; }
-
-/* BACK BUTTON */
-.modal-back-btn {
-  position: absolute;
-  left: 16px; top: 50%; transform: translateY(-50%);
-  background: #343a40; 
-  color: #ccc;
-  border: 1px solid #4a4f55;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.modal-back-btn:hover { background: #4a4f55; color: #fff; }
-
-/* HEADER RIGHT LOGO */
-.modal-header-logo {
-  position: absolute;
-  right: 16px; top: 50%; transform: translateY(-50%);
-  width: 28px; height: 28px;
-  background: #ffffff; 
-  border-radius: 50%;
-  padding: 2px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  object-fit: contain;
+  font-family: 'Inter', sans-serif;
+  transform: scale(0.5);
 }
 
-/* FLOATING TABS */
-.modal-tabs { 
-  display: flex; background: #262a30; padding: 0 16px 16px 16px; gap: 10px;
-  border-bottom: 1px solid #3a3d42;
-}
-.tab-btn {
-  flex: 1; padding: 10px; font-size: 12px; font-weight: 700;
-  color: #9aa0a6; cursor: pointer; text-align: center;
-  background: #2f343a; border-radius: 10px; transition: all 0.2s;
-  border: 1px solid transparent;
-}
-.tab-btn.active { 
-  background: #3a3d42; color: #fff; border: 1px solid #555;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+/* 4 Second Animation: Pop (0.5s) -> Hold (1.5s) -> Fade Out (2s) */
+@keyframes bigWinAnim {
+  0% { opacity: 0; transform: scale(0.5); }
+  10% { opacity: 1; transform: scale(1.1); }
+  15% { transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); } /* 2s mark: Start fade */
+  100% { opacity: 0; transform: scale(1.4); }
 }
 
-/* CONTENT */
-.tab-content { display: none; padding: 20px; overflow-y: auto; }
-.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
-
-/* === NEW DUAL STAT BARS (LiveScore Style) === */
-.stat-row { 
-  margin-bottom: 22px; 
+.big-win-active {
+  animation: bigWinAnim 4s ease-out forwards;
 }
-.stat-label { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: flex-end; 
-  font-size: 13px; 
-  font-weight: 800; 
-  color: #fff; 
-  margin-bottom: 6px; 
-  padding: 0 4px;
-}
-.stat-name { 
-  font-size: 11px; 
-  font-weight: 600; 
-  color: #9aa0a6; 
-  text-transform: uppercase; 
-  letter-spacing: 0.5px;
-}
-
-/* Flex container for the two bars */
-.stat-bar-container {
-  display: flex;
-  gap: 8px; /* Gap in the middle */
-  height: 6px;
-  width: 100%;
-}
-
-/* Individual track (Left and Right side) */
-.sb-track {
-  flex: 1;
-  background: #2f343a; /* Dark background */
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* The actual colored fill */
-.sb-fill {
-  height: 100%;
-  position: absolute;
-  top: 0;
-  border-radius: 4px;
-  transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-  background: #9aa0a6; /* Default Grey (Loser) */
-}
-
-/* Home fills from Right -> Left */
-.sb-track.home .sb-fill { right: 0; }
-
-/* Away fills from Left -> Right */
-.sb-track.away .sb-fill { left: 0; }
-
-/* Winner Color Modifier */
-.sb-fill.orange { background: var(--accent-orange) !important; }
-
-/* EVENT ITEMS */
-.event-item {
-  display: flex; align-items: center; gap: 12px;
-  background: #262a30; padding: 12px; border-radius: 10px; margin-bottom: 8px;
-  border: 1px solid #2f343a;
-}
-.event-icon { font-size: 16px; width: 24px; text-align: center; }
-.event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
-
-/* === TABLE STYLES (GRID ALIGNMENT) === */
-.tbl-grid {
-  display: grid;
-  /* Columns: Rank | Team | MP | Pts | GD | Form */
-  grid-template-columns: 25px 1fr 35px 35px 35px 50px; 
-  gap: 8px; 
-  align-items: center;
-  font-size: 11px;
-}
-
-.tbl-header {
-  background: #262a30;
-  padding: 10px 20px; 
-  border-bottom: 1px solid #3a3d42;
-  color: #9aa0a6; font-weight: 700;
-}
-
-.tbl-row {
-  padding: 8px 0;
-  border-bottom: 1px solid #2f343a;
-  color: #fff; font-weight: 600;
-}
-
-/* Alignment Helpers */
-.ta-c { text-align: center; }
-.ta-r { text-align: right; }
-.ta-l { text-align: left; }
-
-.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-.txt-green { color: #7CFF5B; font-weight: 800; }
-
-/* FORM DOTS */
-.tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
-.form-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.dot-W { background-color: #7CFF5B; } 
-.dot-D { background-color: #9aa0a6; } 
-.dot-L { background-color: #ff4d4d; } 
 
 /* === ANIMATIONS === */
 
@@ -568,7 +404,7 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  animation: nervousShiver 0.3s infinite linear; 
+  animation: nervousShiver 0.25s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
@@ -616,6 +452,10 @@ body{
 
     </div>
   </footer>
+</div>
+
+<div id="bigWinOverlay" class="big-win-overlay">
+  <div id="bigWinText" class="big-win-text"></div>
 </div>
 
 <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
@@ -797,7 +637,7 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS --- */
+    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
@@ -817,6 +657,9 @@ function loadData(){
        let hasAlive = false;
        let allDead = true;
        let hasBets = false;
+       
+       // Calculate Total Win Amount ONLY for winning columns
+       let totalWinAmount = 0;
 
        // Loop through the columns for this person
        for(let k = 0; k < count; k++) {
@@ -853,7 +696,13 @@ function loadData(){
                  hasAlive = true;
                  
                  // Check if this column is a Winner or Sweat
-                 if (colPending === 0) hasGreen = true;
+                 if (colPending === 0) {
+                     hasGreen = true;
+                     // Only sum money if this specific column won!
+                     if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
+                         totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
+                     }
+                 }
                  else if (colPending <= 2) hasOrange = true;
              }
          }
@@ -869,7 +718,10 @@ function loadData(){
                p.classList.add("status-green");
                
                // Use setTimeout to fire confetti after the element is in the DOM
-               setTimeout(() => { fireScreenBlaster(p); }, 500); 
+               setTimeout(() => { 
+                   fireScreenBlaster(p); 
+                   showBigWin(formatGBP(totalWinAmount)); // SHOW BIG MONEY!
+               }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
@@ -959,34 +811,53 @@ function loadData(){
   });
 }
 
-// === SCREEN BLASTER (FULL SCREEN VICTORY) ===
+// === BIG WIN OVERLAY LOGIC ===
+function showBigWin(amountText) {
+  const overlay = document.getElementById("bigWinOverlay");
+  const text = document.getElementById("bigWinText");
+  
+  if (!overlay || !text) return;
+  
+  // If already active, don't restart logic to avoid glitches
+  if (overlay.classList.contains('big-win-active')) return;
+
+  text.textContent = amountText;
+  
+  // Add animation class
+  overlay.classList.add("big-win-active");
+  
+  // Remove class after animation (4s)
+  setTimeout(() => {
+    overlay.classList.remove("big-win-active");
+  }, 4000);
+}
+
+// === CONFETTI: 2 SECONDS, 80% DENSITY ===
 function fireScreenBlaster(element) {
-  // Prevent excessive firing
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 3000; // Fire for 3 seconds!
+  var end = Date.now() + 2000; // 2 seconds
 
-  // Define two origins: Left and Right
   (function frame() {
     // Left Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, 
       angle: 60,
       spread: 55,
-      origin: { x: 0, y: 0.6 }, // Fire from left
+      origin: { x: 0, y: 0.6 }, 
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
-      shapes: ['square', 'circle', 'star'], // Mix shapes
+      shapes: ['square', 'circle', 'star'],
       scalar: 1.2
     });
     
     // Right Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, 
       angle: 120,
       spread: 55,
-      origin: { x: 1, y: 0.6 }, // Fire from right
+      origin: { x: 1, y: 0.6 }, 
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
       shapes: ['square', 'circle', 'star'],
@@ -996,7 +867,7 @@ function fireScreenBlaster(element) {
     if (Date.now() < end) {
       requestAnimationFrame(frame);
     } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 15000);
+      setTimeout(() => { element.dataset.fired = ""; }, 3000);
     }
   }());
 }

@@ -550,7 +550,6 @@ body{
 }
 
 /* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
-/* 0.25s duration + 1px movement = "Shivering" but not "Seizure" */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -953,34 +952,32 @@ function loadData(){
   });
 }
 
-// === SCREEN BLASTER (FULL SCREEN VICTORY) ===
+// === TUNED SCREEN BLASTER (80% Strength, 2 Seconds) ===
 function fireScreenBlaster(element) {
-  // Prevent excessive firing
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 3000; // Fire for 3 seconds!
+  var end = Date.now() + 2000; // 2 Seconds Duration (Was 3s)
 
-  // Define two origins: Left and Right
   (function frame() {
     // Left Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, // 80% Density (Was 5)
       angle: 60,
       spread: 55,
-      origin: { x: 0, y: 0.6 }, // Fire from left
+      origin: { x: 0, y: 0.6 }, 
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
-      shapes: ['square', 'circle', 'star'], // Mix shapes
+      shapes: ['square', 'circle', 'star'],
       scalar: 1.2
     });
     
     // Right Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, // 80% Density (Was 5)
       angle: 120,
       spread: 55,
-      origin: { x: 1, y: 0.6 }, // Fire from right
+      origin: { x: 1, y: 0.6 },
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
       shapes: ['square', 'circle', 'star'],

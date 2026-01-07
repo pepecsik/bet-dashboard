@@ -45,7 +45,7 @@ if ("serviceWorker" in navigator) {
 
   --left-w:230px; 
   --bet-w:80px;   
-   
+    
   --summary-w:200px; 
 
   --week-row-h:30px;
@@ -143,6 +143,7 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
+/* FIX: Increased scale to crop out white borders */
 .brand-logo { 
   width: 100%; height: 100%; 
   object-fit: cover; 
@@ -184,6 +185,7 @@ body{
 
 .team-logo{ 
   width:38px; height:38px; object-fit:contain; 
+  /* NO GLOW - Clean Logos */
 }
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -240,8 +242,8 @@ body{
 .summary { 
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
-  border-radius: 14px;      
-  overflow: hidden;           
+  border-radius: 14px;       
+  overflow: hidden;            
   border: 1px solid #2f343a; 
 }
 
@@ -254,9 +256,10 @@ body{
 }
 .summary-toggle.open::before{ transform:rotate(180deg); }
 
+/* Main Container: Stack items vertically (Top Row then Chart) */
 .summary-content{
   display:flex;
-  flex-direction: column;
+  flex-direction: column; /* Vertical Stack */
   gap:12px; 
   padding:10px;
   transition:max-height .35s ease, opacity .25s ease;
@@ -264,33 +267,38 @@ body{
 }
 .summary-content.hidden{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; }
 
+/* The Row containing Weekly + Ranking */
 .summary-top-row {
   display: flex;
   gap: 12px;
   width: 100%;
-  overflow-x: auto; 
+  overflow-x: auto; /* Horizontal scroll if screen is too small */
   scrollbar-width: none;
-  align-items: stretch;
+  align-items: stretch; /* FIX: Forces both cards to be equal height */
 }
 .summary-top-row::-webkit-scrollbar { display: none; }
 
+/* --- UPDATED FLEX VALUES FOR WIDER WEEKLY CARD --- */
 .weekly-card {
-  flex: 1.4;
+  flex: 1.4; /* Takes up approx 58% of space */
   min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
 }
 
 .ranking-card{
-  flex: 1;
+  flex: 1; /* Takes up approx 42% of space */
   min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
   cursor:pointer;
+    
+  /* FIX: Forces the card to fill the height provided by the row */
   display: flex;
   flex-direction: column; 
 }
 
+/* FIX: Ranking Body fills the available vertical space */
 #rankingBody {
   flex: 1;
   display: flex;
@@ -300,6 +308,7 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
+/* WEEKLY ROW ALIGNMENT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
@@ -315,6 +324,7 @@ body{
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
+/* RANKING ROW */
 .rank-row{
   display:grid; 
   grid-template-columns:18px 1fr auto; 
@@ -330,6 +340,7 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
+/* HISTORY CARD (Full Width below top row) */
 .history-card{
   width: 100%; 
   background:var(--bg-soft); border-radius:14px;
@@ -352,27 +363,28 @@ body{
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   pointer-events: none; /* Click through */
-  z-index: 2200; 
+  z-index: 2200; /* Above modals and confetti */
   opacity: 0;
 }
 
 .big-win-text {
-  font-size: 35vw; 
+  font-size: 35vw; /* MASSIVE FONT SIZE */
   font-weight: 900;
   color: #7CFF5B;
   text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B;
   text-align: center;
   font-family: 'Inter', sans-serif;
   transform: scale(0.5);
-  white-space: nowrap; 
+  white-space: nowrap; /* Prevent wrapping */
   line-height: 1;
 }
 
+/* 5 Second Animation: Pop -> Hold -> Fade Out */
 @keyframes bigWinAnim {
   0% { opacity: 0; transform: scale(0.5); }
   5% { opacity: 1; transform: scale(1.1); }
   10% { transform: scale(1); }
-  60% { opacity: 1; transform: scale(1.05); } 
+  60% { opacity: 1; transform: scale(1.05); } /* Start fade late */
   100% { opacity: 0; transform: scale(1.4); }
 }
 
@@ -381,14 +393,17 @@ body{
 }
 
 /* === ANIMATIONS === */
+
+/* 1. GREEN (Winner) - Static Green + Glow */
 .status-green {
   background: #7CFF5B !important; 
   color: #1c1f23 !important;      
   border: 1px solid #7CFF5B;
-  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8);
+  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); /* Max Glow */
   animation: none;
 }
 
+/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -403,6 +418,7 @@ body{
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
+/* 3. RED (Dead) - Static Red, no movement */
 .status-red {
   background: #ff4d4d !important;
   color: #fff !important;
@@ -414,7 +430,7 @@ body{
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.85);
-  z-index: 2100;
+  z-index: 2100; /* Below BigWin, above rest */
   backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
@@ -441,7 +457,7 @@ body{
   position: relative;
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
   z-index: 2;
-  min-height: 60px;
+  min-height: 60px; /* Ensure height */
   display: flex; flex-direction: column; justify-content: center;
 }
 .modal-back-btn {
@@ -475,7 +491,10 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-.modal-tabs { display: flex; background: var(--bg-row); p: 4px; }
+/* MODAL TABS */
+.modal-tabs {
+  display: flex; background: var(--bg-row); p: 4px;
+}
 .tab-btn {
   flex: 1; padding: 12px; text-align: center;
   font-size: 12px; font-weight: 700; color: var(--text-muted);
@@ -497,6 +516,7 @@ body{
 .sb-track.away .sb-fill { position: absolute; left: 0; background: #fff; }
 .sb-fill.orange { background: var(--accent-orange) !important; box-shadow: 0 0 10px var(--accent-orange); }
 
+/* SUMMARY TAB ITEMS */
 .event-item { display: flex; gap: 10px; padding: 10px; background: var(--bg-soft); border-radius: 8px; margin-bottom: 6px; align-items: center; }
 .event-icon { font-size: 18px; }
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
@@ -516,10 +536,20 @@ body{
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
 
 /* FIX: HEADER REMAINS CENTERED/DEFAULT */
-.ta-c { display: flex; justify-content: center; text-align: center; width: 100%; } 
+.ta-c { 
+  display: flex; 
+  justify-content: center; 
+  text-align: center; 
+  width: 100%; 
+} 
 
 /* FIX: DATA ROWS PUSHED RIGHT TO MATCH HEADERS */
-.tbl-row .ta-c { justify-content: flex-end; padding-right: 8px; text-align: right; }
+/* We target .ta-c inside .tbl-row specifically to move the numbers right */
+.tbl-row .ta-c {
+  justify-content: flex-end; /* Align numbers to the right */
+  padding-right: 8px;       /* Add padding so they don't hit the edge */
+  text-align: right;
+}
 
 .ta-r { display: flex; justify-content: flex-end; width: 100%; } 
 .ta-l { display: flex; justify-content: flex-start; width: 100%; }
@@ -543,7 +573,7 @@ body{
     <div class="summary-toggle open" id="summaryToggle"></div>
 
     <div class="summary-content" id="summaryContentWrap">
-       
+        
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
@@ -672,7 +702,7 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
-    
+   
   const lh = document.createElement("div");
   lh.className = "left-header"; 
   lh.innerHTML = `
@@ -715,9 +745,7 @@ function renderSkeletons() {
 }
 
 function loadData(){
-  fetch(API_URL)
-  .then(r => r.json())
-  .then(data => {
+  fetch(API_URL).then(r=>r.json()).then(data=>{
     const left=document.getElementById("left");
     const right=document.getElementById("right");
     const weekly=document.getElementById("weeklyCard");
@@ -730,10 +758,13 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    // --- 1. RENDER HEADER (Date/Logo) ---
-    const dateText = data.date ? data.date : "Live";
+    /* --- LEFT HEADER WITH DATE + LOGO (UPDATED) --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
+     
+    // Check if data.date exists, otherwise use placeholder or nothing
+    const dateText = data.date ? data.date : "Live";
+     
     lh.innerHTML = `
       <div class="pl-btn" onclick="openTable()">
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
@@ -742,125 +773,121 @@ function loadData(){
           <span>MATCHES</span>
           <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
       </div>
-      <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
+      <div class="brand-btn">
+         <img src="apple-touch-icon.png" class="brand-logo">
+      </div>
     `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-
-    // --- 2. INTELLIGENT SORTING LOGIC ---
-    let indices = [];
-    if(data.headers){
-        indices = data.headers.map((_, i) => i);
-        // Filter out empty headers (Gaps) so they don't show on screen
-        indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
-    }
-
-    // A. Count Green Cells per Column
-    const greenCounts = new Array(data.headers.length).fill(0);
-    // B. Check if column actually has bets (Not empty/TEST)
-    const betCounts = new Array(data.headers.length).fill(0);
-
-    if(data.matches) {
-        data.matches.forEach(m => {
-            m.cells.forEach((cell, colIdx) => {
-                if (cell && cell.value && cell.value.trim() !== "") {
-                    betCounts[colIdx]++;
-                }
-                if (cell && cell.color && (cell.color === '#7CFF5B' || cell.color === '#00ff00')) {
-                    greenCounts[colIdx]++;
-                }
-            });
-        });
-    }
-
-    if (data.columnStats && data.columnStats.length > 0) {
-      indices.sort((a, b) => {
-        const statA = data.columnStats[a] || {};
-        const statB = data.columnStats[b] || {};
-        const greensA = greenCounts[a];
-        const greensB = greenCounts[b];
-        
-        // A column is "Valid" if it has at least 3 bets
-        const hasBetsA = betCounts[a] >= 3;
-        const hasBetsB = betCounts[b] >= 3;
-
-        // 1. Valid Bets Check (No bets = Push to End)
-        if (hasBetsA && !hasBetsB) return -1;
-        if (!hasBetsA && hasBetsB) return 1;
-
-        // 2. Status Check (DEAD goes to bottom/right)
-        // Check "ALIVE" vs "DEAD" string directly from sheet Row 1
-        const isDeadA = statA.status === "DEAD";
-        const isDeadB = statB.status === "DEAD";
-        if (isDeadA && !isDeadB) return 1;
-        if (!isDeadA && isDeadB) return -1;
-
-        // 3. Pending Check (Lower pending is better)
-        const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
-        const pendingB = (statB.pending === undefined || statB.pending === "") ? 99 : Number(statB.pending);
-        
-        if (pendingA !== pendingB) {
-            return pendingA - pendingB; // Sort Low to High (0, 1, 2...)
-        }
-
-        // 4. Green Count Tie-Breaker (More greens = better = left)
-        return greensB - greensA; // Sort High to Low
-      });
-    }
-
-
-    // --- 3. RENDER RIGHT HEADER PILLS (Sorted) ---
+    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
-    
-    let totalWinAmount = 0;
+     
+    let i = 0;
+    while(i < data.headers.length) {
+       const currentName = data.headers[i];
+       let count = 1;
+       
+       while(i + count < data.headers.length && data.headers[i + count] === currentName){
+         count++;
+       }
+       
+       let hasGreen = false;
+       let hasOrange = false;
+       let hasAlive = false;
+       let allDead = true;
+       let hasBets = false;
+       
+       // Calculate Total Win Amount ONLY for winning columns
+       let totalWinAmount = 0;
 
-    indices.forEach(originalIndex => {
-        const p = document.createElement("div");
-        p.className = "header-pill";
-        p.textContent = data.headers[originalIndex]; 
-        
-        if (data.columnStats) {
-            const s = data.columnStats[originalIndex];
-            // Only apply colors if they actually have VALID bets (>2)
-            if (s && betCounts[originalIndex] >= 3) {
-              const pendingVal = (s.pending === undefined || s.pending === "") ? 99 : Number(s.pending);
-              
-              if (s.status === "DEAD") {
-                  p.classList.add("status-red");
-              } else if (pendingVal === 0) {
-                  p.classList.add("status-green");
-                  if(data.betSummary && data.betSummary[1]) {
-                      totalWinAmount += (data.betSummary[1].cells[originalIndex].value || 0);
-                  }
-                  setTimeout(() => fireScreenBlaster(p), 500);
-              } else if (pendingVal <= 2) {
-                  p.classList.add("status-orange");
-              }
+       for(let k = 0; k < count; k++) {
+         const colIdx = i + k;
+         let colPending = 0;
+         let colIsDead = false;
+         let colHasBets = false;
+
+         // Check matches for this specific column
+         data.matches.forEach(m => {
+            const cell = m.cells[colIdx];
+            const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
+             
+            if(!cell || !cell.value) return; 
+             
+            colHasBets = true;
+            hasBets = true;
+
+            if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
+              colIsDead = true;
             }
-        }
-        headerRow.appendChild(p);
-    });
 
-    if(totalWinAmount > 0) showBigWin(formatGBP(totalWinAmount));
-    
+            if(matchStatus !== "FT") {
+              colPending++;
+            }
+         });
+
+         if(colHasBets) {
+             if(!colIsDead) {
+                 allDead = false; 
+                 hasAlive = true;
+                 
+                 // If this specific column is a WINNER (0 pending), add its winnings
+                 if (colPending === 0) {
+                     hasGreen = true;
+                     if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
+                         totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
+                     }
+                 }
+                 else if (colPending <= 2) hasOrange = true;
+             }
+         }
+       }
+
+       const p = document.createElement("div");
+       p.className = "header-pill";
+       p.textContent = currentName;
+       
+       if (hasBets) {
+           if (hasGreen) {
+               p.classList.add("status-green");
+               
+               // Use setTimeout to fire confetti after the element is in the DOM
+               setTimeout(() => { 
+                   fireScreenBlaster(p); 
+                   showBigWin(formatGBP(totalWinAmount)); // SHOW INTELLIGENT BIG MONEY!
+               }, 500); 
+           } else if (hasOrange) {
+               p.classList.add("status-orange");
+           } 
+           // RED HEADER LOGIC REMOVED HERE
+       }
+
+       if(count > 1){
+         p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
+       }
+       
+       headerRow.appendChild(p);
+       i += count; 
+    }
+
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-
-    // --- 4. RENDER MATCHES (Sorted) ---
-    data.matches.forEach((m, i) => {
-      // Left Card
+    /* MATCHES */
+    data.matches.forEach((m,i)=>{
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
+       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
       const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
       const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
+      const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
+      const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
       lr.innerHTML = `
@@ -868,21 +895,20 @@ function loadData(){
           <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
         </div>
         <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
-           <span style="color:${badgeColor};background:${isLive?"rgba(124,255,91,0.15)":"transparent"};border:1px solid ${isLive?"#7CFF5B":"transparent"};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;">${m.status}</span>
-           <span style="color:#fff;font-size:12px;font-weight:700;">${displayScore}</span>
+           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
         </div>
       `;
       left.appendChild(lr);
 
-      // Right Card
       const rr=document.createElement("div");
       rr.className="row";
-      
-      indices.forEach(originalIndex => {
-        const c = m.cells[originalIndex]; 
+      m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
-        if(c && c.value){ el.textContent=c.value; el.style.background=c.color; }
+        if(c.value){ el.textContent=c.value; el.style.background=c.color; }
         rr.appendChild(el);
       });
       right.appendChild(rr);
@@ -891,20 +917,14 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
-
-    // --- 5. BET SUMMARY (Sorted) ---
-    ["BET","WIN","WIN PP"].forEach((label, rowIndex)=>{
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
       const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
       left.appendChild(lab);
-      
       const rr=document.createElement("div"); rr.className="row";
-      
-      indices.forEach(originalIndex => {
-         const c = data.betSummary[rowIndex].cells[originalIndex];
-         const el=document.createElement("div"); 
-         el.className="bet";
-         el.textContent=formatGBP(c.value); el.style.background=c.color;
-         rr.appendChild(el);
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div"); el.className="bet";
+        el.textContent=formatGBP(c.value); el.style.background=c.color;
+        rr.appendChild(el);
       });
       right.appendChild(rr);
     });
@@ -916,12 +936,9 @@ function loadData(){
 
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
-      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${medals[i]||(i+1)}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+      const rankDisplay = medals[i] || (i + 1);
+      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
     });
-
-  })
-  .catch(err => {
-    console.error("Fetch Error:", err);
   });
 }
 
@@ -1074,7 +1091,7 @@ function openModal(m) {
 function openTable() {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-    
+   
   if(!tableCache || tableCache.length === 0) {
     tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
   } else {

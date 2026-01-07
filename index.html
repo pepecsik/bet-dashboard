@@ -298,6 +298,14 @@ body{
   flex-direction: column; 
 }
 
+/* FIX: Ranking Body fills the available vertical space */
+#rankingBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 /* WEEKLY ROW ALIGNMENT */
@@ -360,26 +368,28 @@ body{
 }
 
 .big-win-text {
-  font-size: 13vw; /* Huge Responsive Font */
+  font-size: 35vw; /* MASSIVE FONT SIZE */
   font-weight: 900;
   color: #7CFF5B;
-  text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px #7CFF5B;
+  text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B;
   text-align: center;
   font-family: 'Inter', sans-serif;
   transform: scale(0.5);
+  white-space: nowrap; /* Prevent wrapping */
+  line-height: 1;
 }
 
-/* 4 Second Animation: Pop (0.5s) -> Hold (1.5s) -> Fade Out (2s) */
+/* 5 Second Animation: Pop -> Hold -> Fade Out */
 @keyframes bigWinAnim {
   0% { opacity: 0; transform: scale(0.5); }
-  10% { opacity: 1; transform: scale(1.1); }
-  15% { transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); } /* 2s mark: Start fade */
+  5% { opacity: 1; transform: scale(1.1); }
+  10% { transform: scale(1); }
+  60% { opacity: 1; transform: scale(1.05); } /* Start fade late */
   100% { opacity: 0; transform: scale(1.4); }
 }
 
 .big-win-active {
-  animation: bigWinAnim 4s ease-out forwards;
+  animation: bigWinAnim 5s ease-out forwards;
 }
 
 /* === ANIMATIONS === */
@@ -404,7 +414,7 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  animation: nervousShiver 0.25s infinite linear; 
+  animation: nervousShiver 0.3s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
@@ -646,12 +656,10 @@ function loadData(){
        const currentName = data.headers[i];
        let count = 1;
        
-       // 1. Look ahead for duplicates (merged columns)
        while(i + count < data.headers.length && data.headers[i + count] === currentName){
          count++;
        }
        
-       // 2. CALCULATE STATUS (Merged "Survivor" Logic)
        let hasGreen = false;
        let hasOrange = false;
        let hasAlive = false;
@@ -661,7 +669,6 @@ function loadData(){
        // Calculate Total Win Amount ONLY for winning columns
        let totalWinAmount = 0;
 
-       // Loop through the columns for this person
        for(let k = 0; k < count; k++) {
          const colIdx = i + k;
          let colPending = 0;
@@ -678,27 +685,23 @@ function loadData(){
             colHasBets = true;
             hasBets = true;
 
-            // FIX: Dead check - ensure it's not White (#ffffff) or default
             if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
               colIsDead = true;
             }
 
-            // Check if Pending
             if(matchStatus !== "FT") {
               colPending++;
             }
          });
 
-         // Evaluate this specific column's status
          if(colHasBets) {
              if(!colIsDead) {
-                 allDead = false; // At least one column is alive
+                 allDead = false; 
                  hasAlive = true;
                  
-                 // Check if this column is a Winner or Sweat
+                 // If this specific column is a WINNER (0 pending), add its winnings
                  if (colPending === 0) {
                      hasGreen = true;
-                     // Only sum money if this specific column won!
                      if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
                          totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
                      }
@@ -712,7 +715,6 @@ function loadData(){
        p.className = "header-pill";
        p.textContent = currentName;
        
-       // 3. APPLY LOGIC (Priority: Green > Orange > Alive > Red)
        if (hasBets) {
            if (hasGreen) {
                p.classList.add("status-green");
@@ -720,18 +722,17 @@ function loadData(){
                // Use setTimeout to fire confetti after the element is in the DOM
                setTimeout(() => { 
                    fireScreenBlaster(p); 
-                   showBigWin(formatGBP(totalWinAmount)); // SHOW BIG MONEY!
+                   showBigWin(formatGBP(totalWinAmount)); // SHOW INTELLIGENT BIG MONEY!
                }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
-               // Alive but > 2 games left -> Default Black (No class)
+               // Alive but > 2 games left
            } else if (allDead) {
                p.classList.add("status-red");
            }
        }
 
-       // Width Calculation
        if(count > 1){
          p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
        }
@@ -826,10 +827,10 @@ function showBigWin(amountText) {
   // Add animation class
   overlay.classList.add("big-win-active");
   
-  // Remove class after animation (4s)
+  // Remove class after animation (5s)
   setTimeout(() => {
     overlay.classList.remove("big-win-active");
-  }, 4000);
+  }, 5000);
 }
 
 // === CONFETTI: 2 SECONDS, 80% DENSITY ===

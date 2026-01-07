@@ -756,8 +756,10 @@ function loadData(){
         indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
     }
 
-    // A. Count Green Cells per Column
+    // A. Count Green/Orange Cells per Column
     const greenCounts = new Array(data.headers.length).fill(0);
+    const orangeCounts = new Array(data.headers.length).fill(0);
+    
     // B. Check if column actually has bets (Not empty/TEST)
     const betCounts = new Array(data.headers.length).fill(0);
 
@@ -767,8 +769,9 @@ function loadData(){
                 if (cell && cell.value && cell.value.trim() !== "") {
                     betCounts[colIdx]++;
                 }
-                if (cell && cell.color && (cell.color === '#7CFF5B' || cell.color === '#00ff00')) {
-                    greenCounts[colIdx]++;
+                if (cell && cell.color) {
+                    if (cell.color === '#7CFF5B' || cell.color === '#00ff00') greenCounts[colIdx]++;
+                    if (cell.color === '#ff9f43' || cell.color === 'orange') orangeCounts[colIdx]++;
                 }
             });
         });
@@ -780,6 +783,8 @@ function loadData(){
         const statB = data.columnStats[b] || {};
         const greensA = greenCounts[a];
         const greensB = greenCounts[b];
+        const orangesA = orangeCounts[a];
+        const orangesB = orangeCounts[b];
         
         // A column is "Valid" if it has at least 3 bets
         const hasBetsA = betCounts[a] >= 3;
@@ -790,10 +795,10 @@ function loadData(){
         if (!hasBetsA && hasBetsB) return 1;
 
         // 2. Status Check (DEAD goes to bottom/right)
-        const isDeadA = statA.status === "DEAD";
-        const isDeadB = statB.status === "DEAD";
-        if (isDeadA && !isDeadB) return 1;
-        if (!isDeadA && isDeadB) return -1;
+        // DEAD = 1, ALIVE = 0 (Lower is better)
+        const isDeadA = (statA.status === "DEAD") ? 1 : 0;
+        const isDeadB = (statB.status === "DEAD") ? 1 : 0;
+        if (isDeadA !== isDeadB) return isDeadA - isDeadB;
 
         // 3. Pending Check (Lower pending is better)
         const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
@@ -804,7 +809,10 @@ function loadData(){
         }
 
         // 4. Green Count Tie-Breaker (More greens = better = left)
-        return greensB - greensA; // Sort High to Low
+        if (greensA !== greensB) return greensB - greensA;
+
+        // 5. Orange Count Tie-Breaker (More oranges = better = left)
+        return orangesB - orangesA;
       });
     }
 

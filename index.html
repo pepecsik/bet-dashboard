@@ -58,15 +58,12 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  overflow: hidden; 
 }
 
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
-  position: relative;
-  z-index: 1;
 }
 
 @media (max-width: 768px){
@@ -128,7 +125,6 @@ body{
   background: #ffffff; 
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  z-index: 10; /* Ensure clickability */
 }
 .pl-btn:hover { transform: translateY(-50%) scale(1.1); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
@@ -363,16 +359,13 @@ body{
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === BIG WIN OVERLAY === */
-/* FIX: Display None by default to allow clicks on app */
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  display: none; /* Hidden by default */
-  align-items: center; justify-content: center;
-  pointer-events: none; 
-  z-index: 2200; 
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; /* Click through */
+  z-index: 2200; /* Above modals and confetti */
   opacity: 0;
 }
-.big-win-overlay.active-display { display: flex; } /* Logic helper */
 
 .big-win-text {
   font-size: 35vw; /* MASSIVE FONT SIZE */
@@ -382,16 +375,16 @@ body{
   text-align: center;
   font-family: 'Inter', sans-serif;
   transform: scale(0.5);
-  white-space: nowrap; 
+  white-space: nowrap; /* Prevent wrapping */
   line-height: 1;
 }
 
-/* 5 Second Animation */
+/* 5 Second Animation: Pop -> Hold -> Fade Out */
 @keyframes bigWinAnim {
   0% { opacity: 0; transform: scale(0.5); }
   5% { opacity: 1; transform: scale(1.1); }
   10% { transform: scale(1); }
-  60% { opacity: 1; transform: scale(1.05); } 
+  60% { opacity: 1; transform: scale(1.05); } /* Start fade late */
   100% { opacity: 0; transform: scale(1.4); }
 }
 
@@ -401,16 +394,16 @@ body{
 
 /* === ANIMATIONS === */
 
-/* 1. GREEN (Winner) */
+/* 1. GREEN (Winner) - Static Green + Glow */
 .status-green {
   background: #7CFF5B !important; 
   color: #1c1f23 !important;      
   border: 1px solid #7CFF5B;
-  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); 
+  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); /* Max Glow */
   animation: none;
 }
 
-/* 2. ORANGE (Sweat) */
+/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -425,7 +418,7 @@ body{
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
-/* 3. RED (Dead) */
+/* 3. RED (Dead) - Static Red, no movement */
 .status-red {
   background: #ff4d4d !important;
   color: #fff !important;
@@ -433,20 +426,9 @@ body{
   border: 1px solid #992222;
 }
 
-/* FIX: MODAL HIDDEN BY DEFAULT */
-.modal-overlay { 
-  display: none; 
-  z-index: 3000; 
-}
-.modal-overlay.active { display: flex; }
-
 </style>
 </head>
 <body>
-
-<div id="bigWinOverlay" class="big-win-overlay">
-  <div id="bigWinText" class="big-win-text"></div>
-</div>
 
 <div class="app">
   <div class="main">
@@ -480,6 +462,10 @@ body{
 
     </div>
   </footer>
+</div>
+
+<div id="bigWinOverlay" class="big-win-overlay">
+  <div id="bigWinText" class="big-win-text"></div>
 </div>
 
 <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
@@ -539,6 +525,7 @@ const REFRESH_MS=30000;
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
+// UPDATED HIGH-RES PNG LOGOS (200px)
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -567,10 +554,12 @@ function renderTeam(raw){
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
+  
   let style = "";
   if (code === "TOT") { style = "background:white; border-radius:50%; padding:3px;"; }
   if (code === "SUN") { style = "transform: scale(1.35);"; }
   if (code === "AVI") { style = "transform: scale(1.65);"; }
+
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
@@ -580,11 +569,21 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
+    
   const lh = document.createElement("div");
   lh.className = "left-header"; 
-  lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  lh.innerHTML = `
+    <div class="pl-btn" onclick="openTable()">
+      <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+    </div>
+    <span>MATCHES</span>
+    <div class="brand-btn">
+       <img src="apple-touch-icon.png" class="brand-logo">
+    </div>
+  `;
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
+
   const rh = document.createElement("div");
   rh.className = "row";
   for(let i=0; i<5; i++){
@@ -594,11 +593,13 @@ function renderSkeletons() {
   }
   right.appendChild(rh);
   right.appendChild(document.createElement("div")).className = "right-divider";
+
   for (let i = 0; i < 10; i++) {
     const lr = document.createElement("div");
     lr.className = "left-row sk-row"; 
     lr.innerHTML = `<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`;
     left.appendChild(lr);
+
     const rr = document.createElement("div");
     rr.className = "row sk-row";
     for(let j=0; j<5; j++){
@@ -624,67 +625,29 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
+    /* --- LEFT HEADER WITH DATE + LOGO (UPDATED) --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
+    
+    // Check if data.date exists, otherwise use placeholder or nothing
     const dateText = data.date ? data.date : "Live";
-    lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+    
+    lh.innerHTML = `
+      <div class="pl-btn" onclick="openTable()">
+        <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
+          <span>MATCHES</span>
+          <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
+      </div>
+      <div class="brand-btn">
+         <img src="apple-touch-icon.png" class="brand-logo">
+      </div>
+    `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- INTELLIGENT SORTING LOGIC (RACE TO 0, IGNORE GREEN) --- */
-    const numCols = data.headers.length;
-    const colStats = [];
-
-    for(let c=0; c<numCols; c++) {
-        let pending = 0;
-        let isDead = false;
-        let hasBets = false;
-        
-        data.matches.forEach(m => {
-            const cell = m.cells[c];
-            if (cell && cell.value) {
-                hasBets = true;
-                
-                const bg = cell.color ? cell.color.toLowerCase() : "";
-                const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
-                if(isRed) isDead = true;
-                
-                // IMPORTANT: IGNORE CELL COLOR for pending count. 
-                // Only "Match Status" matters.
-                const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-                if (matchStatus !== "FT") {
-                    pending++;
-                }
-            }
-        });
-
-        let sortScore = 0;
-        if (!hasBets) {
-             sortScore = 20000; 
-        } else if (isDead) {
-             sortScore = 10000 + pending; 
-        } else {
-             sortScore = pending;
-        }
-
-        colStats.push({
-            originalIndex: c,
-            score: sortScore
-        });
-    }
-
-    colStats.sort((a, b) => a.score - b.score);
-
-    const newHeaders = colStats.map(x => data.headers[x.originalIndex]);
-    data.matches.forEach(m => {
-        m.cells = colStats.map(x => m.cells[x.originalIndex]);
-    });
-    data.betSummary.forEach(s => {
-        s.cells = colStats.map(x => s.cells[x.originalIndex]);
-    });
-    data.headers = newHeaders;
-
-    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS --- */
+    /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
@@ -692,6 +655,7 @@ function loadData(){
     while(i < data.headers.length) {
        const currentName = data.headers[i];
        let count = 1;
+       
        while(i + count < data.headers.length && data.headers[i + count] === currentName){
          count++;
        }
@@ -701,28 +665,31 @@ function loadData(){
        let hasAlive = false;
        let allDead = true;
        let hasBets = false;
+       
+       // Calculate Total Win Amount ONLY for winning columns
        let totalWinAmount = 0;
 
        for(let k = 0; k < count; k++) {
-         const colIdx = i + k; 
+         const colIdx = i + k;
          let colPending = 0;
          let colIsDead = false;
          let colHasBets = false;
 
+         // Check matches for this specific column
          data.matches.forEach(m => {
             const cell = m.cells[colIdx];
             const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
             
             if(!cell || !cell.value) return; 
+            
             colHasBets = true;
             hasBets = true;
 
-            const bg = cell.color ? cell.color.toLowerCase() : "";
-            const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
-            if(isRed) colIsDead = true;
+            if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
+              colIsDead = true;
+            }
 
-            // Header Logic must also ignore cell color to match sort
-            if (matchStatus !== "FT") {
+            if(matchStatus !== "FT") {
               colPending++;
             }
          });
@@ -731,6 +698,8 @@ function loadData(){
              if(!colIsDead) {
                  allDead = false; 
                  hasAlive = true;
+                 
+                 // If this specific column is a WINNER (0 pending), add its winnings
                  if (colPending === 0) {
                      hasGreen = true;
                      if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
@@ -749,13 +718,16 @@ function loadData(){
        if (hasBets) {
            if (hasGreen) {
                p.classList.add("status-green");
+               
+               // Use setTimeout to fire confetti after the element is in the DOM
                setTimeout(() => { 
                    fireScreenBlaster(p); 
-                   if(totalWinAmount > 0) showBigWin(formatGBP(totalWinAmount)); 
+                   showBigWin(formatGBP(totalWinAmount)); // SHOW INTELLIGENT BIG MONEY!
                }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
+               // Alive but > 2 games left
            } else if (allDead) {
                p.classList.add("status-red");
            }
@@ -764,6 +736,7 @@ function loadData(){
        if(count > 1){
          p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
        }
+       
        headerRow.appendChild(p);
        i += count; 
     }
@@ -776,6 +749,7 @@ function loadData(){
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
+       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
@@ -786,12 +760,22 @@ function loadData(){
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-      lr.innerHTML = `<div class="left-cell match"><div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div></div><div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span></div>`;
+      lr.innerHTML = `
+        <div class="left-cell match">
+          <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
+        </div>
+        <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
+           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
+        </div>
+      `;
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
         if(c.value){ el.textContent=c.value; el.style.background=c.color; }
@@ -828,31 +812,68 @@ function loadData(){
   });
 }
 
+// === BIG WIN OVERLAY LOGIC ===
 function showBigWin(amountText) {
   const overlay = document.getElementById("bigWinOverlay");
   const text = document.getElementById("bigWinText");
-  if (!overlay || !text || overlay.classList.contains('big-win-active')) return;
+  
+  if (!overlay || !text) return;
+  
+  // If already active, don't restart logic to avoid glitches
+  if (overlay.classList.contains('big-win-active')) return;
+
   text.textContent = amountText;
-  overlay.style.display = "flex"; // Make visible for animation
+  
+  // Add animation class
   overlay.classList.add("big-win-active");
+  
+  // Remove class after animation (5s)
   setTimeout(() => {
     overlay.classList.remove("big-win-active");
-    overlay.style.display = "none"; // Hide again
   }, 5000);
 }
 
+// === CONFETTI: 2 SECONDS, 80% DENSITY ===
 function fireScreenBlaster(element) {
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
-  var end = Date.now() + 2000; 
+  
+  var end = Date.now() + 2000; // 2 seconds
+
   (function frame() {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
-    if (Date.now() < end) requestAnimationFrame(frame);
-    else setTimeout(() => { element.dataset.fired = ""; }, 3000);
+    // Left Cannon
+    confetti({
+      particleCount: 4, 
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.6 }, 
+      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
+      zIndex: 2000,
+      shapes: ['square', 'circle', 'star'],
+      scalar: 1.2
+    });
+    
+    // Right Cannon
+    confetti({
+      particleCount: 4, 
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.6 }, 
+      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
+      zIndex: 2000,
+      shapes: ['square', 'circle', 'star'],
+      scalar: 1.2
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    } else {
+      setTimeout(() => { element.dataset.fired = ""; }, 3000);
+    }
   }());
 }
 
+// === MODAL FUNCTIONS ===
 function switchTab(tab, e) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -862,42 +883,117 @@ function switchTab(tab, e) {
 
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
-  document.getElementById("mTitle").innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:15px;"><div style="transform:scale(1.3);">${renderTeam(homeCode)}</div><span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span><div style="transform:scale(1.3);">${renderTeam(awayCode)}</div></div>`;
+  
+  // 1. Set Header Info
+  document.getElementById("mTitle").innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
+       <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
+       <span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span>
+       <div style="transform:scale(1.3);">${renderTeam(awayCode)}</div>
+    </div>
+  `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
+  
+  // 2. Prepare Stats Object
   const s = m.stats || {};
-  const statsList = [{ label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true }, { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 }, { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 }, { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }];
+  const statsList = [
+    { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
+    { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
+    { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
+    { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
+  ];
+
+  // 3. Generate HTML for Stats (Dual Bar Logic)
   const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; 
+  container.innerHTML = ""; // Clear previous
+
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
-    if (total > 0) { hPct = (stat.h / total) * 100; aPct = (stat.a / total) * 100; if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; } }
+
+    // Calculate Percentages
+    if (total === 0) {
+      hPct = 0; aPct = 0;
+    } else {
+      hPct = (stat.h / total) * 100;
+      aPct = (stat.a / total) * 100;
+      
+      // Fix for Possession if already in %
+      if(stat.isPct && total > 100) {
+         hPct = stat.h; aPct = stat.a;
+      }
+    }
+
+    // Determine Colors (Winner gets Orange)
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
+
     const hText = stat.isPct ? stat.h + "%" : stat.h;
     const aText = stat.isPct ? stat.a + "%" : stat.a;
-    container.innerHTML += `<div class="stat-row"><div class="stat-label"><span>${hText}</span><span class="stat-name">${stat.label}</span><span>${aText}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${hColor}" style="width:${hPct}%"></div></div><div class="sb-track away"><div class="sb-fill ${aColor}" style="width:${aPct}%"></div></div></div></div>`;
+
+    const html = `
+      <div class="stat-row">
+        <div class="stat-label">
+          <span>${hText}</span>
+          <span class="stat-name">${stat.label}</span>
+          <span>${aText}</span>
+        </div>
+        <div class="stat-bar-container">
+          <div class="sb-track home">
+            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
+          </div>
+          <div class="sb-track away">
+            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.innerHTML += html;
   });
+
   document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
   document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
-  document.getElementById("matchModal").style.display = "flex";
-  setTimeout(() => { document.getElementById("matchModal").classList.add("active"); }, 10);
-}
 
-function closeModal(id) {
-  const el = document.getElementById(id);
-  el.classList.remove("active");
-  setTimeout(() => { el.style.display = "none"; }, 300);
+  document.getElementById("matchModal").classList.add("active");
 }
 
 function openTable() {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-  if(!tableCache || tableCache.length === 0) { tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>"; } 
-  else { tableCache.forEach(t => { let formDots = ""; if(t.form) { formDots = t.form.split('').map(char => { let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L'; return `<span class="form-dot ${css}"></span>`; }).join(''); } tbody.innerHTML += `<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div><div class="tbl-form-wrap">${formDots}</div></div>`; }); }
-  document.getElementById("tableModal").style.display = "flex";
-  setTimeout(() => { document.getElementById("tableModal").classList.add("active"); }, 10);
+   
+  if(!tableCache || tableCache.length === 0) {
+    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
+  } else {
+    tableCache.forEach(t => {
+      let formDots = "";
+      if(t.form) {
+        formDots = t.form.split('').map(char => {
+          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
+          return `<span class="form-dot ${css}"></span>`;
+        }).join('');
+      }
+
+      tbody.innerHTML += `
+        <div class="tbl-row tbl-grid">
+          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
+          <div class="tbl-team-wrap">
+            <img src="${t.logo}" class="tbl-logo">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
+          </div>
+          <div class="ta-c">${t.mp}</div>
+          <div class="ta-c txt-green">${t.pts}</div>
+          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
+          <div class="tbl-form-wrap">${formDots}</div>
+        </div>
+      `;
+    });
+  }
+  document.getElementById("tableModal").classList.add("active");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("active");
 }
 
 renderSkeletons();
@@ -938,7 +1034,34 @@ function drawHistoryChart(type){
   const players = ["Snackbar","Timbo","Pepe"];
   const colors = { Snackbar:"#7CFF5B", Timbo:"#4DA3FF", Pepe:"#FF5BC4" };
 
-  historyChart = new Chart(ctx, { type: "line", data: { labels, datasets: players.map(p => ({ label: p, data: source.map(r => r[p]), borderColor: colors[p], backgroundColor: colors[p], tension: 0.3, pointRadius: 5, pointHoverRadius: 6 })) }, options: { plugins: { datalabels: { formatter: (value, ctx) => { const data = ctx.dataset.data; const index = ctx.dataIndex; if (index === 0) return null; const diff = value - data[index - 1]; if (diff <= 0) return null; return `+${diff}`; }, color: ctx => ctx.dataset.borderColor, font: { weight: "bold", size: 10 }, align: "top", offset: 6 } } } });
+  historyChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels,
+    datasets: players.map(p => ({
+      label: p, data: source.map(r => r[p]),
+      borderColor: colors[p], backgroundColor: colors[p],
+      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
+    }))
+  },
+  options: {
+    plugins: {
+      datalabels: {
+        formatter: (value, ctx) => {
+          const data = ctx.dataset.data;
+          const index = ctx.dataIndex;
+          if (index === 0) return null;
+          const diff = value - data[index - 1];
+          if (diff <= 0) return null;
+          return `+${diff}`;
+        },
+        color: ctx => ctx.dataset.borderColor,
+        font: { weight: "bold", size: 10 },
+        align: "top", offset: 6
+      }
+    }
+  }
+});
   historyChart._type = type;
 }
 </script>

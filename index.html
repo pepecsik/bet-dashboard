@@ -657,9 +657,14 @@ function renderTeam(raw){
      style = "background:white; border-radius:50%; padding:3px;"; 
   }
 
-  // FIX: Make Aston Villa and Sunderland larger to match other logos
-  if (code === "AVI" || code === "SUN") {
+  // FIX: Make Sunderland larger (since you said this was good)
+  if (code === "SUN") {
      style = "transform: scale(1.35);"; 
+  }
+
+  // FIX: Make Aston Villa EXTRA large (Bumped to 1.65)
+  if (code === "AVI") {
+     style = "transform: scale(1.65);"; 
   }
 
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;

@@ -298,6 +298,14 @@ body{
   flex-direction: column; 
 }
 
+/* FIX: Ranking Body fills the available vertical space */
+#rankingBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Spreads rows out evenly to fill height */
+}
+
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 /* WEEKLY ROW ALIGNMENT */
@@ -550,7 +558,6 @@ body{
 }
 
 /* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
-/* 0.25s duration + 1px movement = "Shivering" but not "Seizure" */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -561,8 +568,7 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  /* 0.25s is slower than 0.1s, creating a nervous shiver */
-  animation: nervousShiver 0.25s infinite linear; 
+  animation: nervousShiver 0.3s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
@@ -953,34 +959,32 @@ function loadData(){
   });
 }
 
-// === SCREEN BLASTER (FULL SCREEN VICTORY) ===
+// === TUNED SCREEN BLASTER (2 SECONDS, 80% DENSITY) ===
 function fireScreenBlaster(element) {
-  // Prevent excessive firing
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 3000; // Fire for 3 seconds!
+  var end = Date.now() + 2000; // 2 seconds (Was 3s)
 
-  // Define two origins: Left and Right
   (function frame() {
     // Left Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, // 80% of 5
       angle: 60,
       spread: 55,
-      origin: { x: 0, y: 0.6 }, // Fire from left
+      origin: { x: 0, y: 0.6 }, 
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
-      shapes: ['square', 'circle', 'star'], // Mix shapes
+      shapes: ['square', 'circle', 'star'],
       scalar: 1.2
     });
     
     // Right Cannon
     confetti({
-      particleCount: 5,
+      particleCount: 4, // 80% of 5
       angle: 120,
       spread: 55,
-      origin: { x: 1, y: 0.6 }, // Fire from right
+      origin: { x: 1, y: 0.6 },
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
       shapes: ['square', 'circle', 'star'],
@@ -990,7 +994,8 @@ function fireScreenBlaster(element) {
     if (Date.now() < end) {
       requestAnimationFrame(frame);
     } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 15000);
+      // Shorter cooldown so you can re-test faster
+      setTimeout(() => { element.dataset.fired = ""; }, 3000);
     }
   }());
 }

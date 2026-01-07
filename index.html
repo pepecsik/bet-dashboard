@@ -647,6 +647,54 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
+    /* --- SORT COLUMNS BASED ON PENDING GAMES (Closest to Win -> Left) --- */
+    const numCols = data.headers.length;
+    const colStats = [];
+
+    // Calculate Pending Count for each column index
+    for(let c=0; c<numCols; c++) {
+        let pending = 0;
+        let hasBets = false;
+        
+        // Scan matches to count pending games
+        data.matches.forEach(m => {
+            if (m.cells[c] && m.cells[c].value) {
+                hasBets = true;
+                const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
+                if (matchStatus !== "FT") pending++;
+            }
+        });
+
+        // Store stats (If no bets, push to end with high number)
+        colStats.push({
+            originalIndex: c,
+            header: data.headers[c],
+            pending: hasBets ? pending : 9999,
+            hasBets: hasBets
+        });
+    }
+
+    // Sort: Lowest pending first (Ascending)
+    colStats.sort((a, b) => a.pending - b.pending);
+
+    // REBUILD DATA OBJECTS IN NEW ORDER
+    const newHeaders = colStats.map(x => data.headers[x.originalIndex]);
+    
+    // Reorder Match Cells
+    data.matches.forEach(m => {
+        const newCells = colStats.map(x => m.cells[x.originalIndex]);
+        m.cells = newCells;
+    });
+
+    // Reorder Summary Rows (BETS, WIN, WIN PP)
+    data.betSummary.forEach(s => {
+        const newCells = colStats.map(x => s.cells[x.originalIndex]);
+        s.cells = newCells;
+    });
+
+    // Apply new headers
+    data.headers = newHeaders;
+
     /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
@@ -656,6 +704,7 @@ function loadData(){
        const currentName = data.headers[i];
        let count = 1;
        
+       // Look ahead for merged columns (names must match AND remain adjacent after sorting)
        while(i + count < data.headers.length && data.headers[i + count] === currentName){
          count++;
        }
@@ -666,11 +715,11 @@ function loadData(){
        let allDead = true;
        let hasBets = false;
        
-       // Calculate Total Win Amount ONLY for winning columns
+       // Calculate Total Win Amount ONLY for winning columns in this group
        let totalWinAmount = 0;
 
        for(let k = 0; k < count; k++) {
-         const colIdx = i + k;
+         const colIdx = i + k; // This is now the index in the SORTED arrays
          let colPending = 0;
          let colIsDead = false;
          let colHasBets = false;
@@ -702,6 +751,7 @@ function loadData(){
                  // If this specific column is a WINNER (0 pending), add its winnings
                  if (colPending === 0) {
                      hasGreen = true;
+                     // Sum money from the WIN row (Index 1 in betSummary)
                      if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
                          totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
                      }
@@ -722,7 +772,10 @@ function loadData(){
                // Use setTimeout to fire confetti after the element is in the DOM
                setTimeout(() => { 
                    fireScreenBlaster(p); 
-                   showBigWin(formatGBP(totalWinAmount)); // SHOW INTELLIGENT BIG MONEY!
+                   // Only show Big Win if amount > 0
+                   if(totalWinAmount > 0) {
+                       showBigWin(formatGBP(totalWinAmount)); 
+                   }
                }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
@@ -774,6 +827,7 @@ function loadData(){
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
+        // Fix: Use index from sorted array
         const key=`b-${i}-${j}`;
         const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
@@ -818,16 +872,10 @@ function showBigWin(amountText) {
   const text = document.getElementById("bigWinText");
   
   if (!overlay || !text) return;
-  
-  // If already active, don't restart logic to avoid glitches
   if (overlay.classList.contains('big-win-active')) return;
 
   text.textContent = amountText;
-  
-  // Add animation class
   overlay.classList.add("big-win-active");
-  
-  // Remove class after animation (5s)
   setTimeout(() => {
     overlay.classList.remove("big-win-active");
   }, 5000);
@@ -838,10 +886,9 @@ function fireScreenBlaster(element) {
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 2000; // 2 seconds
+  var end = Date.now() + 2000; 
 
   (function frame() {
-    // Left Cannon
     confetti({
       particleCount: 4, 
       angle: 60,
@@ -853,7 +900,6 @@ function fireScreenBlaster(element) {
       scalar: 1.2
     });
     
-    // Right Cannon
     confetti({
       particleCount: 4, 
       angle: 120,

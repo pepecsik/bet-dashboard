@@ -621,14 +621,12 @@ body{
 </div>
 
 <script>
-// REPLACE WITH YOUR DEPLOYED WEB APP URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
-// UPDATED HIGH-RES PNG LOGOS (200px)
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -657,12 +655,10 @@ function renderTeam(raw){
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
-   
   let style = "";
   if (code === "TOT") { style = "background:white; border-radius:50%; padding:3px;"; }
   if (code === "SUN") { style = "transform: scale(1.35);"; }
   if (code === "AVI") { style = "transform: scale(1.65);"; }
-
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
@@ -672,7 +668,6 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
-    
   const lh = document.createElement("div");
   lh.className = "left-header"; 
   lh.innerHTML = `
@@ -680,37 +675,16 @@ function renderSkeletons() {
       <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
     </div>
     <span>MATCHES</span>
-    <div class="brand-btn">
-       <img src="apple-touch-icon.png" class="brand-logo">
-    </div>
+    <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
   `;
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
-
-  const rh = document.createElement("div");
-  rh.className = "row";
-  for(let i=0; i<5; i++){
-    const p = document.createElement("div");
-    p.className = "header-pill skeleton";
-    rh.appendChild(p);
-  }
-  right.appendChild(rh);
-  right.appendChild(document.createElement("div")).className = "right-divider";
 
   for (let i = 0; i < 10; i++) {
     const lr = document.createElement("div");
     lr.className = "left-row sk-row"; 
     lr.innerHTML = `<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`;
     left.appendChild(lr);
-
-    const rr = document.createElement("div");
-    rr.className = "row sk-row";
-    for(let j=0; j<5; j++){
-       const b = document.createElement("div");
-       b.className = "bet skeleton";
-       rr.appendChild(b);
-    }
-    right.appendChild(rr);
   }
 }
 
@@ -730,7 +704,6 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    // --- 1. RENDER HEADER (Date/Logo) ---
     const dateText = data.date ? data.date : "Live";
     const lh=document.createElement("div");
     lh.className="left-header"; 
@@ -747,31 +720,30 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-
-    // --- 2. INTELLIGENT SORTING LOGIC ---
+    // --- 2. ADVANCED TIE-BREAKER SORTING LOGIC ---
     let indices = [];
     if(data.headers){
         indices = data.headers.map((_, i) => i);
-        // Filter out empty headers (Gaps) so they don't show on screen
+        // Only keep columns with names
         indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
     }
 
-    // A. Count Green/Orange Cells per Column
     const greenCounts = new Array(data.headers.length).fill(0);
     const orangeCounts = new Array(data.headers.length).fill(0);
-    
-    // B. Check if column actually has bets (Not empty/TEST)
-    const betCounts = new Array(data.headers.length).fill(0);
+    const redCounts = new Array(data.headers.length).fill(0);
+    const validBetCounts = new Array(data.headers.length).fill(0);
 
     if(data.matches) {
         data.matches.forEach(m => {
             m.cells.forEach((cell, colIdx) => {
                 if (cell && cell.value && cell.value.trim() !== "") {
-                    betCounts[colIdx]++;
+                  validBetCounts[colIdx]++;
                 }
                 if (cell && cell.color) {
-                    if (cell.color === '#7CFF5B' || cell.color === '#00ff00') greenCounts[colIdx]++;
-                    if (cell.color === '#ff9f43' || cell.color === 'orange') orangeCounts[colIdx]++;
+                    const c = cell.color.toLowerCase();
+                    if (c === '#7cff5b' || c === '#00ff00') greenCounts[colIdx]++;
+                    else if (c === '#ff9f43' || c === 'orange') orangeCounts[colIdx]++;
+                    else if (c === '#ff4d4d' || c === '#ff0000' || c === 'red') redCounts[colIdx]++;
                 }
             });
         });
@@ -781,46 +753,35 @@ function loadData(){
       indices.sort((a, b) => {
         const statA = data.columnStats[a] || {};
         const statB = data.columnStats[b] || {};
-        const greensA = greenCounts[a];
-        const greensB = greenCounts[b];
-        const orangesA = orangeCounts[a];
-        const orangesB = orangeCounts[b];
         
-        // A column is "Valid" if it has at least 3 bets
-        const hasBetsA = betCounts[a] >= 3;
-        const hasBetsB = betCounts[b] >= 3;
+        // Priority 0: Has actual bets? (>2 items)
+        const hasBetsA = validBetCounts[a] >= 3;
+        const hasBetsB = validBetCounts[b] >= 3;
+        if (hasBetsA !== hasBetsB) return hasBetsB - hasBetsA;
 
-        // 1. Valid Bets Check (No bets = Push to End)
-        if (hasBetsA && !hasBetsB) return -1;
-        if (!hasBetsA && hasBetsB) return 1;
-
-        // 2. Status Check (DEAD goes to bottom/right)
-        // DEAD = 1, ALIVE = 0 (Lower is better)
-        const isDeadA = (statA.status === "DEAD") ? 1 : 0;
-        const isDeadB = (statB.status === "DEAD") ? 1 : 0;
+        // Priority 1: ALIVE vs DEAD
+        const isDeadA = statA.status === "DEAD" ? 1 : 0;
+        const isDeadB = statB.status === "DEAD" ? 1 : 0;
         if (isDeadA !== isDeadB) return isDeadA - isDeadB;
 
-        // 3. Pending Check (Lower pending is better)
-        const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
-        const pendingB = (statB.pending === undefined || statB.pending === "") ? 99 : Number(statB.pending);
-        
-        if (pendingA !== pendingB) {
-            return pendingA - pendingB; // Sort Low to High (0, 1, 2...)
-        }
+        // Priority 2: Pending Count (Row 2) - Low is better
+        const pendingA = (statA.pending === "" || statA.pending === undefined) ? 99 : Number(statA.pending);
+        const pendingB = (statB.pending === "" || statB.pending === undefined) ? 99 : Number(statB.pending);
+        if (pendingA !== pendingB) return pendingA - pendingB;
 
-        // 4. Green Count Tie-Breaker (More greens = better = left)
-        if (greensA !== greensB) return greensB - greensA;
+        // Priority 3: Green Pills - High is better
+        if (greenCounts[a] !== greenCounts[b]) return greenCounts[b] - greenCounts[a];
 
-        // 5. Orange Count Tie-Breaker (More oranges = better = left)
-        return orangesB - orangesA;
+        // Priority 4: Orange Pills - High is better
+        if (orangeCounts[a] !== orangeCounts[b]) return orangeCounts[b] - orangeCounts[a];
+
+        // Priority 5: Red Pills - Low is better
+        return redCounts[a] - redCounts[b];
       });
     }
 
-
-    // --- 3. RENDER RIGHT HEADER PILLS (Sorted) ---
     const headerRow = document.createElement("div");
     headerRow.className = "row";
-    
     let totalWinAmount = 0;
 
     indices.forEach(originalIndex => {
@@ -828,37 +789,26 @@ function loadData(){
         p.className = "header-pill";
         p.textContent = data.headers[originalIndex]; 
         
-        if (data.columnStats) {
+        if (data.columnStats && validBetCounts[originalIndex] >= 3) {
             const s = data.columnStats[originalIndex];
-            // Only apply colors if they actually have VALID bets (>2)
-            if (s && betCounts[originalIndex] >= 3) {
-              const pendingVal = (s.pending === undefined || s.pending === "") ? 99 : Number(s.pending);
-              
-              if (s.status === "DEAD") {
-                  p.classList.add("status-red");
-              } else if (pendingVal === 0) {
-                  p.classList.add("status-green");
-                  if(data.betSummary && data.betSummary[1]) {
-                      totalWinAmount += (data.betSummary[1].cells[originalIndex].value || 0);
-                  }
-                  setTimeout(() => fireScreenBlaster(p), 500);
-              } else if (pendingVal <= 2) {
-                  p.classList.add("status-orange");
-              }
-            }
+            const pVal = Number(s.pending);
+            if (s.status === "DEAD") p.classList.add("status-red");
+            else if (pVal === 0) {
+                p.classList.add("status-green");
+                if(data.betSummary && data.betSummary[1]) {
+                    totalWinAmount += (data.betSummary[1].cells[originalIndex].value || 0);
+                }
+                setTimeout(() => fireScreenBlaster(p), 500);
+            } else if (pVal <= 2) p.classList.add("status-orange");
         }
         headerRow.appendChild(p);
     });
 
     if(totalWinAmount > 0) showBigWin(formatGBP(totalWinAmount));
-    
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-
-    // --- 4. RENDER MATCHES (Sorted) ---
     data.matches.forEach((m, i) => {
-      // Left Card
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
@@ -881,12 +831,10 @@ function loadData(){
       `;
       left.appendChild(lr);
 
-      // Right Card
       const rr=document.createElement("div");
       rr.className="row";
-      
-      indices.forEach(originalIndex => {
-        const c = m.cells[originalIndex]; 
+      indices.forEach(idx => {
+        const c = m.cells[idx]; 
         const el=document.createElement("div");
         el.className="bet";
         if(c && c.value){ el.textContent=c.value; el.style.background=c.color; }
@@ -898,16 +846,12 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
-
-    // --- 5. BET SUMMARY (Sorted) ---
     ["BET","WIN","WIN PP"].forEach((label, rowIndex)=>{
       const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
       left.appendChild(lab);
-      
       const rr=document.createElement("div"); rr.className="row";
-      
-      indices.forEach(originalIndex => {
-         const c = data.betSummary[rowIndex].cells[originalIndex];
+      indices.forEach(idx => {
+         const c = data.betSummary[rowIndex].cells[idx];
          const el=document.createElement("div"); 
          el.className="bet";
          el.textContent=formatGBP(c.value); el.style.background=c.color;
@@ -925,75 +869,31 @@ function loadData(){
       const medals = ["🥇", "🥈", "🥉"];
       ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${medals[i]||(i+1)}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
     });
-
   })
-  .catch(err => {
-    console.error("Fetch Error:", err);
-  });
+  .catch(err => console.error("Fetch Error:", err));
 }
 
-// === BIG WIN OVERLAY LOGIC ===
 function showBigWin(amountText) {
   const overlay = document.getElementById("bigWinOverlay");
   const text = document.getElementById("bigWinText");
-   
-  if (!overlay || !text) return;
-   
-  // If already active, don't restart logic to avoid glitches
-  if (overlay.classList.contains('big-win-active')) return;
-
+  if (!overlay || !text || overlay.classList.contains('big-win-active')) return;
   text.textContent = amountText;
-   
-  // Add animation class
   overlay.classList.add("big-win-active");
-   
-  // Remove class after animation (5s)
-  setTimeout(() => {
-    overlay.classList.remove("big-win-active");
-  }, 5000);
+  setTimeout(() => overlay.classList.remove("big-win-active"), 5000);
 }
 
-// === CONFETTI: 2 SECONDS, 80% DENSITY ===
 function fireScreenBlaster(element) {
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
-   
-  var end = Date.now() + 2000; // 2 seconds
-
+  var end = Date.now() + 2000;
   (function frame() {
-    // Left Cannon
-    confetti({
-      particleCount: 4, 
-      angle: 60,
-      spread: 55,
-      origin: { x: 0, y: 0.6 }, 
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-        });
-    
-    // Right Cannon
-    confetti({
-      particleCount: 4, 
-      angle: 120,
-      spread: 55,
-      origin: { x: 1, y: 0.6 }, 
-      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
-      zIndex: 2000,
-      shapes: ['square', 'circle', 'star'],
-      scalar: 1.2
-        });
-
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 3000);
-    }
+    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
+    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
+    if (Date.now() < end) requestAnimationFrame(frame);
+    else setTimeout(() => { element.dataset.fired = ""; }, 3000);
   }());
 }
 
-// === MODAL FUNCTIONS ===
 function switchTab(tab, e) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -1003,124 +903,46 @@ function switchTab(tab, e) {
 
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
-   
-  // 1. Set Header Info
-  document.getElementById("mTitle").innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
-       <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
-       <span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span>
-       <div style="transform:scale(1.3);">${renderTeam(awayCode)}</div>
-    </div>
-  `;
+  document.getElementById("mTitle").innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:15px;"><div style="transform:scale(1.3);">${renderTeam(homeCode)}</div><span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span><div style="transform:scale(1.3);">${renderTeam(awayCode)}</div></div>`;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
-   
-  // 2. Prepare Stats Object
   const s = m.stats || {};
-  const statsList = [
-    { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
-    { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
-    { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
-    { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
-  ];
-
-  // 3. Generate HTML for Stats (Dual Bar Logic)
+  const statsList = [{ label: "Possession", h: s.h_poss||50, a: s.a_poss||50, isPct: true }, { label: "Shots on Target", h: s.h_shots||0, a: s.a_shots||0 }, { label: "Shots off Target", h: s.h_shotsOff||0, a: s.a_shotsOff||0 }, { label: "Corners", h: s.h_corners||0, a: s.a_corners||0 }];
   const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; // Clear previous
-
+  container.innerHTML = ""; 
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
-    let hPct = 0, aPct = 0;
-
-    // Calculate Percentages
-    if (total === 0) {
-      hPct = 0; aPct = 0;
-    } else {
-      hPct = (stat.h / total) * 100;
-      aPct = (stat.a / total) * 100;
-       
-      // Fix for Possession if already in %
-      if(stat.isPct && total > 100) {
-         hPct = stat.h; aPct = stat.a;
-      }
-    }
-
-    // Determine Colors (Winner gets Orange)
-    const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
-    const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
-
+    let hPct = total === 0 ? 0 : (stat.h / total) * 100;
+    let aPct = total === 0 ? 0 : (stat.a / total) * 100;
+    if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; }
     const hText = stat.isPct ? stat.h + "%" : stat.h;
     const aText = stat.isPct ? stat.a + "%" : stat.a;
-
-    const html = `
-      <div class="stat-row">
-        <div class="stat-label">
-          <span>${hText}</span>
-          <span class="stat-name">${stat.label}</span>
-          <span>${aText}</span>
-        </div>
-        <div class="stat-bar-container">
-          <div class="sb-track home">
-            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
-          </div>
-          <div class="sb-track away">
-            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
-          </div>
-        </div>
-      </div>
-    `;
-    container.innerHTML += html;
+    container.innerHTML += `<div class="stat-row"><div class="stat-label"><span>${hText}</span><span class="stat-name">${stat.label}</span><span>${aText}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${(stat.h>=stat.a && stat.h>0)?'orange':''}" style="width:${hPct}%"></div></div><div class="sb-track away"><div class="sb-fill ${(stat.a>=stat.h && stat.a>0)?'orange':''}" style="width:${aPct}%"></div></div></div></div>`;
   });
-
   document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
   document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
-
   document.getElementById("matchModal").classList.add("active");
 }
 
 function openTable() {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-    
-  if(!tableCache || tableCache.length === 0) {
-    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
-  } else {
+  if(!tableCache || tableCache.length === 0) tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
+  else {
     tableCache.forEach(t => {
-      let formDots = "";
-      if(t.form) {
-        formDots = t.form.split('').map(char => {
-          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
-          return `<span class="form-dot ${css}"></span>`;
-        }).join('');
-      }
-
-      tbody.innerHTML += `
-        <div class="tbl-row tbl-grid">
-          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
-          <div class="tbl-team-wrap">
-            <img src="${t.logo}" class="tbl-logo">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
-          </div>
-          <div class="ta-c">${t.mp}</div>
-          <div class="ta-c txt-green">${t.pts}</div>
-          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
-          <div class="tbl-form-wrap">${formDots}</div>
-        </div>
-      `;
+      let dots = (t.form||"").split('').map(c => `<span class="form-dot ${c==='W'?'dot-W':c==='L'?'dot-L':'dot-D'}"></span>`).join('');
+      tbody.innerHTML += `<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div><div class="tbl-form-wrap">${dots}</div></div>`;
     });
   }
   document.getElementById("tableModal").classList.add("active");
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
-}
+function closeModal(id) { document.getElementById(id).classList.remove("active"); }
 
 renderSkeletons();
 loadData();
 setInterval(loadData,REFRESH_MS);
 
-// === TOGGLES ===
 document.getElementById("rankingCard").onclick=()=>{
   const h=document.getElementById("historyCard");
   const open = h.style.display === "none" || !h.style.display;
@@ -1133,7 +955,6 @@ document.getElementById("summaryToggle").onclick=()=>{
   document.getElementById("historyCard").style.display="none";
 };
 
-// === HISTORY ===
 const btnMatches = document.getElementById("btnMatches");
 const btnMoney = document.getElementById("btnMoney");
 if(btnMatches && btnMoney){
@@ -1146,42 +967,12 @@ function drawHistoryChart(type){
   const canvas = document.getElementById("historyChart");
   if(!canvas) return;
   const ctx = canvas.getContext("2d");
-  if(historyChart){ historyChart.destroy(); historyChart = null; }
+  if(historyChart) historyChart.destroy();
   const source = chartDataCache ? chartDataCache[type] : null;
   if(!source || !source.length) return;
-
-  const labels = source.map(r => new Date(r.date).toLocaleDateString());
   const players = ["Snackbar","Timbo","Pepe"];
   const colors = { Snackbar:"#7CFF5B", Timbo:"#4DA3FF", Pepe:"#FF5BC4" };
-
-  historyChart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels,
-    datasets: players.map(p => ({
-      label: p, data: source.map(r => r[p]),
-      borderColor: colors[p], backgroundColor: colors[p],
-      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
-    }))
-  },
-  options: {
-    plugins: {
-      datalabels: {
-        formatter: (value, ctx) => {
-          const data = ctx.dataset.data;
-          const index = ctx.dataIndex;
-          if (index === 0) return null;
-          const diff = value - data[index - 1];
-          if (diff <= 0) return null;
-          return `+${diff}`;
-        },
-        color: ctx => ctx.dataset.borderColor,
-        font: { weight: "bold", size: 10 },
-        align: "top", offset: 6
-      }
-    }
-  }
-});
+  historyChart = new Chart(ctx, { type: "line", data: { labels: source.map(r => new Date(r.date).toLocaleDateString()), datasets: players.map(p => ({ label: p, data: source.map(r => r[p]), borderColor: colors[p], backgroundColor: colors[p], tension: 0.3, pointRadius: 5 })) }, options: { plugins: { datalabels: { formatter: (value, ctx) => { const data = ctx.dataset.data; const index = ctx.dataIndex; if (index === 0) return null; const diff = value - data[index-1]; return diff <= 0 ? null : `+${diff}`; }, color: ctx => ctx.dataset.borderColor, font: { weight: "bold", size: 10 }, align: "top", offset: 6 } } } });
   historyChart._type = type;
 }
 </script>
@@ -1189,6 +980,5 @@ function drawHistoryChart(type){
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>Chart.register(ChartDataLabels);</script>
-
 </body>
 </html>

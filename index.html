@@ -426,6 +426,9 @@ body{
   border: 1px solid #992222;
 }
 
+/* FIX: MODAL HIDDEN BY DEFAULT */
+.modal-overlay { display: none; }
+
 </style>
 </head>
 <body>
@@ -647,7 +650,7 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- INTELLIGENT SORTING LOGIC --- */
+    /* --- INTELLIGENT SORTING LOGIC (RACE TO 0) --- */
     const numCols = data.headers.length;
     const colStats = [];
 
@@ -676,19 +679,20 @@ function loadData(){
             }
         });
 
-        // CALCULATE SORT SCORE (Lower is Better/Left)
-        // Order: Green (0) < Orange (1-2) < Alive (>2) < Dead (999)
-        let sortScore = 9999; 
+        // CALCULATE SORT SCORE
+        // Priority 1: Alive vs Dead (Dead always last)
+        // Priority 2: Pending Count (Lower is better/left)
+        let sortScore = 0;
 
         if (!hasBets) {
-             sortScore = 10000; // Empty columns last
+             sortScore = 20000; // Empty columns last
         } else if (isDead) {
-             sortScore = 5000 + pending; // Dead columns far right (5000+)
+             sortScore = 10000 + pending; // Dead columns far right
         } else {
-             // Alive columns: Score = Pending count.
-             // 0 Pending (Green) = 0 (First)
-             // 1 Pending (Orange) = 1 (Second)
-             // 8 Pending (Alive) = 8 (Later)
+             // ALIVE COLUMNS: Score is simply the pending count.
+             // 0 Pending = 0 (Winner - First)
+             // 1 Pending = 1 (Close - Second)
+             // 7 Pending = 7 (Far - Later)
              sortScore = pending;
         }
 
@@ -698,7 +702,7 @@ function loadData(){
         });
     }
 
-    // Sort Ascending (Green -> Orange -> Alive -> Dead)
+    // Sort Ascending (Lowest Score First)
     colStats.sort((a, b) => a.score - b.score);
 
     // REBUILD DATA OBJECTS
@@ -1020,7 +1024,15 @@ function openModal(m) {
   document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
 
-  document.getElementById("matchModal").classList.add("active");
+  // FIX: Explicitly add active class to the modal
+  document.getElementById("matchModal").style.display = "flex";
+  setTimeout(() => { document.getElementById("matchModal").classList.add("active"); }, 10);
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove("active");
+  setTimeout(() => { el.style.display = "none"; }, 300); // Wait for transition
 }
 
 function openTable() {
@@ -1054,11 +1066,10 @@ function openTable() {
       `;
     });
   }
-  document.getElementById("tableModal").classList.add("active");
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
+  
+  // FIX: Explicitly add active class to the modal
+  document.getElementById("tableModal").style.display = "flex";
+  setTimeout(() => { document.getElementById("tableModal").classList.add("active"); }, 10);
 }
 
 renderSkeletons();

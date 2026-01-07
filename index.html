@@ -522,11 +522,11 @@ body{
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
 /* TABLE MODAL GRID - FIXED ALIGNMENT */
-/* FIX: USING FIXED WIDTHS (40px) FOR STATS TO FORCE VERTICAL ALIGNMENT */
-/* # (25px) | Team (1fr) | MP (40px) | Pts (40px) | GD (40px) | Form (60px) */
+/* FIX: USING FIXED WIDTHS (44px) FOR STATS */
+/* # (25px) | Team (1fr) | MP (44px) | Pts (44px) | GD (44px) | Form (60px) */
 .tbl-grid { 
   display: grid; 
-  grid-template-columns: 25px 1fr 40px 40px 40px 60px; 
+  grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; 
   align-items: center; 
   gap: 2px;
 }
@@ -535,13 +535,22 @@ body{
 .tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
 
-/* FIX: FORCED FLEX CENTER TO PREVENT DRIFTING */
+/* FIX: HEADER REMAINS CENTERED/DEFAULT */
 .ta-c { 
   display: flex; 
-  justify-content: center; /* Forces content to center of the fixed 40px box */
+  justify-content: center; 
   text-align: center; 
-  width: 100%; /* Ensure it fills the grid cell */
+  width: 100%; 
 } 
+
+/* FIX: DATA ROWS PUSHED RIGHT TO MATCH HEADERS */
+/* We target .ta-c inside .tbl-row specifically to move the numbers right */
+.tbl-row .ta-c {
+  justify-content: flex-end; /* Align numbers to the right */
+  padding-right: 8px;       /* Add padding so they don't hit the edge */
+  text-align: right;
+}
+
 .ta-r { display: flex; justify-content: flex-end; width: 100%; } 
 .ta-l { display: flex; justify-content: flex-start; width: 100%; }
 

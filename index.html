@@ -522,13 +522,11 @@ body{
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
 /* TABLE MODAL GRID - FIXED ALIGNMENT */
-/* FIX: USING 50% FOR INFO, 50% FOR STATS */
-/* Grid: Rank(30px) + Team(1fr) | MP(1fr) + Pts(1fr) + GD(1fr) + Form(60px) */
-/* We use explicit equal sizing for the middle columns to guarantee vertical stacking */
+/* FIX: USING FIXED WIDTHS (40px) FOR STATS TO FORCE VERTICAL ALIGNMENT */
+/* # (25px) | Team (1fr) | MP (40px) | Pts (40px) | GD (40px) | Form (60px) */
 .tbl-grid { 
   display: grid; 
-  /* #    Team      MP   Pts  GD   Form */
-  grid-template-columns: 25px 1.5fr 35px 35px 35px 65px; 
+  grid-template-columns: 25px 1fr 40px 40px 40px 60px; 
   align-items: center; 
   gap: 2px;
 }
@@ -537,10 +535,15 @@ body{
 .tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
 
-/* FIX: STRICT CENTER ALIGNMENT FOR THE STATS COLUMNS */
-.ta-c { text-align: center; justify-content: center; display: flex; } 
-.ta-r { text-align: right; justify-content: flex-end; display: flex; } 
-.ta-l { text-align: left; justify-content: flex-start; display: flex; }
+/* FIX: FORCED FLEX CENTER TO PREVENT DRIFTING */
+.ta-c { 
+  display: flex; 
+  justify-content: center; /* Forces content to center of the fixed 40px box */
+  text-align: center; 
+  width: 100%; /* Ensure it fills the grid cell */
+} 
+.ta-r { display: flex; justify-content: flex-end; width: 100%; } 
+.ta-l { display: flex; justify-content: flex-start; width: 100%; }
 
 .txt-green { color: #7CFF5B; }
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }

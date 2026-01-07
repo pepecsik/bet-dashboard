@@ -749,7 +749,13 @@ function loadData(){
 
 
     // --- 2. INTELLIGENT SORTING LOGIC ---
-    let indices = data.headers.map((_, i) => i);
+    let indices = [];
+    if(data.headers){
+        indices = data.headers.map((_, i) => i);
+        
+        // Filter out empty headers (Gaps)
+        indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
+    }
 
     // FIRST: Count Green Cells per Column
     const greenCounts = new Array(data.headers.length).fill(0);

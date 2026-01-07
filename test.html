@@ -756,11 +756,17 @@ function loadData(){
         indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
     }
 
-    // FIRST: Count Green Cells per Column
+    // A. Count Green Cells per Column
     const greenCounts = new Array(data.headers.length).fill(0);
+    // B. Check if column actually has bets (Not empty/TEST)
+    const betCounts = new Array(data.headers.length).fill(0);
+
     if(data.matches) {
         data.matches.forEach(m => {
             m.cells.forEach((cell, colIdx) => {
+                if (cell && cell.value && cell.value.trim() !== "") {
+                    betCounts[colIdx]++;
+                }
                 if (cell && cell.color && (cell.color === '#7CFF5B' || cell.color === '#00ff00')) {
                     greenCounts[colIdx]++;
                 }
@@ -774,23 +780,28 @@ function loadData(){
         const statB = data.columnStats[b] || {};
         const greensA = greenCounts[a];
         const greensB = greenCounts[b];
+        const hasBetsA = betCounts[a] > 0;
+        const hasBetsB = betCounts[b] > 0;
 
-        // 1. Status Check (DEAD goes to bottom/right)
+        // 1. Valid Bets Check (No bets = Push to End)
+        if (hasBetsA && !hasBetsB) return -1;
+        if (!hasBetsA && hasBetsB) return 1;
+
+        // 2. Status Check (DEAD goes to bottom/right)
         const isDeadA = statA.status === "DEAD";
         const isDeadB = statB.status === "DEAD";
         if (isDeadA && !isDeadB) return 1;
         if (!isDeadA && isDeadB) return -1;
 
-        // 2. Pending Check (Lower pending is better)
-        // Default EMPTY pending to 99 so they go right
+        // 3. Pending Check (Lower pending is better)
         const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
         const pendingB = (statB.pending === undefined || statB.pending === "") ? 99 : Number(statB.pending);
         
         if (pendingA !== pendingB) {
-            return pendingA - pendingB; // Sort Low to High
+            return pendingA - pendingB; // Sort Low to High (0, 1, 2...)
         }
 
-        // 3. Green Count Tie-Breaker (More greens = better = left)
+        // 4. Green Count Tie-Breaker (More greens = better = left)
         return greensB - greensA; // Sort High to Low
       });
     }
@@ -809,7 +820,8 @@ function loadData(){
         
         if (data.columnStats) {
             const s = data.columnStats[originalIndex];
-            if (s) {
+            // Only apply colors if they actually have bets!
+            if (s && betCounts[originalIndex] > 0) {
               const pendingVal = (s.pending === undefined || s.pending === "") ? 99 : Number(s.pending);
               
               if (s.status === "DEAD") {
@@ -917,10 +929,15 @@ function showBigWin(amountText) {
    
   if (!overlay || !text) return;
    
+  // If already active, don't restart logic to avoid glitches
   if (overlay.classList.contains('big-win-active')) return;
 
   text.textContent = amountText;
+   
+  // Add animation class
   overlay.classList.add("big-win-active");
+   
+  // Remove class after animation (5s)
   setTimeout(() => {
     overlay.classList.remove("big-win-active");
   }, 5000);
@@ -977,6 +994,7 @@ function switchTab(tab, e) {
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
    
+  // 1. Set Header Info
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
        <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
@@ -986,6 +1004,7 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
    
+  // 2. Prepare Stats Object
   const s = m.stats || {};
   const statsList = [
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
@@ -994,23 +1013,28 @@ function openModal(m) {
     { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
   ];
 
+  // 3. Generate HTML for Stats (Dual Bar Logic)
   const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; 
+  container.innerHTML = ""; // Clear previous
 
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
 
+    // Calculate Percentages
     if (total === 0) {
       hPct = 0; aPct = 0;
     } else {
       hPct = (stat.h / total) * 100;
       aPct = (stat.a / total) * 100;
+       
+      // Fix for Possession if already in %
       if(stat.isPct && total > 100) {
          hPct = stat.h; aPct = stat.a;
       }
     }
 
+    // Determine Colors (Winner gets Orange)
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
 

@@ -751,19 +751,42 @@ function loadData(){
     // --- 2. INTELLIGENT SORTING LOGIC ---
     let indices = data.headers.map((_, i) => i);
 
+    // FIRST: Count Green Cells per Column
+    const greenCounts = new Array(data.headers.length).fill(0);
+    if(data.matches) {
+        data.matches.forEach(m => {
+            m.cells.forEach((cell, colIdx) => {
+                if (cell && cell.color && (cell.color === '#7CFF5B' || cell.color === '#00ff00')) {
+                    greenCounts[colIdx]++;
+                }
+            });
+        });
+    }
+
     if (data.columnStats && data.columnStats.length > 0) {
       indices.sort((a, b) => {
         const statA = data.columnStats[a] || {};
         const statB = data.columnStats[b] || {};
+        const greensA = greenCounts[a];
+        const greensB = greenCounts[b];
 
-        const getScore = (s) => {
-          if (s.status === "DEAD") return 9999;
-          // treat missing/invalid pending as 'far away' (e.g. 100)
-          const p = (s.pending === undefined || s.pending === "") ? 100 : Number(s.pending);
-          return p;
-        };
+        // 1. Status Check (DEAD goes to bottom/right)
+        const isDeadA = statA.status === "DEAD";
+        const isDeadB = statB.status === "DEAD";
+        if (isDeadA && !isDeadB) return 1;
+        if (!isDeadA && isDeadB) return -1;
 
-        return getScore(statA) - getScore(statB);
+        // 2. Pending Check (Lower pending is better)
+        // Default undefined to high number so they go right
+        const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
+        const pendingB = (statB.pending === undefined || statB.pending === "") ? 99 : Number(statB.pending);
+        
+        if (pendingA !== pendingB) {
+            return pendingA - pendingB; // Sort Low to High
+        }
+
+        // 3. Green Count Tie-Breaker (More greens = better = left)
+        return greensB - greensA; // Sort High to Low
       });
     }
 

@@ -298,14 +298,6 @@ body{
   flex-direction: column; 
 }
 
-/* FIX: Ranking Body fills the available vertical space */
-#rankingBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly; /* Spreads rows out evenly */
-}
-
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 /* WEEKLY ROW ALIGNMENT */
@@ -360,13 +352,16 @@ body{
 
 /* === MODAL & STATS CSS === */
 
+/* FIX: Use display:none to prevent layout leakage at bottom */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  display: none; /* Default to hidden */
+  align-items: center; justify-content: center;
+  z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
 }
-.modal-overlay.active { opacity: 1; pointer-events: all; }
+/* When active, switch to flex and fade in */
+.modal-overlay.active { display: flex; opacity: 1; pointer-events: all; }
 
 .modal-card {
   background: #1c1f23; width: 90%; max-width: 380px;
@@ -554,7 +549,8 @@ body{
   animation: none;
 }
 
-/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed - 0.3s) */
+/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
+/* 0.25s duration + 1px movement = "Shivering" but not "Seizure" */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -565,7 +561,8 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  animation: nervousShiver 0.3s infinite linear; 
+  /* 0.25s is slower than 0.1s, creating a nervous shiver */
+  animation: nervousShiver 0.25s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
@@ -866,7 +863,7 @@ function loadData(){
                p.classList.add("status-green");
                
                // Use setTimeout to fire confetti after the element is in the DOM
-               setTimeout(() => { fireConfetti(p); }, 500); 
+               setTimeout(() => { fireScreenBlaster(p); }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
@@ -956,33 +953,44 @@ function loadData(){
   });
 }
 
-// === CONFETTI: 2 SECONDS, 80% DENSITY, BIGGER PARTICLES ===
-function fireConfetti(element) {
+// === SCREEN BLASTER (FULL SCREEN VICTORY) ===
+function fireScreenBlaster(element) {
+  // Prevent excessive firing
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  const rect = element.getBoundingClientRect();
-  const x = (rect.left + rect.width / 2) / window.innerWidth;
-  const y = (rect.top + rect.height / 2) / window.innerHeight;
+  var end = Date.now() + 3000; // Fire for 3 seconds!
 
-  var end = Date.now() + 2000; // Duration: 2 Seconds
-
+  // Define two origins: Left and Right
   (function frame() {
+    // Left Cannon
     confetti({
-      particleCount: 3, // Low count per frame = "80% strength" over time
-      startVelocity: 30, 
-      spread: 360, 
-      origin: { x: x, y: y },
+      particleCount: 5,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.6 }, // Fire from left
       colors: ['#7CFF5B', '#ffffff', '#FFD700'],
       zIndex: 2000,
-      scalar: 1.2, // 1.2x size for impact
-      disableForReducedMotion: true
+      shapes: ['square', 'circle', 'star'], // Mix shapes
+      scalar: 1.2
+    });
+    
+    // Right Cannon
+    confetti({
+      particleCount: 5,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.6 }, // Fire from right
+      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
+      zIndex: 2000,
+      shapes: ['square', 'circle', 'star'],
+      scalar: 1.2
     });
 
     if (Date.now() < end) {
       requestAnimationFrame(frame);
     } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 5000);
+      setTimeout(() => { element.dataset.fired = ""; }, 15000);
     }
   }());
 }

@@ -549,19 +549,20 @@ body{
   animation: none;
 }
 
-/* 2. ORANGE (Sweat / Nervous) - RAPID VIBRATION */
-@keyframes nervousShake {
+/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
+/* 0.25s duration + 1px movement = "Shivering" but not "Seizure" */
+@keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(-2px, 2px) rotate(-1deg); }
-  50% { transform: translate(2px, -2px) rotate(1deg); }
-  75% { transform: translate(-2px, -2px) rotate(-1deg); }
+  25% { transform: translate(-1px, 1px) rotate(-1deg); }
+  50% { transform: translate(1px, -1px) rotate(1deg); }
+  75% { transform: translate(-1px, -1px) rotate(-1deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  /* Super Fast 0.1s loop = Very Nervous */
-  animation: nervousShake 0.1s infinite linear; 
+  /* 0.25s is slower than 0.1s, creating a nervous shiver */
+  animation: nervousShiver 0.25s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
@@ -609,7 +610,9 @@ body{
 
     </div>
   </footer>
-</div> <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
+</div>
+
+<div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
     
     <div class="modal-header">
@@ -697,21 +700,9 @@ function renderTeam(raw){
   if(!logo) return `<span class="team-fallback">${code}</span>`;
   
   let style = "";
-  
-  // FIX: Tottenham White Circle
-  if (code === "TOT") {
-     style = "background:white; border-radius:50%; padding:3px;"; 
-  }
-
-  // FIX: Make Sunderland larger
-  if (code === "SUN") {
-     style = "transform: scale(1.35);"; 
-  }
-
-  // FIX: Make Aston Villa EXTRA large (Bumped to 1.65)
-  if (code === "AVI") {
-     style = "transform: scale(1.65);"; 
-  }
+  if (code === "TOT") { style = "background:white; border-radius:50%; padding:3px;"; }
+  if (code === "SUN") { style = "transform: scale(1.35);"; }
+  if (code === "AVI") { style = "transform: scale(1.65);"; }
 
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
@@ -872,7 +863,7 @@ function loadData(){
                p.classList.add("status-green");
                
                // Use setTimeout to fire confetti after the element is in the DOM
-               setTimeout(() => { fireConfetti(p); }, 500); 
+               setTimeout(() => { fireScreenBlaster(p); }, 500); 
            } else if (hasOrange) {
                p.classList.add("status-orange");
            } else if (!allDead && hasAlive) {
@@ -962,39 +953,46 @@ function loadData(){
   });
 }
 
-// === SAFE & HEAVY CONFETTI FUNCTION ===
-function fireConfetti(element) {
-  // Only fire if we haven't fired recently to avoid spam/crashes
+// === SCREEN BLASTER (FULL SCREEN VICTORY) ===
+function fireScreenBlaster(element) {
+  // Prevent excessive firing
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  const rect = element.getBoundingClientRect();
-  const x = (rect.left + rect.width / 2) / window.innerWidth;
-  const y = (rect.top + rect.height / 2) / window.innerHeight;
+  var end = Date.now() + 3000; // Fire for 3 seconds!
 
-  // Single HEAVY impact burst instead of infinite loop (Safe Mode)
-  const count = 300; 
-  const defaults = {
-    origin: { x: x, y: y },
-    zIndex: 2000,
-    colors: ['#7CFF5B', '#ffffff', '#FFD700', '#20ff00']
-  };
+  // Define two origins: Left and Right
+  (function frame() {
+    // Left Cannon
+    confetti({
+      particleCount: 5,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.6 }, // Fire from left
+      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
+      zIndex: 2000,
+      shapes: ['square', 'circle', 'star'], // Mix shapes
+      scalar: 1.2
+    });
+    
+    // Right Cannon
+    confetti({
+      particleCount: 5,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.6 }, // Fire from right
+      colors: ['#7CFF5B', '#ffffff', '#FFD700'],
+      zIndex: 2000,
+      shapes: ['square', 'circle', 'star'],
+      scalar: 1.2
+    });
 
-  function fire(particleRatio, opts) {
-    confetti(Object.assign({}, defaults, opts, {
-      particleCount: Math.floor(count * particleRatio)
-    }));
-  }
-
-  // 5 Blast Combo for "Heavy Impact" effect
-  fire(0.25, { spread: 26, startVelocity: 55 });
-  fire(0.2, { spread: 60 });
-  fire(0.35, { spread: 100, decay: 0.91, scalar: 1.2 });
-  fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.5 });
-  fire(0.1, { spread: 120, startVelocity: 45 });
-
-  // Reset fire flag after 15 seconds
-  setTimeout(() => { element.dataset.fired = ""; }, 15000);
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    } else {
+      setTimeout(() => { element.dataset.fired = ""; }, 15000);
+    }
+  }());
 }
 
 // === MODAL FUNCTIONS ===

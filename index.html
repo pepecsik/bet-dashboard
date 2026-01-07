@@ -116,7 +116,7 @@ body{
   transform: translateY(-50%);
   cursor: pointer;
   transition: transform 0.2s;
-   
+    
   width: 28px; height: 28px;
   border-radius: 50%;
   overflow: hidden; 
@@ -238,7 +238,7 @@ body{
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
   border-radius: 14px;      
-  overflow: hidden;         
+  overflow: hidden;          
   border: 1px solid #2f343a; 
 }
 
@@ -272,13 +272,21 @@ body{
 }
 .summary-top-row::-webkit-scrollbar { display: none; }
 
-.weekly-card, .ranking-card{
-  flex: 1; /* Both cards grow equally to fill width */
+/* --- UPDATED FLEX VALUES FOR WIDER WEEKLY CARD --- */
+.weekly-card {
+  flex: 1.4; /* Takes up approx 58% of space */
   min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
 }
-.ranking-card{ cursor:pointer; }
+
+.ranking-card{
+  flex: 1; /* Takes up approx 42% of space */
+  min-width:var(--summary-w);
+  background:var(--bg-soft);
+  border-radius:14px; padding:12px;
+  cursor:pointer;
+}
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
@@ -615,7 +623,7 @@ const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 // UPDATED HIGH-RES PNG LOGOS (200px)
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
- AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
+ AVI:"https://1000logos.net/wp-content/uploads/2016/10/Aston-Villa-Logo.png",
  BOU:"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/AFC_Bournemouth_%282013%29.svg/200px-AFC_Bournemouth_%282013%29.svg.png",
  BRE:"https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/200px-Brentford_FC_crest.svg.png",
  BRI:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/200px-Brighton_%26_Hove_Albion_logo.svg.png",
@@ -630,7 +638,7 @@ const TEAM_LOGOS={
  MAN:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/200px-Manchester_United_FC_crest.svg.png",
  NWC:"https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/200px-Newcastle_United_Logo.svg.png",
  NOT:"https://upload.wikimedia.org/wikipedia/en/thumb/dd/Nottingham_Forest_F.C._logo.svg/200px-Nottingham_Forest_F.C._logo.svg.png",
- SUN:"https://1000logos.net/wp-content/uploads/2020/09/Sunderland-logo.png",
+ SUN:"https://1000logos.net/wp-content/uploads/2018/06/Sunderland-logo.png",
  TOT:"https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/200px-Tottenham_Hotspur.svg.png",
  WHA:"https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/200px-West_Ham_United_FC_logo.svg.png",
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
@@ -642,10 +650,16 @@ function renderTeam(raw){
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
   
-  // SPECIAL FIX FOR TOTTENHAM (TOT) - White Circle
   let style = "";
+  
+  // FIX: Tottenham White Circle
   if (code === "TOT") {
      style = "background:white; border-radius:50%; padding:3px;"; 
+  }
+
+  // FIX: Make Aston Villa and Sunderland larger to match other logos
+  if (code === "AVI" || code === "SUN") {
+     style = "transform: scale(1.35);"; 
   }
 
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
@@ -657,7 +671,7 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
-   
+    
   const lh = document.createElement("div");
   lh.className = "left-header"; 
   lh.innerHTML = `
@@ -725,8 +739,8 @@ function loadData(){
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
-         <span>MATCHES</span>
-         <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
+          <span>MATCHES</span>
+          <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
       </div>
       <div class="brand-btn">
          <img src="apple-touch-icon.png" class="brand-logo">

@@ -284,6 +284,7 @@ body{
   min-width:var(--summary-w);
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
+  height: 100%; /* Force fill */
 }
 
 .ranking-card{
@@ -295,7 +296,8 @@ body{
   
   /* FIX: Forces the card to fill the height provided by the row */
   display: flex;
-  flex-direction: column; 
+  flex-direction: column;
+  height: 100%; /* Force fill */
 }
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
@@ -560,7 +562,6 @@ body{
 .status-orange {
   background: var(--accent-orange) !important;
   color: #1c1f23 !important;
-  /* 0.25s is slower than 0.1s, creating a nervous shiver */
   animation: nervousShiver 0.25s infinite linear; 
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
@@ -954,10 +955,11 @@ function loadData(){
 
 // === TUNED SCREEN BLASTER (80% Strength, 2 Seconds) ===
 function fireScreenBlaster(element) {
+  // Only fire if not recently fired (2.5s cooldown)
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 2000; // 2 Seconds Duration (Was 3s)
+  var end = Date.now() + 2000; // 2 Seconds Duration
 
   (function frame() {
     // Left Cannon
@@ -987,7 +989,8 @@ function fireScreenBlaster(element) {
     if (Date.now() < end) {
       requestAnimationFrame(frame);
     } else {
-      setTimeout(() => { element.dataset.fired = ""; }, 15000);
+      // Reset after 2.5 seconds (so it's ready again almost immediately)
+      setTimeout(() => { element.dataset.fired = ""; }, 2500);
     }
   }());
 }

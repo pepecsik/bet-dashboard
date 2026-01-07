@@ -522,19 +522,26 @@ body{
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
 /* TABLE MODAL GRID - FIXED ALIGNMENT */
-/* FIX: WIDENED THE COLUMNS SO TEXT CAN CENTER PROPERLY */
+/* FIX: USING 50% FOR INFO, 50% FOR STATS */
+/* Grid: Rank(30px) + Team(1fr) | MP(1fr) + Pts(1fr) + GD(1fr) + Form(60px) */
+/* We use explicit equal sizing for the middle columns to guarantee vertical stacking */
 .tbl-grid { 
   display: grid; 
-  /* # | Team | MP | Pts | GD | Form */
-  grid-template-columns: 24px 1fr 34px 34px 38px 65px; 
+  /* #    Team      MP   Pts  GD   Form */
+  grid-template-columns: 25px 1.5fr 35px 35px 35px 65px; 
   align-items: center; 
-  gap: 2px; /* Tighter gap */
+  gap: 2px;
 }
 .tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
 .tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-.ta-c { text-align: center; } .ta-r { text-align: right; } .ta-l { text-align: left; }
+
+/* FIX: STRICT CENTER ALIGNMENT FOR THE STATS COLUMNS */
+.ta-c { text-align: center; justify-content: center; display: flex; } 
+.ta-r { text-align: right; justify-content: flex-end; display: flex; } 
+.ta-l { text-align: left; justify-content: flex-start; display: flex; }
+
 .txt-green { color: #7CFF5B; }
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }

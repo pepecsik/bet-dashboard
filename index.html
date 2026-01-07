@@ -467,7 +467,15 @@ body{
   font-size: 11px;
 }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
-.modal-sub { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+
+/* FIX: ORANGE COLOR FOR 'LIVE STANDINGS' */
+.modal-sub { 
+  font-size: 11px; 
+  color: var(--accent-orange); 
+  font-weight: 700; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;
+}
 
 /* FIX: LOGO IN TOP RIGHT CORNER WITH WHITE CIRCLE */
 .modal-header-logo { 
@@ -513,8 +521,14 @@ body{
 .event-icon { font-size: 18px; }
 .event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
-/* TABLE MODAL GRID */
-.tbl-grid { display: grid; grid-template-columns: 30px 1fr 30px 30px 30px 50px; align-items: center; gap: 4px; }
+/* TABLE MODAL GRID - FIXED ALIGNMENT */
+/* Changed columns to be slightly wider for stats so the centered headers don't overflow */
+.tbl-grid { 
+  display: grid; 
+  grid-template-columns: 25px 1fr 35px 35px 35px 60px; 
+  align-items: center; 
+  gap: 4px; 
+}
 .tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
 .tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }

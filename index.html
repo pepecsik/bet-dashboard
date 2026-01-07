@@ -392,6 +392,7 @@ body{
   animation: bigWinAnim 5s ease-out forwards;
 }
 
+
 /* === ANIMATIONS === */
 
 /* 1. GREEN (Winner) - Static Green + Glow */
@@ -647,7 +648,7 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- SORT COLUMNS BASED ON PENDING GAMES (Closest to Win -> Left) --- */
+    /* --- SORT COLUMNS BASED ON PENDING GAMES (Fewest left -> Move Left) --- */
     const numCols = data.headers.length;
     const colStats = [];
 
@@ -656,8 +657,9 @@ function loadData(){
         let pending = 0;
         let hasBets = false;
         
-        // Scan matches to count pending games
         data.matches.forEach(m => {
+            // FIX: Only count if cell actually has a bet (value exists)
+            // AND the match is not finished (FT)
             if (m.cells[c] && m.cells[c].value) {
                 hasBets = true;
                 const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
@@ -665,7 +667,7 @@ function loadData(){
             }
         });
 
-        // Store stats (If no bets, push to end with high number)
+        // Store stats (If no bets, push to end with high number 9999)
         colStats.push({
             originalIndex: c,
             header: data.headers[c],
@@ -694,6 +696,7 @@ function loadData(){
 
     // Apply new headers
     data.headers = newHeaders;
+
 
     /* --- RIGHT HEADER WITH MERGED PILLS & ANIMATIONS & BIG WIN --- */
     const headerRow = document.createElement("div");
@@ -734,10 +737,12 @@ function loadData(){
             colHasBets = true;
             hasBets = true;
 
+            // FIX: Dead check - ensure it's not White (#ffffff) or default
             if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
               colIsDead = true;
             }
 
+            // Check if Pending
             if(matchStatus !== "FT") {
               colPending++;
             }
@@ -828,7 +833,6 @@ function loadData(){
       rr.className="row";
       m.cells.forEach((c,j)=>{
         // Fix: Use index from sorted array
-        const key=`b-${i}-${j}`;
         const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
@@ -886,9 +890,10 @@ function fireScreenBlaster(element) {
   if(element.dataset.fired) return;
   element.dataset.fired = "true";
   
-  var end = Date.now() + 2000; 
+  var end = Date.now() + 2000; // 2 seconds
 
   (function frame() {
+    // Left Cannon
     confetti({
       particleCount: 4, 
       angle: 60,
@@ -900,6 +905,7 @@ function fireScreenBlaster(element) {
       scalar: 1.2
     });
     
+    // Right Cannon
     confetti({
       particleCount: 4, 
       angle: 120,

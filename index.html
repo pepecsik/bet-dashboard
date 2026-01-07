@@ -140,10 +140,12 @@ body{
   overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
+
+/* FIX: Increased scale to crop out white borders */
 .brand-logo { 
   width: 100%; height: 100%; 
   object-fit: cover; 
-  transform: scale(1.15);
+  transform: scale(1.6); 
 }
 
 .left-divider{height:8px}
@@ -269,6 +271,7 @@ body{
   width: 100%;
   overflow-x: auto; /* Horizontal scroll if screen is too small */
   scrollbar-width: none;
+  align-items: stretch; /* FIX: Forces both cards to be equal height */
 }
 .summary-top-row::-webkit-scrollbar { display: none; }
 
@@ -286,6 +289,10 @@ body{
   background:var(--bg-soft);
   border-radius:14px; padding:12px;
   cursor:pointer;
+  
+  /* FIX: Forces the card to fill the height provided by the row */
+  display: flex;
+  flex-direction: column; 
 }
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
@@ -657,7 +664,7 @@ function renderTeam(raw){
      style = "background:white; border-radius:50%; padding:3px;"; 
   }
 
-  // FIX: Make Sunderland larger (since you said this was good)
+  // FIX: Make Sunderland larger
   if (code === "SUN") {
      style = "transform: scale(1.35);"; 
   }

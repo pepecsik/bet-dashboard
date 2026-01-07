@@ -752,7 +752,6 @@ function loadData(){
     let indices = [];
     if(data.headers){
         indices = data.headers.map((_, i) => i);
-        
         // Filter out empty headers (Gaps)
         indices = indices.filter(i => data.headers[i] && data.headers[i].trim() !== "");
     }
@@ -783,7 +782,7 @@ function loadData(){
         if (!isDeadA && isDeadB) return -1;
 
         // 2. Pending Check (Lower pending is better)
-        // Default undefined to high number so they go right
+        // Default EMPTY pending to 99 so they go right
         const pendingA = (statA.pending === undefined || statA.pending === "") ? 99 : Number(statA.pending);
         const pendingB = (statB.pending === undefined || statB.pending === "") ? 99 : Number(statB.pending);
         
@@ -811,15 +810,17 @@ function loadData(){
         if (data.columnStats) {
             const s = data.columnStats[originalIndex];
             if (s) {
+              const pendingVal = (s.pending === undefined || s.pending === "") ? 99 : Number(s.pending);
+              
               if (s.status === "DEAD") {
                   p.classList.add("status-red");
-              } else if (s.pending === 0) {
+              } else if (pendingVal === 0) {
                   p.classList.add("status-green");
                   if(data.betSummary && data.betSummary[1]) {
                       totalWinAmount += (data.betSummary[1].cells[originalIndex].value || 0);
                   }
                   setTimeout(() => fireScreenBlaster(p), 500);
-              } else if (s.pending <= 2) {
+              } else if (pendingVal <= 2) {
                   p.classList.add("status-orange");
               }
             }
@@ -906,8 +907,6 @@ function loadData(){
   })
   .catch(err => {
     console.error("Fetch Error:", err);
-    // Optional: Show error on screen so you know it crashed
-    // document.body.innerHTML = "<h2 style='color:white;text-align:center'>Data Load Error. Did you deploy the script?</h2>";
   });
 }
 
@@ -918,15 +917,10 @@ function showBigWin(amountText) {
    
   if (!overlay || !text) return;
    
-  // If already active, don't restart logic to avoid glitches
   if (overlay.classList.contains('big-win-active')) return;
 
   text.textContent = amountText;
-   
-  // Add animation class
   overlay.classList.add("big-win-active");
-   
-  // Remove class after animation (5s)
   setTimeout(() => {
     overlay.classList.remove("big-win-active");
   }, 5000);
@@ -983,7 +977,6 @@ function switchTab(tab, e) {
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
    
-  // 1. Set Header Info
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
        <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
@@ -993,7 +986,6 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
    
-  // 2. Prepare Stats Object
   const s = m.stats || {};
   const statsList = [
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
@@ -1002,28 +994,23 @@ function openModal(m) {
     { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
   ];
 
-  // 3. Generate HTML for Stats (Dual Bar Logic)
   const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; // Clear previous
+  container.innerHTML = ""; 
 
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
 
-    // Calculate Percentages
     if (total === 0) {
       hPct = 0; aPct = 0;
     } else {
       hPct = (stat.h / total) * 100;
       aPct = (stat.a / total) * 100;
-       
-      // Fix for Possession if already in %
       if(stat.isPct && total > 100) {
          hPct = stat.h; aPct = stat.a;
       }
     }
 
-    // Determine Colors (Winner gets Orange)
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
 

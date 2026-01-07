@@ -780,8 +780,11 @@ function loadData(){
         const statB = data.columnStats[b] || {};
         const greensA = greenCounts[a];
         const greensB = greenCounts[b];
-        const hasBetsA = betCounts[a] > 0;
-        const hasBetsB = betCounts[b] > 0;
+        
+        // --- NEW: VALID BET THRESHOLD ---
+        // If a column has fewer than 3 bets, treat it as empty/test (push to right)
+        const hasBetsA = betCounts[a] >= 3;
+        const hasBetsB = betCounts[b] >= 3;
 
         // 1. Valid Bets Check (No bets = Push to End)
         if (hasBetsA && !hasBetsB) return -1;
@@ -820,8 +823,8 @@ function loadData(){
         
         if (data.columnStats) {
             const s = data.columnStats[originalIndex];
-            // Only apply colors if they actually have bets!
-            if (s && betCounts[originalIndex] > 0) {
+            // Only apply colors if they actually have VALID bets (>2)
+            if (s && betCounts[originalIndex] >= 3) {
               const pendingVal = (s.pending === undefined || s.pending === "") ? 99 : Number(s.pending);
               
               if (s.status === "DEAD") {

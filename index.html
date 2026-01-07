@@ -182,7 +182,7 @@ body{
 
 .team-logo{ 
   width:38px; height:38px; object-fit:contain; 
-  filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); 
+  /* NO GLOW - Clean Logos */
 }
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -641,7 +641,14 @@ function renderTeam(raw){
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
-  return `<img src="${logo}" alt="${code}" class="team-logo" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
+  
+  // SPECIAL FIX FOR TOTTENHAM (TOT) - White Circle
+  let style = "";
+  if (code === "TOT") {
+     style = "background:white; border-radius:50%; padding:3px;"; 
+  }
+
+  return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
 let prev={}, chartDataCache=null, historyChart=null, tableCache=null;

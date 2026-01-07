@@ -61,13 +61,13 @@ body{
   overflow: hidden; /* Handle scrolling inside app */
 }
 
-/* APP CONTAINER */
+/* APP WRAPPER */
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
   position: relative;
-  z-index: 1; /* Lower z-index so modals sit on top */
+  z-index: 1;
 }
 
 @media (max-width: 768px){
@@ -303,14 +303,6 @@ body{
   flex-direction: column; 
 }
 
-/* FIX: Ranking Body fills the available vertical space */
-#rankingBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 /* WEEKLY ROW ALIGNMENT */
@@ -363,56 +355,205 @@ body{
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
-/* === BIG WIN OVERLAY === */
-/* FIX: Display None by default to allow clicks on app */
-.big-win-overlay {
+/* === MODAL & STATS CSS === */
+
+/* FIX: Popups are hidden by default, flex when active, high Z-Index to sit on top of app */
+.modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
   display: none; 
   align-items: center; justify-content: center;
-  pointer-events: none; 
-  z-index: 2200; 
-  opacity: 0;
+  z-index: 3000; opacity: 0; transition: opacity 0.3s ease;
 }
-/* This class will be toggled in JS to show it */
-.big-win-overlay.active-display { display: flex; }
+.modal-overlay.active { display: flex; opacity: 1; pointer-events: all; }
 
-.big-win-text {
-  font-size: 35vw; /* MASSIVE FONT SIZE */
-  font-weight: 900;
-  color: #7CFF5B;
-  text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B;
+.modal-card {
+  background: #1c1f23; width: 90%; max-width: 380px;
+  border-radius: 20px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+  border: 1px solid #3a3d42;
+  transform: translateY(20px); transition: transform 0.3s ease;
+  display:flex; flex-direction:column;
+  max-height: 85vh; 
+}
+.modal-overlay.active .modal-card { transform: translateY(0); }
+
+/* HEADER */
+.modal-header {
+  background: #262a30; padding: 16px;
   text-align: center;
-  font-family: 'Inter', sans-serif;
-  transform: scale(0.5);
-  white-space: nowrap; 
-  line-height: 1;
+  position: relative; /* For back button positioning */
+}
+.modal-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.modal-sub { font-size: 13px; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px; }
+
+/* BACK BUTTON */
+.modal-back-btn {
+  position: absolute;
+  left: 16px; top: 50%; transform: translateY(-50%);
+  background: #343a40; 
+  color: #ccc;
+  border: 1px solid #4a4f55;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-back-btn:hover { background: #4a4f55; color: #fff; }
+
+/* HEADER RIGHT LOGO */
+.modal-header-logo {
+  position: absolute;
+  right: 16px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px;
+  background: #ffffff; 
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  object-fit: contain;
 }
 
-/* 5 Second Animation */
-@keyframes bigWinAnim {
-  0% { opacity: 0; transform: scale(0.5); }
-  5% { opacity: 1; transform: scale(1.1); }
-  10% { transform: scale(1); }
-  60% { opacity: 1; transform: scale(1.05); } 
-  100% { opacity: 0; transform: scale(1.4); }
+/* FLOATING TABS */
+.modal-tabs { 
+  display: flex; background: #262a30; padding: 0 16px 16px 16px; gap: 10px;
+  border-bottom: 1px solid #3a3d42;
+}
+.tab-btn {
+  flex: 1; padding: 10px; font-size: 12px; font-weight: 700;
+  color: #9aa0a6; cursor: pointer; text-align: center;
+  background: #2f343a; border-radius: 10px; transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.tab-btn.active { 
+  background: #3a3d42; color: #fff; border: 1px solid #555;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
 }
 
-.big-win-active {
-  animation: bigWinAnim 5s ease-out forwards;
+/* CONTENT */
+.tab-content { display: none; padding: 20px; overflow-y: auto; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+/* === NEW DUAL STAT BARS (LiveScore Style) === */
+.stat-row { 
+  margin-bottom: 22px; 
 }
+.stat-label { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-end; 
+  font-size: 13px; 
+  font-weight: 800; 
+  color: #fff; 
+  margin-bottom: 6px; 
+  padding: 0 4px;
+}
+.stat-name { 
+  font-size: 11px; 
+  font-weight: 600; 
+  color: #9aa0a6; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;
+}
+
+/* Flex container for the two bars */
+.stat-bar-container {
+  display: flex;
+  gap: 8px; /* Gap in the middle */
+  height: 6px;
+  width: 100%;
+}
+
+/* Individual track (Left and Right side) */
+.sb-track {
+  flex: 1;
+  background: #2f343a; /* Dark background */
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* The actual colored fill */
+.sb-fill {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  background: #9aa0a6; /* Default Grey (Loser) */
+}
+
+/* Home fills from Right -> Left */
+.sb-track.home .sb-fill { right: 0; }
+
+/* Away fills from Left -> Right */
+.sb-track.away .sb-fill { left: 0; }
+
+/* Winner Color Modifier */
+.sb-fill.orange { background: var(--accent-orange) !important; }
+
+/* EVENT ITEMS */
+.event-item {
+  display: flex; align-items: center; gap: 12px;
+  background: #262a30; padding: 12px; border-radius: 10px; margin-bottom: 8px;
+  border: 1px solid #2f343a;
+}
+.event-icon { font-size: 16px; width: 24px; text-align: center; }
+.event-text { font-size: 13px; font-weight: 600; color: #eee; line-height: 1.4; }
+
+/* === TABLE STYLES (GRID ALIGNMENT) === */
+.tbl-grid {
+  display: grid;
+  /* Columns: Rank | Team | MP | Pts | GD | Form */
+  grid-template-columns: 25px 1fr 35px 35px 35px 50px; 
+  gap: 8px; 
+  align-items: center;
+  font-size: 11px;
+}
+
+.tbl-header {
+  background: #262a30;
+  padding: 10px 20px; 
+  border-bottom: 1px solid #3a3d42;
+  color: #9aa0a6; font-weight: 700;
+}
+
+.tbl-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #2f343a;
+  color: #fff; font-weight: 600;
+}
+
+/* Alignment Helpers */
+.ta-c { text-align: center; }
+.ta-r { text-align: right; }
+.ta-l { text-align: left; }
+
+.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
+.txt-green { color: #7CFF5B; font-weight: 800; }
+
+/* FORM DOTS */
+.tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
+.form-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot-W { background-color: #7CFF5B; } 
+.dot-D { background-color: #9aa0a6; } 
+.dot-L { background-color: #ff4d4d; } 
 
 /* === ANIMATIONS === */
 
-/* 1. GREEN (Winner) */
+/* 1. GREEN (Winner) - Static Green + Glow */
 .status-green {
   background: #7CFF5B !important; 
   color: #1c1f23 !important;      
   border: 1px solid #7CFF5B;
-  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); 
+  box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); /* Max Glow */
   animation: none;
 }
 
-/* 2. ORANGE (Sweat) */
+/* 2. ORANGE (Sweat / Nervous) - NERVOUS SHIVER (Tamed) */
 @keyframes nervousShiver {
   0% { transform: translate(0, 0) rotate(0deg); }
   25% { transform: translate(-1px, 1px) rotate(-1deg); }
@@ -427,7 +568,7 @@ body{
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.6);
 }
 
-/* 3. RED (Dead) */
+/* 3. RED (Dead) - Static Red, no movement */
 .status-red {
   background: #ff4d4d !important;
   color: #fff !important;
@@ -435,20 +576,9 @@ body{
   border: 1px solid #992222;
 }
 
-/* FIX: MODAL HIDDEN BY DEFAULT & HIGH Z-INDEX */
-.modal-overlay { 
-  display: none; 
-  z-index: 3000; 
-}
-.modal-overlay.active { display: flex; }
-
 </style>
 </head>
 <body>
-
-<div id="bigWinOverlay" class="big-win-overlay">
-  <div id="bigWinText" class="big-win-text"></div>
-</div>
 
 <div class="app">
   <div class="main">
@@ -486,50 +616,41 @@ body{
 
 <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
-    
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('matchModal')">Back</button>
       <div class="modal-title" id="mTitle">MATCH TITLE</div>
       <div class="modal-sub" id="mStatus">19:30</div>
     </div>
-
     <div class="modal-tabs">
       <div class="tab-btn active" onclick="switchTab('stats', event)">Stats</div>
       <div class="tab-btn" onclick="switchTab('summary', event)">Summary</div>
     </div>
-
     <div id="tab-stats" class="tab-content active"></div>
-
     <div id="tab-summary" class="tab-content">
       <div class="event-item"><div class="event-icon">⚽</div><div class="event-text" id="mScorers">-</div></div>
       <div class="event-item"><div class="event-icon">🟨</div><div class="event-text" id="mYellow">0 Yellow</div></div>
       <div class="event-item"><div class="event-icon">🟥</div><div class="event-text" id="mRed">0 Red</div></div>
     </div>
-
   </div>
 </div>
 
 <div class="modal-overlay" id="tableModal" onclick="closeModal('tableModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
-    
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
       <div class="modal-title">Premier League</div>
       <div class="modal-sub">Live Standings</div>
       <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
     </div>
-
     <div class="tbl-header tbl-grid">
       <div class="ta-l">#</div>
       <div class="ta-l">Team</div>
       <div class="ta-c">MP</div>
       <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
     </div>
-
     <div class="tab-content active" style="padding-top:0;">
       <div id="tableBody"></div>
     </div>
-
   </div>
 </div>
 
@@ -570,10 +691,12 @@ function renderTeam(raw){
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
   if(!logo) return `<span class="team-fallback">${code}</span>`;
+  
   let style = "";
   if (code === "TOT") { style = "background:white; border-radius:50%; padding:3px;"; }
   if (code === "SUN") { style = "transform: scale(1.35);"; }
   if (code === "AVI") { style = "transform: scale(1.65);"; }
+
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
@@ -583,11 +706,21 @@ function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
   left.innerHTML = ""; right.innerHTML = "";
+    
   const lh = document.createElement("div");
   lh.className = "left-header"; 
-  lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  lh.innerHTML = `
+    <div class="pl-btn" onclick="openTable()">
+      <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+    </div>
+    <span>MATCHES</span>
+    <div class="brand-btn">
+       <img src="apple-touch-icon.png" class="brand-logo">
+    </div>
+  `;
   left.appendChild(lh);
   left.appendChild(document.createElement("div")).className = "left-divider";
+
   const rh = document.createElement("div");
   rh.className = "row";
   for(let i=0; i<5; i++){
@@ -597,11 +730,13 @@ function renderSkeletons() {
   }
   right.appendChild(rh);
   right.appendChild(document.createElement("div")).className = "right-divider";
+
   for (let i = 0; i < 10; i++) {
     const lr = document.createElement("div");
     lr.className = "left-row sk-row"; 
     lr.innerHTML = `<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`;
     left.appendChild(lr);
+
     const rr = document.createElement("div");
     rr.className = "row sk-row";
     for(let j=0; j<5; j++){
@@ -627,14 +762,29 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
+    /* --- LEFT HEADER WITH DATE + LOGO (UPDATED) --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
+    
+    // Check if data.date exists, otherwise use placeholder or nothing
     const dateText = data.date ? data.date : "Live";
-    lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+    
+    lh.innerHTML = `
+      <div class="pl-btn" onclick="openTable()">
+        <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
+          <span>MATCHES</span>
+          <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
+      </div>
+      <div class="brand-btn">
+         <img src="apple-touch-icon.png" class="brand-logo">
+      </div>
+    `;
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- INTELLIGENT SORTING LOGIC --- */
+    /* --- INTELLIGENT RACE SORTING LOGIC --- */
     const numCols = data.headers.length;
     const colStats = [];
 
@@ -652,7 +802,7 @@ function loadData(){
                 const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
                 if(isRed) isDead = true;
                 
-                // IMPORTANT: Calculate pending games based on status only (ignore cell color)
+                // Count how many matches are NOT FT (Strict Race Logic)
                 const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
                 if (matchStatus !== "FT") {
                     pending++;
@@ -660,16 +810,15 @@ function loadData(){
             }
         });
 
-        // CALCULATE SORT SCORE (Race to 0)
+        // CALCULATE SCORE:
+        // Winner (0 Pending) = 0
+        // Close (1 Pending) = 1
+        // Dead (Red) = 9999 + Pending
+        // Empty = 20000
         let sortScore = 0;
-        if (!hasBets) {
-             sortScore = 20000; 
-        } else if (isDead) {
-             sortScore = 10000 + pending; // Dead last
-        } else {
-             // Alive: Score = Pending count (0=Left, 1=Next, etc)
-             sortScore = pending;
-        }
+        if (!hasBets) sortScore = 20000;
+        else if (isDead) sortScore = 9999 + pending;
+        else sortScore = pending;
 
         colStats.push({
             originalIndex: c,
@@ -677,10 +826,10 @@ function loadData(){
         });
     }
 
-    // Sort Ascending
+    // Sort Ascending (Lowest pending first)
     colStats.sort((a, b) => a.score - b.score);
 
-    // REBUILD DATA
+    // Reorder Arrays
     const newHeaders = colStats.map(x => data.headers[x.originalIndex]);
     data.matches.forEach(m => {
         m.cells = colStats.map(x => m.cells[x.originalIndex]);
@@ -690,7 +839,8 @@ function loadData(){
     });
     data.headers = newHeaders;
 
-    /* --- RIGHT HEADER --- */
+
+    /* --- RIGHT HEADER WITH MERGED PILLS --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
@@ -698,78 +848,65 @@ function loadData(){
     while(i < data.headers.length) {
        const currentName = data.headers[i];
        let count = 1;
+       
        while(i + count < data.headers.length && data.headers[i + count] === currentName){
          count++;
        }
        
-       let hasGreen = false;
-       let hasOrange = false;
-       let hasAlive = false;
-       let allDead = true;
-       let hasBets = false;
-       let totalWinAmount = 0;
+       // Calculate Status for Header (Same logic as sorting)
+       let colPending = 0;
+       let colIsDead = false;
+       let colHasBets = false;
+       let allDead = true; // Assume all dead until proven alive
 
+       // Loop through columns in this group
        for(let k = 0; k < count; k++) {
-         const colIdx = i + k; 
-         let colPending = 0;
-         let colIsDead = false;
-         let colHasBets = false;
-
+         const colIdx = i + k;
+         let subDead = false;
+         let subHasBets = false;
+         
          data.matches.forEach(m => {
-            const cell = m.cells[colIdx];
-            const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-            
-            if(!cell || !cell.value) return; 
-            colHasBets = true;
-            hasBets = true;
+             const cell = m.cells[colIdx];
+             if(!cell || !cell.value) return;
+             subHasBets = true;
+             
+             // Check red
+             const bg = cell.color ? cell.color.toLowerCase() : "";
+             if(bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d') subDead = true;
 
-            const bg = cell.color ? cell.color.toLowerCase() : "";
-            const isRed = bg === '#ff0000' || bg === 'red' || bg === '#ff4d4d';
-            if(isRed) colIsDead = true;
-
-            // Header Status Logic: Must match Sort Logic
-            if (matchStatus !== "FT") {
-              colPending++;
-            }
-         });
-
-         if(colHasBets) {
-             if(!colIsDead) {
-                 allDead = false; 
-                 hasAlive = true;
-                 if (colPending === 0) {
-                     hasGreen = true;
-                     if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
-                         totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
-                     }
-                 }
-                 else if (colPending <= 2) hasOrange = true;
+             // Check pending
+             const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
+             if (matchStatus !== "FT") {
+                colPending++; // Sum pending across group
              }
+         });
+         
+         if(subHasBets) {
+             colHasBets = true;
+             if(!subDead) allDead = false; // At least one column alive
          }
        }
 
        const p = document.createElement("div");
        p.className = "header-pill";
        p.textContent = currentName;
-       
-       if (hasBets) {
-           if (hasGreen) {
-               p.classList.add("status-green");
-               setTimeout(() => { 
-                   fireScreenBlaster(p); 
-                   if(totalWinAmount > 0) showBigWin(formatGBP(totalWinAmount)); 
-               }, 500); 
-           } else if (hasOrange) {
-               p.classList.add("status-orange");
-           } else if (!allDead && hasAlive) {
-           } else if (allDead) {
+
+       // Apply Color Classes
+       if(colHasBets) {
+           if(allDead) {
                p.classList.add("status-red");
+           } else if(colPending === 0) {
+               p.classList.add("status-green");
+               setTimeout(() => { fireConfetti(p); }, 500); 
+           } else if(colPending <= 2) {
+               p.classList.add("status-orange");
            }
        }
-
+       
        if(count > 1){
          p.style.width = `calc(var(--bet-w) * ${count} + var(--gap) * ${count - 1})`;
        }
+       
        headerRow.appendChild(p);
        i += count; 
     }
@@ -782,6 +919,7 @@ function loadData(){
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
+       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
@@ -792,12 +930,22 @@ function loadData(){
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-      lr.innerHTML = `<div class="left-cell match"><div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div></div><div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span></div>`;
+      lr.innerHTML = `
+        <div class="left-cell match">
+          <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
+        </div>
+        <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
+           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
+        </div>
+      `;
       left.appendChild(lr);
 
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
+        const key=`b-${i}-${j}`;
+        const val=`${c.value}|${c.color}`;
         const el=document.createElement("div");
         el.className="bet";
         if(c.value){ el.textContent=c.value; el.style.background=c.color; }
@@ -834,35 +982,28 @@ function loadData(){
   });
 }
 
-function showBigWin(amountText) {
-  const overlay = document.getElementById("bigWinOverlay");
-  const text = document.getElementById("bigWinText");
-  if (!overlay || !text || overlay.classList.contains('big-win-active')) return;
-
-  text.textContent = amountText;
-  
-  // Make visible
-  overlay.style.display = "flex";
-  overlay.classList.add("big-win-active");
-  
-  setTimeout(() => {
-    overlay.classList.remove("big-win-active");
-    overlay.style.display = "none"; // Hide again
-  }, 5000);
-}
-
-function fireScreenBlaster(element) {
+// === CONFETTI FUNCTION ===
+function fireConfetti(element) {
   if(element.dataset.fired) return;
+  
+  const rect = element.getBoundingClientRect();
+  const x = (rect.left + rect.width / 2) / window.innerWidth;
+  const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+  confetti({
+    particleCount: 60,
+    spread: 70,
+    origin: { x: x, y: y },
+    colors: ['#7CFF5B', '#ffffff'],
+    disableForReducedMotion: true,
+    zIndex: 3500 // Confetti must be above modals
+  });
+  
   element.dataset.fired = "true";
-  var end = Date.now() + 2000; 
-  (function frame() {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#7CFF5B', '#ffffff', '#FFD700'], zIndex: 2000, shapes: ['square', 'circle', 'star'], scalar: 1.2 });
-    if (Date.now() < end) requestAnimationFrame(frame);
-    else setTimeout(() => { element.dataset.fired = ""; }, 3000);
-  }());
+  setTimeout(() => { element.dataset.fired = ""; }, 10000);
 }
 
+// === MODAL FUNCTIONS ===
 function switchTab(tab, e) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -872,46 +1013,116 @@ function switchTab(tab, e) {
 
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
-  document.getElementById("mTitle").innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:15px;"><div style="transform:scale(1.3);">${renderTeam(homeCode)}</div><span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span><div style="transform:scale(1.3);">${renderTeam(awayCode)}</div></div>`;
+  
+  document.getElementById("mTitle").innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
+       <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
+       <span style="font-size:12px; opacity:0.4; font-weight:400;">vs</span>
+       <div style="transform:scale(1.3);">${renderTeam(awayCode)}</div>
+    </div>
+  `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
+  
   const s = m.stats || {};
-  const statsList = [{ label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true }, { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 }, { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 }, { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }];
+  const statsList = [
+    { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
+    { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
+    { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
+    { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
+  ];
+
   const container = document.getElementById("tab-stats");
   container.innerHTML = ""; 
+
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
-    if (total > 0) { hPct = (stat.h / total) * 100; aPct = (stat.a / total) * 100; if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; } }
+
+    if (total === 0) {
+      hPct = 0; aPct = 0;
+    } else {
+      hPct = (stat.h / total) * 100;
+      aPct = (stat.a / total) * 100;
+      if(stat.isPct && total > 100) {
+         hPct = stat.h; aPct = stat.a;
+      }
+    }
+
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
+
     const hText = stat.isPct ? stat.h + "%" : stat.h;
     const aText = stat.isPct ? stat.a + "%" : stat.a;
-    container.innerHTML += `<div class="stat-row"><div class="stat-label"><span>${hText}</span><span class="stat-name">${stat.label}</span><span>${aText}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${hColor}" style="width:${hPct}%"></div></div><div class="sb-track away"><div class="sb-fill ${aColor}" style="width:${aPct}%"></div></div></div></div>`;
+
+    const html = `
+      <div class="stat-row">
+        <div class="stat-label">
+          <span>${hText}</span>
+          <span class="stat-name">${stat.label}</span>
+          <span>${aText}</span>
+        </div>
+        <div class="stat-bar-container">
+          <div class="sb-track home">
+            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
+          </div>
+          <div class="sb-track away">
+            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.innerHTML += html;
   });
+
   document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
   document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
   document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
-  
-  const el = document.getElementById("matchModal");
-  el.style.display = "flex";
-  setTimeout(() => { el.classList.add("active"); }, 10);
+
+  // MODAL FIX: Using Flex to show
+  document.getElementById("matchModal").style.display = "flex";
+  setTimeout(() => { document.getElementById("matchModal").classList.add("active"); }, 10);
+}
+
+function openTable() {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+   
+  if(!tableCache || tableCache.length === 0) {
+    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
+  } else {
+    tableCache.forEach(t => {
+      let formDots = "";
+      if(t.form) {
+        formDots = t.form.split('').map(char => {
+          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
+          return `<span class="form-dot ${css}"></span>`;
+        }).join('');
+      }
+
+      tbody.innerHTML += `
+        <div class="tbl-row tbl-grid">
+          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
+          <div class="tbl-team-wrap">
+            <img src="${t.logo}" class="tbl-logo">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
+          </div>
+          <div class="ta-c">${t.mp}</div>
+          <div class="ta-c txt-green">${t.pts}</div>
+          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
+          <div class="tbl-form-wrap">${formDots}</div>
+        </div>
+      `;
+    });
+  }
+  // MODAL FIX: Using Flex to show
+  document.getElementById("tableModal").style.display = "flex";
+  setTimeout(() => { document.getElementById("tableModal").classList.add("active"); }, 10);
 }
 
 function closeModal(id) {
   const el = document.getElementById(id);
   el.classList.remove("active");
   setTimeout(() => { el.style.display = "none"; }, 300);
-}
-
-function openTable() {
-  const tbody = document.getElementById("tableBody");
-  tbody.innerHTML = "";
-  if(!tableCache || tableCache.length === 0) { tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>"; } 
-  else { tableCache.forEach(t => { let formDots = ""; if(t.form) { formDots = t.form.split('').map(char => { let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L'; return `<span class="form-dot ${css}"></span>`; }).join(''); } tbody.innerHTML += `<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div><div class="tbl-form-wrap">${formDots}</div></div>`; }); }
-  
-  const el = document.getElementById("tableModal");
-  el.style.display = "flex";
-  setTimeout(() => { el.classList.add("active"); }, 10);
 }
 
 renderSkeletons();
@@ -952,7 +1163,34 @@ function drawHistoryChart(type){
   const players = ["Snackbar","Timbo","Pepe"];
   const colors = { Snackbar:"#7CFF5B", Timbo:"#4DA3FF", Pepe:"#FF5BC4" };
 
-  historyChart = new Chart(ctx, { type: "line", data: { labels, datasets: players.map(p => ({ label: p, data: source.map(r => r[p]), borderColor: colors[p], backgroundColor: colors[p], tension: 0.3, pointRadius: 5, pointHoverRadius: 6 })) }, options: { plugins: { datalabels: { formatter: (value, ctx) => { const data = ctx.dataset.data; const index = ctx.dataIndex; if (index === 0) return null; const diff = value - data[index - 1]; if (diff <= 0) return null; return `+${diff}`; }, color: ctx => ctx.dataset.borderColor, font: { weight: "bold", size: 10 }, align: "top", offset: 6 } } } });
+  historyChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels,
+    datasets: players.map(p => ({
+      label: p, data: source.map(r => r[p]),
+      borderColor: colors[p], backgroundColor: colors[p],
+      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
+    }))
+  },
+  options: {
+    plugins: {
+      datalabels: {
+        formatter: (value, ctx) => {
+          const data = ctx.dataset.data;
+          const index = ctx.dataIndex;
+          if (index === 0) return null;
+          const diff = value - data[index - 1];
+          if (diff <= 0) return null;
+          return `+${diff}`;
+        },
+        color: ctx => ctx.dataset.borderColor,
+        font: { weight: "bold", size: 10 },
+        align: "top", offset: 6
+      }
+    }
+  }
+});
   historyChart._type = type;
 }
 </script>

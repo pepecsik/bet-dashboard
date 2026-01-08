@@ -409,6 +409,20 @@ body{
   border: 1px solid #992222;
 }
 
+/* GREEN HEARTBEAT (Waiting for FT) */
+@keyframes greenHeartbeat {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); }
+}
+
+.status-green-live {
+  background: #7CFF5B !important; 
+  color: #1c1f23 !important;      
+  border: 1px solid #7CFF5B;
+  animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
+}
+
 /* === MODAL STYLES === */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -754,7 +768,6 @@ function loadData(){
     headerRow.className = "row";
     
     // Helper: Is this color a "Winning Green"? 
-    // Includes your custom green (#7CFF5B) and standard Google Sheet greens
     const isWinningGreen = (hex) => {
         if(!hex) return false;
         const h = hex.toLowerCase();
@@ -766,11 +779,12 @@ function loadData(){
        const sheetStatus = currentHeader.status; // Header color status (orange/red)
        
        let totalWinAmount = 0;
-       let hasGreen = false;
        
-       let colPending = 0;     // Counts active matches
-       let colHasBets = false; // Checks if column is empty
-       let allBetsAreGreenInSheet = true; // Assume TRUE, prove FALSE
+       // STRICT FLAGS
+       let colPendingMatches = 0;      // How many games are NOT FT?
+       let colHasBets = false;         // Is there data in this column?
+       let allBetsAreGreen = true;     // Are ALL cells in this column green?
+       let hasRed = false;             // Is there a loser?
 
        // Scan matches for this column
        data.matches.forEach(m => {
@@ -780,30 +794,28 @@ function loadData(){
           if(!cell || !cell.value) return; 
           colHasBets = true;
 
-          // 1. Check if this specific cell is marked Green in sheet
+          // 1. Strict Green Check: If ANY cell is not green, this flag dies.
           if (!isWinningGreen(cell.color)) {
-              allBetsAreGreenInSheet = false;
+              allBetsAreGreen = false;
           }
 
-          // 2. Check for Forced Loss (Red)
+          // 2. Red Check
           if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-             colPending = 99; // Force fail logic
-             allBetsAreGreenInSheet = false; // Definitely not all green
+             hasRed = true;
           }
           
-          // 3. Check Match Status
+          // 3. Count Pending Matches
           if(matchStatus !== "FT") {
-             colPending++;
+             colPendingMatches++;
           }
        });
 
-       // WIN CONDITION:
-       // 1. Has Bets AND (All Matches Finished OR All Cells Manually Painted Green)
-       if(colHasBets && (colPending === 0 || allBetsAreGreenInSheet)) {
-            hasGreen = true;
-            if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
-                totalWinAmount += (data.betSummary[1].cells[i].value || 0);
-            }
+       // Logic Calculation:
+       // If empty column, ignore.
+       if(colHasBets) {
+          if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+              totalWinAmount += (data.betSummary[1].cells[i].value || 0);
+          }
        }
 
        // Create Header Pill
@@ -811,14 +823,20 @@ function loadData(){
        p.className = "header-pill";
        p.textContent = currentName;
        
-       // Priority: Green > Orange > Red
-       if (hasGreen) {
+       // 1. ACTUAL WINNER: All Bets Green AND All Games Finished (0 Pending)
+       if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches === 0) {
             p.classList.add("status-green");
             setTimeout(() => { 
                 fireScreenBlaster(p); 
                 showBigWin(formatGBP(totalWinAmount)); 
             }, 500); 
        } 
+       // 2. LIVE WINNER: All Bets Green BUT Games still playing
+       else if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches > 0) {
+            p.classList.add("status-green-live"); // Heartbeat only
+       }
+       // 3. Fallback to Sheet Header Color (Orange/Red)
+       // This happens if bets are NOT all green yet.
        else if (sheetStatus === 'orange') {
             p.classList.add("status-orange");
        }

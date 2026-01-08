@@ -732,6 +732,7 @@ function loadData(){
     /* --- LEFT HEADER --- */
     const lh=document.createElement("div");
     lh.className="left-header"; 
+    // Data.date is now formatted by Google Script (e.g. 1-1-2026)
     const dateText = data.date ? data.date : "Live";
       
     lh.innerHTML = `
@@ -749,25 +750,23 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER (NEW LOGIC) --- */
+    /* --- RIGHT HEADER --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
       
     let i = 0;
     while(i < data.headers.length) {
-       // data.headers is now array of objects: [{name, color}, ...]
        const currentHeader = data.headers[i];
-       const currentName = currentHeader.name;
-       const currentSheetColor = currentHeader.color; // Get color from sheet
+       const currentName = currentHeader.name; 
+       const sheetStatus = currentHeader.status; // 'orange', 'red', or null
 
        let count = 1;
-       // Check next headers using .name
+       // Group adjacent columns with same Name
        while(i + count < data.headers.length && data.headers[i + count].name === currentName){
          count++;
        }
        
-       // Calculate WINNER Logic (Green + Confetti)
-       // This relies on match results, not just the header color
+       // Calculate GREEN (Winner) Logic
        let totalWinAmount = 0;
        let hasGreen = false;
        let colPending = 0;
@@ -775,41 +774,35 @@ function loadData(){
 
        for(let k = 0; k < count; k++) {
          const colIdx = i + k;
-         
-         // Scan matches to see if this is a winning column
          data.matches.forEach(m => {
             const cell = m.cells[colIdx];
             const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-            
             if(!cell || !cell.value) return; 
             colHasBets = true;
 
-            // If a bet is red (lost), then it's not a green column
+            // If a bet is specifically red/lost, it breaks the Green streak
             if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-               // logic mostly handled by pending count, but specific loss breaks green
-               colPending = 99; // force fail
+               colPending = 99; 
             }
             if(matchStatus !== "FT") {
                colPending++;
             }
          });
 
-         // Check if Winner (Has bets, no pending, no forced losses)
          if(colHasBets && colPending === 0) {
               hasGreen = true;
-              // Sum win amount
               if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[colIdx]) {
                   totalWinAmount += (data.betSummary[1].cells[colIdx].value || 0);
               }
          }
        }
 
-       // Create Pill
+       // Create Header Pill
        const p = document.createElement("div");
        p.className = "header-pill";
        p.textContent = currentName;
        
-       // 1. Check Green Logic First (Confetti/Big Win)
+       // PRIORITY: Green > Orange > Red
        if (hasGreen) {
             p.classList.add("status-green");
             setTimeout(() => { 
@@ -817,17 +810,11 @@ function loadData(){
                 showBigWin(formatGBP(totalWinAmount)); 
             }, 500); 
        } 
-       // 2. Check Sheet Color for Orange/Red Triggers
-       else if (currentSheetColor) {
-            const hex = currentSheetColor.toLowerCase();
-            // ORANGE logic
-            if (hex === '#ff9f43' || hex === 'orange' || hex === '#ffa500') {
-                 p.classList.add("status-orange");
-            }
-            // RED logic
-            else if (hex === '#ff0000' || hex === '#ff4d4d' || hex === 'red') {
-                 p.classList.add("status-red");
-            }
+       else if (sheetStatus === 'orange') {
+            p.classList.add("status-orange");
+       }
+       else if (sheetStatus === 'red') {
+            p.classList.add("status-red");
        }
 
        if(count > 1){
@@ -846,7 +833,6 @@ function loadData(){
       const lr=document.createElement("div");
       lr.className="left-row";
       lr.style.gridTemplateColumns = "1fr 90px"; 
-       
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 

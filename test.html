@@ -749,22 +749,30 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER (SEPARATED) --- */
+    /* --- RIGHT HEADER --- */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
-    // Iterate strictly 1-by-1 (No grouping)
+    // Helper: Is this color a "Winning Green"? 
+    // Includes your custom green (#7CFF5B) and standard Google Sheet greens
+    const isWinningGreen = (hex) => {
+        if(!hex) return false;
+        const h = hex.toLowerCase();
+        return ['#7cff5b', '#00ff00', '#b6d7a8', '#93c47d', '#6aa84f', '#38761d', '#d9ead3'].includes(h);
+    };
+
     data.headers.forEach((currentHeader, i) => {
        const currentName = currentHeader.name; 
-       const sheetStatus = currentHeader.status; // 'orange', 'red', or null
+       const sheetStatus = currentHeader.status; // Header color status (orange/red)
        
-       // Calculate GREEN (Winner) Logic for this SINGLE column
        let totalWinAmount = 0;
        let hasGreen = false;
-       let colPending = 0;
-       let colHasBets = false;
+       
+       let colPending = 0;     // Counts active matches
+       let colHasBets = false; // Checks if column is empty
+       let allBetsAreGreenInSheet = true; // Assume TRUE, prove FALSE
 
-       // Scan matches for this specific column index (i)
+       // Scan matches for this column
        data.matches.forEach(m => {
           const cell = m.cells[i];
           const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
@@ -772,16 +780,26 @@ function loadData(){
           if(!cell || !cell.value) return; 
           colHasBets = true;
 
-          // If a bet is specifically red/lost, it breaks the Green streak
-          if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-             colPending = 99; 
+          // 1. Check if this specific cell is marked Green in sheet
+          if (!isWinningGreen(cell.color)) {
+              allBetsAreGreenInSheet = false;
           }
+
+          // 2. Check for Forced Loss (Red)
+          if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
+             colPending = 99; // Force fail logic
+             allBetsAreGreenInSheet = false; // Definitely not all green
+          }
+          
+          // 3. Check Match Status
           if(matchStatus !== "FT") {
              colPending++;
           }
        });
 
-       if(colHasBets && colPending === 0) {
+       // WIN CONDITION:
+       // 1. Has Bets AND (All Matches Finished OR All Cells Manually Painted Green)
+       if(colHasBets && (colPending === 0 || allBetsAreGreenInSheet)) {
             hasGreen = true;
             if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
                 totalWinAmount += (data.betSummary[1].cells[i].value || 0);
@@ -793,7 +811,7 @@ function loadData(){
        p.className = "header-pill";
        p.textContent = currentName;
        
-       // PRIORITY: Green > Orange > Red
+       // Priority: Green > Orange > Red
        if (hasGreen) {
             p.classList.add("status-green");
             setTimeout(() => { 

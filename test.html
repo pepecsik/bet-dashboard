@@ -203,7 +203,8 @@ body{
   width: 10px;
   height: 13px;
   background: #ff4d4d;
-  border: 1px solid #fff;
+  /* CHANGED: Removed white border */
+  border: none;
   border-radius: 2px;
   box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
   z-index: 10;
@@ -241,7 +242,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px; /* CHANGED: Smaller font */
+  font-size:13px; 
   font-weight:700;
   transition: all 0.5s ease;
 }
@@ -265,7 +266,7 @@ body{
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
-  overflow: hidden;           
+  overflow: hidden;            
   border: 1px solid #2f343a; 
 }
 
@@ -328,7 +329,8 @@ body{
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 120px 1fr 65px; /* Label 120px, Pounds FLEX, Euros 60px */
+  /* CHANGED: Made euros smaller (58px) so pounds has more space */
+  grid-template-columns: 120px 1fr 58px; 
   align-items:center;
   background:var(--bg-row); border-radius:8px;
   padding:0 6px; 
@@ -407,7 +409,7 @@ body{
 /* === ANIMATIONS === */
 .status-green {
   background: #7CFF5B !important; 
-  color: #1c1f23 !important;       
+  color: #1c1f23 !important;        
   border: 1px solid #7CFF5B;
   box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); 
   animation: none;
@@ -443,7 +445,7 @@ body{
 
 .status-green-live {
   background: #7CFF5B !important; 
-  color: #1c1f23 !important;       
+  color: #1c1f23 !important;        
   border: 1px solid #7CFF5B;
   animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
 }
@@ -490,13 +492,20 @@ body{
 }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 
+/* CHANGED: Made this smaller for "Live Standings" by default */
 .modal-sub { 
-  font-size: 16px; /* Bigger Score Text */
+  font-size: 11px; 
   color: var(--accent-orange); 
   font-weight: 800; 
   text-transform: uppercase; 
   letter-spacing: 0.5px;
-  margin-top: 10px; /* Space from logos */
+  margin-top: 4px; 
+}
+
+/* CHANGED: New ID style just for the Score (to keep it big) */
+#mStatus {
+  font-size: 16px; 
+  margin-top: 10px;
 }
 
 .modal-header-logo { 
@@ -528,7 +537,9 @@ body{
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
 .el-icon { font-size: 9px; margin: 0 4px; } /* Tiny Icons */
-.el-item { display: flex; align-items: center; opacity: 0.85; }
+
+/* CHANGED: Added explicit white color and opacity 1 */
+.el-item { display: flex; align-items: center; opacity: 1; color: #ffffff; }
 
 .divider-line { 
   height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; 
@@ -677,9 +688,9 @@ const REFRESH_MS=30000;
 const parseMoney = (v) => {
   if (typeof v === 'number') return v;
   if (!v) return 0;
-  
+   
   let s = String(v);
-  
+   
   // 1. Remove currency symbols (£, €, $) and spaces
   //    Keep digits, dots, commas, and minus signs
   s = s.replace(/[£€$ ]/g, "").replace(/\s/g, '').replace(/\u00A0/g, ''); // \u00A0 is non-breaking space
@@ -727,7 +738,7 @@ function renderTeam(raw, hasRed) {
   if (!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g, "");
   const logo = TEAM_LOGOS[code];
-   
+    
   const badge = hasRed ? '<div class="rc-badge"></div>' : '';
 
   if (!logo) return `<div class="team-wrapper"><span class="team-fallback">${code}</span>${badge}</div>`;
@@ -842,10 +853,10 @@ function loadData(){
        
        let totalWinAmount = 0;
        
-       let colPendingMatches = 0;      
-       let colHasBets = false;         
-       let allBetsAreGreen = true;     
-       let hasRed = false;             
+       let colPendingMatches = 0;       
+       let colHasBets = false;          
+       let allBetsAreGreen = true;      
+       let hasRed = false;              
 
        data.matches.forEach(m => {
           const cell = m.cells[i];
@@ -1021,7 +1032,7 @@ function fireScreenBlaster(element) {
       shapes: ['square', 'circle', 'star'],
       scalar: 1.2
     });
-     
+      
     confetti({
       particleCount: 4, 
       angle: 120,

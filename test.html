@@ -328,7 +328,7 @@ body{
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 105px 1fr 60px; /* Label gets space, Pounds gets Flex, Euros fixed */
+  grid-template-columns: 105px 1fr 60px; /* Label 105px, Pounds FLEX, Euros 60px */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
   padding:0 6px; 
@@ -941,8 +941,9 @@ function loadData(){
     });
 
     data.totals.forEach(t => {
-      // Show exactly what the sheet sends
-      const displayLabel = t.label;
+      // 1. Rename logic is back so you can keep TOTAL WIN in the sheet
+      let displayLabel = t.label;
+      if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
@@ -1008,6 +1009,13 @@ function fireScreenBlaster(element) {
   }());
 }
 
+// Helper: Title Case
+function toTitleCase(str) {
+  return str.replace(/\w\S*/g, function(txt){
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+}
+
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   document.getElementById("mTitle").innerHTML = `
@@ -1027,8 +1035,12 @@ function openModal(m) {
     const list = s.scorers.split(",");
     list.forEach(item => {
         item = item.trim();
-        if (item.includes("(H)")) homeScorers.push(`<div class="el-item">${item.replace("(H)","").trim()} <span class="el-icon">⚽</span></div>`);
-        if (item.includes("(A)")) awayScorers.push(`<div class="el-item"><span class="el-icon">⚽</span> ${item.replace("(A)","").trim()}</div>`);
+        // Clean up text and Title Case it
+        let cleanName = item.replace("(H)","").replace("(A)","").trim();
+        cleanName = toTitleCase(cleanName);
+
+        if (item.includes("(H)")) homeScorers.push(`<div class="el-item">${cleanName} <span class="el-icon">⚽</span></div>`);
+        if (item.includes("(A)")) awayScorers.push(`<div class="el-item"><span class="el-icon">⚽</span> ${cleanName}</div>`);
     });
   }
   const goalsHtml = `

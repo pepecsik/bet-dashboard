@@ -803,6 +803,8 @@ function renderSkeletons() {
   }
 }
 
+let prevMatches = {}; 
+
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     const left=document.getElementById("left");
@@ -817,11 +819,50 @@ function loadData(){
     if(data.chartData) chartDataCache = data.chartData;
     if(data.leagueTable) tableCache = data.leagueTable;
 
-    /* --- LEFT HEADER --- */
+    /* --- NOTIFICATION LOGIC START --- */
+    if (Notification.permission === "granted") {
+        data.matches.forEach(m => {
+            const id = m.match;
+            const oldM = prevMatches[id];
+
+            if (oldM) {
+                // Goal Notification
+                if (m.score !== oldM.score && m.status !== "NS") {
+                    new Notification("Goal! ⚽", {
+                        body: `${m.match}\n${m.score}`,
+                        icon: "/apple-touch-icon.png",
+                        tag: id 
+                    });
+                }
+                
+                // Red Card Notification
+                const newRed = m.stats?.red || "0-0";
+                const oldRed = oldM.stats?.red || "0-0";
+                if (newRed !== "0-0" && newRed !== oldRed) {
+                    new Notification("Red Card! 🟥", {
+                        body: `${m.match}`,
+                        tag: id + "_red"
+                    });
+                }
+            }
+        });
+    }
+    
+    // Save state for next refresh
+    data.matches.forEach(m => {
+        prevMatches[m.match] = {
+            score: m.score,
+            status: m.status,
+            stats: JSON.parse(JSON.stringify(m.stats || {}))
+        };
+    });
+    /* --- NOTIFICATION LOGIC END --- */
+
+    /* LEFT HEADER */
     const lh=document.createElement("div");
     lh.className="left-header"; 
     const dateText = data.date ? data.date : "Live";
-      
+    
     lh.innerHTML = `
       <div class="pl-btn" onclick="openTable()">
         <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
@@ -837,7 +878,7 @@ function loadData(){
     left.appendChild(lh);
     left.appendChild(document.createElement("div")).className="left-divider";
 
-    /* --- RIGHT HEADER --- */
+    /* RIGHT HEADER */
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
@@ -852,11 +893,10 @@ function loadData(){
        const sheetStatus = currentHeader.status; 
        
        let totalWinAmount = 0;
-       
-       let colPendingMatches = 0;       
-       let colHasBets = false;          
-       let allBetsAreGreen = true;      
-       let hasRed = false;              
+       let colPendingMatches = 0;        
+       let colHasBets = false;           
+       let allBetsAreGreen = true;       
+       let hasRed = false;               
 
        data.matches.forEach(m => {
           const cell = m.cells[i];
@@ -865,17 +905,9 @@ function loadData(){
           if(!cell || !cell.value) return; 
           colHasBets = true;
 
-          if (!isWinningGreen(cell.color)) {
-              allBetsAreGreen = false;
-          }
-
-          if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-             hasRed = true;
-          }
-          
-          if(matchStatus !== "FT") {
-             colPendingMatches++;
-          }
+          if (!isWinningGreen(cell.color)) { allBetsAreGreen = false; }
+          if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) { hasRed = true; }
+          if(matchStatus !== "FT") { colPendingMatches++; }
        });
 
        if(colHasBets) {
@@ -890,6 +922,17 @@ function loadData(){
        
        if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches === 0) {
             p.classList.add("status-green");
+            
+            // Win Notification
+            const winKey = `win_${currentName}_${totalWinAmount}`;
+            if(Notification.permission === "granted" && !sessionStorage.getItem(winKey)) {
+                 new Notification("💰 BET WON!", {
+                     body: `${currentName} won ${formatGBP(totalWinAmount)}`,
+                     icon: "/apple-touch-icon.png"
+                 });
+                 sessionStorage.setItem(winKey, "true");
+            }
+
             setTimeout(() => { 
                 fireScreenBlaster(p); 
                 showBigWin(formatGBP(totalWinAmount)); 
@@ -950,7 +993,6 @@ function loadData(){
       `;
       left.appendChild(lr);
 
-      
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
@@ -965,6 +1007,7 @@ function loadData(){
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
 
+    /* BET SUMMARY */
     ["BET","WIN","WIN PP"].forEach((label,i)=>{
       const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
       left.appendChild(lab);
@@ -977,16 +1020,14 @@ function loadData(){
       right.appendChild(rr);
     });
 
+    /* TOTALS */
     data.totals.forEach(t => {
-      // 1. Rename logic
       let displayLabel = t.label;
       if (displayLabel === "TOTAL WIN" || displayLabel === "HIGHEST POSB. WIN") {
           displayLabel = "HIGHEST POSB. WIN";
       }
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
-      
-      // PARSE VALUES WITH EURO FIX (Fixing 0.00)
       const valGBP = t.cells[1] ? t.cells[1].value : 0;
       const valEUR = t.cells[0] ? t.cells[0].value : 0;
 
@@ -998,6 +1039,7 @@ function loadData(){
         </div>`;
     });
 
+    /* RANKING */
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
       const rankDisplay = medals[i] || (i + 1);

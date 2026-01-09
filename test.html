@@ -491,11 +491,12 @@ body{
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 
 .modal-sub { 
-  font-size: 15px; /* UPDATED: Bigger Score Text */
+  font-size: 16px; /* UPDATED: Bigger Score Text */
   color: var(--accent-orange); 
   font-weight: 800; 
   text-transform: uppercase; 
   letter-spacing: 0.5px;
+  margin-top: 6px; /* Lowered position */
 }
 
 .modal-header-logo { 
@@ -518,15 +519,15 @@ body{
   flex: 1;
 }
 
-/* UPDATED: Smaller font for Scorers/Cards */
+/* Event List Styling (Smaller) */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; 
+  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; /* Smaller font */
 }
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 12px; margin: 0 4px; } 
+.el-icon { font-size: 9px; margin: 0 4px; } /* UPDATED: Smaller Icon */
 .el-item { display: flex; align-items: center; opacity: 0.85; }
 
 .divider-line { 
@@ -941,21 +942,24 @@ function loadData(){
     });
 
     data.totals.forEach(t => {
-      // 1. Rename logic is back so you can keep TOTAL WIN in the sheet
+      // 1. Rename logic
       let displayLabel = t.label;
-      
-      // Force BOTH potential names to display as "HIGHEST POSB. WIN"
       if (displayLabel === "TOTAL WIN" || displayLabel === "HIGHEST POSB. WIN") {
           displayLabel = "HIGHEST POSB. WIN";
       }
 
-      const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(t.label);
+      const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
+      // SAFE DATA ACCESS: 
+      // If cells[1] exists, we use it for Pounds. If not, it defaults to 0.
+      const valGBP = t.cells[1] ? t.cells[1].value : 0;
+      const valEUR = t.cells[0] ? t.cells[0].value : 0;
+
       weekly.innerHTML += `
         <div class="week-row">
           <div class="week-label">${displayLabel}</div>
-          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
-          <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(valGBP)}</div>
+          <div class="week-eur">${formatEUR(valEUR)}</div>
         </div>`;
     });
 

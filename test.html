@@ -328,7 +328,8 @@ body{
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 105px 1fr 60px; /* Label 105px, Pounds FLEX, Euros 60px */
+  /* 105px for label, Flex for Pounds (to fit it), 60px for Euros */
+  grid-template-columns: 105px 1fr 60px; 
   align-items:center;
   background:var(--bg-row); border-radius:8px;
   padding:0 6px; 
@@ -950,8 +951,8 @@ function loadData(){
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
-      // SAFE DATA ACCESS: 
-      // If cells[1] exists, we use it for Pounds. If not, it defaults to 0.
+      // SAFE DATA ACCESS: Use whatever values your working version had
+      // (Your working version used cells[1] for Pounds and cells[0] for Euros)
       const valGBP = t.cells[1] ? t.cells[1].value : 0;
       const valEUR = t.cells[0] ? t.cells[0].value : 0;
 
@@ -1043,7 +1044,6 @@ function openModal(m) {
     const list = s.scorers.split(",");
     list.forEach(item => {
         item = item.trim();
-        // Clean up text and Title Case it
         let cleanName = item.replace("(H)","").replace("(A)","").trim();
         cleanName = toTitleCase(cleanName);
 

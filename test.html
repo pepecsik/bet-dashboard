@@ -639,7 +639,7 @@ body{
     </div>
 
     <div class="modal-scroll-area">
-       
+        
        <div class="event-list-row" id="goalsArea"></div>
 
        <div class="divider-line"></div>
@@ -744,6 +744,9 @@ function renderTeam(raw, hasRed) {
       ${badge}
     </div>`;
 }
+
+// === THIS VARIABLE DECLARATION IS CRITICAL FOR THE CODE TO WORK ===
+let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null;
 
 // === REQUEST NOTIFICATION PERMISSION ON FIRST CLICK ===
 document.body.addEventListener('click', () => {

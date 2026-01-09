@@ -678,17 +678,14 @@ const parseMoney = (v) => {
   if (!v) return 0;
   let s = String(v);
   
-  // 1. Remove currency symbols and spaces (but keep digits, dots, commas, minus)
-  s = s.replace(/[^0-9.,-]/g, '');
-
-  // 2. Handle "European" format: 1.787,45 -> 1787.45
-  // If we have a comma, we assume it is the decimal separator 
-  if (s.includes(',')) {
-    // Remove all dots (thousands separators)
-    s = s.replace(/\./g, '');
-    // Replace comma with dot
-    s = s.replace(',', '.');
+  // 1. If it has a comma, treat it as European style (remove dots, swap comma to dot)
+  if (s.indexOf(',') > -1) {
+     s = s.replace(/\./g, ''); // Remove thousands dots
+     s = s.replace(',', '.');  // Turn decimal comma into dot
   }
+  
+  // 2. Remove anything that isn't a digit, dot, or minus sign
+  s = s.replace(/[^0-9.-]/g, '');
 
   return parseFloat(s) || 0;
 };

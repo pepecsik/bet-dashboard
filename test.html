@@ -324,7 +324,7 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* --- FIX: YOUR REQUESTED CLOTHES (120px) --- */
+/* FIX: This uses the 120px width you requested */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
@@ -496,7 +496,7 @@ body{
   font-weight: 800; 
   text-transform: uppercase; 
   letter-spacing: 0.5px;
-  margin-top: 6px; /* Space from logos */
+  margin-top: 10px; /* Space from logos */
 }
 
 .modal-header-logo { 
@@ -519,15 +519,15 @@ body{
   flex: 1;
 }
 
-/* Event List Styling */
+/* Event List Styling (Smaller & Cleaner) */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; /* Small font */
+  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; 
 }
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 9px; margin: 0 4px; } /* Small Icon */
+.el-icon { font-size: 9px; margin: 0 4px; } /* Tiny Icons */
 .el-item { display: flex; align-items: center; opacity: 0.85; }
 
 .divider-line { 
@@ -672,7 +672,8 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-// REVERTED TO ORIGINAL HELPER (with slight tweak to handle both string/number)
+// REVERTED TO SIMPLE HELPER
+// This is exactly what you had in the working version
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
@@ -942,9 +943,9 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    /* --- FIX: REVERTED TO YOUR ORIGINAL LOGIC (THE BRAINS) --- */
+    // --- FIX: EXACT SNIPPET YOU PROVIDED ---
     data.totals.forEach(t => {
-      // 1. Rename logic
+      // 1. Rename it purely for the display
       let displayLabel = t.label;
       if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
 

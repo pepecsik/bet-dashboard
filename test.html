@@ -684,27 +684,17 @@ const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrV
 const REFRESH_MS=30000;
 
 // HELPER: EURO CURRENCY PARSER
-// Converts "€ 1.200,50" -> 1200.50
 const parseMoney = (v) => {
   if (typeof v === 'number') return v;
   if (!v) return 0;
-   
   let s = String(v);
-   
-  // 1. Remove currency symbols (£, €, $) and spaces
-  //    Keep digits, dots, commas, and minus signs
-  s = s.replace(/[£€$ ]/g, "").replace(/\s/g, '').replace(/\u00A0/g, ''); // \u00A0 is non-breaking space
-
-  // 2. DETECT EURO FORMAT (1.200,50)
-  // If there is a comma, we assume it's the decimal separator
+  s = s.replace(/[£€$ ]/g, "").replace(/\s/g, '').replace(/\u00A0/g, ''); 
   if (s.indexOf(',') > -1) {
-     s = s.replace(/\./g, ''); // Remove thousands dots
-     s = s.replace(',', '.');  // Turn decimal comma into dot
+     s = s.replace(/\./g, ''); 
+     s = s.replace(',', '.');  
   } else {
-     // US/UK FORMAT (1,200.50) -> Remove commas
      s = s.replace(/,/g, '');
   }
-
   return parseFloat(s) || 0;
 };
 
@@ -755,7 +745,18 @@ function renderTeam(raw, hasRed) {
     </div>`;
 }
 
-let prev={}, chartDataCache=null, historyChart=null, tableCache=null;
+// === FIXED VARIABLES HERE ===
+let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null; 
+
+// === REQUEST NOTIFICATION PERMISSION ON FIRST CLICK ===
+document.body.addEventListener('click', () => {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().then(p => {
+       if(p === "granted") new Notification("Juice Bets", {body: "Notifications Enabled 🔔"});
+    });
+  }
+}, { once: true });
+
 
 function renderSkeletons() {
   const left = document.getElementById("left");
@@ -802,8 +803,6 @@ function renderSkeletons() {
     right.appendChild(rr);
   }
 }
-
-let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null; 
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{

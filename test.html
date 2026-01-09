@@ -188,6 +188,30 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
+/* Red Card Badge Style */
+.team-wrapper {
+  position: relative; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+}
+
+.rc-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 10px;
+  height: 13px;
+  background: #ff4d4d;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  z-index: 10;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+ 
 /* RIGHT CARD */
 .right-card{
   flex:1;
@@ -667,18 +691,26 @@ const TEAM_LOGOS={
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
 };
 
-function renderTeam(raw){
-  if(!raw) return "";
-  const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
+function renderTeam(raw, hasRed) {
+  if (!raw) return "";
+  const code = raw.trim().toUpperCase().replace(/[^A-Z]/g, "");
   const logo = TEAM_LOGOS[code];
-  if(!logo) return `<span class="team-fallback">${code}</span>`;
-    
+  
+  // Create the red card badge if hasRed is true
+  const badge = hasRed ? '<div class="rc-badge"></div>' : '';
+
+  if (!logo) return `<div class="team-wrapper"><span class="team-fallback">${code}</span>${badge}</div>`;
+
   let style = "";
   if (code === "TOT") { style = "background:white; border-radius:50%; padding:3px;"; }
   if (code === "SUN") { style = "transform: scale(1.35);"; }
   if (code === "AVI") { style = "transform: scale(1.65);"; }
 
-  return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
+  return `
+    <div class="team-wrapper">
+      <img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">
+      ${badge}
+    </div>`;
 }
 
 let prev={}, chartDataCache=null, historyChart=null, tableCache=null;
@@ -851,23 +883,28 @@ function loadData(){
     right.appendChild(document.createElement("div")).className="right-divider";
 
     /* MATCHES */
-    data.matches.forEach((m,i)=>{
-      const lr=document.createElement("div");
-      lr.className="left-row";
-      lr.style.gridTemplateColumns = "1fr 90px"; 
+    data.matches.forEach((m, i) => {
+      const lr = document.createElement("div");
+      lr.className = "left-row";
+      lr.style.gridTemplateColumns = "1fr 90px";
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m);
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
-      const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
-      const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
+      const isLive = m.status.includes("'") || ["HT", "1H", "2H", "LIVE"].includes(m.status);
+      const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6";
       const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
+      // --- NEW: CHECK FOR RED CARDS ---
+      // We check if stats exist, and if home/away red cards are greater than 0
+      const hRed = m.stats && (m.stats.h_red > 0);
+      const aRed = m.stats && (m.stats.a_red > 0);
+
       lr.innerHTML = `
         <div class="left-cell match">
-          <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
+          <div class="match-teams">${renderTeam(home, hRed)}<span>-</span>${renderTeam(away, aRed)}</div>
         </div>
         <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
            <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
@@ -876,6 +913,7 @@ function loadData(){
       `;
       left.appendChild(lr);
 
+     
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
@@ -902,10 +940,19 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    data.totals.forEach(t=>{
-      const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div><div class="week-eur">${formatEUR(t.cells[1].value)}</div></div>`;
-    });
+    data.totals.forEach(t => {
+     // 1. Add your new label "HIGHEST POSB. WIN" to this list so it turns GREEN
+     const green = ["TOTAL WIN", "HIGHEST POSB. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+     
+     // 2. I swapped the cells below. 
+     // We now use cells[1] for GBP (Pounds) and cells[0] for EUR (Euros)
+     weekly.innerHTML += `
+       <div class="week-row">
+         <div class="week-label">${t.label}</div>
+         <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
+         <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
+       </div>`;
+   });
 
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];

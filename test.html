@@ -324,18 +324,18 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: This uses the 120px width you requested */
+/* FIX: COLUMN SIZES (120px) */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
   grid-template-columns: 120px 1fr 65px; /* Fixed: 120px for label */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
-  padding:0 4px; 
+  padding:0 6px; 
   margin-bottom:4px; font-size:11px; font-weight:700;
 }
-.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.week-gbp { text-align: right; padding-right: 6px; }
+.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.week-gbp { text-align: right; padding-right: 4px; }
 .week-eur { text-align: right; opacity:.6; }
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
@@ -672,10 +672,28 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-// REVERTED TO SIMPLE HELPER
-// This is exactly what you had in the working version
-const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+// FIX: EURO STYLE PARSER (Replaces dot with nothing, then comma with dot)
+const parseMoney = (v) => {
+  if (typeof v === 'number') return v;
+  if (!v) return 0;
+  let s = String(v);
+  
+  // 1. Remove currency symbols (£, €), spaces, and minus signs
+  // We keep digits, dots, and commas
+  s = s.replace(/[^0-9.,-]/g, '');
+
+  // 2. EURO FORMAT FIX: If we see a comma, treat it as decimal
+  // Example: 1.787,45 -> Remove dots (1787,45) -> Replace comma with dot (1787.45)
+  if (s.indexOf(',') > -1) {
+     s = s.replace(/\./g, ''); // Remove thousands dots
+     s = s.replace(',', '.');  // Turn decimal comma into dot
+  }
+
+  return parseFloat(s) || 0;
+};
+
+const formatGBP=v=>"£ "+parseMoney(v).toFixed(2);
+const formatEUR=v=>"€ "+parseMoney(v).toFixed(2);
 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
@@ -943,19 +961,25 @@ function loadData(){
       right.appendChild(rr);
     });
 
-    // --- FIX: EXACT SNIPPET YOU PROVIDED ---
+    // --- FIX: USE NEW PARSER HERE ---
     data.totals.forEach(t => {
-      // 1. Rename it purely for the display
+      // 1. Rename logic
       let displayLabel = t.label;
-      if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
+      if (displayLabel === "TOTAL WIN" || displayLabel === "HIGHEST POSB. WIN") {
+          displayLabel = "HIGHEST POSB. WIN";
+      }
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
+      // PARSE VALUES (Fixes 0.00 issue by handling European Format)
+      const valGBP = t.cells[1] ? t.cells[1].value : 0;
+      const valEUR = t.cells[0] ? t.cells[0].value : 0;
+
       weekly.innerHTML += `
         <div class="week-row">
           <div class="week-label">${displayLabel}</div>
-          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
-          <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(valGBP)}</div>
+          <div class="week-eur">${formatEUR(valEUR)}</div>
         </div>`;
     });
 

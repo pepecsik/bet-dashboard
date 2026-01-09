@@ -324,12 +324,11 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: TWEAKED COLUMN SIZES FOR BETTER FIT */
+/* FIX: COLUMN SIZES + "HIGHEST POSB. WIN" FIT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  /* 105px for label, Flex for Pounds (to fit it), 60px for Euros */
-  grid-template-columns: 105px 1fr 60px; 
+  grid-template-columns: 115px 1fr 60px; /* 115px Label, Flex Pounds, 60px Euros */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
   padding:0 6px; 
@@ -497,7 +496,7 @@ body{
   font-weight: 800; 
   text-transform: uppercase; 
   letter-spacing: 0.5px;
-  margin-top: 6px; /* Lowered position */
+  margin-top: 10px; /* Space from logos */
 }
 
 .modal-header-logo { 
@@ -520,15 +519,15 @@ body{
   flex: 1;
 }
 
-/* Event List Styling (Smaller) */
+/* Event List Styling (Smaller & Cleaner) */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; /* Smaller font */
+  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; 
 }
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 9px; margin: 0 4px; } /* UPDATED: Smaller Icon */
+.el-icon { font-size: 9px; margin: 0 4px; } /* Tiny Icons */
 .el-item { display: flex; align-items: center; opacity: 0.85; }
 
 .divider-line { 
@@ -673,8 +672,30 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
-const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+// HELPER: Convert string (e.g., "£1,200.50") to Number (1200.50)
+// This fixes the 0.00 issue where the sheet sends text instead of numbers
+const parseMoney = (v) => {
+  if (typeof v === 'number') return v;
+  if (!v) return 0;
+  let s = String(v);
+  // Handle European decimals if needed (comma to dot)
+  // But also handle commas as thousands separator (e.g. 1,000.00)
+  // If we see a comma AND a dot, the comma is likely a separator.
+  // If we see ONLY a comma, it might be a decimal.
+  // Safer approach for your sheet format: remove all non-digits/dots/minus
+  
+  // Basic cleanup: remove currency symbols and spaces
+  // Adjust: replace comma with dot ONLY if no dot exists (e.g. "12,00")
+  if (s.includes(',') && !s.includes('.')) {
+      s = s.replace(',', '.');
+  }
+  // Remove everything except numbers, dots, and minus sign
+  s = s.replace(/[^0-9.-]/g, '');
+  return parseFloat(s) || 0;
+};
+
+const formatGBP=v=>"£ "+parseMoney(v).toFixed(2);
+const formatEUR=v=>"€ "+parseMoney(v).toFixed(2);
 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
@@ -951,8 +972,8 @@ function loadData(){
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
-      // SAFE DATA ACCESS: Use whatever values your working version had
-      // (Your working version used cells[1] for Pounds and cells[0] for Euros)
+      // PARSE VALUES (Fixes 0.00 issue)
+      // We explicitly parse because Sheet might send "£12,00" string
       const valGBP = t.cells[1] ? t.cells[1].value : 0;
       const valEUR = t.cells[0] ? t.cells[0].value : 0;
 

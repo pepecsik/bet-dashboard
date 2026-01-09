@@ -803,7 +803,7 @@ function renderSkeletons() {
   }
 }
 
-let prevMatches = {}; 
+let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null; 
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{

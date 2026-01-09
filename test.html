@@ -324,18 +324,18 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: COLUMN SIZES + "HIGHEST POSB. WIN" FIT */
+/* --- FIX: YOUR REQUESTED CLOTHES (120px) --- */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 115px 1fr 60px; /* 115px Label, Flex Pounds, 60px Euros */
+  grid-template-columns: 120px 1fr 65px; /* Fixed: 120px for label */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
-  padding:0 6px; 
+  padding:0 4px; 
   margin-bottom:4px; font-size:11px; font-weight:700;
 }
-.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
-.week-gbp { text-align: right; padding-right: 4px; }
+.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.week-gbp { text-align: right; padding-right: 6px; }
 .week-eur { text-align: right; opacity:.6; }
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
@@ -491,12 +491,12 @@ body{
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 
 .modal-sub { 
-  font-size: 16px; /* UPDATED: Bigger Score Text */
+  font-size: 16px; /* Bigger Score Text */
   color: var(--accent-orange); 
   font-weight: 800; 
   text-transform: uppercase; 
   letter-spacing: 0.5px;
-  margin-top: 10px; /* Space from logos */
+  margin-top: 6px; /* Space from logos */
 }
 
 .modal-header-logo { 
@@ -519,15 +519,15 @@ body{
   flex: 1;
 }
 
-/* Event List Styling (Smaller & Cleaner) */
+/* Event List Styling */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; 
+  margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; /* Small font */
 }
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 9px; margin: 0 4px; } /* Tiny Icons */
+.el-icon { font-size: 9px; margin: 0 4px; } /* Small Icon */
 .el-item { display: flex; align-items: center; opacity: 0.85; }
 
 .divider-line { 
@@ -672,26 +672,9 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-// FIX: HELPER TO PARSE EUROPEAN FORMATTED STRINGS FROM SHEET
-const parseMoney = (v) => {
-  if (typeof v === 'number') return v;
-  if (!v) return 0;
-  let s = String(v);
-  
-  // 1. If it has a comma, treat it as European style (remove dots, swap comma to dot)
-  if (s.indexOf(',') > -1) {
-     s = s.replace(/\./g, ''); // Remove thousands dots
-     s = s.replace(',', '.');  // Turn decimal comma into dot
-  }
-  
-  // 2. Remove anything that isn't a digit, dot, or minus sign
-  s = s.replace(/[^0-9.-]/g, '');
-
-  return parseFloat(s) || 0;
-};
-
-const formatGBP=v=>"£ "+parseMoney(v).toFixed(2);
-const formatEUR=v=>"€ "+parseMoney(v).toFixed(2);
+// REVERTED TO ORIGINAL HELPER (with slight tweak to handle both string/number)
+const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
+const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
@@ -959,24 +942,19 @@ function loadData(){
       right.appendChild(rr);
     });
 
+    /* --- FIX: REVERTED TO YOUR ORIGINAL LOGIC (THE BRAINS) --- */
     data.totals.forEach(t => {
       // 1. Rename logic
       let displayLabel = t.label;
-      if (displayLabel === "TOTAL WIN" || displayLabel === "HIGHEST POSB. WIN") {
-          displayLabel = "HIGHEST POSB. WIN";
-      }
+      if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
-      // PARSE VALUES WITH NEW EUROPEAN FIX
-      const valGBP = t.cells[1] ? t.cells[1].value : 0;
-      const valEUR = t.cells[0] ? t.cells[0].value : 0;
-
       weekly.innerHTML += `
         <div class="week-row">
           <div class="week-label">${displayLabel}</div>
-          <div class="week-gbp ${green?'green':'red'}">${formatGBP(valGBP)}</div>
-          <div class="week-eur">${formatEUR(valEUR)}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
+          <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
         </div>`;
     });
 

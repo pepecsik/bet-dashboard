@@ -265,7 +265,7 @@ body{
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
-  overflow: hidden;            
+  overflow: hidden;           
   border: 1px solid #2f343a; 
 }
 
@@ -324,10 +324,11 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
+/* FIX: INCREASED FIRST COLUMN WIDTH TO 120px to fit "HIGHEST POSB. WIN" */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 90px 1fr 65px;
+  grid-template-columns: 120px 1fr 65px; /* Changed from 90px to 120px */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
   padding:0 4px; 
@@ -406,7 +407,7 @@ body{
 /* === ANIMATIONS === */
 .status-green {
   background: #7CFF5B !important; 
-  color: #1c1f23 !important;      
+  color: #1c1f23 !important;       
   border: 1px solid #7CFF5B;
   box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); 
   animation: none;
@@ -442,7 +443,7 @@ body{
 
 .status-green-live {
   background: #7CFF5B !important; 
-  color: #1c1f23 !important;      
+  color: #1c1f23 !important;       
   border: 1px solid #7CFF5B;
   animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
 }
@@ -695,7 +696,7 @@ function renderTeam(raw, hasRed) {
   if (!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g, "");
   const logo = TEAM_LOGOS[code];
-  
+   
   // Create the red card badge if hasRed is true
   const badge = hasRed ? '<div class="rc-badge"></div>' : '';
 
@@ -897,16 +898,21 @@ function loadData(){
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-      // --- CHECK FOR RED CARDS ---
+      // --- CHECK FOR RED CARDS (FIXED: Added Safety Check) ---
       let hRed = false, aRed = false;
 
-      // We look for the "red" stat (Column 12 in sheet)
-      if (m.stats && m.stats.red) {
-        const parts = String(m.stats.red).split("-"); 
-        if (parts.length === 2) {
-           hRed = parseInt(parts[0]) > 0; // True if Home has red
-           aRed = parseInt(parts[1]) > 0; // True if Away has red
-        }
+      // Ensure stats exists before checking
+      const s = m.stats || {}; 
+
+      if (s.red) {
+        // Handle "1-0" format or just numbers just in case
+        if (String(s.red).includes("-")) {
+            const parts = String(s.red).split("-"); 
+            if (parts.length === 2) {
+                hRed = parseInt(parts[0]) > 0;
+                aRed = parseInt(parts[1]) > 0;
+            }
+        } 
       }
 
       lr.innerHTML = `
@@ -918,8 +924,9 @@ function loadData(){
            <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
         </div>
       `;
+      left.appendChild(lr);
 
-     
+      
       const rr=document.createElement("div");
       rr.className="row";
       m.cells.forEach((c,j)=>{
@@ -951,7 +958,7 @@ function loadData(){
       let displayLabel = t.label;
       if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
 
-      const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+      const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
       weekly.innerHTML += `
         <div class="week-row">
@@ -995,7 +1002,7 @@ function fireScreenBlaster(element) {
       shapes: ['square', 'circle', 'star'],
       scalar: 1.2
     });
-    
+     
     confetti({
       particleCount: 4, 
       angle: 120,
@@ -1082,7 +1089,6 @@ function openModal(m) {
   });
 
   // --- PARSE SCORERS ---
-  // They now look like "(H) Player, (A) Player"
   const rawScorers = s.scorers ? s.scorers : "";
   const formattedScorers = rawScorers.length > 0 ? rawScorers : "No Goals";
 

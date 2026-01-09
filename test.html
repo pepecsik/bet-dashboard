@@ -897,10 +897,17 @@ function loadData(){
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-      // --- NEW: CHECK FOR RED CARDS ---
-      // We check if stats exist, and if home/away red cards are greater than 0
-      const hRed = m.stats && (m.stats.h_red > 0);
-      const aRed = m.stats && (m.stats.a_red > 0);
+      // --- CHECK FOR RED CARDS ---
+      let hRed = false, aRed = false;
+
+      // We look for the "red" stat (Column 12 in sheet)
+      if (m.stats && m.stats.red) {
+        const parts = String(m.stats.red).split("-"); 
+        if (parts.length === 2) {
+           hRed = parseInt(parts[0]) > 0; // True if Home has red
+           aRed = parseInt(parts[1]) > 0; // True if Away has red
+        }
+      }
 
       lr.innerHTML = `
         <div class="left-cell match">
@@ -911,7 +918,6 @@ function loadData(){
            <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
         </div>
       `;
-      left.appendChild(lr);
 
      
       const rr=document.createElement("div");
@@ -941,18 +947,19 @@ function loadData(){
     });
 
     data.totals.forEach(t => {
-     // 1. Add your new label "HIGHEST POSB. WIN" to this list so it turns GREEN
-     const green = ["TOTAL WIN", "HIGHEST POSB. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-     
-     // 2. I swapped the cells below. 
-     // We now use cells[1] for GBP (Pounds) and cells[0] for EUR (Euros)
-     weekly.innerHTML += `
-       <div class="week-row">
-         <div class="week-label">${t.label}</div>
-         <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
-         <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
-       </div>`;
-   });
+      // 1. Rename it purely for the display
+      let displayLabel = t.label;
+      if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
+
+      const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+      
+      weekly.innerHTML += `
+        <div class="week-row">
+          <div class="week-label">${displayLabel}</div>
+          <div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div>
+          <div class="week-eur">${formatEUR(t.cells[0].value)}</div>
+        </div>`;
+    });
 
     data.ranking.forEach((r,i)=>{
       const medals = ["🥇", "🥈", "🥉"];
@@ -1074,9 +1081,25 @@ function openModal(m) {
     container.innerHTML += html;
   });
 
-  document.getElementById("mScorers").innerHTML = s.scorers ? `<span style="color:#fff">${s.scorers}</span>` : `<span style="color:#9aa0a6">No Goals</span>`;
-  document.getElementById("mYellow").textContent = (s.yellow||0) + " Yellow Cards";
-  document.getElementById("mRed").textContent = (s.red||0) + " Red Cards";
+  // --- PARSE SCORERS ---
+  // They now look like "(H) Player, (A) Player"
+  const rawScorers = s.scorers ? s.scorers : "";
+  const formattedScorers = rawScorers.length > 0 ? rawScorers : "No Goals";
+
+  // --- PARSE CARDS ---
+  // Format is "Home-Away" (e.g., "3-2")
+  const formatCard = (val, label) => {
+    if(!val) return "0 " + label;
+    const parts = String(val).split("-");
+    if(parts.length === 2) {
+       return `H: ${parts[0]} - A: ${parts[1]} ${label}`;
+    }
+    return val + " " + label; // Fallback if old data format
+  };
+
+  document.getElementById("mScorers").innerHTML = `<span style="color:#fff">${formattedScorers}</span>`;
+  document.getElementById("mYellow").textContent = formatCard(s.yellow, "Yellow");
+  document.getElementById("mRed").textContent = formatCard(s.red, "Red");
 
   document.getElementById("matchModal").classList.add("active");
 }

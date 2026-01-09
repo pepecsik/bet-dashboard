@@ -324,20 +324,19 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: Flexible Columns to fit "HIGHEST POSB. WIN" without breaking layout */
+/* FIX: TWEAKED COLUMN SIZES FOR BETTER FIT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 1fr auto auto; /* 1. Flex Label, 2. Auto Width Numbers */
-  gap: 10px; /* Space between items */
+  grid-template-columns: 105px 1fr 60px; /* Label gets space, Pounds gets Flex, Euros fixed */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
-  padding:0 8px; /* More padding */
+  padding:0 6px; 
   margin-bottom:4px; font-size:11px; font-weight:700;
 }
-.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow:ellipsis; }
-.week-gbp { text-align: right; min-width:60px; }
-.week-eur { text-align: right; opacity:.6; min-width:60px; }
+.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.week-gbp { text-align: right; padding-right: 4px; }
+.week-eur { text-align: right; opacity:.6; }
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
@@ -512,26 +511,26 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-/* REMOVED TABS CSS, ADDED NEW STATS LAYOUT */
+/* MODAL SECTIONS */
 .modal-scroll-area {
   padding: 15px;
   overflow-y: auto;
   flex: 1;
 }
 
-/* Event List Styling */
+/* Event List Styling (Smaller) */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px; font-size: 12px; font-weight: 600; gap: 10px;
+  margin-bottom: 8px; font-size: 11px; font-weight: 600; gap: 10px; /* Smaller font */
 }
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 14px; margin: 0 4px; }
-.el-item { display: flex; align-items: center; }
+.el-icon { font-size: 12px; margin: 0 4px; } /* Smaller Icon */
+.el-item { display: flex; align-items: center; opacity: 0.9; }
 
 .divider-line { 
-  height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 15px 0; 
+  height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; 
 }
 
 .stat-row { margin-bottom: 12px; }
@@ -632,12 +631,12 @@ body{
        <div class="event-list-row" id="goalsArea"></div>
 
        <div class="divider-line"></div>
-
-       <div id="statsArea"></div>
+       
+       <div class="event-list-row" id="cardsArea"></div>
 
        <div class="divider-line"></div>
 
-       <div class="event-list-row" id="cardsArea"></div>
+       <div id="statsArea"></div>
     </div>
 
   </div>
@@ -942,8 +941,8 @@ function loadData(){
     });
 
     data.totals.forEach(t => {
-      let displayLabel = t.label;
-      if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
+      // Show exactly what the sheet sends
+      const displayLabel = t.label;
 
       const green = ["TOTAL WIN", "TOTAL WIN PP", "AVG. WIN", "HIGHEST POSB. WIN"].includes(displayLabel);
       
@@ -1022,7 +1021,7 @@ function openModal(m) {
   
   const s = m.stats || {};
   
-  // 1. SCORERS (Split into Left/Right)
+  // 1. SCORERS (Top)
   let homeScorers = [], awayScorers = [];
   if (s.scorers) {
     const list = s.scorers.split(",");
@@ -1038,7 +1037,29 @@ function openModal(m) {
   `;
   document.getElementById("goalsArea").innerHTML = goalsHtml;
 
-  // 2. STATS BARS
+  // 2. CARDS (Middle)
+  const parseCard = (val) => {
+     if(!val) return {h:0, a:0};
+     const p = String(val).split("-");
+     return { h: parseInt(p[0])||0, a: parseInt(p[1])||0 };
+  };
+  const y = parseCard(s.yellow);
+  const r = parseCard(s.red);
+
+  let hCards = "", aCards = "";
+  if(y.h > 0) hCards += `<div class="el-item">${y.h} <span class="el-icon">🟨</span></div>`;
+  if(r.h > 0) hCards += `<div class="el-item">${r.h} <span class="el-icon">🟥</span></div>`;
+  
+  if(y.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟨</span> ${y.a}</div>`;
+  if(r.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟥</span> ${r.a}</div>`;
+
+  const cardsHtml = `
+    <div class="el-home">${hCards || ""}</div>
+    <div class="el-away">${aCards || ""}</div>
+  `;
+  document.getElementById("cardsArea").innerHTML = cardsHtml;
+
+  // 3. STATS BARS (Bottom)
   const statsList = [
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
     { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
@@ -1078,29 +1099,6 @@ function openModal(m) {
       </div>
     `;
   });
-
-  // 3. CARDS (Split into Left/Right)
-  // Data comes in as "3-2" (Home-Away)
-  const parseCard = (val) => {
-     if(!val) return {h:0, a:0};
-     const p = String(val).split("-");
-     return { h: parseInt(p[0])||0, a: parseInt(p[1])||0 };
-  };
-  const y = parseCard(s.yellow);
-  const r = parseCard(s.red);
-
-  let hCards = "", aCards = "";
-  if(y.h > 0) hCards += `<div class="el-item">${y.h} <span class="el-icon">🟨</span></div>`;
-  if(r.h > 0) hCards += `<div class="el-item">${r.h} <span class="el-icon">🟥</span></div>`;
-  
-  if(y.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟨</span> ${y.a}</div>`;
-  if(r.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟥</span> ${r.a}</div>`;
-
-  const cardsHtml = `
-    <div class="el-home">${hCards || ""}</div>
-    <div class="el-away">${aCards || ""}</div>
-  `;
-  document.getElementById("cardsArea").innerHTML = cardsHtml;
 
   document.getElementById("matchModal").classList.add("active");
 }

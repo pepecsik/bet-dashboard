@@ -745,9 +745,6 @@ function renderTeam(raw, hasRed) {
     </div>`;
 }
 
-// === FIXED VARIABLES HERE ===
-let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null; 
-
 // === REQUEST NOTIFICATION PERMISSION ON FIRST CLICK ===
 document.body.addEventListener('click', () => {
   if ("Notification" in window && Notification.permission === "default") {

@@ -324,19 +324,20 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: INCREASED FIRST COLUMN WIDTH TO 120px to fit "HIGHEST POSB. WIN" */
+/* FIX: Flexible Columns to fit "HIGHEST POSB. WIN" without breaking layout */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  grid-template-columns: 120px 1fr 65px; /* Changed from 90px to 120px */
+  grid-template-columns: 1fr auto auto; /* 1. Flex Label, 2. Auto Width Numbers */
+  gap: 10px; /* Space between items */
   align-items:center;
   background:var(--bg-row); border-radius:8px;
-  padding:0 4px; 
+  padding:0 8px; /* More padding */
   margin-bottom:4px; font-size:11px; font-weight:700;
 }
-.week-label{ color:#fff; white-space: nowrap; overflow: hidden; }
-.week-gbp { text-align: right; padding-right: 6px; }
-.week-eur { text-align: right; opacity:.6; }
+.week-label{ color:#fff; white-space: nowrap; overflow: hidden; text-overflow:ellipsis; }
+.week-gbp { text-align: right; min-width:60px; }
+.week-eur { text-align: right; opacity:.6; min-width:60px; }
 .week-gbp.red{color:#ff4d4d}
 .week-gbp.green{color:#7CFF5B}
 
@@ -511,18 +512,27 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-.modal-tabs {
-  display: flex; background: var(--bg-row); p: 4px;
+/* REMOVED TABS CSS, ADDED NEW STATS LAYOUT */
+.modal-scroll-area {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
 }
-.tab-btn {
-  flex: 1; padding: 12px; text-align: center;
-  font-size: 12px; font-weight: 700; color: var(--text-muted);
-  cursor: pointer; border-bottom: 2px solid transparent;
-}
-.tab-btn.active { color: #fff; border-bottom-color: var(--accent-orange); background: rgba(255,255,255,0.03); }
 
-.tab-content { display: none; padding: 15px; overflow-y: auto; }
-.tab-content.active { display: block; }
+/* Event List Styling */
+.event-list-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 8px; font-size: 12px; font-weight: 600; gap: 10px;
+}
+.el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
+.el-home { text-align: right; align-items: flex-end; }
+.el-away { text-align: left; align-items: flex-start; }
+.el-icon { font-size: 14px; margin: 0 4px; }
+.el-item { display: flex; align-items: center; }
+
+.divider-line { 
+  height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 15px 0; 
+}
 
 .stat-row { margin-bottom: 12px; }
 .stat-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
@@ -533,10 +543,6 @@ body{
 .sb-track.home .sb-fill { position: absolute; right: 0; background: #fff; }
 .sb-track.away .sb-fill { position: absolute; left: 0; background: #fff; }
 .sb-fill.orange { background: var(--accent-orange) !important; box-shadow: 0 0 10px var(--accent-orange); }
-
-.event-item { display: flex; gap: 10px; padding: 10px; background: var(--bg-soft); border-radius: 8px; margin-bottom: 6px; align-items: center; }
-.event-icon { font-size: 18px; }
-.event-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 
 .tbl-grid { 
   display: grid; 
@@ -621,17 +627,17 @@ body{
       <div class="modal-sub" id="mStatus">19:30</div>
     </div>
 
-    <div class="modal-tabs">
-      <div class="tab-btn active" onclick="switchTab('stats', event)">Stats</div>
-      <div class="tab-btn" onclick="switchTab('summary', event)">Summary</div>
-    </div>
+    <div class="modal-scroll-area">
+       
+       <div class="event-list-row" id="goalsArea"></div>
 
-    <div id="tab-stats" class="tab-content active"></div>
+       <div class="divider-line"></div>
 
-    <div id="tab-summary" class="tab-content">
-      <div class="event-item"><div class="event-icon">⚽</div><div class="event-text" id="mScorers">-</div></div>
-      <div class="event-item"><div class="event-icon">🟨</div><div class="event-text" id="mYellow">0 Yellow</div></div>
-      <div class="event-item"><div class="event-icon">🟥</div><div class="event-text" id="mRed">0 Red</div></div>
+       <div id="statsArea"></div>
+
+       <div class="divider-line"></div>
+
+       <div class="event-list-row" id="cardsArea"></div>
     </div>
 
   </div>
@@ -697,7 +703,6 @@ function renderTeam(raw, hasRed) {
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g, "");
   const logo = TEAM_LOGOS[code];
    
-  // Create the red card badge if hasRed is true
   const badge = hasRed ? '<div class="rc-badge"></div>' : '';
 
   if (!logo) return `<div class="team-wrapper"><span class="team-fallback">${code}</span>${badge}</div>`;
@@ -800,7 +805,6 @@ function loadData(){
     const headerRow = document.createElement("div");
     headerRow.className = "row";
     
-    // Helper: Is this color a "Winning Green"? 
     const isWinningGreen = (hex) => {
         if(!hex) return false;
         const h = hex.toLowerCase();
@@ -809,17 +813,15 @@ function loadData(){
 
     data.headers.forEach((currentHeader, i) => {
        const currentName = currentHeader.name; 
-       const sheetStatus = currentHeader.status; // Header color status (orange/red)
+       const sheetStatus = currentHeader.status; 
        
        let totalWinAmount = 0;
        
-       // STRICT FLAGS
-       let colPendingMatches = 0;      // How many games are NOT FT?
-       let colHasBets = false;         // Is there data in this column?
-       let allBetsAreGreen = true;     // Are ALL cells in this column green?
-       let hasRed = false;             // Is there a loser?
+       let colPendingMatches = 0;      
+       let colHasBets = false;         
+       let allBetsAreGreen = true;     
+       let hasRed = false;             
 
-       // Scan matches for this column
        data.matches.forEach(m => {
           const cell = m.cells[i];
           const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
@@ -827,36 +829,29 @@ function loadData(){
           if(!cell || !cell.value) return; 
           colHasBets = true;
 
-          // 1. Strict Green Check: If ANY cell is not green, this flag dies.
           if (!isWinningGreen(cell.color)) {
               allBetsAreGreen = false;
           }
 
-          // 2. Red Check
           if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
              hasRed = true;
           }
           
-          // 3. Count Pending Matches
           if(matchStatus !== "FT") {
              colPendingMatches++;
           }
        });
 
-       // Logic Calculation:
-       // If empty column, ignore.
        if(colHasBets) {
           if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
               totalWinAmount += (data.betSummary[1].cells[i].value || 0);
           }
        }
 
-       // Create Header Pill
        const p = document.createElement("div");
        p.className = "header-pill";
        p.textContent = currentName;
        
-       // 1. ACTUAL WINNER: All Bets Green AND All Games Finished (0 Pending)
        if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches === 0) {
             p.classList.add("status-green");
             setTimeout(() => { 
@@ -864,12 +859,9 @@ function loadData(){
                 showBigWin(formatGBP(totalWinAmount)); 
             }, 500); 
        } 
-       // 2. LIVE WINNER: All Bets Green BUT Games still playing
        else if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches > 0) {
-            p.classList.add("status-green-live"); // Heartbeat only
+            p.classList.add("status-green-live");
        }
-       // 3. Fallback to Sheet Header Color (Orange/Red)
-       // This happens if bets are NOT all green yet.
        else if (sheetStatus === 'orange') {
             p.classList.add("status-orange");
        }
@@ -898,14 +890,10 @@ function loadData(){
       const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
       const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-      // --- CHECK FOR RED CARDS (FIXED: Added Safety Check) ---
       let hRed = false, aRed = false;
-
-      // Ensure stats exists before checking
       const s = m.stats || {}; 
 
       if (s.red) {
-        // Handle "1-0" format or just numbers just in case
         if (String(s.red).includes("-")) {
             const parts = String(s.red).split("-"); 
             if (parts.length === 2) {
@@ -954,7 +942,6 @@ function loadData(){
     });
 
     data.totals.forEach(t => {
-      // 1. Rename it purely for the display
       let displayLabel = t.label;
       if (displayLabel === "TOTAL WIN") displayLabel = "HIGHEST POSB. WIN";
 
@@ -1022,13 +1009,6 @@ function fireScreenBlaster(element) {
   }());
 }
 
-function switchTab(tab, e) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  e.target.classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
-}
-
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   document.getElementById("mTitle").innerHTML = `
@@ -1041,15 +1021,32 @@ function openModal(m) {
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
   const s = m.stats || {};
+  
+  // 1. SCORERS (Split into Left/Right)
+  let homeScorers = [], awayScorers = [];
+  if (s.scorers) {
+    const list = s.scorers.split(",");
+    list.forEach(item => {
+        item = item.trim();
+        if (item.includes("(H)")) homeScorers.push(`<div class="el-item">${item.replace("(H)","").trim()} <span class="el-icon">⚽</span></div>`);
+        if (item.includes("(A)")) awayScorers.push(`<div class="el-item"><span class="el-icon">⚽</span> ${item.replace("(A)","").trim()}</div>`);
+    });
+  }
+  const goalsHtml = `
+    <div class="el-home">${homeScorers.length ? homeScorers.join("") : ""}</div>
+    <div class="el-away">${awayScorers.length ? awayScorers.join("") : ""}</div>
+  `;
+  document.getElementById("goalsArea").innerHTML = goalsHtml;
+
+  // 2. STATS BARS
   const statsList = [
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
     { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
     { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
     { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
   ];
-
-  const container = document.getElementById("tab-stats");
-  container.innerHTML = ""; 
+  const statsArea = document.getElementById("statsArea");
+  statsArea.innerHTML = "";
 
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
@@ -1064,11 +1061,10 @@ function openModal(m) {
 
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
-
     const hText = stat.isPct ? stat.h + "%" : stat.h;
     const aText = stat.isPct ? stat.a + "%" : stat.a;
 
-    const html = `
+    statsArea.innerHTML += `
       <div class="stat-row">
         <div class="stat-label">
           <span>${hText}</span>
@@ -1076,38 +1072,41 @@ function openModal(m) {
           <span>${aText}</span>
         </div>
         <div class="stat-bar-container">
-          <div class="sb-track home">
-            <div class="sb-fill ${hColor}" style="width:${hPct}%"></div>
-          </div>
-          <div class="sb-track away">
-            <div class="sb-fill ${aColor}" style="width:${aPct}%"></div>
-          </div>
+          <div class="sb-track home"><div class="sb-fill ${hColor}" style="width:${hPct}%"></div></div>
+          <div class="sb-track away"><div class="sb-fill ${aColor}" style="width:${aPct}%"></div></div>
         </div>
       </div>
     `;
-    container.innerHTML += html;
   });
 
-  // --- PARSE SCORERS ---
-  const rawScorers = s.scorers ? s.scorers : "";
-  const formattedScorers = rawScorers.length > 0 ? rawScorers : "No Goals";
-
-  // --- PARSE CARDS ---
-  // Format is "Home-Away" (e.g., "3-2")
-  const formatCard = (val, label) => {
-    if(!val) return "0 " + label;
-    const parts = String(val).split("-");
-    if(parts.length === 2) {
-       return `H: ${parts[0]} - A: ${parts[1]} ${label}`;
-    }
-    return val + " " + label; // Fallback if old data format
+  // 3. CARDS (Split into Left/Right)
+  // Data comes in as "3-2" (Home-Away)
+  const parseCard = (val) => {
+     if(!val) return {h:0, a:0};
+     const p = String(val).split("-");
+     return { h: parseInt(p[0])||0, a: parseInt(p[1])||0 };
   };
+  const y = parseCard(s.yellow);
+  const r = parseCard(s.red);
 
-  document.getElementById("mScorers").innerHTML = `<span style="color:#fff">${formattedScorers}</span>`;
-  document.getElementById("mYellow").textContent = formatCard(s.yellow, "Yellow");
-  document.getElementById("mRed").textContent = formatCard(s.red, "Red");
+  let hCards = "", aCards = "";
+  if(y.h > 0) hCards += `<div class="el-item">${y.h} <span class="el-icon">🟨</span></div>`;
+  if(r.h > 0) hCards += `<div class="el-item">${r.h} <span class="el-icon">🟥</span></div>`;
+  
+  if(y.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟨</span> ${y.a}</div>`;
+  if(r.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟥</span> ${r.a}</div>`;
+
+  const cardsHtml = `
+    <div class="el-home">${hCards || ""}</div>
+    <div class="el-away">${aCards || ""}</div>
+  `;
+  document.getElementById("cardsArea").innerHTML = cardsHtml;
 
   document.getElementById("matchModal").classList.add("active");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("active");
 }
 
 function openTable() {
@@ -1141,10 +1140,6 @@ function openTable() {
     });
   }
   document.getElementById("tableModal").classList.add("active");
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
 }
 
 renderSkeletons();

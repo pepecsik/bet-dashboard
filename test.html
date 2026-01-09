@@ -683,6 +683,9 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
+ // === MISSING VARIABLE FIX ===
+let prevMatches = {}, chartDataCache=null, historyChart=null, tableCache=null;
+
 // HELPER: EURO CURRENCY PARSER
 const parseMoney = (v) => {
   if (typeof v === 'number') return v;

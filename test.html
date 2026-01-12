@@ -1080,17 +1080,19 @@ function toTitleCase(str) {
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   
-  // --- SAFE JSON PARSING ---
-  // This ensures that even if data comes as string or list, we handle it.
+  // --- 1. SAFE DATA DECODING ---
   const s = m.stats || {};
+  
+  // Ensure players are arrays (even if empty)
   if (typeof s.h_players === 'string') {
       try { s.h_players = JSON.parse(s.h_players); } catch(e) { s.h_players = []; }
   }
   if (typeof s.a_players === 'string') {
       try { s.a_players = JSON.parse(s.a_players); } catch(e) { s.a_players = []; }
   }
-  // -------------------------
+  // -----------------------------
 
+  // TITLE
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
        <div style="transform:scale(1.3);">${renderTeam(homeCode)}</div>
@@ -1100,7 +1102,7 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
-  // 1. SCORERS (Top)
+  // SCORERS
   let homeScorers = [], awayScorers = [];
   if (s.scorers) {
     const list = s.scorers.split(",");
@@ -1108,18 +1110,16 @@ function openModal(m) {
         item = item.trim();
         let cleanName = item.replace("(H)","").replace("(A)","").trim();
         cleanName = toTitleCase(cleanName);
-
         if (item.includes("(H)")) homeScorers.push(`<div class="el-item">${cleanName} <span class="el-icon">⚽</span></div>`);
         if (item.includes("(A)")) awayScorers.push(`<div class="el-item"><span class="el-icon">⚽</span> ${cleanName}</div>`);
     });
   }
-  const goalsHtml = `
-    <div class="el-home">${homeScorers.length ? homeScorers.join("") : ""}</div>
-    <div class="el-away">${awayScorers.length ? awayScorers.join("") : ""}</div>
+  document.getElementById("goalsArea").innerHTML = `
+    <div class="el-home">${homeScorers.join("")}</div>
+    <div class="el-away">${awayScorers.join("")}</div>
   `;
-  document.getElementById("goalsArea").innerHTML = goalsHtml;
 
-  // 2. CARDS (Middle)
+  // CARDS
   const parseCard = (val) => {
      if(!val) return {h:0, a:0};
      const p = String(val).split("-");
@@ -1127,37 +1127,39 @@ function openModal(m) {
   };
   const y = parseCard(s.yellow);
   const r = parseCard(s.red);
-
   let hCards = "", aCards = "";
   if(y.h > 0) hCards += `<div class="el-item">${y.h} <span class="el-icon">🟨</span></div>`;
   if(r.h > 0) hCards += `<div class="el-item">${r.h} <span class="el-icon">🟥</span></div>`;
-  
   if(y.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟨</span> ${y.a}</div>`;
   if(r.a > 0) aCards += `<div class="el-item"><span class="el-icon">🟥</span> ${r.a}</div>`;
-
-  const cardsHtml = `
-    <div class="el-home">${hCards || ""}</div>
-    <div class="el-away">${aCards || ""}</div>
+  document.getElementById("cardsArea").innerHTML = `
+    <div class="el-home">${hCards}</div>
+    <div class="el-away">${aCards}</div>
   `;
-  document.getElementById("cardsArea").innerHTML = cardsHtml;
 
-  // 3. STATS CONTAINER
+  // --- STATS CONTAINER START ---
   const statsContainer = document.getElementById("statsArea");
-  statsContainer.innerHTML = ""; // Reset
+  statsContainer.innerHTML = ""; 
 
-  // --- NEW: PLAYERS SECTION ---
+  // --- PLAYERS SECTION ---
   if (s.h_players && s.h_players.length > 0) {
     const renderP = (pList) => {
       if(!pList) return "";
-      return pList.map(p => `
+      return pList.map(p => {
+        // Safe Rating Logic
+        let ratingVal = parseFloat(p.rating);
+        if (isNaN(ratingVal)) ratingVal = 0;
+        const ratingDisplay = ratingVal > 0 ? ratingVal.toFixed(1) : "-";
+        
+        return `
         <div class="p-card">
           <div class="p-info">
             <img src="${p.photo}" class="p-img" onerror="this.style.display='none'">
             <span class="p-name">${p.name}</span>
           </div>
-          <div class="p-rating ${parseFloat(p.rating) >= 7.5 ? 'rat-high' : ''}">${parseFloat(p.rating).toFixed(1)}</div>
+          <div class="p-rating ${ratingVal >= 7.5 ? 'rat-high' : ''}">${ratingDisplay}</div>
         </div>
-      `).join("");
+      `}).join("");
     };
 
     const pHtml = `
@@ -1171,9 +1173,9 @@ function openModal(m) {
     statsContainer.innerHTML += pHtml;
   }
 
-  // --- UPDATED STATS BARS (with xG) ---
+  // --- STATS BARS ---
   const statsList = [
-    { label: "Expected Goals (xG)", h: s.h_xg || 0, a: s.a_xg || 0, isDec: true }, // NEW
+    { label: "Expected Goals (xG)", h: s.h_xg || 0, a: s.a_xg || 0, isDec: true }, 
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
     { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
     { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
@@ -1189,7 +1191,8 @@ function openModal(m) {
       hPct = (stat.h / total) * 100;
       aPct = (stat.a / total) * 100;
       if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; }
-      // Special logic for decimal stats (xG) to visualise properly
+      
+      // xG Logic (Decimal)
       if(stat.isDec) { 
         let cleanH = parseFloat(stat.h), cleanA = parseFloat(stat.a);
         hPct = (cleanH / (cleanH + cleanA + 0.0001)) * 100; 
@@ -1200,7 +1203,6 @@ function openModal(m) {
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
     
-    // Text Formatting
     let hText = stat.h;
     let aText = stat.a;
     if(stat.isPct) { hText += "%"; aText += "%"; }
@@ -1223,6 +1225,9 @@ function openModal(m) {
       </div>
     `;
   });
+
+  document.getElementById("matchModal").classList.add("active");
+}
 
   document.getElementById("matchModal").classList.add("active");
 }

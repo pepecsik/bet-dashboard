@@ -498,7 +498,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V7.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V8.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -518,7 +518,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V7.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V8.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -574,8 +574,8 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
-            // FIX SWAPPED CURRENCY IN SUMMARY (Reverse back to vE/vD)
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
+            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
+            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
         }
         if(data.ranking) {
             data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
@@ -603,7 +603,7 @@ function switchTab(t){
 }
 
 function openModal(m){
-  document.getElementById('playerPopup').style.display = 'none'; // RESET POPUP
+  document.getElementById('playerPopup').style.display = 'none'; 
   const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
   const s=m.stats||{};
   switchTab('stats'); 
@@ -611,26 +611,24 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.3);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.3);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  generateStory(hCode, aCode, s, m.score, m.status);
+  // === AI NARRATIVE GENERATOR (V7.0) ===
+  try {
+      generateStory(hCode, aCode, s, m.score, m.status);
+  } catch(e) {
+      document.getElementById("aiSummaryText").innerHTML = "Waiting for game analysis...";
+  }
 
-  // 1. STATS - GROUPED GOALS
+  // 1. STATS - GROUPED GOALS & RED CARDS
   let hG=[], aG=[];
   let goalsMap = {}; 
   if(s.events){
       s.events.forEach(e => {
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = e.player.trim();
-             
-             // --- IMPROVED HOME/AWAY DETECTION ---
+             // Determine Home/Away
              let isH = null;
              if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
              else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
-             
-             // Fallback
-             if(isH === null && s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
-                 else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
-             }
              if(isH === null) isH = true; 
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail };
@@ -658,17 +656,6 @@ function openModal(m){
       }
   });
 
-  if(Object.keys(goalsMap).length === 0 && s.scorers) {
-       s.scorers.split(",").forEach(i=>{
-          let raw = i.trim(); if(!raw) return;
-          let isHome = raw.includes("(H)");
-          let name = formatName(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim());
-          let html = "";
-          if(isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-icon">⚽</span></div>`;
-          else html = `<div class="el-item"><span class="el-icon">⚽</span> <span>${name}</span></div>`;
-          if(isHome) hG.push(html); else aG.push(html);
-      });
-  }
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
   // STATS BARS
@@ -706,9 +693,9 @@ function openModal(m){
 
       lines.forEach((line, rIdx) => {
           let yPct = 0;
-          if(isHome) { // Top
+          if(isHome) { 
              if(rIdx===0) yPct=5; else if(rIdx===1) yPct=22; else if(rIdx===2) yPct=36; else yPct=46; 
-          } else { // Bottom
+          } else { 
              if(rIdx===0) yPct=95; else if(rIdx===1) yPct=78; else if(rIdx===2) yPct=64; else yPct=54; 
           }
           
@@ -781,8 +768,7 @@ function openModal(m){
         let isH = null;
         if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
         else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
-        
-        if(isH === null) isH = true; // Fallback
+        if(isH === null) isH = true; 
 
         let icon="•";
         let detail = e.detail || "";
@@ -817,102 +803,57 @@ function openModal(m){
 // === ADVANCED NARRATIVE GENERATOR ===
 function generateStory(home, away, stats, score, status) {
     const el = document.getElementById("aiSummaryText");
+    if(status === "NS") {
+        el.innerHTML = `Kick-off is coming soon. The teams are in the tunnel. Check lineups for tactical setups.`;
+        return;
+    }
+
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
-
+    
+    // HEADLINE
     let story = "";
-    const lead = hG - aG;
-
-    // 1. HEADLINE & STATE
     if(status === "FT") {
-        story += `<b>FULL TIME REPORT:</b> `;
-        if(lead > 0) story += `A decisive performance from ${home} sees them take all three points against ${away}. `;
-        else if(lead < 0) story += `${away} emerge victorious after a hard-fought battle away at ${home}. `;
-        else story += `Nothing to separate the two sides as ${home} and ${away} play out a draw. `;
+       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim a massive victory against ${away}. The home side managed the game perfectly to take all three points. `;
+       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} stun the hosts with a brilliant away performance. ${home} will be disappointed with the result. `;
+       else story = `<b>FULL TIME:</b> It ends in a stalemate as neither ${home} nor ${away} could find the winner. A hard-fought point for both. `;
     } else if (status === "HT") {
-        story += `<b>HALF TIME UPDATE:</b> The players head into the tunnel with the score at ${hG}-${aG}. `;
+        story += `<b>HALF TIME:</b> The referee blows the whistle for the break with the score at ${hG}-${aG}. Both managers will have plenty to say in the dressing room. `;
     } else {
-        story += `<b>LIVE MATCH UPDATE (${time}'):</b> We are deep into the action here. `;
-        if(lead > 0) story += `${home} currently hold the advantage, leading ${hG}-${aG}. `;
-        else if(lead < 0) story += `${away} are currently in front, leading ${aG}-${hG} on the road. `;
-        else story += `It remains all square at ${hG}-${hG} as both teams look for a breakthrough. `;
+        story += `<b>LIVE ${time}':</b> We are deep into the action here at the stadium. `;
+        if(hG > aG + 1) story += `${home} are in cruise control, dominating proceedings with a ${hG}-${aG} lead. `;
+        else if(aG > hG + 1) story += `${away} have silenced the home crowd, racing into a ${aG}-${hG} lead. `;
+        else if(hG !== aG) story += `It's a tight affair with everything still to play for, current score ${hG}-${aG}. `;
+        else story += `The deadlock remains unbroken as both teams search for that crucial opening goal. `;
     }
 
     story += "<br><br>";
 
-    // 2. TACTICAL ANALYSIS (Possession & xG)
-    story += `<b>📊 Tactical Analysis:</b> `;
-    const totalPoss = stats.h_poss + stats.a_poss;
-    const hPoss = totalPoss > 0 ? stats.h_poss : 50; // Handle 0 data
+    // TACTICAL CONTEXT
+    let hPoss = stats.h_poss || 50;
+    if(hPoss > 60) story += `${home} have controlled the tempo with ${hPoss}% possession, forcing ${away} to sit deep and absorb pressure. `;
+    else if(hPoss < 40) story += `${away} have dictated play with the ball (${100-hPoss}% possession), while ${home} look to hit on the counter-attack. `;
+    else story += `It has been an even contest in midfield, with possession split ${hPoss}% to ${100-hPoss}%. `;
 
-    if(hPoss > 60) {
-        story += `${home} have dominated the ball with ${hPoss}% possession, trying to break down ${away}'s defensive shape. `;
-        if(lead < 0) story += `However, possession hasn't translated into goals, as ${away} have been lethal on the counter. `;
-    } else if(hPoss < 40) {
-        story += `${away} are controlling the tempo with ${100-hPoss}% possession, forcing ${home} to sit deep and absorb pressure. `;
-    } else {
-        story += `Possession has been fairly even (${hPoss}% vs ${100-hPoss}%), resulting in a tense tactical battle in midfield. `;
-    }
+    let xgDiff = (stats.h_xg - stats.a_xg);
+    if(xgDiff > 0.5) story += `${home} have created the higher quality chances (xG ${stats.h_xg.toFixed(2)}), constantly threatening the opposition goal. `;
+    else if(xgDiff < -0.5) story += `${away} have been the more dangerous side in the final third (xG ${stats.a_xg.toFixed(2)}). `;
 
-    // xG Narrative
-    const xgDiff = stats.h_xg - stats.a_xg;
-    story += `In terms of chance quality, `;
-    if(xgDiff > 0.8) {
-        story += `${home} have been far superior (xG ${stats.h_xg.toFixed(2)} vs ${stats.a_xg.toFixed(2)}). `;
-        if(lead <= 0) story += `It is a mystery how they aren't winning; they need to be more clinical in front of goal. `;
-        else story += `Their lead is fully deserved based on the quality of chances created. `;
-    } else if(xgDiff < -0.8) {
-        story += `${away} have created the clearer openings (xG ${stats.a_xg.toFixed(2)}). `;
-        if(lead >= 0) story += `${home} are riding their luck and relying on poor finishing from the visitors. `;
-        else story += `They are good value for their lead. `;
-    } else {
-        story += `there is very little between the sides (xG ${stats.h_xg.toFixed(2)} - ${stats.a_xg.toFixed(2)}), with defences on top. `;
-    }
+    // CARDS
+    if(stats.h_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game changed when ${home} were reduced to 10 men. `;
+    if(stats.a_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle after seeing red. `;
 
-    story += "<br><br>";
-
-    // 3. MOMENTUM & PRESSURE (Shots & Corners)
-    story += `<b>🔥 Momentum & Pressure:</b> `;
-    const hShots = stats.h_shots_tot || 0;
-    const aShots = stats.a_shots_tot || 0;
-    const hCorners = stats.h_corners || 0;
-    const aCorners = stats.a_corners || 0;
-
-    if(hShots > aShots + 5) {
-        story += `${home} are peppering the goal with ${hShots} shots compared to ${away}'s ${aShots}. `;
-    } else if(aShots > hShots + 5) {
-        story += `${away} are the more aggressive side, registering ${aShots} attempts. `;
-    } else {
-        story += `Both teams are trading blows with a similar number of attempts (${hShots} vs ${aShots}). `;
-    }
-
-    if(hCorners > 5 || aCorners > 5) {
-        if(hCorners > aCorners) story += `${home} are applying pressure through set-pieces with ${hCorners} corners so far. `;
-        else story += `${away} look dangerous from the corner flag, racking up ${aCorners} corners. `;
-    }
-
-    // 4. KEY PERFORMER
+    // STAR PLAYER
     let bestPlayer = null;
     let highestRat = 0;
-    let bestStats = {};
     if(stats.players && stats.players.h) {
         [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
         });
     }
 
     if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>Star Man:</b> The standout performer has been <b>${formatName(bestPlayer)}</b> (${highestRat.toFixed(1)} Rating). `;
-        // Add specific stats if available
-        let extras = [];
-        if(bestStats.goals > 0) extras.push(`${bestStats.goals} goal(s)`);
-        if(bestStats.assists > 0) extras.push(`${bestStats.assists} assist(s)`);
-        if(bestStats.key_passes > 1) extras.push(`${bestStats.key_passes} key passes`);
-        if(bestStats.saves > 2) extras.push(`${bestStats.saves} saves`);
-        if(bestStats.tackles > 2) extras.push(`${bestStats.tackles} tackles`);
-        
-        if(extras.length > 0) story += `He has contributed ${extras.join(", ")} to the cause.`;
-        else story += `He is influencing the game all over the pitch.`;
+        story += `<br><br>🌟 <b>Man of the Moment:</b> <b>${formatName(bestPlayer)}</b> is running the show with a superb rating of ${highestRat.toFixed(1)}.`;
     }
 
     el.innerHTML = story;
@@ -936,7 +877,6 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
-    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
     if(goals === undefined) {
        goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;

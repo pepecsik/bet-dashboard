@@ -1080,7 +1080,7 @@ function toTitleCase(str) {
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   
-  // --- 1. SAFE DATA DECODING ---
+  // --- SAFE DATA DECODING ---
   const s = m.stats || {};
   
   // Ensure players are arrays (even if empty)
@@ -1225,9 +1225,6 @@ function openModal(m) {
       </div>
     `;
   });
-
-  document.getElementById("matchModal").classList.add("active");
-}
 
   document.getElementById("matchModal").classList.add("active");
 }

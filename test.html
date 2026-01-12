@@ -12,19 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Juice Bets">
 
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png">
-<link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png">
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/bet-dashboard/sw.js");
-  });
-}
-</script>
- 
 <title>Bet Dashboard</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -698,7 +688,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 // SKELETONS
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"> <span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">v2</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -708,83 +698,111 @@ function renderSkeletons(){
 // DATA LOADER
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
+    // --- 1. SETUP ---
     const left=document.getElementById("left"),right=document.getElementById("right"),weekly=document.getElementById("weeklyCard"),ranking=document.getElementById("rankingBody");
     left.innerHTML="";right.innerHTML="";weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';ranking.innerHTML="";
     if(data.chartData)chartDataCache=data.chartData;if(data.leagueTable)tableCache=data.leagueTable;
 
     // NOTIFICATIONS
-    if(Notification.permission==="granted"){data.matches.forEach(m=>{const id=m.match,oldM=prevMatches[id];if(oldM){if(m.score!==oldM.score&&m.status!=="NS"){new Notification("Goal! ⚽",{body:`${m.match}\n${m.score}`,icon:"/apple-touch-icon.png",tag:id})}const newRed=m.stats?.h_cards+m.stats?.a_cards,oldRed=oldM.stats?.h_cards+oldM.stats?.a_cards;if(newRed>oldRed){new Notification("Card! 🟥",{body:`${m.match}`,tag:id+"_red"})}}});data.matches.forEach(m=>{prevMatches[m.match]={score:m.score,status:m.status,stats:JSON.parse(JSON.stringify(m.stats||{}))}})}
+    if(Notification.permission==="granted"){
+      try {
+        data.matches.forEach(m=>{const id=m.match,oldM=prevMatches[id];if(oldM){if(m.score!==oldM.score&&m.status!=="NS"){new Notification("Goal! ⚽",{body:`${m.match}\n${m.score}`,icon:"/apple-touch-icon.png",tag:id})}const newRed=m.stats?.h_cards+m.stats?.a_cards,oldRed=oldM.stats?.h_cards+oldM.stats?.a_cards;if(newRed>oldRed){new Notification("Card! 🟥",{body:`${m.match}`,tag:id+"_red"})}}});data.matches.forEach(m=>{prevMatches[m.match]={score:m.score,status:m.status,stats:JSON.parse(JSON.stringify(m.stats||{}))}});
+      } catch(e){console.log("Notification Error", e)}
+    }
 
-    // HEADER
+    // --- 2. HEADER ---
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+    // ADDED "v2" INDICATOR HERE
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">v2</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
-    // COLUMNS
-    const headerRow=document.createElement("div");headerRow.className="row";
-    const isWinningGreen=h=>{if(!h)return false;const l=h.toLowerCase();return ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(l)};
-    data.headers.forEach((h,i)=>{
-       let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-       data.matches.forEach(m=>{const c=m.cells[i],st=m.status?m.status.trim().toUpperCase():"";if(!c||!c.value)return;hasB=true;if(!isWinningGreen(c.color))allG=false;if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;if(st!=="FT")pen++});
-       if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i])tot+=(data.betSummary[1].cells[i].value||0);
-       const p=document.createElement("div");p.className="header-pill";p.textContent=h.name;
-       if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");const k=`win_${h.name}_${tot}`;if(Notification.permission==="granted"&&!sessionStorage.getItem(k)){new Notification("💰 BET WON!",{body:`${h.name} won ${formatGBP(tot)}`,icon:"/apple-touch-icon.png"});sessionStorage.setItem(k,"true")}setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
-       else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
-       else if(h.status==='orange')p.classList.add("status-orange");
-       else if(h.status==='red')p.classList.add("status-red");
-       headerRow.appendChild(p);
-    });
-    right.appendChild(headerRow);right.appendChild(document.createElement("div")).className="right-divider";
-
-    // MATCHES
-    data.matches.forEach(m=>{
-      const lr=document.createElement("div");lr.className="left-row";lr.style.cursor="pointer";lr.onclick=()=>openModal(m);
-      const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
-      const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-      const isNS=m.status==="NS";
-      
-      // Fix Kickoff Time
-      let displayStatus = m.status;
-      if(isNS && m.date) {
-        const d = new Date(m.date);
-        displayStatus = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-      }
-
-      // Fix Red Cards
-      let hRed = false, aRed = false;
-      if(m.stats){
-         hRed = (m.stats.h_red || 0) > 0;
-         aRed = (m.stats.a_red || 0) > 0;
-      }
-
-      const bc=live?"#7CFF5B":"#9aa0a6",bg=live?"rgba(124,255,91,0.15)":"transparent",bb=live?"1px solid #7CFF5B":"1px solid transparent";
-      lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h, hRed)}<span>-</span>${renderTeam(a, aRed)}</div></div><div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
-      left.appendChild(lr);
-      const rr=document.createElement("div");rr.className="row";
-      m.cells.forEach(c=>{const el=document.createElement("div");el.className="bet";if(c.value){el.textContent=c.value;el.style.background=c.color}rr.appendChild(el)});
-      right.appendChild(rr);
-    });
-    left.appendChild(document.createElement("div")).className="left-divider";right.appendChild(document.createElement("div")).className="right-divider";
-
-    // SUMMARY & TOTALS (FIXED CRASH)
-    if(data.betSummary) {
-        ["BET","WIN","WIN PP"].forEach((l,i)=>{
-            const lb=document.createElement("div");lb.className="left-label";lb.textContent=l;left.appendChild(lb);
-            const rr=document.createElement("div");rr.className="row";
-            if(data.betSummary[i] && data.betSummary[i].cells) {
-                data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
-            }
-            right.appendChild(rr);
+    // --- 3. MATCHES LOOP (Guard against crashing) ---
+    try {
+        const headerRow=document.createElement("div");headerRow.className="row";
+        const isWinningGreen=h=>{if(!h)return false;const l=h.toLowerCase();return ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(l)};
+        
+        data.headers.forEach((h,i)=>{
+           let tot=0,pen=0,hasB=false,allG=true,hasR=false;
+           data.matches.forEach(m=>{const c=m.cells[i],st=m.status?m.status.trim().toUpperCase():"";if(!c||!c.value)return;hasB=true;if(!isWinningGreen(c.color))allG=false;if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;if(st!=="FT")pen++});
+           // SAFETY CHECK ON BET SUMMARY
+           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells&&data.betSummary[1].cells[i]) {
+               tot+=(data.betSummary[1].cells[i].value||0);
+           }
+           const p=document.createElement("div");p.className="header-pill";p.textContent=h.name;
+           if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");const k=`win_${h.name}_${tot}`;if(Notification.permission==="granted"&&!sessionStorage.getItem(k)){new Notification("💰 BET WON!",{body:`${h.name} won ${formatGBP(tot)}`,icon:"/apple-touch-icon.png"});sessionStorage.setItem(k,"true")}setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
+           else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
+           else if(h.status==='orange')p.classList.add("status-orange");
+           else if(h.status==='red')p.classList.add("status-red");
+           headerRow.appendChild(p);
         });
-    }
-    
-    if(data.totals) {
-        data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[1]?.value||0,vE=t.cells[0]?.value||0;weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
+        right.appendChild(headerRow);right.appendChild(document.createElement("div")).className="right-divider";
+
+        data.matches.forEach(m=>{
+          const lr=document.createElement("div");lr.className="left-row";lr.style.cursor="pointer";lr.onclick=()=>openModal(m);
+          const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
+          const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
+          const isNS=m.status==="NS";
+          
+          // FIX KICK OFF
+          let displayStatus = m.status;
+          if(isNS && m.startTime) {
+             // If API provides startTime specifically
+             displayStatus = m.startTime;
+          } else if (isNS && m.date) {
+             const d = new Date(m.date);
+             if(!isNaN(d.getTime())) {
+                displayStatus = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+             }
+          }
+
+          // FIX RED CARDS (Check existence of stats)
+          let hRed = false, aRed = false;
+          if(m.stats){
+             hRed = (m.stats.h_red || 0) > 0;
+             aRed = (m.stats.a_red || 0) > 0;
+          }
+
+          const bc=live?"#7CFF5B":"#9aa0a6",bg=live?"rgba(124,255,91,0.15)":"transparent",bb=live?"1px solid #7CFF5B":"1px solid transparent";
+          // PASS RED CARD FLAGS TO RENDERTEAM
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h, hRed)}<span>-</span>${renderTeam(a, aRed)}</div></div><div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
+          left.appendChild(lr);
+          const rr=document.createElement("div");rr.className="row";
+          m.cells.forEach(c=>{const el=document.createElement("div");el.className="bet";if(c.value){el.textContent=c.value;el.style.background=c.color}rr.appendChild(el)});
+          right.appendChild(rr);
+        });
+        left.appendChild(document.createElement("div")).className="left-divider";right.appendChild(document.createElement("div")).className="right-divider";
+    } catch(err) {
+        console.error("Rendering Matches Error:", err);
     }
 
-    if(data.ranking) {
-        data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
+    // --- 4. BOTTOM CARD LOOP (Crash Guarded) ---
+    try {
+        if(data.betSummary && Array.isArray(data.betSummary)) {
+            ["BET","WIN","WIN PP"].forEach((l,i)=>{
+                const lb=document.createElement("div");lb.className="left-label";lb.textContent=l;left.appendChild(lb);
+                const rr=document.createElement("div");rr.className="row";
+                // Safety check if the row exists
+                if(data.betSummary[i] && data.betSummary[i].cells) {
+                    data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
+                }
+                right.appendChild(rr);
+            });
+        }
+        
+        if(data.totals) {
+            data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[1]?.value||0,vE=t.cells[0]?.value||0;weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
+        }
+
+        if(data.ranking) {
+            data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
+        }
+    } catch(err) {
+        console.error("Rendering Bottom Card Error:", err);
     }
+
+  }).catch(e=>{
+      console.error("Major API Error:", e);
+      // Optional: Show error on screen
   });
 }
 

@@ -224,6 +224,7 @@ body{
 .el-away .el-item { flex-direction: row; justify-content: flex-start; } 
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
+.og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:4px; }
 
 /* === PITCH & PLAYER STYLES === */
 .pitch-container {
@@ -273,9 +274,9 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
-/* SUBS BADGE (BELOW RAT) */
+/* RED SUB ARROW (HIGHER POSITION) */
 .sub-badge {
-    position: absolute; bottom: -5px; right: -8px; /* Positioned below rating */
+    position: absolute; bottom: 0px; right: -8px; /* Moved up */
     width: 12px; height: 12px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 8px; z-index: 16; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -574,21 +575,13 @@ function openModal(m){
       s.events.forEach(e => {
          if(e.type === "Goal" && e.detail !== "Missed Penalty"){
              let cleanP = e.player.trim();
-             
-             // --- IMPROVED HOME/AWAY DETECTION ---
+             // Determine side by checking if known home/away player
              let isH = null;
-             // Check Lineups First (Most Accurate)
-             if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
-                 else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
-             }
-             // Fallback to Scorers string
-             if(isH === null && s.scorers) {
+             if(s.scorers) {
                  if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
                  else if(s.scorers.includes("(A) " + cleanP) || s.scorers.includes(cleanP + " (A)")) isH = false;
              }
-             // Last Resort
-             if(isH === null) isH = true; 
+             if(isH === null) isH = true; // Fallback
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH };
              goalsMap[cleanP].times.push(e.time + "'");
@@ -601,9 +594,15 @@ function openModal(m){
       let timesStr = g.times.join(", ");
       let name = toTitleCase(player);
       let html = "";
-      if(g.isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
-      else html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; // Reversed for Away
-      if(g.isHome) hG.push(html); else aG.push(html);
+      if(g.isHome) {
+         // Home: Name [Times] ⚽ (No Change)
+         html = `<div class="el-item"><span>${name}</span>${g.isHome && name.includes("(OG)") ? '<span class="og-tag">OG</span>' : ''} <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
+         hG.push(html);
+      } else {
+         // Away: ⚽ [Times] Name (Reversed as requested)
+         html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}</span>${!g.isHome && name.includes("(OG)") ? '<span class="og-tag">OG</span>' : ''}</div>`;
+         aG.push(html);
+      }
   });
 
   if(Object.keys(goalsMap).length === 0 && s.scorers) {
@@ -739,6 +738,11 @@ function openModal(m){
              if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
              else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
         }
+        // Fallback to Scorers
+        if(isH === null && s.scorers) {
+             if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
+             else if(s.scorers.includes("(A) " + cleanP) || s.scorers.includes(cleanP + " (A)")) isH = false;
+        }
         if(isH === null) isH = true; // Fallback
 
         let icon="•";
@@ -747,6 +751,7 @@ function openModal(m){
         
         if(e.type==="Goal") {
              if(detail === "Missed Penalty") { icon="❌"; cssClass="sum-icon red"; }
+             else if(detail === "Own Goal") { icon="⚽ (OG)"; cssClass="sum-icon red"; }
              else { icon="⚽"; cssClass="sum-icon"; }
         }
         else if(e.type==="Card" && detail==="Yellow Card") { icon="🟨"; }
@@ -786,10 +791,10 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
-    // FIX UNDEFINED GOALS BY COUNTING EVENTS
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
     if(goals === undefined) {
-       goals = events ? events.filter(e => e.type === "Goal" && e.player === name).length : 0;
+       goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
     }
     let assists = stats.assists;
     if(assists === undefined) {

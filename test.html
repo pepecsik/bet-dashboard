@@ -193,6 +193,13 @@ body{
 .modal-back-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 .modal-sub { font-size: 11px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+/* Fixed Header Logo */
+.modal-header-logo { 
+  position: absolute; right: 15px; top: 15px; width: 32px; height: 32px; 
+  background: #ffffff; border-radius: 50%; padding: 4px; object-fit: contain; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+}
+
 .modal-tabs { display: flex; background: var(--bg-card); border-bottom: 1px solid rgba(255,255,255,0.1); }
 .tab-btn { flex: 1; padding: 12px; text-align: center; font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; background: transparent; border: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
 .tab-btn.active { color: #fff; border-bottom: 2px solid var(--accent-orange); background: rgba(255,255,255,0.02); }
@@ -215,22 +222,18 @@ body{
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
 .el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: #ffffff; }
+.el-away .el-item { flex-direction: row; } 
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
 
 /* === PITCH & PLAYER STYLES === */
 .pitch-container {
-  width: 100%;
-  aspect-ratio: 2/3;
-  background: #2e5a2e; /* Fallback */
+  width: 100%; aspect-ratio: 2/3;
+  background: #2e5a2e; 
   background: repeating-linear-gradient(0deg, #2e5a2e 0px, #2e5a2e 40px, #366336 40px, #366336 80px);
-  border: 2px solid rgba(255,255,255,0.3);
-  border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 20px;
+  border: 2px solid rgba(255,255,255,0.3); border-radius: 8px;
+  position: relative; overflow: hidden; margin-bottom: 20px;
 }
-/* Pitch Lines */
 .pitch-line { position: absolute; border: 1px solid rgba(255,255,255,0.3); }
 .center-line { top: 50%; left: 0; right: 0; }
 .center-circle { top: 50%; left: 50%; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); }
@@ -238,30 +241,30 @@ body{
 .box-bottom { bottom: 0; left: 25%; width: 50%; height: 12%; border-bottom: none; }
 
 .pitch-player {
-  position: absolute;
-  transform: translate(-50%, -50%);
+  position: absolute; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center;
-  cursor: pointer; z-index: 10;
-  width: 40px;
+  cursor: pointer; z-index: 10; width: 44px;
 }
 .p-dot {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #222; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 800; color: #000;
-  border: 2px solid #fff;
+  font-size: 10px; font-weight: 800; color: #fff;
+  border: 2px solid #fff; overflow:hidden; position:relative;
 }
-.p-dot.home { background: #333; color: #fff; border-color: #333; }
-.p-dot.away { background: #fff; color: #333; border-color: #fff; }
+.p-img-dot { width: 100%; height: 100%; object-fit: cover; }
+.p-dot.home { border-color: #333; }
+.p-dot.away { border-color: #fff; }
+
 .p-name {
   background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 4px;
-  color: #fff; font-size: 8px; margin-top: 2px; white-space: nowrap; font-weight:600;
+  color: #fff; font-size: 9px; margin-top: 2px; white-space: nowrap; font-weight:600;
   text-shadow: 0 1px 2px #000;
 }
 .p-rat {
-  position: absolute; top: -5px; right: -5px;
-  width: 12px; height: 12px; border-radius: 50%;
-  font-size: 7px; font-weight: 800;
+  position: absolute; top: -3px; right: -3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  font-size: 8px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   color: #000; z-index: 12;
 }
@@ -269,11 +272,32 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
+.sub-badge {
+    position: absolute; bottom: -2px; left: -2px;
+    width: 12px; height: 12px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; z-index: 13;
+}
+.sub-out { background: #ff4d4d; color: #fff; content: "▼"; }
+.sub-in { background: #7CFF5B; color: #000; content: "▲"; }
+
 /* SUBS LIST */
 .subs-container { margin-top: 15px; }
 .subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
-.sub-row { display: flex; font-size: 11px; margin-bottom: 4px; color: #ddd; }
-.sub-row .s-time { color: var(--accent-orange); width: 30px; font-weight: 700; }
+.sub-row { display: flex; font-size: 11px; margin-bottom: 4px; color: #ddd; align-items:center; gap:6px; }
+.sub-row .s-time { color: var(--accent-orange); width: 20px; font-weight: 700; text-align:right;}
+
+/* SUMMARY TIMELINE */
+.sum-timeline { display: flex; flex-direction: column; gap: 8px; }
+.sum-row { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; font-size: 11px; }
+.sum-time { text-align: center; font-weight: 800; color: var(--accent-orange); font-size: 10px; opacity: 0.8; }
+.sum-side { display: flex; align-items: center; gap: 6px; }
+.sum-side.home { justify-content: flex-end; text-align: right; }
+.sum-side.away { justify-content: flex-start; text-align: left; }
+.sum-icon { font-size: 12px; }
+.sum-text { display: flex; flex-direction: column; }
+.sum-player { font-weight: 700; color: #fff; }
+.sum-detail { font-size: 9px; opacity: 0.6; }
 
 /* PLAYER POPUP CARD */
 .player-popup {
@@ -389,7 +413,7 @@ body{
        </div>
 
        <div id="viewSummary" style="display:none;">
-          <div id="summaryText"></div>
+          <div id="summaryTimeline" class="sum-timeline"></div>
        </div>
     </div>
   </div>
@@ -401,7 +425,9 @@ body{
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
       <div class="modal-title">Premier League</div>
       <div class="modal-sub">Live Standings</div>
-      <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
+      <div class="modal-header-logo">
+        <img src="https://media.api-sports.io/football/leagues/39.png" style="width:100%;height:100%;object-fit:contain;">
+      </div>
     </div>
     <div class="tbl-header tbl-grid">
       <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
@@ -414,7 +440,6 @@ body{
 </div>
 
 <script>
-// IMPORTANT: Point to your locked script
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -528,6 +553,7 @@ function switchTab(t){
 }
 
 function openModal(m){
+  document.getElementById('playerPopup').style.display = 'none'; // RESET POPUP
   const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
   const s=m.stats||{};
   switchTab('stats'); 
@@ -537,29 +563,19 @@ function openModal(m){
 
   // 1. STATS - GROUPED GOALS
   let hG=[], aG=[];
-  let goalsMap = {}; // Key: PlayerName, Value: {times:[], isHome: bool}
-  
-  // First, map all goals from events
+  let goalsMap = {}; 
   if(s.events){
       s.events.forEach(e => {
          if(e.type === "Goal" && e.detail !== "Missed Penalty"){
-             // We need to determine if it's home or away. 
-             // Logic: Check if player name exists in 'scorers' string with (H) or (A).
              let cleanP = e.player.trim();
-             let isH = s.scorers && s.scorers.includes(cleanP + " (H)") ? true : 
-                       (s.scorers && s.scorers.includes(cleanP + " (A)") ? false : null);
-             
-             // Fallback: If not found in scorers string, maybe try lineup color match?
-             // Since we lack IDs in this context, we fallback to simple grouping by name.
-             // We will group by name and assume side based on first occurrence found in string.
-             
-             if(isH === null) {
-                 // Try loose matching
-                 if(s.scorers && s.scorers.includes("(H) " + cleanP)) isH = true;
-                 else if(s.scorers && s.scorers.includes("(A) " + cleanP)) isH = false;
-                 // As absolute fallback, assume it's Home if we can't tell (User can fix sheet)
-                 else isH = true; 
+             // Determine side by checking if known home/away player
+             // If not sure, fuzzy match 'scorers' string from sheet
+             let isH = null;
+             if(s.scorers) {
+                 if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
+                 else if(s.scorers.includes("(A) " + cleanP) || s.scorers.includes(cleanP + " (A)")) isH = false;
              }
+             if(isH === null) isH = true; // Fallback
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH };
              goalsMap[cleanP].times.push(e.time + "'");
@@ -567,55 +583,48 @@ function openModal(m){
       });
   }
   
-  // Render Groups
   Object.keys(goalsMap).forEach(player => {
       let g = goalsMap[player];
       let timesStr = g.times.join(", ");
       let name = toTitleCase(player);
       let html = "";
-      
-      if(g.isHome) {
-         // Home: Name [Times] ⚽
-         html = `<div class="el-item"><span>${name}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
-         hG.push(html);
-      } else {
-         // Away: ⚽ [Times] Name
-         html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}</span></div>`;
-         aG.push(html);
-      }
+      if(g.isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
+      else html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; // Reversed for Away
+      if(g.isHome) hG.push(html); else aG.push(html);
   });
 
-  // Fallback if no events but we have scorers string (Old style support)
   if(Object.keys(goalsMap).length === 0 && s.scorers) {
        s.scorers.split(",").forEach(i=>{
           let raw = i.trim(); if(!raw) return;
           let isHome = raw.includes("(H)");
-          let name = toTitleCase(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim()); // Remove any (H) or (A)
+          let name = toTitleCase(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim());
           let html = "";
           if(isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-icon">⚽</span></div>`;
           else html = `<div class="el-item"><span class="el-icon">⚽</span> <span>${name}</span></div>`;
           if(isHome) hG.push(html); else aG.push(html);
       });
   }
-
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
   // STATS BARS
   const sb=document.getElementById("statsArea");sb.innerHTML="";
   const sl=[
-    {l:"xG",h:s.h_xg,a:s.a_xg,dec:true},
+    {l:"Expected Goals",h:s.h_xg,a:s.a_xg,dec:true}, // Renamed xG
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
     {l:"Shots Total",h:s.h_shots_tot,a:s.a_shots_tot},
     {l:"Shots Target",h:s.h_shots,a:s.a_shots},
-    {l:"Shots Inside Box",h:s.h_inside||0,a:s.a_inside||0}, // Force 0 if missing
+    {l:"Shots Inside Box",h:s.h_inside,a:s.a_inside}, 
     {l:"Saves",h:s.h_saves,a:s.a_saves},
     {l:"Fouls",h:s.h_fouls,a:s.a_fouls},
     {l:"Corners",h:s.h_corners,a:s.a_corners}
   ];
   sl.forEach(st=>{
+    // HIDE IF UNDEFINED OR 0 for Inside Box specifically, or generally valid check
+    if(st.l === "Shots Inside Box" && (!st.h || st.h===0) && (!st.a || st.a===0)) return;
+
     let t=st.h+st.a,hp=0,ap=0;
     if(t>0){hp=(st.h/t)*100;ap=(st.a/t)*100;if(st.pct){hp=st.h;ap=st.a}if(st.dec){hp=(st.h/(st.h+st.a+0.001))*100;ap=100-hp}}
-    let ht=st.h,at=st.a;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=parseFloat(st.h).toFixed(2);at=parseFloat(st.a).toFixed(2)}
+    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=parseFloat(st.h).toFixed(2);at=parseFloat(st.a).toFixed(2)}
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
@@ -635,33 +644,40 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { // Top
-             if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=22; 
-             else if(rIdx===2) yPct=36; 
-             else yPct=46; 
+             if(rIdx===0) yPct=5; else if(rIdx===1) yPct=22; else if(rIdx===2) yPct=36; else yPct=46; 
           } else { // Bottom
-             if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=78; 
-             else if(rIdx===2) yPct=64; 
-             else yPct=54; 
+             if(rIdx===0) yPct=95; else if(rIdx===1) yPct=78; else if(rIdx===2) yPct=64; else yPct=54; 
           }
           
           line.forEach((p, i) => {
               let count = line.length;
               let spacing = 90 / (count + 1);
               let xPct = spacing * (i + 1) + 5;
-              let pStats = playersFull.find(x => x.name === p.name);
+              
+              // Find Stats & Photo
+              let pStats = findPlayerStats(p.name, playersFull);
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
+              let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
               if(rat >= 7.0) rClass = "rat-high";
               if(rat < 6.0 && rat !== "-") rClass = "rat-low";
+              
+              // Check Sub Out
+              let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
+              let subBadge = isSubbedOut ? `<div class="sub-badge sub-out">▼</div>` : "";
 
               let el = document.createElement("div");
               el.className = "pitch-player";
               el.style.top = yPct + "%";
               el.style.left = xPct + "%";
               el.onclick = () => showPlayerStats(p.name, pStats);
-              el.innerHTML = `<div class="p-dot ${isHome?'home':'away'}">${p.num}<div class="p-rat ${rClass}">${rat}</div></div><div class="p-name">${p.name.split(" ").pop()}</div>`;
+              
+              let content = `<div class="p-dot ${isHome?'home':'away'}">`;
+              if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot">`;
+              else content += p.num;
+              content += `<div class="p-rat ${rClass}">${rat}</div>${subBadge}</div><div class="p-name">${p.name.split(" ").pop()}</div>`;
+              
+              el.innerHTML = content;
               pp.appendChild(el);
           });
       });
@@ -669,8 +685,22 @@ function openModal(m){
       // SUBS RENDER
       if(team.sub && team.sub.length > 0) {
           let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
-          team.sub.forEach(s => {
-             subHTML += `<div class="sub-row"><span class="s-time">${s.num}</span> <span>${s.name}</span></div>`;
+          team.sub.forEach(sPlayer => {
+             // Check if Subbed In
+             let isSubbedIn = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.assist === sPlayer.name); // 'assist' in API usually implies player coming IN? Or detail? Events logic tricky.
+             // Actually API usually lists player OUT as 'player' and player IN as 'assist'.
+             // Let's check both fields.
+             if(s.events) {
+                // If this player is the 'assist' in a substitution event, they came ON.
+                let cameOn = s.events.find(e => e.type === "subst" && e.assist === sPlayer.name);
+                if(cameOn) {
+                    subHTML += `<div class="sub-row"><span class="s-time" style="color:#7CFF5B">${cameOn.time}'</span> <span style="color:#fff">${sPlayer.name}</span> <span style="font-size:8px">▲</span></div>`;
+                } else {
+                    subHTML += `<div class="sub-row"><span class="s-time">${sPlayer.num}</span> <span>${sPlayer.name}</span></div>`;
+                }
+             } else {
+                subHTML += `<div class="sub-row"><span class="s-time">${sPlayer.num}</span> <span>${sPlayer.name}</span></div>`;
+             }
           });
           let col = document.createElement("div");
           col.style.flex = "1";
@@ -679,43 +709,73 @@ function openModal(m){
       }
   };
   
-  // Need flex container for subs
-  subsCont.style.display = "flex";
-  subsCont.style.gap = "10px";
-  
+  subsCont.style.display = "flex"; subsCont.style.gap = "10px";
   renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
   renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
 
-  // 3. SUMMARY
-  const sv=document.getElementById("summaryText");
+  // 3. SUMMARY TIMELINE
+  const sv=document.getElementById("summaryTimeline"); sv.innerHTML = "";
   if(!s.events||s.events.length===0){
     sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
   } else {
-    let txt = "";
-    [...s.events].reverse().forEach(e=>{
-      let icon="⏱️";
-      let detail = e.detail || "";
-      
-      if(e.type==="Goal") {
-         if(detail === "Missed Penalty") icon = "❌"; 
-         else icon="⚽ GOAL!";
-      }
-      if(e.type==="Card"&&detail==="Yellow Card") icon="🟨 Yellow Card";
-      if(e.type==="Card"&&detail==="Red Card") icon="🟥 RED CARD";
-      if(e.type==="subst") icon="🔄 Substitution";
-       
-      txt += `<div class="sum-event"><span class="sum-minute">${e.time}'</span> ${icon} - <b>${e.player}</b> <span style="font-size:11px;opacity:0.6">${detail}</span></div>`;
+    // Determine Home ID (guess from scorers or events)
+    let homeId = null;
+    // We can guess home team from lineup logic, but we don't have IDs here easily.
+    // Let's use the 'isHome' check logic from Goals.
+    
+    [...s.events].reverse().forEach(e => {
+        let isH = null;
+        if(s.scorers) {
+             if(s.scorers.includes("(H)") && s.scorers.includes(e.player)) isH = true;
+             else if(s.scorers.includes("(A)") && s.scorers.includes(e.player)) isH = false;
+        }
+        if(isH === null) isH = true; // Fallback
+
+        let icon="•";
+        let detail = e.detail || "";
+        let cssClass = "sum-icon";
+        
+        if(e.type==="Goal") {
+             if(detail === "Missed Penalty") { icon="❌"; cssClass="sum-icon red"; }
+             else { icon="⚽"; cssClass="sum-icon"; }
+        }
+        else if(e.type==="Card" && detail==="Yellow Card") { icon="🟨"; }
+        else if(e.type==="Card" && detail==="Red Card") { icon="🟥"; }
+        else if(e.type==="subst") { icon="🔄"; }
+
+        let row = document.createElement("div");
+        row.className = "sum-row";
+        
+        let homeHTML = isH ? `<div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${detail}</span></div> <span class="${cssClass}">${icon}</span>` : "";
+        let awayHTML = !isH ? `<span class="${cssClass}">${icon}</span> <div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${detail}</span></div>` : "";
+        
+        row.innerHTML = `<div class="sum-side home">${homeHTML}</div> <div class="sum-time">${e.time}'</div> <div class="sum-side away">${awayHTML}</div>`;
+        sv.appendChild(row);
     });
-    sv.innerHTML = txt;
   }
 
   document.getElementById("matchModal").classList.add("active");
 }
 
+// FUZZY MATCH PLAYER STATS
+function findPlayerStats(name, list) {
+    if(!list) return null;
+    // 1. Exact match
+    let found = list.find(x => x.name === name);
+    if(found) return found;
+    // 2. Includes match (e.g. "Martinelli" in "Gabriel Martinelli")
+    found = list.find(x => x.name.includes(name) || name.includes(x.name));
+    if(found) return found;
+    // 3. Last name match
+    let lastName = name.split(" ").pop();
+    found = list.find(x => x.name.includes(lastName));
+    return found;
+}
+
 function showPlayerStats(name, stats) {
     const pop = document.getElementById("playerPopup");
     if(!stats) return; 
-    document.getElementById("ppName").textContent = name;
+    document.getElementById("ppName").textContent = stats.name || name; // Use full name from stats
     document.getElementById("ppImg").src = stats.photo || "";
     
     // Build stats grid

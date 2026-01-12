@@ -44,7 +44,7 @@ if ("serviceWorker" in navigator) {
   --gap:6px;
 
   --left-w:230px; 
-  --bet-w:80px;   
+  --bet-w:80px;    
     
   --summary-w:200px; 
 
@@ -203,7 +203,6 @@ body{
   width: 10px;
   height: 13px;
   background: #ff4d4d;
-  /* CHANGED: Removed white border */
   border: none;
   border-radius: 2px;
   box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
@@ -266,7 +265,7 @@ body{
   background: var(--bg-card); 
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
-  overflow: hidden;            
+  overflow: hidden;           
   border: 1px solid #2f343a; 
 }
 
@@ -325,11 +324,9 @@ body{
 
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
-/* FIX: TWEAKED COLUMN SIZES FOR BETTER FIT */
 .week-row{
   height:var(--week-row-h); 
   display:grid;
-  /* CHANGED: Made euros smaller (58px) so pounds has more space */
   grid-template-columns: 120px 1fr 58px; 
   align-items:center;
   background:var(--bg-row); border-radius:8px;
@@ -436,7 +433,6 @@ body{
   border: 1px solid #992222;
 }
 
-/* GREEN HEARTBEAT (Waiting for FT) */
 @keyframes greenHeartbeat {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); }
   70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); }
@@ -447,7 +443,7 @@ body{
   background: #7CFF5B !important; 
   color: #1c1f23 !important;        
   border: 1px solid #7CFF5B;
-  animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
+  animation: greenHeartbeat 1.5s infinite; 
 }
 
 /* === MODAL STYLES === */
@@ -491,8 +487,6 @@ body{
   font-size: 11px;
 }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
-
-/* CHANGED: Made this smaller for "Live Standings" by default */
 .modal-sub { 
   font-size: 11px; 
   color: var(--accent-orange); 
@@ -501,12 +495,7 @@ body{
   letter-spacing: 0.5px;
   margin-top: 4px; 
 }
-
-/* CHANGED: New ID style just for the Score (to keep it big) */
-#mStatus {
-  font-size: 16px; 
-  margin-top: 10px;
-}
+#mStatus { font-size: 16px; margin-top: 10px; }
 
 .modal-header-logo { 
   position: absolute;
@@ -521,14 +510,8 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-/* MODAL SECTIONS */
-.modal-scroll-area {
-  padding: 15px;
-  overflow-y: auto;
-  flex: 1;
-}
+.modal-scroll-area { padding: 15px; overflow-y: auto; flex: 1; }
 
-/* Event List Styling (Smaller & Cleaner) */
 .event-list-row {
   display: flex; justify-content: space-between; align-items: flex-start;
   margin-bottom: 8px; font-size: 10px; font-weight: 500; gap: 10px; 
@@ -536,18 +519,19 @@ body{
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 4px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
-.el-icon { font-size: 9px; margin: 0 4px; } /* Tiny Icons */
-
-/* CHANGED: Added explicit white color and opacity 1 */
+.el-icon { font-size: 9px; margin: 0 4px; }
 .el-item { display: flex; align-items: center; opacity: 1; color: #ffffff; }
 
 .divider-line { 
   height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; 
 }
 
+/* === NEW DEEP STATS CSS === */
 .stat-row { margin-bottom: 12px; }
 .stat-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
 .stat-name { opacity: 0.6; }
+.stat-value-high { color: #7CFF5B; font-weight:800; }
+
 .stat-bar-container { display: flex; height: 6px; gap: 4px; border-radius: 3px; overflow: hidden; background: #333; }
 .sb-track { flex: 1; background: rgba(255,255,255,0.1); position: relative; }
 .sb-fill { height: 100%; background: #999; transition: width 0.5s; }
@@ -555,6 +539,24 @@ body{
 .sb-track.away .sb-fill { position: absolute; left: 0; background: #fff; }
 .sb-fill.orange { background: var(--accent-orange) !important; box-shadow: 0 0 10px var(--accent-orange); }
 
+/* Player Ratings Styling */
+.sec-title { font-size: 10px; font-weight: 700; color: var(--text-muted); text-align: center; margin: 10px 0 5px 0; text-transform:uppercase; letter-spacing:1px; }
+.players-container { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px; }
+.p-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.p-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-row); border-radius: 6px; padding: 4px 8px;
+}
+.p-info { display: flex; align-items: center; gap: 6px; }
+.p-img { width: 20px; height: 20px; border-radius: 50%; background: #333; object-fit: cover; }
+.p-name { font-size: 10px; font-weight: 600; color: #fff; max-width: 80px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.p-rating {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 5px; border-radius: 4px; background: #333; color: #fff;
+}
+.rat-high { background: #7CFF5B; color: #000; }
+
+/* Table Styling */
 .tbl-grid { 
   display: grid; 
   grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; 
@@ -565,23 +567,10 @@ body{
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
 .tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-
-.ta-c { 
-  display: flex; 
-  justify-content: center; 
-  text-align: center; 
-  width: 100%; 
-} 
-
-.tbl-row .ta-c {
-  justify-content: flex-end; 
-  padding-right: 8px;        
-  text-align: right;
-}
-
+.ta-c { display: flex; justify-content: center; text-align: center; width: 100%; } 
+.tbl-row .ta-c { justify-content: flex-end; padding-right: 8px; text-align: right; }
 .ta-r { display: flex; justify-content: flex-end; width: 100%; } 
 .ta-l { display: flex; justify-content: flex-start; width: 100%; }
-
 .txt-green { color: #7CFF5B; }
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
@@ -599,9 +588,7 @@ body{
 
   <footer class="summary">
     <div class="summary-toggle open" id="summaryToggle"></div>
-
-    <div class="summary-content" id="summaryContentWrap">
-        
+    <div class="summary-content" id="summaryContentWrap">  
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
@@ -609,7 +596,6 @@ body{
           <div id="rankingBody"></div>
         </div>
       </div>
-
       <div class="history-card" id="historyCard">
        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span>📈 History</span>
@@ -620,7 +606,6 @@ body{
        </div>
        <canvas id="historyChart" height="120"></canvas>
       </div>
-
     </div>
   </footer>
 </div>
@@ -639,15 +624,10 @@ body{
     </div>
 
     <div class="modal-scroll-area">
-        
        <div class="event-list-row" id="goalsArea"></div>
-
        <div class="divider-line"></div>
-       
        <div class="event-list-row" id="cardsArea"></div>
-
        <div class="divider-line"></div>
-
        <div id="statsArea"></div>
     </div>
 
@@ -656,25 +636,21 @@ body{
 
 <div class="modal-overlay" id="tableModal" onclick="closeModal('tableModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
-    
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
       <div class="modal-title">Premier League</div>
       <div class="modal-sub">Live Standings</div>
       <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
     </div>
-
     <div class="tbl-header tbl-grid">
       <div class="ta-l">#</div>
       <div class="ta-l">Team</div>
       <div class="ta-c">MP</div>
       <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
     </div>
-
     <div class="tab-content active" style="padding-top:0;">
       <div id="tableBody"></div>
     </div>
-
   </div>
 </div>
 
@@ -893,9 +869,9 @@ function loadData(){
        
        let totalWinAmount = 0;
        let colPendingMatches = 0;        
-       let colHasBets = false;           
-       let allBetsAreGreen = true;       
-       let hasRed = false;               
+       let colHasBets = false;            
+       let allBetsAreGreen = true;        
+       let hasRed = false;                
 
        data.matches.forEach(m => {
           const cell = m.cells[i];
@@ -1100,6 +1076,7 @@ function toTitleCase(str) {
   });
 }
 
+// === UPDATED OPEN MODAL (DEEP STATS) ===
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   document.getElementById("mTitle").innerHTML = `
@@ -1154,15 +1131,44 @@ function openModal(m) {
   `;
   document.getElementById("cardsArea").innerHTML = cardsHtml;
 
-  // 3. STATS BARS (Bottom)
+  // 3. STATS CONTAINER
+  const statsContainer = document.getElementById("statsArea");
+  statsContainer.innerHTML = ""; // Reset
+
+  // --- NEW: PLAYERS SECTION ---
+  if (s.h_players && s.h_players.length > 0) {
+    const renderP = (pList) => {
+      if(!pList) return "";
+      return pList.map(p => `
+        <div class="p-card">
+          <div class="p-info">
+            <img src="${p.photo}" class="p-img" onerror="this.style.display='none'">
+            <span class="p-name">${p.name}</span>
+          </div>
+          <div class="p-rating ${parseFloat(p.rating) >= 7.5 ? 'rat-high' : ''}">${parseFloat(p.rating).toFixed(1)}</div>
+        </div>
+      `).join("");
+    };
+
+    const pHtml = `
+      <div class="sec-title">Top Performers</div>
+      <div class="players-container">
+        <div class="p-col">${renderP(s.h_players)}</div>
+        <div class="p-col">${renderP(s.a_players)}</div>
+      </div>
+      <div class="divider-line"></div>
+    `;
+    statsContainer.innerHTML += pHtml;
+  }
+
+  // --- UPDATED STATS BARS (with xG) ---
   const statsList = [
+    { label: "Expected Goals (xG)", h: s.h_xg || 0, a: s.a_xg || 0, isDec: true }, // NEW
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
     { label: "Shots on Target", h: s.h_shots || 0, a: s.a_shots || 0 },
     { label: "Shots off Target", h: s.h_shotsOff || 0, a: s.a_shotsOff || 0 },
     { label: "Corners", h: s.h_corners || 0, a: s.a_corners || 0 }
   ];
-  const statsArea = document.getElementById("statsArea");
-  statsArea.innerHTML = "";
 
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
@@ -1173,19 +1179,32 @@ function openModal(m) {
       hPct = (stat.h / total) * 100;
       aPct = (stat.a / total) * 100;
       if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; }
+      // Special logic for decimal stats (xG) to visualise properly
+      if(stat.isDec) { 
+        let cleanH = parseFloat(stat.h), cleanA = parseFloat(stat.a);
+        hPct = (cleanH / (cleanH + cleanA + 0.0001)) * 100; 
+        aPct = 100 - hPct; 
+      } 
     }
 
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
-    const hText = stat.isPct ? stat.h + "%" : stat.h;
-    const aText = stat.isPct ? stat.a + "%" : stat.a;
+    
+    // Text Formatting
+    let hText = stat.h;
+    let aText = stat.a;
+    if(stat.isPct) { hText += "%"; aText += "%"; }
+    if(stat.isDec) { 
+        hText = parseFloat(stat.h).toFixed(2); 
+        aText = parseFloat(stat.a).toFixed(2); 
+    }
 
-    statsArea.innerHTML += `
+    statsContainer.innerHTML += `
       <div class="stat-row">
         <div class="stat-label">
-          <span>${hText}</span>
+          <span class="${stat.h > stat.a ? 'stat-value-high' : ''}">${hText}</span>
           <span class="stat-name">${stat.label}</span>
-          <span>${aText}</span>
+          <span class="${stat.a > stat.h ? 'stat-value-high' : ''}">${aText}</span>
         </div>
         <div class="stat-bar-container">
           <div class="sb-track home"><div class="sb-fill ${hColor}" style="width:${hPct}%"></div></div>

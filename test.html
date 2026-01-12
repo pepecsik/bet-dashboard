@@ -497,17 +497,6 @@ body{
 }
 #mStatus { font-size: 16px; margin-top: 10px; }
 
-/* TABS STYLE */
-.modal-tabs {
-  display: flex; background: var(--bg-card); border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.tab-btn {
-  flex: 1; padding: 12px; text-align: center; font-size: 12px; font-weight: 700;
-  color: var(--text-muted); cursor: pointer; background: transparent; border: none;
-  border-bottom: 2px solid transparent; transition: all 0.2s;
-}
-.tab-btn.active { color: #fff; border-bottom: 2px solid var(--accent-orange); background: rgba(255,255,255,0.02); }
-
 .modal-header-logo { 
   position: absolute;
   right: 12px;
@@ -556,7 +545,7 @@ body{
 .p-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .p-card {
   display: flex; align-items: center; justify-content: space-between;
-  background: var(--bg-row); border-radius: 6px; padding: 4px 8px; margin-bottom: 6px;
+  background: var(--bg-row); border-radius: 6px; padding: 4px 8px;
 }
 .p-info { display: flex; align-items: center; gap: 6px; }
 .p-img { width: 20px; height: 20px; border-radius: 50%; background: #333; object-fit: cover; }
@@ -634,23 +623,12 @@ body{
       <div class="modal-sub" id="mStatus">19:30</div>
     </div>
 
-    <div class="modal-tabs">
-      <button class="tab-btn active" id="tabBtnStats" onclick="switchModalTab('stats')">STATS</button>
-      <button class="tab-btn" id="tabBtnPlayers" onclick="switchModalTab('players')">PLAYERS</button>
-    </div>
-
     <div class="modal-scroll-area">
-       <div id="viewStats">
-         <div class="event-list-row" id="goalsArea"></div>
-         <div class="divider-line"></div>
-         <div class="event-list-row" id="cardsArea"></div>
-         <div class="divider-line"></div>
-         <div id="statsArea"></div>
-       </div>
-
-       <div id="viewPlayers" style="display:none;">
-         <div id="lineupArea"></div>
-       </div>
+       <div class="event-list-row" id="goalsArea"></div>
+       <div class="divider-line"></div>
+       <div class="event-list-row" id="cardsArea"></div>
+       <div class="divider-line"></div>
+       <div id="statsArea"></div>
     </div>
 
   </div>
@@ -1098,35 +1076,21 @@ function toTitleCase(str) {
   });
 }
 
-// === TAB SWITCHER ===
-function switchModalTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabName === 'stats' ? 'tabBtnStats' : 'tabBtnPlayers').classList.add('active');
-  
-  if(tabName === 'stats') {
-    document.getElementById('viewStats').style.display = 'block';
-    document.getElementById('viewPlayers').style.display = 'none';
-  } else {
-    document.getElementById('viewStats').style.display = 'none';
-    document.getElementById('viewPlayers').style.display = 'block';
-  }
-}
-
-// === UPDATED OPEN MODAL ===
+// === UPDATED OPEN MODAL (DEEP STATS) ===
 function openModal(m) {
   const [homeCode, awayCode] = m.match.split("-");
   
-  // Reset Tab to Stats by default
-  switchModalTab('stats');
-
   // --- SAFE DATA DECODING ---
   const s = m.stats || {};
+  
+  // Ensure players are arrays (even if empty)
   if (typeof s.h_players === 'string') {
       try { s.h_players = JSON.parse(s.h_players); } catch(e) { s.h_players = []; }
   }
   if (typeof s.a_players === 'string') {
       try { s.a_players = JSON.parse(s.a_players); } catch(e) { s.a_players = []; }
   }
+  // -----------------------------
 
   // TITLE
   document.getElementById("mTitle").innerHTML = `
@@ -1138,7 +1102,6 @@ function openModal(m) {
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
   
-  // --- VIEW 1: STATS POPULATION ---
   // SCORERS
   let homeScorers = [], awayScorers = [];
   if (s.scorers) {
@@ -1174,9 +1137,43 @@ function openModal(m) {
     <div class="el-away">${aCards}</div>
   `;
 
-  // STATS BARS
+  // --- STATS CONTAINER START ---
   const statsContainer = document.getElementById("statsArea");
   statsContainer.innerHTML = ""; 
+
+  // --- PLAYERS SECTION ---
+  if (s.h_players && s.h_players.length > 0) {
+    const renderP = (pList) => {
+      if(!pList) return "";
+      return pList.map(p => {
+        // Safe Rating Logic
+        let ratingVal = parseFloat(p.rating);
+        if (isNaN(ratingVal)) ratingVal = 0;
+        const ratingDisplay = ratingVal > 0 ? ratingVal.toFixed(1) : "-";
+        
+        return `
+        <div class="p-card">
+          <div class="p-info">
+            <img src="${p.photo}" class="p-img" onerror="this.style.display='none'">
+            <span class="p-name">${p.name}</span>
+          </div>
+          <div class="p-rating ${ratingVal >= 7.5 ? 'rat-high' : ''}">${ratingDisplay}</div>
+        </div>
+      `}).join("");
+    };
+
+    const pHtml = `
+      <div class="sec-title">Top Performers</div>
+      <div class="players-container">
+        <div class="p-col">${renderP(s.h_players)}</div>
+        <div class="p-col">${renderP(s.a_players)}</div>
+      </div>
+      <div class="divider-line"></div>
+    `;
+    statsContainer.innerHTML += pHtml;
+  }
+
+  // --- STATS BARS ---
   const statsList = [
     { label: "Expected Goals (xG)", h: s.h_xg || 0, a: s.a_xg || 0, isDec: true }, 
     { label: "Possession", h: s.h_poss || 50, a: s.a_poss || 50, isPct: true },
@@ -1188,20 +1185,31 @@ function openModal(m) {
   statsList.forEach(stat => {
     let total = stat.h + stat.a;
     let hPct = 0, aPct = 0;
+
     if (total === 0) { hPct = 0; aPct = 0; } 
     else {
-      hPct = (stat.h / total) * 100; aPct = (stat.a / total) * 100;
+      hPct = (stat.h / total) * 100;
+      aPct = (stat.a / total) * 100;
       if(stat.isPct && total > 100) { hPct = stat.h; aPct = stat.a; }
+      
+      // xG Logic (Decimal)
       if(stat.isDec) { 
         let cleanH = parseFloat(stat.h), cleanA = parseFloat(stat.a);
-        hPct = (cleanH / (cleanH + cleanA + 0.0001)) * 100; aPct = 100 - hPct; 
+        hPct = (cleanH / (cleanH + cleanA + 0.0001)) * 100; 
+        aPct = 100 - hPct; 
       } 
     }
+
     const hColor = (stat.h >= stat.a && stat.h > 0) ? 'orange' : '';
     const aColor = (stat.a >= stat.h && stat.a > 0) ? 'orange' : '';
-    let hText = stat.h, aText = stat.a;
+    
+    let hText = stat.h;
+    let aText = stat.a;
     if(stat.isPct) { hText += "%"; aText += "%"; }
-    if(stat.isDec) { hText = parseFloat(stat.h).toFixed(2); aText = parseFloat(stat.a).toFixed(2); }
+    if(stat.isDec) { 
+        hText = parseFloat(stat.h).toFixed(2); 
+        aText = parseFloat(stat.a).toFixed(2); 
+    }
 
     statsContainer.innerHTML += `
       <div class="stat-row">
@@ -1217,39 +1225,6 @@ function openModal(m) {
       </div>
     `;
   });
-
-  // --- VIEW 2: PLAYERS POPULATION ---
-  const lineupContainer = document.getElementById("lineupArea");
-  lineupContainer.innerHTML = "";
-
-  const renderP = (pList) => {
-      if(!pList) return "";
-      return pList.map(p => {
-        let ratingVal = parseFloat(p.rating);
-        if (isNaN(ratingVal)) ratingVal = 0;
-        const ratingDisplay = ratingVal > 0 ? ratingVal.toFixed(1) : "-";
-        return `
-        <div class="p-card">
-          <div class="p-info">
-            <img src="${p.photo}" class="p-img" onerror="this.style.display='none'">
-            <span class="p-name">${p.name}</span>
-          </div>
-          <div class="p-rating ${ratingVal >= 7.5 ? 'rat-high' : ''}">${ratingDisplay}</div>
-        </div>
-      `}).join("");
-  };
-
-  if ((s.h_players && s.h_players.length > 0) || (s.a_players && s.a_players.length > 0)) {
-    lineupContainer.innerHTML = `
-      <div class="sec-title">Top Performers</div>
-      <div class="players-container">
-        <div class="p-col">${renderP(s.h_players)}</div>
-        <div class="p-col">${renderP(s.a_players)}</div>
-      </div>
-    `;
-  } else {
-    lineupContainer.innerHTML = `<div style="text-align:center; color:#555; margin-top:20px; font-size:12px;">No player data available</div>`;
-  }
 
   document.getElementById("matchModal").classList.add("active");
 }

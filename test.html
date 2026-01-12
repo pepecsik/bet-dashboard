@@ -481,7 +481,6 @@ body{
 </div>
 
 <script>
-// REPLACE THIS URL IF YOU DEPLOYED NEW SCRIPT
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -499,7 +498,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V8.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V9.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -519,7 +518,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V8.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V9.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -612,7 +611,7 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.3);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.3);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  // === AI NARRATIVE GENERATOR (V8.0: Future Game Logic) ===
+  // === AI NARRATIVE GENERATOR (V9.0 - THREE MODES) ===
   try {
       generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date);
   } catch(e) {
@@ -629,17 +628,14 @@ function openModal(m){
              let cleanP = e.player.trim();
              // Determine Home/Away
              let isH = null;
-             // Check Lineups
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
                  if(s.lineups.h.start.some(p => p.name.includes(cleanP.split(' ').pop())) || s.lineups.h.sub?.some(p => p.name.includes(cleanP.split(' ').pop()))) isH = true;
                  else if(s.lineups.a.start.some(p => p.name.includes(cleanP.split(' ').pop())) || s.lineups.a.sub?.some(p => p.name.includes(cleanP.split(' ').pop()))) isH = false;
              }
-             // Fallback to Scorers string (Fuzzy)
              if(isH === null && s.scorers) {
                  if(s.scorers.includes("(H)") && s.scorers.includes(cleanP)) isH = true;
                  else if(s.scorers.includes("(A)") && s.scorers.includes(cleanP)) isH = false;
              }
-             // Default Home if unknown
              if(isH === null) isH = true; 
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail };
@@ -647,10 +643,6 @@ function openModal(m){
          }
       });
   }
-  // Sort by time
-  keyEvents = []; // Not used, handled in loop
-  // Better handling: Sort the map? No, map is by player.
-  // Just render based on map.
   
   Object.keys(goalsMap).forEach(player => {
       let g = goalsMap[player];
@@ -671,7 +663,6 @@ function openModal(m){
       }
   });
 
-  // Fallback for scorers string if no events
   if(Object.keys(goalsMap).length === 0 && s.scorers) {
        s.scorers.split(",").forEach(i=>{
           let raw = i.trim(); if(!raw) return;
@@ -742,7 +733,6 @@ function openModal(m){
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
               let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
               
-              // RED CARD CHECK
               let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player === p.name);
               let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
@@ -795,14 +785,10 @@ function openModal(m){
     [...s.events].reverse().forEach(e => {
         let cleanP = e.player.trim();
         let isH = null;
-        // Check Lineups First (Robust Fuzzy Match)
-        if(s.lineups && s.lineups.h && s.lineups.h.start) {
-             let lastName = cleanP.split(' ').pop();
-             if(s.lineups.h.start.some(p => p.name.includes(lastName)) || s.lineups.h.sub?.some(p => p.name.includes(lastName))) isH = true;
-             else if(s.lineups.a.start.some(p => p.name.includes(lastName)) || s.lineups.a.sub?.some(p => p.name.includes(lastName))) isH = false;
-        }
-        // Fallback
-        if(isH === null) isH = true; 
+        if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
+        else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
+        
+        if(isH === null) isH = true; // Fallback
 
         let icon="•";
         let detail = e.detail || "";
@@ -834,60 +820,101 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-// === ADVANCED NARRATIVE GENERATOR (V8.0 - Date Logic) ===
+// === ADVANCED NARRATIVE GENERATOR (V9.0 - 3 MODES) ===
 function generateStory(home, away, stats, score, status, startTime, date) {
     const el = document.getElementById("aiSummaryText");
     
-    // Check Date Logic for NS
+    // --- 1. PRE-MATCH MODE (NS) ---
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
-        let isToday = matchDate && matchDate.getDate() === today.getDate() && matchDate.getMonth() === today.getMonth();
-        
+        let isToday = matchDate && matchDate.getDate() === today.getDate();
+        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+
+        let story = `<b>📅 MATCH PREVIEW:</b> `;
         if(isToday) {
-            el.innerHTML = `Kick-off is at ${startTime || 'soon'}. The teams are preparing for what promises to be an exciting clash. Check lineups for tactical setups.`;
+             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
+             if(hasLineups) story += `<br><br><b>📋 Team News:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
+             else story += `Lineups are expected roughly an hour before kick-off.`;
         } else {
              let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
-             el.innerHTML = `This match is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
+             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage and real-time statistics.`;
         }
+        el.innerHTML = story;
         return;
     }
 
-    // SAFE MATH (Defaults)
+    // --- 2. LIVE & FT MODES ---
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
     const hPoss = stats.h_poss || 50;
     const aPoss = stats.a_poss || 50;
     const hXG = stats.h_xg || 0;
     const aXG = stats.a_xg || 0;
-
-    let story = "";
     const lead = hG - aG;
 
-    // 1. HEADLINE
+    let story = "";
+
+    // A. HEADLINE
     if(status === "FT") {
-       if(lead > 0) story = `<b>FULL TIME:</b> ${home} claim a massive victory. `;
-       else if(lead < 0) story = `<b>FULL TIME:</b> ${away} snatch the win away from home. `;
-       else story = `<b>FULL TIME:</b> Honors even at the final whistle. `;
-    } else if (status === "HT") {
-        story += `<b>HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+       story += `<b>🏁 FULL TIME REPORT:</b> `;
+       if(lead > 0) story += `<b>${home}</b> secure a vital 3 points with a ${hG}-${aG} victory over ${away}. `;
+       else if(lead < 0) story += `<b>${away}</b> triumph on the road, defeating ${home} ${aG}-${hG} in a clinical display. `;
+       else story += `It ends all square at ${hG}-${hG}. A hard-fought point for both sides in a game of fine margins. `;
     } else {
-        story += `<b>LIVE ${time}':</b> `;
-        if(lead > 0) story += `${home} are leading ${hG}-${aG}. `;
-        else if(lead < 0) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `All square at ${hG}-${hG}. `;
+       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
+       if(lead > 0) story += `${home} are in the driving seat, leading ${hG}-${aG}. `;
+       else if(lead < 0) story += `${away} have the advantage here, leading ${aG}-${hG}. `;
+       else story += `We are deadlocked at ${hG}-${hG} as both teams push for the breakthrough. `;
     }
+
     story += "<br><br>";
 
-    // 2. CONTEXT
-    if(hPoss > 55) story += `${home} are controlling possession (${hPoss}%) `;
-    else if(aPoss > 55) story += `${away} have the ball (${aPoss}%) `;
-    else story += `Possession is even `;
-
+    // B. THE STORY (xG Justice System)
+    story += `<b>📊 The Story of the Game:</b> `;
     let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and creating better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
-    else story += `in a tight game. `;
+
+    // Scenario 1: Dominant Winner (High xG + Winning)
+    if( (lead > 0 && xgDiff > 0.8) || (lead < 0 && xgDiff < -0.8) ) {
+        story += `The scoreline reflects the performance perfectly. The winning side has been superior in creating quality chances (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}) and controlled the flow of the game. `;
+    }
+    // Scenario 2: Smash & Grab (Losing xG but Winning)
+    else if( (lead > 0 && xgDiff < -0.5) || (lead < 0 && xgDiff > 0.5) ) {
+        story += `<b>Tactical Masterclass or Robbery?</b> Despite conceding better chances (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}), the leaders have been ruthless in front of goal while absorbing heavy pressure. `;
+    }
+    // Scenario 3: Boring Stalemate
+    else if( lead === 0 && (hXG + aXG) < 1.0 ) {
+        story += `Defences are undoubtedly on top. Chances have been at a premium (combined xG of only ${(hXG+aXG).toFixed(2)}), with neither side finding a rhythm in the final third. `;
+    }
+    // Scenario 4: End to End
+    else {
+        story += `It's been a competitive affair with chances at both ends. Possession is split ${hPoss}% to ${aPoss}%, and both goalkeepers have been kept busy. `;
+    }
+
+    story += "<br><br>";
+
+    // C. STAR PERFORMER
+    let bestPlayer = null;
+    let highestRat = 0;
+    let bestStats = {};
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+        });
+    }
+
+    if(bestPlayer && highestRat > 0) {
+        story += `🌟 <b>Man of the Match:</b> <b>${formatName(bestPlayer)}</b> (${highestRat.toFixed(1)} Rating). <br>`;
+        let feats = [];
+        if(bestStats.goals > 0) feats.push(`${bestStats.goals} Goal(s)`);
+        if(bestStats.assists > 0) feats.push(`${bestStats.assists} Assist(s)`);
+        if(bestStats.saves > 2) feats.push(`${bestStats.saves} Saves`);
+        if(bestStats.key_passes > 1) feats.push(`${bestStats.key_passes} Key Passes`);
+        if(bestStats.tackles > 2) feats.push(`${bestStats.tackles} Tackles`);
+        
+        if(feats.length > 0) story += `Key Contributions: ${feats.join(" • ")}.`;
+        else story += `He has been the engine of the team today.`;
+    }
 
     el.innerHTML = story;
 }
@@ -910,7 +937,7 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
-    // FIX UNDEFINED GOALS BY COUNTING EVENTS
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
     if(goals === undefined) {
        goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;

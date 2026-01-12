@@ -9,7 +9,6 @@ if(window.navigator && navigator.serviceWorker) {
   .then(function(registrations) {
     for(let registration of registrations) {
       registration.unregister();
-      console.log("Service Worker Unregistered");
     }
   });
 }
@@ -231,14 +230,14 @@ body{
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 6px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { 
-    text-align: left; align-items: flex-start; /* Reset align */
+    text-align: left; align-items: flex-start; 
     margin-left: auto; /* Push to Right */
 }
 .el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: #ffffff; }
 .el-away .el-item { flex-direction: row; justify-content: flex-start; } 
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
-.og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:2px; margin-right:2px; }
+.og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:4px; margin-right:4px; }
 
 /* === PITCH & PLAYER STYLES === */
 .pitch-container {
@@ -276,7 +275,6 @@ body{
   color: #fff; font-size: 9px; margin-top: 2px; white-space: nowrap; font-weight:600;
   text-shadow: 0 1px 2px #000;
 }
-/* OUTSIDE CIRCLE */
 .p-rat {
   position: absolute; top: -5px; right: -8px;
   width: 14px; height: 14px; border-radius: 50%;
@@ -288,7 +286,7 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
-/* RED SUB ARROW (MOVED UP) */
+/* SUBS BADGE (TUCKED BELOW RATING) */
 .sub-badge {
     position: absolute; top: 12px; right: -8px; 
     width: 12px; height: 12px; border-radius: 50%;
@@ -297,7 +295,6 @@ body{
     background: #ff4d4d; color: #fff; content: "▼";
 }
 
-/* RED CARD BADGE (PITCH) */
 .pitch-rc {
     position: absolute; top: -2px; left: -6px; 
     width: 12px; height: 14px; border-radius: 2px;
@@ -305,7 +302,6 @@ body{
     border: 1px solid #fff;
 }
 
-/* SUBS LIST */
 .subs-container { margin-top: 15px; }
 .subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
 .sub-row { display: flex; font-size: 11px; margin-bottom: 6px; color: #ddd; align-items:center; gap:8px; }
@@ -319,7 +315,6 @@ body{
 .sum-row { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; font-size: 11px; }
 .sum-time { text-align: center; font-weight: 800; color: var(--accent-orange); font-size: 10px; opacity: 0.8; }
 .sum-side { display: flex; align-items: center; gap: 6px; }
-/* KEY FIX: ALIGNMENTS */
 .sum-side.home { justify-content: flex-end; text-align: right; }
 .sum-side.away { justify-content: flex-start; text-align: left; }
 
@@ -483,7 +478,7 @@ body{
 </div>
 
 <script>
-// UPDATE THIS URL IF YOU DEPLOYED NEW SCRIPT
+// REPLACE THIS URL IF YOU DEPLOYED NEW SCRIPT
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -501,7 +496,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V5.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V6.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -521,7 +516,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V5.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V6.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -577,7 +572,8 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
+            // FIX SWAPPED CURRENCY IN SUMMARY
+            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
         }
         if(data.ranking) {
             data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
@@ -653,10 +649,10 @@ function openModal(m){
 
       let html = "";
       if(k.isHome) {
-         html = `<div class="el-item"><span>${k.name}${extra}</span> <span class="el-time">${k.strTime}</span> <span class="el-icon">${icon}</span></div>`;
+         html = `<div class="el-item"><span>${k.name}</span>${extra} <span class="el-time">${k.strTime}</span> <span class="el-icon">${icon}</span></div>`;
          hG.push(html);
       } else {
-         html = `<div class="el-item"><span class="el-icon">${icon}</span>${extra} <span class="el-time">${k.strTime}</span> <span>${k.name}</span></div>`; 
+         html = `<div class="el-item"><span class="el-icon">${icon}</span> <span class="el-time">${k.strTime}</span>${extra} <span>${k.name}</span></div>`; 
          aG.push(html);
       }
   });
@@ -814,39 +810,45 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-// === NARRATIVE GENERATOR ===
+// === ADVANCED NARRATIVE GENERATOR ===
 function generateStory(home, away, stats, score, status) {
     const el = document.getElementById("aiSummaryText");
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
     
+    // HEADLINE
     let story = "";
+    if(status === "FT") {
+       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim all three points in a commanding victory. `;
+       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} snatch a crucial win on the road. `;
+       else story = `<b>FULL TIME:</b> It ends all square at ${home}. `;
+    } else {
+       if(hG > aG + 1) story = `<b>LIVE:</b> ${home} are running riot here! `;
+       else if(aG > hG + 1) story = `<b>LIVE:</b> Shock lead for ${away} away from home. `;
+       else story = `<b>LIVE:</b> A tightly contested battle at ${home}. `;
+    }
+
+    // STATS CONTEXT
+    let xgDiff = (stats.h_xg - stats.a_xg);
+    if(xgDiff > 1.0 && hG <= aG) story += `Despite creating far better chances (xG ${stats.h_xg.toFixed(2)}), ${home} haven't made it count. `;
+    else if(xgDiff < -1.0 && aG <= hG) story += `${away} have been dangerous (xG ${stats.a_xg.toFixed(2)}) but lack the finishing touch. `;
     
-    // INTRO
-    if(status === "FT") story += `Full time at the stadium. `;
-    else if(status === "HT") story += `Half time break. `;
-    else if(time < 10) story += `Early stages in this clash between ${home} and ${away}. `;
-    else story += `We are in the ${time}th minute. `;
+    if(stats.h_poss > 65) story += `${home} are dominating possession with ${stats.h_poss}%, pinning ${away} back. `;
+    else if(stats.a_poss > 65) story += `${away} are controlling the tempo with ${stats.a_poss}% possession. `;
 
-    // GAME FLOW
-    let diff = hG - aG;
-    if(diff > 1) story += `${home} are in firm control with a comfortable lead. `;
-    else if(diff < -1) story += `${away} are dominating the scoreboard here. `;
-    else if(diff === 0 && hG > 0) story += `It's a tightly contested affair with both sides finding the net. `;
-    else if(diff === 0) story += `It remains a stalemate as both teams search for the breakthrough. `;
+    // STAR PLAYER
+    let bestPlayer = null;
+    let highestRat = 0;
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
+        });
+    }
+    if(bestPlayer && highestRat > 8.0) {
+        story += `<br><br>🌟 <b>Star Performer:</b> ${formatName(bestPlayer)} is running the show with a massive ${highestRat.toFixed(1)} rating.`;
+    }
 
-    // STATS NARRATIVE
-    let xgDiff = (stats.h_xg - stats.a_xg).toFixed(2);
-    if(xgDiff > 1.0) story += `${home} have created significantly higher quality chances (xG ${stats.h_xg}) but need to be clinical. `;
-    else if(xgDiff < -1.0) story += `${away} look dangerous going forward, boasting an xG of ${stats.a_xg}. `;
-    
-    if(stats.h_poss > 60) story += `${home} are dominating possession with ${stats.h_poss}%. `;
-    else if(stats.a_poss > 60) story += `${away} are controlling the ball with ${stats.a_poss}%. `;
-
-    // CARDS
-    if(stats.h_red > 0 || stats.a_red > 0) story += `The dynamic shifted dramatically after the red card. `;
-
-    el.innerText = story;
+    el.innerHTML = story;
 }
 
 // FUZZY MATCH PLAYER STATS

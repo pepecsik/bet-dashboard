@@ -273,9 +273,9 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
-/* OUTSIDE CIRCLE */
+/* SUBS BADGE (BELOW RAT) */
 .sub-badge {
-    position: absolute; bottom: -2px; left: -6px;
+    position: absolute; bottom: -5px; right: -8px; /* Positioned below rating */
     width: 12px; height: 12px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 8px; z-index: 16; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -574,13 +574,21 @@ function openModal(m){
       s.events.forEach(e => {
          if(e.type === "Goal" && e.detail !== "Missed Penalty"){
              let cleanP = e.player.trim();
-             // Determine side by checking if known home/away player
+             
+             // --- IMPROVED HOME/AWAY DETECTION ---
              let isH = null;
-             if(s.scorers) {
+             // Check Lineups First (Most Accurate)
+             if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                 if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
+                 else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
+             }
+             // Fallback to Scorers string
+             if(isH === null && s.scorers) {
                  if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
                  else if(s.scorers.includes("(A) " + cleanP) || s.scorers.includes(cleanP + " (A)")) isH = false;
              }
-             if(isH === null) isH = true; // Fallback
+             // Last Resort
+             if(isH === null) isH = true; 
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH };
              goalsMap[cleanP].times.push(e.time + "'");
@@ -675,7 +683,7 @@ function openModal(m){
               el.className = "pitch-player";
               el.style.top = yPct + "%";
               el.style.left = xPct + "%";
-              el.onclick = () => showPlayerStats(p.name, pStats);
+              el.onclick = () => showPlayerStats(p.name, pStats, s.events);
               
               let content = `<div class="p-dot ${isHome?'home':'away'}">`;
               if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot">`;
@@ -725,9 +733,11 @@ function openModal(m){
     let homeId = null;
     [...s.events].reverse().forEach(e => {
         let isH = null;
-        if(s.scorers) {
-             if(s.scorers.includes("(H)") && s.scorers.includes(e.player)) isH = true;
-             else if(s.scorers.includes("(A)") && s.scorers.includes(e.player)) isH = false;
+        let cleanP = e.player.trim();
+        // Check Lineups First
+        if(s.lineups && s.lineups.h && s.lineups.h.start) {
+             if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
+             else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
         }
         if(isH === null) isH = true; // Fallback
 
@@ -761,30 +771,36 @@ function openModal(m){
 // FUZZY MATCH PLAYER STATS
 function findPlayerStats(name, list) {
     if(!list) return null;
-    // 1. Exact match
     let found = list.find(x => x.name === name);
     if(found) return found;
-    // 2. Includes match (e.g. "Martinelli" in "Gabriel Martinelli")
     found = list.find(x => x.name.includes(name) || name.includes(x.name));
     if(found) return found;
-    // 3. Last name match
     let lastName = name.split(" ").pop();
     found = list.find(x => x.name.includes(lastName));
     return found;
 }
 
-function showPlayerStats(name, stats) {
+function showPlayerStats(name, stats, events) {
     const pop = document.getElementById("playerPopup");
     if(!stats) return; 
-    document.getElementById("ppName").textContent = stats.name || name; // Use full name from stats
+    document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
-    // Build stats grid
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS
+    let goals = stats.goals;
+    if(goals === undefined) {
+       goals = events ? events.filter(e => e.type === "Goal" && e.player === name).length : 0;
+    }
+    let assists = stats.assists;
+    if(assists === undefined) {
+       assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    }
+
     const grid = document.getElementById("ppStats");
     grid.innerHTML = `
       <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.goals}</div><div class="pp-lbl">Goals</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.assists}</div><div class="pp-lbl">Asst</div></div>
+      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
+      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>

@@ -193,7 +193,6 @@ body{
 .modal-back-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 .modal-sub { font-size: 11px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-/* Fixed Header Logo */
 .modal-header-logo { 
   position: absolute; right: 15px; top: 15px; width: 32px; height: 32px; 
   background: #ffffff; border-radius: 50%; padding: 4px; object-fit: contain; 
@@ -222,7 +221,7 @@ body{
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; }
 .el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: #ffffff; }
-.el-away .el-item { flex-direction: row; } 
+.el-away .el-item { flex-direction: row; justify-content: flex-start; } 
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
 
@@ -250,9 +249,10 @@ body{
   background: #222; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 800; color: #fff;
-  border: 2px solid #fff; overflow:hidden; position:relative;
+  border: 2px solid #fff; overflow: visible; /* KEY FIX: VISIBLE */
+  position:relative;
 }
-.p-img-dot { width: 100%; height: 100%; object-fit: cover; }
+.p-img-dot { width: 100%; height: 100%; object-fit: cover; border-radius:50%; }
 .p-dot.home { border-color: #333; }
 .p-dot.away { border-color: #fff; }
 
@@ -261,39 +261,45 @@ body{
   color: #fff; font-size: 9px; margin-top: 2px; white-space: nowrap; font-weight:600;
   text-shadow: 0 1px 2px #000;
 }
+/* OUTSIDE CIRCLE */
 .p-rat {
-  position: absolute; top: -3px; right: -3px;
+  position: absolute; top: -5px; right: -8px;
   width: 14px; height: 14px; border-radius: 50%;
   font-size: 8px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
-  color: #000; z-index: 12;
+  color: #000; z-index: 15; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 .rat-high { background: #7CFF5B; }
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
+/* OUTSIDE CIRCLE */
 .sub-badge {
-    position: absolute; bottom: -2px; left: -2px;
+    position: absolute; bottom: -2px; left: -6px;
     width: 12px; height: 12px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 8px; z-index: 13;
+    font-size: 8px; z-index: 16; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    background: #ff4d4d; color: #fff; content: "▼";
 }
-.sub-out { background: #ff4d4d; color: #fff; content: "▼"; }
-.sub-in { background: #7CFF5B; color: #000; content: "▲"; }
 
 /* SUBS LIST */
 .subs-container { margin-top: 15px; }
 .subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
-.sub-row { display: flex; font-size: 11px; margin-bottom: 4px; color: #ddd; align-items:center; gap:6px; }
-.sub-row .s-time { color: var(--accent-orange); width: 20px; font-weight: 700; text-align:right;}
+.sub-row { display: flex; font-size: 11px; margin-bottom: 6px; color: #ddd; align-items:center; gap:8px; }
+.sub-icon { 
+    width: 12px; height: 12px; border-radius: 50%; background: #7CFF5B; color: #000; 
+    display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight:800;
+}
 
 /* SUMMARY TIMELINE */
 .sum-timeline { display: flex; flex-direction: column; gap: 8px; }
 .sum-row { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; font-size: 11px; }
 .sum-time { text-align: center; font-weight: 800; color: var(--accent-orange); font-size: 10px; opacity: 0.8; }
 .sum-side { display: flex; align-items: center; gap: 6px; }
+/* KEY FIX: ALIGNMENTS */
 .sum-side.home { justify-content: flex-end; text-align: right; }
 .sum-side.away { justify-content: flex-start; text-align: left; }
+
 .sum-icon { font-size: 12px; }
 .sum-text { display: flex; flex-direction: column; }
 .sum-player { font-weight: 700; color: #fff; }
@@ -569,7 +575,6 @@ function openModal(m){
          if(e.type === "Goal" && e.detail !== "Missed Penalty"){
              let cleanP = e.player.trim();
              // Determine side by checking if known home/away player
-             // If not sure, fuzzy match 'scorers' string from sheet
              let isH = null;
              if(s.scorers) {
                  if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
@@ -664,7 +669,7 @@ function openModal(m){
               
               // Check Sub Out
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
-              let subBadge = isSubbedOut ? `<div class="sub-badge sub-out">▼</div>` : "";
+              let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
 
               let el = document.createElement("div");
               el.className = "pitch-player";
@@ -675,7 +680,7 @@ function openModal(m){
               let content = `<div class="p-dot ${isHome?'home':'away'}">`;
               if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot">`;
               else content += p.num;
-              content += `<div class="p-rat ${rClass}">${rat}</div>${subBadge}</div><div class="p-name">${p.name.split(" ").pop()}</div>`;
+              content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}<div class="p-name">${p.name.split(" ").pop()}</div>`;
               
               el.innerHTML = content;
               pp.appendChild(el);
@@ -687,19 +692,17 @@ function openModal(m){
           let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
           team.sub.forEach(sPlayer => {
              // Check if Subbed In
-             let isSubbedIn = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.assist === sPlayer.name); // 'assist' in API usually implies player coming IN? Or detail? Events logic tricky.
-             // Actually API usually lists player OUT as 'player' and player IN as 'assist'.
-             // Let's check both fields.
+             let isSubbedIn = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.assist === sPlayer.name); 
              if(s.events) {
-                // If this player is the 'assist' in a substitution event, they came ON.
                 let cameOn = s.events.find(e => e.type === "subst" && e.assist === sPlayer.name);
                 if(cameOn) {
-                    subHTML += `<div class="sub-row"><span class="s-time" style="color:#7CFF5B">${cameOn.time}'</span> <span style="color:#fff">${sPlayer.name}</span> <span style="font-size:8px">▲</span></div>`;
+                    // Just Green Arrow + Name
+                    subHTML += `<div class="sub-row"><div class="sub-icon">▲</div> <span>${sPlayer.name}</span></div>`;
                 } else {
-                    subHTML += `<div class="sub-row"><span class="s-time">${sPlayer.num}</span> <span>${sPlayer.name}</span></div>`;
+                    subHTML += `<div class="sub-row"><span>${sPlayer.name}</span></div>`;
                 }
              } else {
-                subHTML += `<div class="sub-row"><span class="s-time">${sPlayer.num}</span> <span>${sPlayer.name}</span></div>`;
+                subHTML += `<div class="sub-row"><span>${sPlayer.name}</span></div>`;
              }
           });
           let col = document.createElement("div");
@@ -720,9 +723,6 @@ function openModal(m){
   } else {
     // Determine Home ID (guess from scorers or events)
     let homeId = null;
-    // We can guess home team from lineup logic, but we don't have IDs here easily.
-    // Let's use the 'isHome' check logic from Goals.
-    
     [...s.events].reverse().forEach(e => {
         let isH = null;
         if(s.scorers) {
@@ -746,6 +746,7 @@ function openModal(m){
         let row = document.createElement("div");
         row.className = "sum-row";
         
+        // MIRRORED LAYOUT: Home (Right Aligned) - Time - Away (Left Aligned)
         let homeHTML = isH ? `<div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${detail}</span></div> <span class="${cssClass}">${icon}</span>` : "";
         let awayHTML = !isH ? `<span class="${cssClass}">${icon}</span> <div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${detail}</span></div>` : "";
         

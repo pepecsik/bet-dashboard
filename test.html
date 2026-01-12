@@ -237,7 +237,7 @@ body{
 .el-away .el-item { flex-direction: row; justify-content: flex-start; } 
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
-.og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:4px; margin-right:4px; }
+.og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:2px; margin-right:2px; }
 
 /* === PITCH & PLAYER STYLES === */
 .pitch-container {
@@ -275,6 +275,7 @@ body{
   color: #fff; font-size: 9px; margin-top: 2px; white-space: nowrap; font-weight:600;
   text-shadow: 0 1px 2px #000;
 }
+/* OUTSIDE CIRCLE */
 .p-rat {
   position: absolute; top: -5px; right: -8px;
   width: 14px; height: 14px; border-radius: 50%;
@@ -286,7 +287,7 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
-/* SUBS BADGE (TUCKED BELOW RATING) */
+/* RED SUB ARROW (MOVED UP) */
 .sub-badge {
     position: absolute; top: 12px; right: -8px; 
     width: 12px; height: 12px; border-radius: 50%;
@@ -295,6 +296,7 @@ body{
     background: #ff4d4d; color: #fff; content: "▼";
 }
 
+/* RED CARD BADGE (PITCH) */
 .pitch-rc {
     position: absolute; top: -2px; left: -6px; 
     width: 12px; height: 14px; border-radius: 2px;
@@ -302,6 +304,7 @@ body{
     border: 1px solid #fff;
 }
 
+/* SUBS LIST */
 .subs-container { margin-top: 15px; }
 .subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
 .sub-row { display: flex; font-size: 11px; margin-bottom: 6px; color: #ddd; align-items:center; gap:8px; }
@@ -315,6 +318,7 @@ body{
 .sum-row { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; font-size: 11px; }
 .sum-time { text-align: center; font-weight: 800; color: var(--accent-orange); font-size: 10px; opacity: 0.8; }
 .sum-side { display: flex; align-items: center; gap: 6px; }
+/* KEY FIX: ALIGNMENTS */
 .sum-side.home { justify-content: flex-end; text-align: right; }
 .sum-side.away { justify-content: flex-start; text-align: left; }
 
@@ -478,7 +482,6 @@ body{
 </div>
 
 <script>
-// REPLACE THIS URL IF YOU DEPLOYED NEW SCRIPT
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -496,7 +499,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V6.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V7.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -516,7 +519,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V6.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V7.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -573,7 +576,7 @@ function loadData(){
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
             // FIX SWAPPED CURRENCY IN SUMMARY
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
+            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
             data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
@@ -601,7 +604,7 @@ function switchTab(t){
 }
 
 function openModal(m){
-  document.getElementById('playerPopup').style.display = 'none'; // RESET POPUP
+  document.getElementById('playerPopup').style.display = 'none'; 
   const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
   const s=m.stats||{};
   switchTab('stats'); 
@@ -609,50 +612,49 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.3);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.3);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  // === AI NARRATIVE GENERATOR ===
   generateStory(hCode, aCode, s, m.score, m.status);
 
-  // 1. STATS - GROUPED GOALS & RED CARDS
+  // 1. STATS - GROUPED GOALS
   let hG=[], aG=[];
-  let keyEvents = []; 
-  
+  let goalsMap = {}; 
   if(s.events){
       s.events.forEach(e => {
-         // INCLUDE GOALS AND RED CARDS
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = e.player.trim();
-             // Determine Home/Away
+             
+             // --- IMPROVED HOME/AWAY DETECTION ---
              let isH = null;
-             if(s.lineups && s.lineups.h && s.lineups.h.start) {
+             if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
+             else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
+             
+             // Fallback
+             if(isH === null && s.lineups && s.lineups.h && s.lineups.h.start) {
                  if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
                  else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
              }
-             if(isH === null && s.scorers) {
-                 if(s.scorers.includes("(H) " + cleanP)) isH = true;
-                 else if(s.scorers.includes("(A) " + cleanP)) isH = false;
-             }
              if(isH === null) isH = true; 
              
-             keyEvents.push({ time: parseInt(e.time), strTime: e.time+"'", name: formatName(e.player), type: e.type, detail: e.detail, isHome: isH });
+             if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail };
+             goalsMap[cleanP].times.push(e.time + "'");
          }
       });
   }
-  // Sort by time
-  keyEvents.sort((a,b) => a.time - b.time);
-
-  // Render Key Events
-  keyEvents.forEach(k => {
-      let icon = "⚽";
-      let extra = "";
-      if(k.type === "Card" && k.detail === "Red Card") icon = "🟥";
-      if(k.detail === "Own Goal") extra = ' <span class="og-tag">(OG)</span>';
-
+  
+  Object.keys(goalsMap).forEach(player => {
+      let g = goalsMap[player];
+      let timesStr = g.times.join(", ");
+      let name = formatName(player);
       let html = "";
-      if(k.isHome) {
-         html = `<div class="el-item"><span>${k.name}</span>${extra} <span class="el-time">${k.strTime}</span> <span class="el-icon">${icon}</span></div>`;
+      
+      let icon = "⚽";
+      if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
+      let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
+      
+      if(g.isHome) {
+         html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`;
          hG.push(html);
       } else {
-         html = `<div class="el-item"><span class="el-icon">${icon}</span> <span class="el-time">${k.strTime}</span>${extra} <span>${k.name}</span></div>`; 
+         html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; 
          aG.push(html);
       }
   });
@@ -694,9 +696,9 @@ function openModal(m){
 
       lines.forEach((line, rIdx) => {
           let yPct = 0;
-          if(isHome) { // Top
+          if(isHome) { 
              if(rIdx===0) yPct=5; else if(rIdx===1) yPct=22; else if(rIdx===2) yPct=36; else yPct=46; 
-          } else { // Bottom
+          } else { 
              if(rIdx===0) yPct=95; else if(rIdx===1) yPct=78; else if(rIdx===2) yPct=64; else yPct=54; 
           }
           
@@ -715,7 +717,6 @@ function openModal(m){
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
               let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
               
-              // RED CARD CHECK
               let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player === p.name);
               let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
@@ -766,18 +767,11 @@ function openModal(m){
     sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
   } else {
     [...s.events].reverse().forEach(e => {
-        let isH = null;
         let cleanP = e.player.trim();
-        // Check Lineups First
-        if(s.lineups && s.lineups.h && s.lineups.h.start) {
-             if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
-             else if(s.lineups.a.start.some(p => p.name === cleanP) || s.lineups.a.sub?.some(p => p.name === cleanP)) isH = false;
-        }
-        // Fallback to Scorers
-        if(isH === null && s.scorers) {
-             if(s.scorers.includes("(H) " + cleanP) || s.scorers.includes(cleanP + " (H)")) isH = true;
-             else if(s.scorers.includes("(A) " + cleanP) || s.scorers.includes(cleanP + " (A)")) isH = false;
-        }
+        let isH = null;
+        if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
+        else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
+        
         if(isH === null) isH = true; // Fallback
 
         let icon="•";
@@ -816,37 +810,30 @@ function generateStory(home, away, stats, score, status) {
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
     
-    // HEADLINE
     let story = "";
-    if(status === "FT") {
-       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim all three points in a commanding victory. `;
-       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} snatch a crucial win on the road. `;
-       else story = `<b>FULL TIME:</b> It ends all square at ${home}. `;
-    } else {
-       if(hG > aG + 1) story = `<b>LIVE:</b> ${home} are running riot here! `;
-       else if(aG > hG + 1) story = `<b>LIVE:</b> Shock lead for ${away} away from home. `;
-       else story = `<b>LIVE:</b> A tightly contested battle at ${home}. `;
-    }
-
-    // STATS CONTEXT
-    let xgDiff = (stats.h_xg - stats.a_xg);
-    if(xgDiff > 1.0 && hG <= aG) story += `Despite creating far better chances (xG ${stats.h_xg.toFixed(2)}), ${home} haven't made it count. `;
-    else if(xgDiff < -1.0 && aG <= hG) story += `${away} have been dangerous (xG ${stats.a_xg.toFixed(2)}) but lack the finishing touch. `;
     
-    if(stats.h_poss > 65) story += `${home} are dominating possession with ${stats.h_poss}%, pinning ${away} back. `;
-    else if(stats.a_poss > 65) story += `${away} are controlling the tempo with ${stats.a_poss}% possession. `;
+    if(status === "FT") {
+       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim victory in a match where they `;
+       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} take all three points. `;
+       else story = `<b>FULL TIME:</b> Honors even at the final whistle. `;
+    } else {
+       story = `<b>LIVE ${time}':</b> `;
+    }
 
-    // STAR PLAYER
-    let bestPlayer = null;
-    let highestRat = 0;
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
-        });
-    }
-    if(bestPlayer && highestRat > 8.0) {
-        story += `<br><br>🌟 <b>Star Performer:</b> ${formatName(bestPlayer)} is running the show with a massive ${highestRat.toFixed(1)} rating.`;
-    }
+    // Possession & xG Context
+    if(stats.h_poss > 55) story += `${home} have controlled possession (${stats.h_poss}%) `;
+    else if(stats.a_poss > 55) story += `${away} have dictated the play (${stats.a_poss}% possession) `;
+    else story += `It's been an even contest `;
+
+    let xgDiff = (stats.h_xg - stats.a_xg);
+    if(xgDiff > 0.5) story += `and created the better chances (xG ${stats.h_xg.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} have looked more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
+    else story += `with few clear-cut chances. `;
+
+    // Specific Game Scenarios
+    if(hG < aG && stats.h_xg > stats.a_xg + 0.5) story += `<br><br>⚠️ <b>Smash & Grab:</b> ${away} are leading despite ${home}'s superior creativity. ${home} will feel aggrieved.`;
+    else if(hG > aG && stats.a_poss > 60) story += `<br><br>🛡️ <b>Defensive Masterclass:</b> ${home} are soaking up pressure and leading against the run of play.`;
+    else if(hG === aG && (stats.h_shots_tot + stats.a_shots_tot) > 25) story += `<br><br>🔥 <b>End to End:</b> A chaotic game with chances at both ends, but neither side can find the winner yet.`;
 
     el.innerHTML = story;
 }
@@ -869,7 +856,6 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
-    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
     if(goals === undefined) {
        goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;

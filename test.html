@@ -303,6 +303,7 @@ body{
     border: 1px solid #fff;
 }
 
+/* SUBS LIST */
 .subs-container { margin-top: 15px; }
 .subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
 .sub-row { display: flex; font-size: 11px; margin-bottom: 6px; color: #ddd; align-items:center; gap:8px; }
@@ -575,7 +576,7 @@ function loadData(){
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
             // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vD)}</div><div class="week-eur">${formatEUR(vE)}</div></div>`});
+            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
             data.ranking.forEach((r,i)=>{const m=["🥇","🥈","🥉"],rd=m[i]||(i+1);ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`});
@@ -603,7 +604,7 @@ function switchTab(t){
 }
 
 function openModal(m){
-  document.getElementById('playerPopup').style.display = 'none'; 
+  document.getElementById('playerPopup').style.display = 'none'; // RESET POPUP
   const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
   const s=m.stats||{};
   switchTab('stats'); 
@@ -611,9 +612,9 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.3);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.3);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  // === AI NARRATIVE GENERATOR (V7.0) ===
+  // === AI NARRATIVE GENERATOR (V8.0: Future Game Logic) ===
   try {
-      generateStory(hCode, aCode, s, m.score, m.status);
+      generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date);
   } catch(e) {
       document.getElementById("aiSummaryText").innerHTML = "Waiting for game analysis...";
   }
@@ -623,12 +624,22 @@ function openModal(m){
   let goalsMap = {}; 
   if(s.events){
       s.events.forEach(e => {
+         // INCLUDE GOALS AND RED CARDS
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = e.player.trim();
              // Determine Home/Away
              let isH = null;
-             if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
-             else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
+             // Check Lineups
+             if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                 if(s.lineups.h.start.some(p => p.name.includes(cleanP.split(' ').pop())) || s.lineups.h.sub?.some(p => p.name.includes(cleanP.split(' ').pop()))) isH = true;
+                 else if(s.lineups.a.start.some(p => p.name.includes(cleanP.split(' ').pop())) || s.lineups.a.sub?.some(p => p.name.includes(cleanP.split(' ').pop()))) isH = false;
+             }
+             // Fallback to Scorers string (Fuzzy)
+             if(isH === null && s.scorers) {
+                 if(s.scorers.includes("(H)") && s.scorers.includes(cleanP)) isH = true;
+                 else if(s.scorers.includes("(A)") && s.scorers.includes(cleanP)) isH = false;
+             }
+             // Default Home if unknown
              if(isH === null) isH = true; 
              
              if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail };
@@ -636,6 +647,10 @@ function openModal(m){
          }
       });
   }
+  // Sort by time
+  keyEvents = []; // Not used, handled in loop
+  // Better handling: Sort the map? No, map is by player.
+  // Just render based on map.
   
   Object.keys(goalsMap).forEach(player => {
       let g = goalsMap[player];
@@ -655,6 +670,19 @@ function openModal(m){
          aG.push(html);
       }
   });
+
+  // Fallback for scorers string if no events
+  if(Object.keys(goalsMap).length === 0 && s.scorers) {
+       s.scorers.split(",").forEach(i=>{
+          let raw = i.trim(); if(!raw) return;
+          let isHome = raw.includes("(H)");
+          let name = formatName(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim());
+          let html = "";
+          if(isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-icon">⚽</span></div>`;
+          else html = `<div class="el-item"><span class="el-icon">⚽</span> <span>${name}</span></div>`;
+          if(isHome) hG.push(html); else aG.push(html);
+      });
+  }
 
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
@@ -693,9 +721,9 @@ function openModal(m){
 
       lines.forEach((line, rIdx) => {
           let yPct = 0;
-          if(isHome) { 
+          if(isHome) { // Top
              if(rIdx===0) yPct=5; else if(rIdx===1) yPct=22; else if(rIdx===2) yPct=36; else yPct=46; 
-          } else { 
+          } else { // Bottom
              if(rIdx===0) yPct=95; else if(rIdx===1) yPct=78; else if(rIdx===2) yPct=64; else yPct=54; 
           }
           
@@ -714,6 +742,7 @@ function openModal(m){
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
               let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
               
+              // RED CARD CHECK
               let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player === p.name);
               let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
@@ -766,8 +795,13 @@ function openModal(m){
     [...s.events].reverse().forEach(e => {
         let cleanP = e.player.trim();
         let isH = null;
-        if(s.players && s.players.h && s.players.h.some(p => p.name === cleanP)) isH = true;
-        else if(s.players && s.players.a && s.players.a.some(p => p.name === cleanP)) isH = false;
+        // Check Lineups First (Robust Fuzzy Match)
+        if(s.lineups && s.lineups.h && s.lineups.h.start) {
+             let lastName = cleanP.split(' ').pop();
+             if(s.lineups.h.start.some(p => p.name.includes(lastName)) || s.lineups.h.sub?.some(p => p.name.includes(lastName))) isH = true;
+             else if(s.lineups.a.start.some(p => p.name.includes(lastName)) || s.lineups.a.sub?.some(p => p.name.includes(lastName))) isH = false;
+        }
+        // Fallback
         if(isH === null) isH = true; 
 
         let icon="•";
@@ -800,61 +834,60 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-// === ADVANCED NARRATIVE GENERATOR ===
-function generateStory(home, away, stats, score, status) {
+// === ADVANCED NARRATIVE GENERATOR (V8.0 - Date Logic) ===
+function generateStory(home, away, stats, score, status, startTime, date) {
     const el = document.getElementById("aiSummaryText");
+    
+    // Check Date Logic for NS
     if(status === "NS") {
-        el.innerHTML = `Kick-off is coming soon. The teams are in the tunnel. Check lineups for tactical setups.`;
+        let matchDate = date ? new Date(date) : null;
+        let today = new Date();
+        let isToday = matchDate && matchDate.getDate() === today.getDate() && matchDate.getMonth() === today.getMonth();
+        
+        if(isToday) {
+            el.innerHTML = `Kick-off is at ${startTime || 'soon'}. The teams are preparing for what promises to be an exciting clash. Check lineups for tactical setups.`;
+        } else {
+             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
+             el.innerHTML = `This match is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
+        }
         return;
     }
 
+    // SAFE MATH (Defaults)
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
-    
-    // HEADLINE
-    let story = "";
-    if(status === "FT") {
-       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim a massive victory against ${away}. The home side managed the game perfectly to take all three points. `;
-       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} stun the hosts with a brilliant away performance. ${home} will be disappointed with the result. `;
-       else story = `<b>FULL TIME:</b> It ends in a stalemate as neither ${home} nor ${away} could find the winner. A hard-fought point for both. `;
-    } else if (status === "HT") {
-        story += `<b>HALF TIME:</b> The referee blows the whistle for the break with the score at ${hG}-${aG}. Both managers will have plenty to say in the dressing room. `;
-    } else {
-        story += `<b>LIVE ${time}':</b> We are deep into the action here at the stadium. `;
-        if(hG > aG + 1) story += `${home} are in cruise control, dominating proceedings with a ${hG}-${aG} lead. `;
-        else if(aG > hG + 1) story += `${away} have silenced the home crowd, racing into a ${aG}-${hG} lead. `;
-        else if(hG !== aG) story += `It's a tight affair with everything still to play for, current score ${hG}-${aG}. `;
-        else story += `The deadlock remains unbroken as both teams search for that crucial opening goal. `;
-    }
+    const hPoss = stats.h_poss || 50;
+    const aPoss = stats.a_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
 
+    let story = "";
+    const lead = hG - aG;
+
+    // 1. HEADLINE
+    if(status === "FT") {
+       if(lead > 0) story = `<b>FULL TIME:</b> ${home} claim a massive victory. `;
+       else if(lead < 0) story = `<b>FULL TIME:</b> ${away} snatch the win away from home. `;
+       else story = `<b>FULL TIME:</b> Honors even at the final whistle. `;
+    } else if (status === "HT") {
+        story += `<b>HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+    } else {
+        story += `<b>LIVE ${time}':</b> `;
+        if(lead > 0) story += `${home} are leading ${hG}-${aG}. `;
+        else if(lead < 0) story += `${away} are ahead ${aG}-${hG}. `;
+        else story += `All square at ${hG}-${hG}. `;
+    }
     story += "<br><br>";
 
-    // TACTICAL CONTEXT
-    let hPoss = stats.h_poss || 50;
-    if(hPoss > 60) story += `${home} have controlled the tempo with ${hPoss}% possession, forcing ${away} to sit deep and absorb pressure. `;
-    else if(hPoss < 40) story += `${away} have dictated play with the ball (${100-hPoss}% possession), while ${home} look to hit on the counter-attack. `;
-    else story += `It has been an even contest in midfield, with possession split ${hPoss}% to ${100-hPoss}%. `;
+    // 2. CONTEXT
+    if(hPoss > 55) story += `${home} are controlling possession (${hPoss}%) `;
+    else if(aPoss > 55) story += `${away} have the ball (${aPoss}%) `;
+    else story += `Possession is even `;
 
-    let xgDiff = (stats.h_xg - stats.a_xg);
-    if(xgDiff > 0.5) story += `${home} have created the higher quality chances (xG ${stats.h_xg.toFixed(2)}), constantly threatening the opposition goal. `;
-    else if(xgDiff < -0.5) story += `${away} have been the more dangerous side in the final third (xG ${stats.a_xg.toFixed(2)}). `;
-
-    // CARDS
-    if(stats.h_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game changed when ${home} were reduced to 10 men. `;
-    if(stats.a_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle after seeing red. `;
-
-    // STAR PLAYER
-    let bestPlayer = null;
-    let highestRat = 0;
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
-        });
-    }
-
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>Man of the Moment:</b> <b>${formatName(bestPlayer)}</b> is running the show with a superb rating of ${highestRat.toFixed(1)}.`;
-    }
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.5) story += `and creating better chances (xG ${hXG.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
+    else story += `in a tight game. `;
 
     el.innerHTML = story;
 }
@@ -877,6 +910,7 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS
     let goals = stats.goals;
     if(goals === undefined) {
        goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;

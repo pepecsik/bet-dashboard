@@ -44,7 +44,7 @@ if ("serviceWorker" in navigator) {
   --gap:6px;
 
   --left-w:230px; 
-  --bet-w:80px;    
+  --bet-w:80px;     
     
   --summary-w:200px; 
 
@@ -1078,11 +1078,10 @@ function toTitleCase(str) {
 
 // === UPDATED OPEN MODAL (DEEP STATS) ===
 function openModal(m) {
-  // ... existing code ...
   const [homeCode, awayCode] = m.match.split("-");
   
-  // --- ADD THIS BLOCK HERE ---
-  // Force parse the player data if it arrived as a string
+  // --- SAFE JSON PARSING ---
+  // This ensures that even if data comes as string or list, we handle it.
   const s = m.stats || {};
   if (typeof s.h_players === 'string') {
       try { s.h_players = JSON.parse(s.h_players); } catch(e) { s.h_players = []; }
@@ -1090,7 +1089,7 @@ function openModal(m) {
   if (typeof s.a_players === 'string') {
       try { s.a_players = JSON.parse(s.a_players); } catch(e) { s.a_players = []; }
   }
-  // ---------------------------
+  // -------------------------
 
   document.getElementById("mTitle").innerHTML = `
     <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
@@ -1100,8 +1099,6 @@ function openModal(m) {
     </div>
   `;
   document.getElementById("mStatus").textContent = m.status + "  •  " + (m.score || "0-0");
-  
-  const s = m.stats || {};
   
   // 1. SCORERS (Top)
   let homeScorers = [], awayScorers = [];

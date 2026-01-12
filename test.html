@@ -220,7 +220,8 @@ body{
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 6px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { 
-    text-align: left; align-items: flex-end; /* Align right side */
+    text-align: left; align-items: flex-start; /* Reset align */
+    margin-left: auto; /* Push to Right */
 }
 .el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: #ffffff; }
 .el-away .el-item { flex-direction: row; justify-content: flex-start; } 
@@ -278,7 +279,7 @@ body{
 
 /* RED SUB ARROW (MOVED UP) */
 .sub-badge {
-    position: absolute; top: 10px; right: -8px; /* MOVED HIGHER (Just below rating) */
+    position: absolute; top: 12px; right: -8px; /* Tucked below rating */
     width: 12px; height: 12px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 8px; z-index: 16; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -466,7 +467,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">v2</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V3.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -486,7 +487,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">v2</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V3.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -558,7 +559,6 @@ function formatName(fullName) {
     if(!fullName) return "";
     let parts = fullName.split(" ");
     if(parts.length < 2) return fullName;
-    // G. Martinelli
     return parts[0].charAt(0) + ". " + parts.slice(1).join(" ");
 }
 
@@ -585,7 +585,6 @@ function openModal(m){
       s.events.forEach(e => {
          if(e.type === "Goal" && e.detail !== "Missed Penalty"){
              let cleanP = e.player.trim();
-             // --- IMPROVED HOME/AWAY DETECTION ---
              let isH = null;
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
                  if(s.lineups.h.start.some(p => p.name === cleanP) || s.lineups.h.sub?.some(p => p.name === cleanP)) isH = true;
@@ -608,20 +607,16 @@ function openModal(m){
       let timesStr = g.times.join(", ");
       let name = formatName(player);
       let html = "";
-      // OG LOGIC: 
-      // If it's Home Player but Own Goal -> It counts for Away Score? No, typically "Own Goal" means they scored against themselves.
-      // API Standard: event.team is the team that got the point.
-      // So if Saliba (Arsenal) scores OG, the event team is Opponent.
-      // Let's assume standard display: Player Name (OG).
-      let ogText = g.isOG ? ` <span class="og-tag">OG</span>` : "";
+      
+      let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; // Just text style
       
       if(g.isHome) {
-         // Home: Name [Times] ⚽
+         // Home: Name (OG) [Times] ⚽
          html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
          hG.push(html);
       } else {
-         // Away: ⚽ [Times] Name
-         html = `<div class="el-item"><span class="el-icon">⚽</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; 
+         // Away: ⚽ [Times] Name (OG)
+         html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}${ogText}</span></div>`; 
          aG.push(html);
       }
   });
@@ -772,7 +767,6 @@ function openModal(m){
         let row = document.createElement("div");
         row.className = "sum-row";
         
-        // NAME FORMATTING FOR SUMMARY
         let pName = formatName(e.player);
         let dText = detail === "Own Goal" ? "Own Goal" : detail;
 
@@ -787,6 +781,7 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
+// FUZZY MATCH PLAYER STATS
 function findPlayerStats(name, list) {
     if(!list) return null;
     let found = list.find(x => x.name === name);

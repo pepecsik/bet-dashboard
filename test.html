@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
- 
+<script>
+if(window.navigator && navigator.serviceWorker) {
+  navigator.serviceWorker.getRegistrations()
+  .then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+      console.log("Service Worker Unregistered");
+    }
+  });
+}
+</script>
+
 <link rel="manifest" href="/bet-dashboard/manifest.json">
 <meta name="theme-color" content="#134d2b">
 
@@ -289,8 +300,9 @@ body{
 /* RED CARD BADGE (PITCH) */
 .pitch-rc {
     position: absolute; top: -2px; left: -6px; 
-    width: 10px; height: 12px; border-radius: 2px;
+    width: 12px; height: 14px; border-radius: 2px;
     background: #ff4d4d; z-index: 16; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    border: 1px solid #fff;
 }
 
 /* SUBS LIST */
@@ -471,6 +483,7 @@ body{
 </div>
 
 <script>
+// UPDATE THIS URL IF YOU DEPLOYED NEW SCRIPT
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -488,7 +501,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V4.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V5.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -508,7 +521,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V4.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#ff4d4d;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V5.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -603,7 +616,7 @@ function openModal(m){
   // === AI NARRATIVE GENERATOR ===
   generateStory(hCode, aCode, s, m.score, m.status);
 
-  // 1. STATS - GOALS & RED CARDS
+  // 1. STATS - GROUPED GOALS & RED CARDS
   let hG=[], aG=[];
   let keyEvents = []; 
   

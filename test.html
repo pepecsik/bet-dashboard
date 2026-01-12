@@ -269,6 +269,12 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
+/* SUBS LIST */
+.subs-container { margin-top: 15px; }
+.subs-header { font-size: 11px; font-weight: 700; color: #9aa0a6; margin-bottom: 6px; text-transform:uppercase; }
+.sub-row { display: flex; font-size: 11px; margin-bottom: 4px; color: #ddd; }
+.sub-row .s-time { color: var(--accent-orange); width: 30px; font-weight: 700; }
+
 /* PLAYER POPUP CARD */
 .player-popup {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -370,6 +376,8 @@ body{
              <div class="pitch-line box-bottom"></div>
              <div id="pitchPlayers"></div>
           </div>
+          <div class="subs-container" id="subsArea"></div>
+
           <div class="player-popup" id="playerPopup">
              <div class="close-pp" onclick="document.getElementById('playerPopup').style.display='none'">×</div>
              <div class="pp-header">
@@ -437,7 +445,6 @@ function loadData(){
     left.innerHTML="";right.innerHTML="";weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';ranking.innerHTML="";
     if(data.chartData)chartDataCache=data.chartData;if(data.leagueTable)tableCache=data.leagueTable;
 
-    // NOTIFICATIONS
     if(Notification.permission==="granted"){
       try {
         data.matches.forEach(m=>{const id=m.match,oldM=prevMatches[id];if(oldM){if(m.score!==oldM.score&&m.status!=="NS"){new Notification("Goal! ⚽",{body:`${m.match}\n${m.score}`,icon:"/apple-touch-icon.png",tag:id})}const newRed=m.stats?.h_cards+m.stats?.a_cards,oldRed=oldM.stats?.h_cards+oldM.stats?.a_cards;if(newRed>oldRed){new Notification("Card! 🟥",{body:`${m.match}`,tag:id+"_red"})}}});data.matches.forEach(m=>{prevMatches[m.match]={score:m.score,status:m.status,stats:JSON.parse(JSON.stringify(m.stats||{}))}});
@@ -528,56 +535,69 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.3);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.3);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  // 1. STATS - Goals with Minutes
-  let hG=[],aG=[];
+  // 1. STATS - GROUPED GOALS
+  let hG=[], aG=[];
+  let goalsMap = {}; // Key: PlayerName, Value: {times:[], isHome: bool}
+  
+  // First, map all goals from events
   if(s.events){
-      s.events.forEach(e=>{
-          if(e.type==="Goal"){
-             let tm = e.time ? e.time+"'" : "";
-             let pl = toTitleCase(e.player);
-             // Assume teams.home.id matches lineups color or similar logic. 
-             // Simplification: Check event team ID vs lineup color/id if available, or just fallback to user knowing.
-             // BETTER: Use the stored team name from events to assign side
-             // For now, relies on the `scorers` string or event team ID match.
-             // We'll use event order for now or just put them on left/right if we know the ID.
-             // Simplified: Just use the events list order?
-             // Actually, let's use the old 'scorers' string if 'events' isn't precise, BUT 'events' is better.
-             // The script provided team ID. We need to know which ID is home.
-             // Hack: First event usually gives a clue, or we assume script sent correct order.
-             // Let's use the 'scorers' string from sheet for simple list, BUT users want time.
-             // Fix: We'll loop events. We need to know Home ID.
-             // Since we don't have HomeID handy in 'm', we can guess or just list them.
-             // Let's list them all with (H)/(A) if needed, OR try to parse the 'scorers' string from sheet.
-             // The sheet has "Colby Bishop (H), Someone (A)".
-             if(s.scorers.includes(e.player)) { // It's a goal scorer
-                 let html = `<div class="el-item"><span>${pl}</span><span class="el-time">${tm}</span><span class="el-icon">⚽</span></div>`;
-                 // We don't know side easily without IDs. Let's put all in one list? No, separate.
-                 // Let's trust the 'scorers' string splitting for sides, but add time from events?
-                 // Complex match.
-                 // Alternative: Just list events that are goals.
+      s.events.forEach(e => {
+         if(e.type === "Goal" && e.detail !== "Missed Penalty"){
+             // We need to determine if it's home or away. 
+             // Logic: Check if player name exists in 'scorers' string with (H) or (A).
+             let cleanP = e.player.trim();
+             let isH = s.scorers && s.scorers.includes(cleanP + " (H)") ? true : 
+                       (s.scorers && s.scorers.includes(cleanP + " (A)") ? false : null);
+             
+             // Fallback: If not found in scorers string, maybe try lineup color match?
+             // Since we lack IDs in this context, we fallback to simple grouping by name.
+             // We will group by name and assume side based on first occurrence found in string.
+             
+             if(isH === null) {
+                 // Try loose matching
+                 if(s.scorers && s.scorers.includes("(H) " + cleanP)) isH = true;
+                 else if(s.scorers && s.scorers.includes("(A) " + cleanP)) isH = false;
+                 // As absolute fallback, assume it's Home if we can't tell (User can fix sheet)
+                 else isH = true; 
              }
-          }
+             
+             if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH };
+             goalsMap[cleanP].times.push(e.time + "'");
+         }
       });
   }
-  // FALLBACK: Use the simple string but add a fake time placeholder or try to match text
-  // Let's do the Visual Goal List based on the `scorers` string which separates (H) and (A)
-  // And try to find the time in `events`.
-  hG=[]; aG=[];
-  if(s.scorers){
-      s.scorers.split(",").forEach(i=>{
-          let raw = i.trim();
+  
+  // Render Groups
+  Object.keys(goalsMap).forEach(player => {
+      let g = goalsMap[player];
+      let timesStr = g.times.join(", ");
+      let name = toTitleCase(player);
+      let html = "";
+      
+      if(g.isHome) {
+         // Home: Name [Times] ⚽
+         html = `<div class="el-item"><span>${name}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">⚽</span></div>`;
+         hG.push(html);
+      } else {
+         // Away: ⚽ [Times] Name
+         html = `<div class="el-item"><span class="el-icon">⚽</span> <span class="el-time">${timesStr}</span> <span>${name}</span></div>`;
+         aG.push(html);
+      }
+  });
+
+  // Fallback if no events but we have scorers string (Old style support)
+  if(Object.keys(goalsMap).length === 0 && s.scorers) {
+       s.scorers.split(",").forEach(i=>{
+          let raw = i.trim(); if(!raw) return;
           let isHome = raw.includes("(H)");
-          let name = raw.replace("(H)","").replace("(A)","").trim();
-          let niceName = toTitleCase(name);
-          // Find time
-          let time = "";
-          let evt = s.events.find(e=>e.type==="Goal" && e.player.toLowerCase().includes(name.toLowerCase()));
-          if(evt) time = evt.time + "'";
-          
-          let html = `<div class="el-item"><span>${niceName}</span> <span class="el-time">${time}</span> <span class="el-icon">⚽</span></div>`;
+          let name = toTitleCase(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim()); // Remove any (H) or (A)
+          let html = "";
+          if(isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-icon">⚽</span></div>`;
+          else html = `<div class="el-item"><span class="el-icon">⚽</span> <span>${name}</span></div>`;
           if(isHome) hG.push(html); else aG.push(html);
       });
   }
+
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
   // STATS BARS
@@ -587,13 +607,12 @@ function openModal(m){
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
     {l:"Shots Total",h:s.h_shots_tot,a:s.a_shots_tot},
     {l:"Shots Target",h:s.h_shots,a:s.a_shots},
-    {l:"Shots Inside Box",h:s.h_inside,a:s.a_inside}, // Will hide if undefined
+    {l:"Shots Inside Box",h:s.h_inside||0,a:s.a_inside||0}, // Force 0 if missing
     {l:"Saves",h:s.h_saves,a:s.a_saves},
     {l:"Fouls",h:s.h_fouls,a:s.a_fouls},
     {l:"Corners",h:s.h_corners,a:s.a_corners}
   ];
   sl.forEach(st=>{
-    if(st.h === undefined || st.a === undefined) return; // Hide undefined
     let t=st.h+st.a,hp=0,ap=0;
     if(t>0){hp=(st.h/t)*100;ap=(st.a/t)*100;if(st.pct){hp=st.h;ap=st.a}if(st.dec){hp=(st.h/(st.h+st.a+0.001))*100;ap=100-hp}}
     let ht=st.h,at=st.a;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=parseFloat(st.h).toFixed(2);at=parseFloat(st.a).toFixed(2)}
@@ -602,48 +621,41 @@ function openModal(m){
 
   // 2. LINEUPS (PITCH VIEW)
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+  const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
+  
   const renderPitchTeam = (team, isHome, playersFull) => {
       if(!team.start) return;
-      // Pos Mapping: "G"=GK, "D"=Def, "M"=Mid, "F"=Fwd
-      // Grid logic: GK is 0, Def 1, Mid 2, Fwd 3
       const rows = { "G":0, "D":1, "M":2, "F":3 };
-      
-      // Group by row
       let lines = [[],[],[],[]];
       team.start.forEach(p => {
-         let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; // Default Mid
+         let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
          lines[r].push(p);
       });
 
-      // Render dots
       lines.forEach((line, rIdx) => {
           let yPct = 0;
-          if(isHome) { // Top team: 0 to 45%
-             if(rIdx===0) yPct=5; // GK
-             else if(rIdx===1) yPct=20;
-             else if(rIdx===2) yPct=35;
-             else yPct=48;
-          } else { // Bottom team: 100 to 55%
-             if(rIdx===0) yPct=95; // GK
-             else if(rIdx===1) yPct=80;
-             else if(rIdx===2) yPct=65;
-             else yPct=52;
+          if(isHome) { // Top
+             if(rIdx===0) yPct=5;      
+             else if(rIdx===1) yPct=22; 
+             else if(rIdx===2) yPct=36; 
+             else yPct=46; 
+          } else { // Bottom
+             if(rIdx===0) yPct=95;     
+             else if(rIdx===1) yPct=78; 
+             else if(rIdx===2) yPct=64; 
+             else yPct=54; 
           }
           
           line.forEach((p, i) => {
-              // Spread x: Center is 50%
               let count = line.length;
               let spacing = 90 / (count + 1);
               let xPct = spacing * (i + 1) + 5;
-              
-              // Find Rating
               let pStats = playersFull.find(x => x.name === p.name);
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let rClass = "rat-mid";
               if(rat >= 7.0) rClass = "rat-high";
               if(rat < 6.0 && rat !== "-") rClass = "rat-low";
 
-              // Create Dot
               let el = document.createElement("div");
               el.className = "pitch-player";
               el.style.top = yPct + "%";
@@ -653,7 +665,23 @@ function openModal(m){
               pp.appendChild(el);
           });
       });
+
+      // SUBS RENDER
+      if(team.sub && team.sub.length > 0) {
+          let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
+          team.sub.forEach(s => {
+             subHTML += `<div class="sub-row"><span class="s-time">${s.num}</span> <span>${s.name}</span></div>`;
+          });
+          let col = document.createElement("div");
+          col.style.flex = "1";
+          col.innerHTML = subHTML;
+          subsCont.appendChild(col);
+      }
   };
+  
+  // Need flex container for subs
+  subsCont.style.display = "flex";
+  subsCont.style.gap = "10px";
   
   renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
   renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
@@ -666,11 +694,17 @@ function openModal(m){
     let txt = "";
     [...s.events].reverse().forEach(e=>{
       let icon="⏱️";
-      if(e.type==="Goal") icon="⚽ GOAL!";
-      if(e.type==="Card"&&e.detail==="Yellow Card") icon="🟨 Yellow Card";
-      if(e.type==="Card"&&e.detail==="Red Card") icon="🟥 RED CARD";
+      let detail = e.detail || "";
+      
+      if(e.type==="Goal") {
+         if(detail === "Missed Penalty") icon = "❌"; 
+         else icon="⚽ GOAL!";
+      }
+      if(e.type==="Card"&&detail==="Yellow Card") icon="🟨 Yellow Card";
+      if(e.type==="Card"&&detail==="Red Card") icon="🟥 RED CARD";
+      if(e.type==="subst") icon="🔄 Substitution";
        
-      txt += `<div class="sum-event"><span class="sum-minute">${e.time}'</span> ${icon} - <b>${e.player}</b> <span style="font-size:11px;opacity:0.6">${e.detail||""}</span></div>`;
+      txt += `<div class="sum-event"><span class="sum-minute">${e.time}'</span> ${icon} - <b>${e.player}</b> <span style="font-size:11px;opacity:0.6">${detail}</span></div>`;
     });
     sv.innerHTML = txt;
   }

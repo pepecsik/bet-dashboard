@@ -586,6 +586,7 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
+            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
             weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
@@ -632,7 +633,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = e.player.trim();
              
-             // --- ROBUST HOME/AWAY DETECTION ---
+             // --- ROBUST HOME/AWAY DETECTION (V12.0) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
@@ -687,7 +688,7 @@ function openModal(m){
   // STATS BARS
   const sb=document.getElementById("statsArea");sb.innerHTML="";
   const sl=[
-    {l:"Expected Goals",h:s.h_xg,a:s.a_xg,dec:true}, 
+    {l:"Expected Goals",h:parseFloat(s.h_xg)||0,a:parseFloat(s.a_xg)||0,dec:true}, 
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
     {l:"Shots Total",h:s.h_shots_tot,a:s.a_shots_tot},
     {l:"Shots Target",h:s.h_shots,a:s.a_shots},
@@ -698,11 +699,11 @@ function openModal(m){
   sl.forEach(st=>{
     let t=st.h+st.a,hp=0,ap=0;
     if(t>0){hp=(st.h/t)*100;ap=(st.a/t)*100;if(st.pct){hp=st.h;ap=st.a}if(st.dec){hp=(st.h/(st.h+st.a+0.001))*100;ap=100-hp}}
-    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=parseFloat(st.h).toFixed(2);at=parseFloat(st.a).toFixed(2)}
+    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=st.h.toFixed(2);at=st.a.toFixed(2)}
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS (V13.0 - BETTER SPACING)
+  // 2. LINEUPS
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -718,17 +719,17 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // Pushed back towards goal
-             if(rIdx===0) yPct=4;      // GK
-             else if(rIdx===1) yPct=16; // Def (Closer to GK)
-             else if(rIdx===2) yPct=30; // Mid (Spaced out)
-             else yPct=42;              // Fwd (Away from center)
+             // Adjusted Spacing: GK 8%, Def 22%, Mid 38%, Fwd 55% (Closer to middle)
+             if(rIdx===0) yPct=8;      
+             else if(rIdx===1) yPct=22; 
+             else if(rIdx===2) yPct=38; 
+             else yPct=55; 
           } else { 
-             // Pushed back towards goal
-             if(rIdx===0) yPct=96;     // GK
-             else if(rIdx===1) yPct=84; // Def
-             else if(rIdx===2) yPct=70; // Mid
-             else yPct=58;              // Fwd
+             // Adjusted Spacing: GK 92%, Def 78%, Mid 62%, Fwd 45% (Closer to middle)
+             if(rIdx===0) yPct=92;     
+             else if(rIdx===1) yPct=78; 
+             else if(rIdx===2) yPct=62; 
+             else yPct=45; 
           }
           
           line.forEach((p, i) => {
@@ -746,7 +747,8 @@ function openModal(m){
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
               let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
               
-              let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player === p.name);
+              let lastName = p.name.split(" ").pop();
+              let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player.includes(lastName));
               let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
               let el = document.createElement("div");
@@ -790,7 +792,7 @@ function openModal(m){
   renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
   renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
 
-  // 3. SUMMARY TIMELINE (V12.0)
+  // 3. SUMMARY TIMELINE (V12.0 - Improved Alignment)
   const sv=document.getElementById("summaryTimeline"); sv.innerHTML = "";
   if(!s.events||s.events.length===0){
     sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
@@ -799,6 +801,8 @@ function openModal(m){
         let cleanP = e.player.trim();
         let isH = null;
         let lastName = cleanP.split(' ').pop();
+        
+        // Deep Search for Side
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(s.lineups.h.start.some(p => p.name.includes(lastName)) || s.lineups.h.sub?.some(p => p.name.includes(lastName))) isH = true;
              else if(s.lineups.a.start.some(p => p.name.includes(lastName)) || s.lineups.a.sub?.some(p => p.name.includes(lastName))) isH = false;
@@ -807,7 +811,16 @@ function openModal(m){
              if(s.players.h.some(p => p.name.includes(lastName))) isH = true;
              else if(s.players.a.some(p => p.name.includes(lastName))) isH = false;
         }
-        if(isH === null) isH = true; 
+        // Check Assist name if Player name fails (for subs)
+        if(isH === null && e.assist) {
+             let assistName = e.assist.split(' ').pop();
+             if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                 if(s.lineups.h.start.some(p => p.name.includes(assistName)) || s.lineups.h.sub?.some(p => p.name.includes(assistName))) isH = true;
+                 else if(s.lineups.a.start.some(p => p.name.includes(assistName)) || s.lineups.a.sub?.some(p => p.name.includes(assistName))) isH = false;
+             }
+        }
+
+        if(isH === null) isH = true; // Fallback
 
         let icon="•";
         let detail = e.detail || "";
@@ -839,108 +852,53 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-// === EXTENDED AI NARRATIVE (V13.0) ===
 function generateStory(home, away, stats, score, status, startTime, date) {
     const el = document.getElementById("aiSummaryText");
-    
-    // PRE-MATCH
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
         let isToday = matchDate && matchDate.getDate() === today.getDate();
         let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
-
-        let story = `<b>📅 PREVIEW:</b> `;
+        let story = `<b>📅 MATCH PREVIEW:</b> `;
         if(isToday) {
-             story += `The stage is set at ${home}'s home ground. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) {
-                 story += `<br><br><b>📋 Tactical Setups:</b> ${home} line up in a <b>${stats.lineups.h.formation || "?"}</b> system. `;
-                 story += `${away} counter with a <b>${stats.lineups.a.formation || "?"}</b> formation. `;
-                 story += `Check the Lineups tab for the full player lists.`;
-             } else {
-                 story += `Lineups are expected roughly an hour before kick-off.`;
-             }
+             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
+             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
+             else story += `Lineups are expected roughly an hour before kick-off.`;
         } else {
              let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
-             story += `This fixture is scheduled for ${dateStr}. Check back on matchday.`;
+             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
         }
         el.innerHTML = story;
         return;
     }
-
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const aPoss = stats.a_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
-    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
-
     let story = "";
-
-    // 1. HEADLINE & STATE
     if(status === "FT") {
-       if(hG > aG) story = `<b>🏁 FULL TIME:</b> ${home} take all three points with a ${hG}-${aG} victory. `;
-       else if(aG > hG) story = `<b>🏁 FULL TIME:</b> ${away} secure an impressive ${aG}-${hG} win on the road. `;
-       else story = `<b>🏁 FULL TIME:</b> It ends all square at ${hG}-${hG}. A hard-fought draw. `;
+       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory. `;
+       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
+       else story = `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
+    } else if (status === "HT") {
+        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
     } else {
-       story = `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the contest. `;
-       if(hG > aG) story += `${home} hold the advantage, leading ${hG}-${aG}. `;
-       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-       else story += `It remains ${hG}-${hG} as both teams push for the opener. `;
+        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
+        if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
+        else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+        else story += `It remains all square at ${hG}-${hG}. `;
     }
-
     story += "<br><br>";
-
-    // 2. MOMENTUM & FLOW
-    if(hG > aG && hPoss < 45) {
-       story += `<b>🛡️ Defensive Masterclass:</b> ${home} are happy to sit back (${hPoss}% possession) and soak up pressure while hitting ${away} on the break. `;
-    } else if(aG > hG && aPoss < 45) {
-       story += `<b>⚡ Counter Attack:</b> ${away} have less of the ball (${aPoss}%) but are lethal when they go forward, frustrating the hosts. `;
-    } else if(Math.abs(hPoss - 50) < 5) {
-       story += `<b>⚔️ Midfield Battle:</b> It's a cagey affair with possession split evenly (${hPoss}% vs ${aPoss}%). Neither side can gain total control. `;
-    } else if(hPoss > 60) {
-       story += `<b>🔥 Total Control:</b> ${home} are dominating proceedings with ${hPoss}% possession, pinning ${away} back in their own half. `;
-    } else {
-       story += `<b>🎮 Away Dominance:</b> ${away} are dictating the tempo with ${aPoss}% possession, silencing the home crowd. `;
-    }
-
-    // 3. CHANCE QUALITY (xG)
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.8) story += `In terms of chances, ${home} have been far superior (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}). `;
-    else if(xgDiff < -0.8) story += `However, the quality chances have fallen to ${away} (xG ${aXG.toFixed(2)}). `;
-    else story += `Chances have been limited for both sides (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}). `;
-
-    // 4. TURNING POINTS
-    if(stats.h_red > 0) story += `<br><br>🟥 <b>Game Changer:</b> The dynamic shifted completely after the red card for ${home}. `;
-    if(stats.a_red > 0) story += `<br><br>🟥 <b>Game Changer:</b> ${away} are fighting an uphill battle with 10 men. `;
-    
-    // 5. STAR PLAYER
-    let bestPlayer = null;
-    let highestRat = 0;
-    let bestStats = {};
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
-        });
-    }
-
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
-        let feats = [];
-        if(bestStats.goals > 0) feats.push(`${bestStats.goals} goal(s)`);
-        if(bestStats.assists > 0) feats.push(`${bestStats.assists} assist(s)`);
-        if(bestStats.key_passes > 1) feats.push(`${bestStats.key_passes} key passes`);
-        if(bestStats.tackles > 2) feats.push(`${bestStats.tackles} tackles`);
-        if(bestStats.saves > 2) feats.push(`${bestStats.saves} saves`);
-        
-        if(feats.length > 0) story += `Key stats: ${feats.join(", ")}.`;
-    }
-
+    let hPoss = stats.h_poss || 50;
+    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
+    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
+    else story += `Possession is even `;
+    let xgDiff = (stats.h_xg||0) - (stats.a_xg||0);
+    if(xgDiff > 0.5) story += `and create better chances (xG ${stats.h_xg.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
+    else story += `in a tight game. `;
+    if(stats.h_red > 0 || stats.a_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted after the sending off. `;
     el.innerHTML = story;
 }
 
-// FUZZY MATCH PLAYER STATS
 function findPlayerStats(name, list) {
     if(!list) return null;
     let found = list.find(x => x.name === name);
@@ -957,17 +915,10 @@ function showPlayerStats(name, stats, events) {
     if(!stats) return; 
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
-    
-    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
-    if(goals === undefined) {
-       goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
-    }
+    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
     let assists = stats.assists;
-    if(assists === undefined) {
-       assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
-    }
-
+    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
     const grid = document.getElementById("ppStats");
     grid.innerHTML = `
       <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>

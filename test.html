@@ -201,7 +201,18 @@ body{
 
 /* BIG WIN */
 .big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
-.big-win-text { font-size: 35vw; font-weight: 900; color: #7CFF5B; text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; transform: scale(0.5); }
+.big-win-text { 
+  /* Reduced from 35vw to 14vw so "£ 120.00" fits on one line */
+  font-size: 14vw; 
+  
+  /* This forces the £ and the number to stay side-by-side */
+  white-space: nowrap; 
+  
+  font-weight: 900; 
+  color: #7CFF5B; 
+  text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; 
+  transform: scale(0.5); 
+}
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 @keyframes bigWinAnim { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 1; transform: scale(1.1); } 10% { transform: scale(1); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.4); } }
 

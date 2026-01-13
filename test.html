@@ -53,8 +53,8 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  height: 100vh; /* RESTORED LOCK SCROLL */
-  overflow: hidden; 
+  height: 100vh;
+  overflow: hidden; /* Desktop: Lock Scroll */
 }
 
 .app{
@@ -63,29 +63,68 @@ body{
   grid-template-rows:1fr auto;
 }
 
+/* === MOBILE LAYOUT ENGINE (THE FIX) === */
 @media (max-width: 768px){
-  .app{
+  html, body {
+    height: auto !important;
+    overflow-y: auto !important; /* Force native scroll */
+    -webkit-overflow-scrolling: touch;
+    position: static !important;
+  }
+  .app {
     transform: scale(0.78);
     transform-origin: top left;
     width: 128%;
-    height: 128%;
+    height: auto !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
   }
+  .main {
+     display: flex;
+     height: auto !important;
+     overflow: visible !important;
+     padding-bottom: 120px !important; /* Space for fixed footer */
+  }
+  .left-card, .right-card {
+     height: auto !important;
+     max-height: none !important;
+     overflow: visible !important;
+     flex-shrink: 0; /* Prevent shrinking */
+  }
+  /* Force Match Rows to be visible */
+  .left-row, .row {
+     min-height: var(--row-h);
+     display: grid;
+  }
+  /* Footer fixed to screen bottom */
+  .summary {
+     position: fixed; 
+     bottom: 10px; 
+     left: 10px; 
+     right: 10px; 
+     width: 95%; /* Fits inside scaled view */
+     z-index: 1000;
+     margin: 0;
+  }
+  /* Resize Big Win Text for Mobile */
+  .big-win-text { font-size: 15vw !important; }
 }
 
 /* MAIN LAYOUT */
 .main{ display:flex; gap:10px; padding:10px; overflow:hidden; }
+
 .left-card{
   width:var(--left-w); background:var(--bg-card); border-radius:14px;
   padding:8px; display:flex; flex-direction:column; gap:var(--gap);
   overflow-y:auto; max-height:100%; scrollbar-width:none;
-  padding-bottom: 20px; /* Padding for mobile scroll */
 }
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; position: relative; 
+  font-size:12px; font-weight:700; position: relative; flex-shrink: 0;
 }
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
@@ -99,11 +138,11 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
-.left-divider{height:8px}
+.left-divider{height:8px; flex-shrink: 0;}
 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
-  gap:var(--gap); transition: background 0.2s;
+  gap:var(--gap); transition: background 0.2s; flex-shrink: 0;
 }
 .left-row:active { background: rgba(255,255,255,0.05); }
 
@@ -114,7 +153,7 @@ body{
 .left-cell.match{text-align:center}
 .left-label{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
-  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink: 0;
 }
 
 .team-logo{ width:38px; height:38px; object-fit:contain; }
@@ -149,7 +188,7 @@ body{
 }
 
 /* FOOTER */
-.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; }
+.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; flex-shrink: 0; }
 .summary-toggle{
   background:var(--bg-soft); padding:8px 12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
@@ -202,14 +241,14 @@ body{
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 
-/* BIG WIN - CRASH PROOF & SMALLER */
+/* BIG WIN - CRASH PROOF */
 .big-win-overlay { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     display: flex; align-items: center; justify-content: center; 
     pointer-events: none; z-index: 9999; opacity: 0; 
 }
 .big-win-text { 
-    font-size: 15vw; /* SMALLER SIZE */
+    font-size: 20vw; 
     font-weight: 900; color: #7CFF5B; 
     text-shadow: 0 0 20px rgba(0,0,0,0.9), 0 0 10px #7CFF5B; 
     transform: scale(0.5); 
@@ -308,7 +347,7 @@ body{
     width: 100%; height: 100%; object-fit: cover; border-radius:50%; 
     position:absolute; top:0; left:0;
 }
-.p-num-fallback { z-index: 0; } /* Behind image */
+.p-num-fallback { z-index: 0; } 
 
 .p-dot.home { border-color: #333; }
 .p-dot.away { border-color: #fff; }
@@ -318,7 +357,6 @@ body{
   color: #fff; font-size: 9px; margin-top: 2px; white-space: nowrap; font-weight:600;
   text-shadow: 0 1px 2px #000;
 }
-/* OUTSIDE CIRCLE */
 .p-rat {
   position: absolute; top: -5px; right: -8px;
   width: 14px; height: 14px; border-radius: 50%;
@@ -330,7 +368,6 @@ body{
 .rat-mid { background: #ffcc00; }
 .rat-low { background: #ff4d4d; color: #fff; }
 
-/* SUBS BADGE (TUCKED BELOW RATING) */
 .sub-badge {
     position: absolute; top: 12px; right: -8px; 
     width: 12px; height: 12px; border-radius: 50%;
@@ -355,20 +392,6 @@ body{
     display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight:800;
 }
 
-/* SUMMARY TIMELINE */
-.sum-timeline { display: flex; flex-direction: column; gap: 8px; margin-top:15px; }
-.sum-row { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; font-size: 11px; }
-.sum-time { text-align: center; font-weight: 800; color: var(--accent-orange); font-size: 10px; opacity: 0.8; }
-.sum-side { display: flex; align-items: center; gap: 6px; }
-/* KEY FIX: ALIGNMENTS */
-.sum-side.home { justify-content: flex-end; text-align: right; }
-.sum-side.away { justify-content: flex-start; text-align: left; }
-
-.sum-icon { font-size: 12px; }
-.sum-text { display: flex; flex-direction: column; }
-.sum-player { font-weight: 700; color: #fff; }
-.sum-detail { font-size: 9px; opacity: 0.6; }
-
 /* PLAYER POPUP CARD */
 .player-popup {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -388,7 +411,7 @@ body{
 .pp-lbl { font-size: 9px; opacity: 0.6; }
 .close-pp { position: absolute; top: 8px; right: 10px; font-size: 16px; cursor: pointer; opacity: 0.5; }
 
-/* TABLE STYLING */
+/* TABLE STYLING (FIXED LOGO SIZE) */
 .tbl-grid { display: grid; grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; align-items: center; gap: 2px; }
 .tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
@@ -534,7 +557,7 @@ renderSkeletons();
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V28.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V29.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -554,7 +577,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V28.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V29.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -610,6 +633,7 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
+            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
             weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
@@ -637,14 +661,24 @@ function fireScreenBlaster(el){
 }
 function toTitleCase(s){return s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase())}
 
-function formatName(fullName) { return fullName || ""; }
+function formatName(fullName) {
+    // JUST RETURN FULL NAME FROM API
+    return fullName || "";
+}
 
-// === ACCENT REMOVER ===
+// === ACCENT REMOVER (Normalization) ===
 function normalizeName(str) {
   if(!str) return "";
   let s = str.toLowerCase();
-  const map = { 'ø': 'o', 'ß': 'ss', 'ı': 'i', 'ş': 's', 'ğ': 'g', 'ç': 'c', 'ü': 'u', 'ö': 'o', 'ä': 'a', 'ñ': 'n', 'é': 'e', 'è': 'e', 'ê': 'e', 'á': 'a', 'à': 'a', 'â': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u' };
+  // Manual Map for Tricky Chars
+  const map = {
+    'ø': 'o', 'ß': 'ss', 'ı': 'i', 'ş': 's', 'ğ': 'g', 'ç': 'c', 
+    'ü': 'u', 'ö': 'o', 'ä': 'a', 'ñ': 'n', 'é': 'e', 'è': 'e', 
+    'ê': 'e', 'á': 'a', 'à': 'a', 'â': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u'
+  };
+  // Apply Map
   for(let k in map) s = s.replace(new RegExp(k, 'g'), map[k]);
+  // Standard Normalize
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
@@ -673,8 +707,11 @@ function openModal(m){
       s.events.forEach(e => {
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
+             
+             // --- ROBUST HOME/AWAY DETECTION (V28.0) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
+             
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
                  if(s.lineups.h.start.some(p => normalizeName(p.name).includes(lastName)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(lastName))) isH = true;
                  else if(s.lineups.a.start.some(p => normalizeName(p.name).includes(lastName)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(lastName))) isH = false;
@@ -696,6 +733,7 @@ function openModal(m){
       let timesStr = g.times.join(", ");
       let name = formatName(g.rawName);
       let html = "";
+      
       let icon = "⚽";
       if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
       let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
@@ -735,9 +773,9 @@ function openModal(m){
     {l:"Corners",h:s.h_corners,a:s.a_corners}
   ];
   sl.forEach(st=>{
-    let t=(st.h||0)+(st.a||0),hp=0,ap=0;
+    let t=st.h+st.a,hp=0,ap=0;
     if(t>0){hp=(st.h/t)*100;ap=(st.a/t)*100;if(st.pct){hp=st.h;ap=st.a}if(st.dec){hp=(st.h/(st.h+st.a+0.001))*100;ap=100-hp}}
-    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=(st.h||0).toFixed(2);at=(st.a||0).toFixed(2)}
+    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=st.h.toFixed(2);at=st.a.toFixed(2)}
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="stat-bar-container"><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
@@ -757,20 +795,21 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // SPACED: GK 5%, Def 15%, Mid 28%, Fwd 42%
+             // EQUAL SPACING: GK 5% -> Def 17.5% -> Mid 30% -> Fwd 42.5%
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=15; 
-             else if(rIdx===2) yPct=28; 
-             else yPct=42; 
+             else if(rIdx===1) yPct=17.5; 
+             else if(rIdx===2) yPct=30; 
+             else yPct=42.5; 
           } else { 
-             // SPACED: GK 95%, Def 85%, Mid 72%, Fwd 58%
+             // EQUAL SPACING: GK 95% -> Def 82.5% -> Mid 70% -> Fwd 57.5%
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=85; 
-             else if(rIdx===2) yPct=72; 
-             else yPct=58; 
+             else if(rIdx===1) yPct=82.5; 
+             else if(rIdx===2) yPct=70; 
+             else yPct=57.5; 
           }
           
           line.forEach((p, i) => {
+              // SMART HORIZONTAL SPACING
               let count = line.length;
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); 
@@ -795,6 +834,7 @@ function openModal(m){
               el.style.left = xPct + "%";
               el.onclick = () => showPlayerStats(p.name, pStats, s.events);
               
+              // NEW IMG LOGIC: Fallback built-in
               let content = `<div class="p-dot ${isHome?'home':'away'}">
                   <span class="p-num-fallback">${p.num}</span>`;
               if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
@@ -967,15 +1007,28 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     el.innerHTML = story;
 }
 
+// FUZZY MATCH PLAYER STATS (V26.0 - BRUTE FORCE MAPPER)
 function findPlayerStats(name, list) {
     if(!list) return null;
     let normName = normalizeName(name);
     let parts = normName.split(" ");
+    
+    // 1. Try exact normalized match
     let found = list.find(x => normalizeName(x.name) === normName);
     if(found) return found;
-    found = list.find(x => { let xn = normalizeName(x.name); return xn.includes(normName) || normName.includes(xn); });
+
+    // 2. Try strict inclusion (one contains other)
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return xn.includes(normName) || normName.includes(xn);
+    });
     if(found) return found;
-    found = list.find(x => { let xn = normalizeName(x.name); return parts.some(p => p.length > 2 && xn.includes(p)); });
+
+    // 3. Try matching ANY significant part (len > 2)
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return parts.some(p => p.length > 2 && xn.includes(p));
+    });
     return found;
 }
 

@@ -53,8 +53,8 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  /* Desktop Default: Prevent Body Scroll */
-  height: 100vh; 
+  /* RESTORED OLD SCROLL BEHAVIOR FOR MOBILE STABILITY */
+  height: 100vh;
   overflow: hidden; 
 }
 
@@ -64,37 +64,30 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE SCROLL FIX === */
+/* MOBILE FIXES */
 @media (max-width: 768px){
   body {
-    height: auto;
-    overflow-y: auto; /* Enable Body Scroll on Mobile */
-    -webkit-overflow-scrolling: touch;
+    height: auto; 
+    overflow-y: auto; /* Allow body scroll */
   }
   .app{
     transform: scale(0.78);
     transform-origin: top left;
     width: 128%;
-    height: auto; /* Let it grow */
-    display: block; /* Remove grid constraint */
+    height: auto; 
+    display: block; /* Remove grid to fix clipping */
   }
   .main {
-    height: auto;
-    overflow: visible; /* Let content overflow */
-    display: flex;
+     height: auto;
+     overflow: visible;
   }
   .left-card {
-    max-height: none !important; /* Remove internal scroll limit */
-    overflow: visible !important;
-    height: auto !important; /* Grow with content */
-    padding-bottom: 20px;
+     height: auto !important;
+     max-height: none !important;
+     overflow: visible !important;
   }
-  /* Fix sticky header on mobile so it doesn't scroll away immediately */
-  .left-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  .summary {
+     margin-bottom: 20px; /* Space at bottom */
   }
 }
 
@@ -110,7 +103,7 @@ body{
 .left-header{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; position: relative; flex-shrink: 0;
+  font-size:12px; font-weight:700; position: relative; 
 }
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
@@ -124,11 +117,11 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
-.left-divider{height:8px; flex-shrink: 0;}
+.left-divider{height:8px}
 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
-  gap:var(--gap); transition: background 0.2s; flex-shrink: 0;
+  gap:var(--gap); transition: background 0.2s;
 }
 .left-row:active { background: rgba(255,255,255,0.05); }
 
@@ -139,7 +132,7 @@ body{
 .left-cell.match{text-align:center}
 .left-label{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
-  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink: 0;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
 }
 
 .team-logo{ width:38px; height:38px; object-fit:contain; }
@@ -173,21 +166,8 @@ body{
   font-size:13px; font-weight:800; color:#111;
 }
 
-/* FOOTER - FIXED TO BOTTOM ON MOBILE */
-.summary { 
-    background: var(--bg-card); margin: 0 10px 10px 10px; 
-    border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; 
-    flex-shrink: 0; 
-}
-@media (max-width: 768px){
-    .summary {
-        position: fixed; bottom: 10px; left: 10px; right: 10px; width: calc(100% - 20px); z-index: 1000;
-        margin: 0;
-    }
-    /* Add padding to bottom of page so summary doesn't cover last game */
-    .app { padding-bottom: 80px; }
-}
-
+/* FOOTER */
+.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; }
 .summary-toggle{
   background:var(--bg-soft); padding:8px 12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
@@ -240,19 +220,15 @@ body{
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 
-/* BIG WIN - OPTIMIZED FOR MOBILE */
-.big-win-overlay { 
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    display: flex; align-items: center; justify-content: center; 
-    pointer-events: none; z-index: 2200; opacity: 0; 
-}
+/* BIG WIN */
+.big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
 .big-win-text { 
-    font-size: 15vw; /* SMALLER TO PREVENT CRASH/OVERFLOW */
+    font-size: 22vw; /* Reduced size */
     font-weight: 900; color: #7CFF5B; 
-    text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px #7CFF5B; 
-    transform: scale(0.5); will-change: transform, opacity;
+    text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px #7CFF5B; 
+    transform: scale(0.5); 
 }
-.big-win-active { animation: bigWinAnim 4s ease-out forwards; }
+.big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 @keyframes bigWinAnim { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 1; transform: scale(1.1); } 10% { transform: scale(1); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.4); } }
 
 /* MODAL */
@@ -260,6 +236,7 @@ body{
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; }
 .modal-overlay.active .modal-card { transform: translateY(0); }
+/* HEADER ADJUSTED SIZE */
 .modal-header { background: var(--bg-soft); padding: 20px 15px; text-align: center; position: relative; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
 .modal-back-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
@@ -393,6 +370,50 @@ body{
 .sum-player { font-weight: 700; color: #fff; }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
+/* AI STORY BOX */
+.ai-story-box {
+    background: linear-gradient(135deg, #2f343a 0%, #262a30 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 15px; margin-bottom: 15px;
+    font-size: 13px; line-height: 1.5; color: #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
+
+/* PLAYER POPUP CARD */
+.player-popup {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  width: 90%; background: rgba(28, 31, 35, 0.95);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px; padding: 12px;
+  backdrop-filter: blur(5px); z-index: 50;
+  display: none; animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popUp { from{transform:translate(-50%, 20px);opacity:0} to{transform:translate(-50%, 0);opacity:1}}
+.pp-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.pp-img { width: 30px; height: 30px; border-radius: 50%; background: #444; object-fit: cover; }
+.pp-name { font-weight: 700; font-size: 13px; }
+.pp-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.pp-stat { text-align: center; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 6px; }
+.pp-val { font-weight: 800; font-size: 14px; color: var(--accent-orange); }
+.pp-lbl { font-size: 9px; opacity: 0.6; }
+.close-pp { position: absolute; top: 8px; right: 10px; font-size: 16px; cursor: pointer; opacity: 0.5; }
+
+/* TABLE STYLING */
+.tbl-grid { display: grid; grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; align-items: center; gap: 2px; }
+.tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
+.tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
+.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
+.ta-c { display: flex; justify-content: center; text-align: center; width: 100%; } 
+.tbl-row .ta-c { justify-content: flex-end; padding-right: 8px; text-align: right; }
+.ta-r { display: flex; justify-content: flex-end; width: 100%; } 
+.ta-l { display: flex; justify-content: flex-start; width: 100%; }
+.txt-green { color: #7CFF5B; }
+.tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
+.form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
+.dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
+
 </style>
 </head>
 <body>
@@ -520,9 +541,12 @@ let prevMatches={}, chartDataCache=null, historyChart=null, tableCache=null;
 
 document.body.addEventListener('click',()=>{if("Notification" in window&&Notification.permission==="default"){Notification.requestPermission().then(p=>{if(p==="granted")new Notification("Juice Bets",{body:"Notifications Enabled 🔔"})})}},{once:true});
 
+// TRIGGER SKELETONS IMMEDIATELY ON LOAD
+renderSkeletons();
+
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V24.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V25.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -542,7 +566,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V24.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V25.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -612,8 +636,8 @@ function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=docu
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end)requestAnimationFrame(frame);else setTimeout(()=>el.dataset.fired="",3000)}())}
 function toTitleCase(s){return s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase())}
 
+// REVERTED TO RAW NAME FROM API
 function formatName(fullName) {
-    // JUST RETURN FULL NAME FROM API
     return fullName || "";
 }
 
@@ -659,7 +683,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V23.0 - Normalization) ---
+             // --- ROBUST HOME/AWAY DETECTION (V25.0) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
              
@@ -730,7 +754,7 @@ function openModal(m){
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS
+  // 2. LINEUPS (V25.0 - Equal Spacing)
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -765,7 +789,7 @@ function openModal(m){
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); 
               
-              let pStats = findPlayerStats(p.name, playersFull); // FIXED SEARCH V23.0
+              let pStats = findPlayerStats(p.name, playersFull); // V21 Matcher
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
@@ -785,7 +809,7 @@ function openModal(m){
               el.style.left = xPct + "%";
               el.onclick = () => showPlayerStats(p.name, pStats, s.events);
               
-              // NEW IMG LOGIC: Fallback built-in
+              // V21 IMAGE LOGIC
               let content = `<div class="p-dot ${isHome?'home':'away'}">
                   <span class="p-num-fallback">${p.num}</span>`;
               if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
@@ -831,7 +855,7 @@ function openModal(m){
         let isH = null;
         let parts = cleanP.split(' ');
         
-        // Deep Search (V23.0 - Parts Check)
+        // Deep Search (V25.0)
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
              else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
@@ -900,46 +924,32 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         el.innerHTML = story;
         return;
     }
-
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const aPoss = stats.a_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
-    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
-
     let story = "";
-
-    // 1. HEADLINE
     if(status === "FT") {
-       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch the win away from home. `;
-       else story = `<b>🏁 FULL TIME REPORT:</b> Honors even at the final whistle. `;
+       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory. `;
+       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
+       else story = `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
     } else if (status === "HT") {
-        story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
     } else {
-        story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
+        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
         if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
         else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `All square at ${hG}-${hG}. `;
+        else story += `It remains all square at ${hG}-${hG}. `;
     }
     story += "<br><br>";
-
-    // 2. CONTEXT
-    if(hPoss > 55) story += `${home} are controlling possession (${hPoss}%) `;
-    else if(aPoss > 55) story += `${away} have the ball (${aPoss}%) `;
+    let hPoss = stats.h_poss || 50;
+    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
+    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
     else story += `Possession is even `;
-
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and creating better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
+    let xgDiff = (stats.h_xg||0) - (stats.a_xg||0);
+    if(xgDiff > 0.5) story += `and create better chances (xG ${stats.h_xg.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
     else story += `in a tight game. `;
-
-    // 3. CARDS
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
-
+    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted after the sending off. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting with 10 men. `;
     el.innerHTML = story;
 }
 

@@ -53,43 +53,57 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
+  /* Desktop Default: Prevent Body Scroll */
   height: 100vh; 
   overflow: hidden; 
 }
 
 .app{
   height:100vh;
-  /* Fix for mobile address bars */
-  height: 100dvh; 
   display:grid;
   grid-template-rows:1fr auto;
 }
 
+/* === MOBILE SCROLL FIX === */
 @media (max-width: 768px){
+  body {
+    height: auto;
+    overflow-y: auto; /* Enable Body Scroll on Mobile */
+    -webkit-overflow-scrolling: touch;
+  }
   .app{
-    /* Keep scaling but ensure container respects viewport */
     transform: scale(0.78);
     transform-origin: top left;
     width: 128%;
-    height: 128vh; 
+    height: auto; /* Let it grow */
+    display: block; /* Remove grid constraint */
+  }
+  .main {
+    height: auto;
+    overflow: visible; /* Let content overflow */
+    display: flex;
+  }
+  .left-card {
+    max-height: none !important; /* Remove internal scroll limit */
+    overflow: visible !important;
+    height: auto !important; /* Grow with content */
+    padding-bottom: 20px;
+  }
+  /* Fix sticky header on mobile so it doesn't scroll away immediately */
+  .left-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
   }
 }
 
 /* MAIN LAYOUT */
-.main{ 
-    display:flex; gap:10px; padding:10px; 
-    overflow:hidden; 
-    flex: 1; 
-    min-height: 0; /* Critical for scroll */
-}
-
+.main{ display:flex; gap:10px; padding:10px; overflow:hidden; }
 .left-card{
   width:var(--left-w); background:var(--bg-card); border-radius:14px;
   padding:8px; display:flex; flex-direction:column; gap:var(--gap);
-  overflow-y:auto; 
-  max-height:100%; 
-  scrollbar-width:none;
-  padding-bottom: 80px; /* EXTRA PADDING FOR MOBILE SCROLL */
+  overflow-y:auto; max-height:100%; scrollbar-width:none;
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -159,8 +173,21 @@ body{
   font-size:13px; font-weight:800; color:#111;
 }
 
-/* FOOTER */
-.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; flex-shrink: 0; }
+/* FOOTER - FIXED TO BOTTOM ON MOBILE */
+.summary { 
+    background: var(--bg-card); margin: 0 10px 10px 10px; 
+    border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; 
+    flex-shrink: 0; 
+}
+@media (max-width: 768px){
+    .summary {
+        position: fixed; bottom: 10px; left: 10px; right: 10px; width: calc(100% - 20px); z-index: 1000;
+        margin: 0;
+    }
+    /* Add padding to bottom of page so summary doesn't cover last game */
+    .app { padding-bottom: 80px; }
+}
+
 .summary-toggle{
   background:var(--bg-soft); padding:8px 12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
@@ -213,15 +240,19 @@ body{
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 
-/* BIG WIN */
-.big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
-.big-win-text { 
-    font-size: 20vw; /* ADJUSTED SMALLER */
-    font-weight: 900; color: #7CFF5B; 
-    text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; 
-    transform: scale(0.5); 
+/* BIG WIN - OPTIMIZED FOR MOBILE */
+.big-win-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    display: flex; align-items: center; justify-content: center; 
+    pointer-events: none; z-index: 2200; opacity: 0; 
 }
-.big-win-active { animation: bigWinAnim 5s ease-out forwards; }
+.big-win-text { 
+    font-size: 15vw; /* SMALLER TO PREVENT CRASH/OVERFLOW */
+    font-weight: 900; color: #7CFF5B; 
+    text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px #7CFF5B; 
+    transform: scale(0.5); will-change: transform, opacity;
+}
+.big-win-active { animation: bigWinAnim 4s ease-out forwards; }
 @keyframes bigWinAnim { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 1; transform: scale(1.1); } 10% { transform: scale(1); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.4); } }
 
 /* MODAL */
@@ -362,50 +393,6 @@ body{
 .sum-player { font-weight: 700; color: #fff; }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
-/* AI STORY BOX */
-.ai-story-box {
-    background: linear-gradient(135deg, #2f343a 0%, #262a30 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px; padding: 15px; margin-bottom: 15px;
-    font-size: 13px; line-height: 1.5; color: #e0e0e0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-.ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
-
-/* PLAYER POPUP CARD */
-.player-popup {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  width: 90%; background: rgba(28, 31, 35, 0.95);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 12px; padding: 12px;
-  backdrop-filter: blur(5px); z-index: 50;
-  display: none; animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes popUp { from{transform:translate(-50%, 20px);opacity:0} to{transform:translate(-50%, 0);opacity:1}}
-.pp-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.pp-img { width: 30px; height: 30px; border-radius: 50%; background: #444; object-fit: cover; }
-.pp-name { font-weight: 700; font-size: 13px; }
-.pp-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.pp-stat { text-align: center; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 6px; }
-.pp-val { font-weight: 800; font-size: 14px; color: var(--accent-orange); }
-.pp-lbl { font-size: 9px; opacity: 0.6; }
-.close-pp { position: absolute; top: 8px; right: 10px; font-size: 16px; cursor: pointer; opacity: 0.5; }
-
-/* TABLE STYLING */
-.tbl-grid { display: grid; grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; align-items: center; gap: 2px; }
-.tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
-.tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
-.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-.ta-c { display: flex; justify-content: center; text-align: center; width: 100%; } 
-.tbl-row .ta-c { justify-content: flex-end; padding-right: 8px; text-align: right; }
-.ta-r { display: flex; justify-content: flex-end; width: 100%; } 
-.ta-l { display: flex; justify-content: flex-start; width: 100%; }
-.txt-green { color: #7CFF5B; }
-.tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
-.form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
-.dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
-
 </style>
 </head>
 <body>
@@ -533,12 +520,9 @@ let prevMatches={}, chartDataCache=null, historyChart=null, tableCache=null;
 
 document.body.addEventListener('click',()=>{if("Notification" in window&&Notification.permission==="default"){Notification.requestPermission().then(p=>{if(p==="granted")new Notification("Juice Bets",{body:"Notifications Enabled 🔔"})})}},{once:true});
 
-// TRIGGER SKELETONS IMMEDIATELY ON LOAD
-renderSkeletons();
-
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V23.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V24.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -558,7 +542,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V23.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V24.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -675,7 +659,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V23.0) ---
+             // --- ROBUST HOME/AWAY DETECTION (V23.0 - Normalization) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
              
@@ -762,17 +746,17 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // FINAL SPACING: GK 5%, Def 20%, Mid 35%, Fwd 42%
+             // EQUAL SPACING: GK 5% -> Def 17.5% -> Mid 30% -> Fwd 42.5%
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=20; 
-             else if(rIdx===2) yPct=35; 
-             else yPct=42; 
+             else if(rIdx===1) yPct=17.5; 
+             else if(rIdx===2) yPct=30; 
+             else yPct=42.5; 
           } else { 
-             // FINAL SPACING: GK 95%, Def 80%, Mid 65%, Fwd 58%
+             // EQUAL SPACING: GK 95% -> Def 82.5% -> Mid 70% -> Fwd 57.5%
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=80; 
-             else if(rIdx===2) yPct=65; 
-             else yPct=58; 
+             else if(rIdx===1) yPct=82.5; 
+             else if(rIdx===2) yPct=70; 
+             else yPct=57.5; 
           }
           
           line.forEach((p, i) => {
@@ -916,32 +900,46 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         el.innerHTML = story;
         return;
     }
+
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
+    const hPoss = stats.h_poss || 50;
+    const aPoss = stats.a_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
+    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
+
     let story = "";
+
+    // 1. HEADLINE
     if(status === "FT") {
-       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory. `;
-       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story = `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
+       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
+       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch the win away from home. `;
+       else story = `<b>🏁 FULL TIME REPORT:</b> Honors even at the final whistle. `;
     } else if (status === "HT") {
-        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
+        story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
     } else {
-        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
+        story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
         if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
         else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `It remains all square at ${hG}-${hG}. `;
+        else story += `All square at ${hG}-${hG}. `;
     }
     story += "<br><br>";
-    let hPoss = stats.h_poss || 50;
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
+
+    // 2. CONTEXT
+    if(hPoss > 55) story += `${home} are controlling possession (${hPoss}%) `;
+    else if(aPoss > 55) story += `${away} have the ball (${aPoss}%) `;
     else story += `Possession is even `;
-    let xgDiff = (stats.h_xg||0) - (stats.a_xg||0);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${stats.h_xg.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
+
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.5) story += `and creating better chances (xG ${hXG.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
     else story += `in a tight game. `;
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted after the sending off. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting with 10 men. `;
+
+    // 3. CARDS
+    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
+
     el.innerHTML = story;
 }
 

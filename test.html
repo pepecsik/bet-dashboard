@@ -277,7 +277,9 @@ body{
   border: 2px solid #fff; overflow: visible; 
   position:relative;
 }
-.p-img-dot { width: 100%; height: 100%; object-fit: cover; border-radius:50%; }
+.p-img-dot { width: 100%; height: 100%; object-fit: cover; border-radius:50%; display:block; }
+.p-num-fallback { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1; }
+
 .p-dot.home { border-color: #333; }
 .p-dot.away { border-color: #fff; }
 
@@ -703,7 +705,7 @@ function openModal(m){
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS
+  // 2. LINEUPS (V13.0 - BETTER SPACING)
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -757,9 +759,13 @@ function openModal(m){
               el.style.left = xPct + "%";
               el.onclick = () => showPlayerStats(p.name, pStats, s.events);
               
-              let content = `<div class="p-dot ${isHome?'home':'away'}">`;
-              if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none';this.parentNode.innerHTML='${p.num}';">`;
-              else content += p.num;
+              // NEW LOGIC: NUMBER ALWAYS THERE, IMG ON TOP
+              let content = `<div class="p-dot ${isHome?'home':'away'}">
+                  <span class="p-num-fallback">${p.num}</span>`;
+              
+              if(photoUrl) {
+                  content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
+              }
               content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
               
               el.innerHTML = content;
@@ -859,11 +865,17 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         let today = new Date();
         let isToday = matchDate && matchDate.getDate() === today.getDate();
         let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+
         let story = `<b>📅 MATCH PREVIEW:</b> `;
         if(isToday) {
              story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
-             else story += `Lineups are expected roughly an hour before kick-off.`;
+             if(hasLineups) {
+                 story += `<br><br><b>📋 Tactical Setups:</b> ${home} line up in a <b>${stats.lineups.h.formation || "?"}</b> system. `;
+                 story += `${away} counter with a <b>${stats.lineups.a.formation || "?"}</b> formation. `;
+                 story += `Check the Lineups tab for the full player lists.`;
+             } else {
+                 story += `Lineups are expected roughly an hour before kick-off.`;
+             }
         } else {
              let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
@@ -871,34 +883,80 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         el.innerHTML = story;
         return;
     }
+
     const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
     const time = parseInt(status) || (status==="FT"?90:0);
+    const hPoss = stats.h_poss || 50;
+    const aPoss = stats.a_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
+    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
+
     let story = "";
+
+    // 1. HEADLINE & STATE
     if(status === "FT") {
-       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory. `;
-       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story = `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
-    } else if (status === "HT") {
-        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
+       if(hG > aG) story = `<b>🏁 FULL TIME REPORT:</b> ${home} take all three points with a ${hG}-${aG} victory. `;
+       else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} secure an impressive ${aG}-${hG} win on the road. `;
+       else story = `<b>🏁 FULL TIME:</b> It ends all square at ${hG}-${hG}. A hard-fought draw. `;
     } else {
-        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
-        if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-        else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `It remains all square at ${hG}-${hG}. `;
+       story = `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the contest. `;
+       if(hG > aG) story += `${home} hold the advantage, leading ${hG}-${aG}. `;
+       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+       else story += `It remains ${hG}-${hG} as both teams push for the opener. `;
     }
+
     story += "<br><br>";
-    let hPoss = stats.h_poss || 50;
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
-    else story += `Possession is even `;
-    let xgDiff = (stats.h_xg||0) - (stats.a_xg||0);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${stats.h_xg.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
-    else story += `in a tight game. `;
-    if(stats.h_red > 0 || stats.a_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted after the sending off. `;
+
+    // 2. MOMENTUM & FLOW
+    if(hG > aG && hPoss < 45) {
+       story += `<b>🛡️ Defensive Masterclass:</b> ${home} are happy to sit back (${hPoss}% possession) and soak up pressure while hitting ${away} on the break. `;
+    } else if(aG > hG && aPoss < 45) {
+       story += `<b>⚡ Counter Attack:</b> ${away} have less of the ball (${aPoss}%) but are lethal when they go forward, frustrating the hosts. `;
+    } else if(Math.abs(hPoss - 50) < 5) {
+       story += `<b>⚔️ Midfield Battle:</b> It's a cagey affair with possession split evenly (${hPoss}% vs ${aPoss}%). Neither side can gain total control. `;
+    } else if(hPoss > 60) {
+       story += `<b>🔥 Total Control:</b> ${home} are dominating proceedings with ${hPoss}% possession, pinning ${away} back in their own half. `;
+    } else {
+       story += `<b>🎮 Away Dominance:</b> ${away} are dictating the tempo with ${aPoss}% possession, silencing the home crowd. `;
+    }
+
+    // 3. CHANCE QUALITY (xG)
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.8) story += `In terms of chances, ${home} have been far superior (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}). `;
+    else if(xgDiff < -0.8) story += `However, the quality chances have fallen to ${away} (xG ${aXG.toFixed(2)}). `;
+    else story += `Chances have been limited for both sides (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}). `;
+
+    // 4. TURNING POINTS
+    if(stats.h_red > 0) story += `<br><br>🟥 <b>Game Changer:</b> The dynamic shifted completely after the red card for ${home}. `;
+    if(stats.a_red > 0) story += `<br><br>🟥 <b>Game Changer:</b> ${away} are fighting an uphill battle with 10 men. `;
+    
+    // 5. STAR PLAYER
+    let bestPlayer = null;
+    let highestRat = 0;
+    let bestStats = {};
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+        });
+    }
+
+    if(bestPlayer && highestRat > 0) {
+        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
+        let feats = [];
+        if(bestStats.goals > 0) feats.push(`${bestStats.goals} goal(s)`);
+        if(bestStats.assists > 0) feats.push(`${bestStats.assists} assist(s)`);
+        if(bestStats.key_passes > 1) feats.push(`${bestStats.key_passes} key passes`);
+        if(bestStats.tackles > 2) feats.push(`${bestStats.tackles} tackles`);
+        if(bestStats.saves > 2) feats.push(`${bestStats.saves} saves`);
+        
+        if(feats.length > 0) story += `Key stats: ${feats.join(", ")}.`;
+    }
+
     el.innerHTML = story;
 }
 
+// FUZZY MATCH PLAYER STATS
 function findPlayerStats(name, list) {
     if(!list) return null;
     let found = list.find(x => x.name === name);
@@ -915,10 +973,17 @@ function showPlayerStats(name, stats, events) {
     if(!stats) return; 
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
+    
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS (EXCLUDE MISSED PENALTIES)
     let goals = stats.goals;
-    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
+    if(goals === undefined) {
+       goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
+    }
     let assists = stats.assists;
-    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    if(assists === undefined) {
+       assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    }
+
     const grid = document.getElementById("ppStats");
     grid.innerHTML = `
       <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>

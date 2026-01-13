@@ -516,7 +516,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V17.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V18.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -536,7 +536,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V17.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V18.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -592,7 +592,6 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
-            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
             weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
@@ -606,8 +605,8 @@ function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=docu
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end)requestAnimationFrame(frame);else setTimeout(()=>el.dataset.fired="",3000)}())}
 function toTitleCase(s){return s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase())}
 
+// REVERTED TO RAW NAME
 function formatName(fullName) {
-    // JUST RETURN FULL NAME FROM API
     return fullName || "";
 }
 
@@ -723,16 +722,16 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // SPACED: 5% (GK) -> 15% (Def) -> 32% (Mid) -> 42% (Fwd)
+             // Adjusted Spacing: GK 5%, Def 20%, Mid 30% (Closer to Def), Fwd 42%
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=15; 
-             else if(rIdx===2) yPct=32; 
+             else if(rIdx===1) yPct=20; 
+             else if(rIdx===2) yPct=30; 
              else yPct=42; 
           } else { 
-             // SPACED: 95% (GK) -> 85% (Def) -> 68% (Mid) -> 58% (Fwd)
+             // Adjusted Spacing: GK 95%, Def 80%, Mid 70%, Fwd 58%
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=85; 
-             else if(rIdx===2) yPct=68; 
+             else if(rIdx===1) yPct=80; 
+             else if(rIdx===2) yPct=70; 
              else yPct=58; 
           }
           
@@ -910,14 +909,18 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     el.innerHTML = story;
 }
 
-// FUZZY MATCH PLAYER STATS (FIXED FOR PHOTOS)
+// FUZZY MATCH PLAYER STATS (FIXED FOR PHOTOS - LAST NAME ONLY)
 function findPlayerStats(name, list) {
     if(!list) return null;
-    let found = list.find(x => x.name === name);
-    if(found) return found;
-    // Try fuzzy match
     let lastName = name.split(" ").pop();
-    found = list.find(x => x.name.includes(lastName));
+    // 1. Last Name Only (Most Robust)
+    let found = list.find(x => x.name.includes(lastName));
+    if(found) return found;
+    // 2. Exact
+    found = list.find(x => x.name === name);
+    if(found) return found;
+    // 3. Contains
+    found = list.find(x => x.name.includes(name) || name.includes(x.name));
     return found;
 }
 

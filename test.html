@@ -592,6 +592,7 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
+            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
             weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
@@ -605,8 +606,8 @@ function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=docu
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end)requestAnimationFrame(frame);else setTimeout(()=>el.dataset.fired="",3000)}())}
 function toTitleCase(s){return s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase())}
 
-// REVERTED TO RAW NAME
 function formatName(fullName) {
+    // JUST RETURN FULL NAME FROM API
     return fullName || "";
 }
 

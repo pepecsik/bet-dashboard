@@ -53,7 +53,6 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  /* RESTORED OLD SCROLL BEHAVIOR FOR MOBILE STABILITY */
   height: 100vh;
   overflow: hidden; 
 }
@@ -87,7 +86,11 @@ body{
      overflow: visible !important;
   }
   .summary {
-     margin-bottom: 20px; /* Space at bottom */
+     margin-bottom: 20px; 
+  }
+  /* Smaller Big Win Text on Mobile */
+  .big-win-text {
+      font-size: 14vw !important;
   }
 }
 
@@ -220,24 +223,33 @@ body{
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 
-/* BIG WIN */
-.big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
+/* BIG WIN OVERLAY (CRASH FIX) */
+.big-win-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    display: flex; align-items: center; justify-content: center; 
+    pointer-events: none; z-index: 9999; opacity: 0; /* Z-INDEX 9999 TO FORCE TOP */
+}
 .big-win-text { 
-    font-size: 22vw; /* Reduced size */
+    font-size: 20vw; 
     font-weight: 900; color: #7CFF5B; 
-    text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 0 15px #7CFF5B; 
+    text-shadow: 0 0 20px rgba(0,0,0,0.9), 0 0 10px #7CFF5B; 
     transform: scale(0.5); 
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 @keyframes bigWinAnim { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 1; transform: scale(1.1); } 10% { transform: scale(1); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.4); } }
+
+/* DEDICATED CANVAS FOR CONFETTI */
+#confetti-canvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9998;
+}
 
 /* MODAL */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2100; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; }
 .modal-overlay.active .modal-card { transform: translateY(0); }
-/* HEADER ADJUSTED SIZE */
-.modal-header { background: var(--bg-soft); padding: 20px 15px; text-align: center; position: relative; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+.modal-header { background: var(--bg-soft); padding: 15px; text-align: center; position: relative; min-height: 60px; display: flex; flex-direction: column; justify-content: center; }
 .modal-back-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
 .modal-sub { font-size: 11px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
@@ -370,50 +382,6 @@ body{
 .sum-player { font-weight: 700; color: #fff; }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
-/* AI STORY BOX */
-.ai-story-box {
-    background: linear-gradient(135deg, #2f343a 0%, #262a30 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px; padding: 15px; margin-bottom: 15px;
-    font-size: 13px; line-height: 1.5; color: #e0e0e0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-.ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
-
-/* PLAYER POPUP CARD */
-.player-popup {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  width: 90%; background: rgba(28, 31, 35, 0.95);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 12px; padding: 12px;
-  backdrop-filter: blur(5px); z-index: 50;
-  display: none; animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes popUp { from{transform:translate(-50%, 20px);opacity:0} to{transform:translate(-50%, 0);opacity:1}}
-.pp-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.pp-img { width: 30px; height: 30px; border-radius: 50%; background: #444; object-fit: cover; }
-.pp-name { font-weight: 700; font-size: 13px; }
-.pp-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.pp-stat { text-align: center; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 6px; }
-.pp-val { font-weight: 800; font-size: 14px; color: var(--accent-orange); }
-.pp-lbl { font-size: 9px; opacity: 0.6; }
-.close-pp { position: absolute; top: 8px; right: 10px; font-size: 16px; cursor: pointer; opacity: 0.5; }
-
-/* TABLE STYLING */
-.tbl-grid { display: grid; grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; align-items: center; gap: 2px; }
-.tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
-.tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
-.tbl-team-wrap { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.tbl-logo { width: 20px; height: 20px; object-fit: contain; }
-.ta-c { display: flex; justify-content: center; text-align: center; width: 100%; } 
-.tbl-row .ta-c { justify-content: flex-end; padding-right: 8px; text-align: right; }
-.ta-r { display: flex; justify-content: flex-end; width: 100%; } 
-.ta-l { display: flex; justify-content: flex-start; width: 100%; }
-.txt-green { color: #7CFF5B; }
-.tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
-.form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
-.dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
-
 </style>
 </head>
 <body>
@@ -444,6 +412,8 @@ body{
     </div>
   </footer>
 </div>
+
+<canvas id="confetti-canvas"></canvas>
 
 <div id="bigWinOverlay" class="big-win-overlay">
   <div id="bigWinText" class="big-win-text"></div>
@@ -525,7 +495,7 @@ body{
 </div>
 
 <script>
-// REPLACE THIS URL IF YOU DEPLOYED NEW SCRIPT
+// REPLACE WITH YOUR NEW DEPLOYMENT URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -546,7 +516,7 @@ renderSkeletons();
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V25.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V26.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -566,7 +536,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V25.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V26.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -633,11 +603,47 @@ function loadData(){
 }
 
 function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=document.getElementById("bigWinText");if(!o||!t||o.classList.contains('big-win-active'))return;t.textContent=txt;o.classList.add("big-win-active");setTimeout(()=>o.classList.remove("big-win-active"),5000)}
-function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end)requestAnimationFrame(frame);else setTimeout(()=>el.dataset.fired="",3000)}())}
+
+// === FIXED FIRESCREENBLASTER WITH DEDICATED CANVAS ===
+function fireScreenBlaster(el){
+    if(el.dataset.fired)return;
+    el.dataset.fired="true";
+    
+    // Use the dedicated fixed canvas
+    var myCanvas = document.getElementById('confetti-canvas');
+    var myConfetti = confetti.create(myCanvas, {
+        resize: true,
+        useWorker: true
+    });
+    
+    var end = Date.now() + 2000;
+    (function frame(){
+        myConfetti({
+            particleCount: 2, // Low count for mobile performance
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.6 },
+            colors: ['#7CFF5B','#ffffff','#FFD700'],
+            zIndex: 9998,
+            scalar: 1.2
+        });
+        myConfetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.6 },
+            colors: ['#7CFF5B','#ffffff','#FFD700'],
+            zIndex: 9998,
+            scalar: 1.2
+        });
+        if(Date.now() < end) requestAnimationFrame(frame);
+        else setTimeout(()=>el.dataset.fired="",3000);
+    }());
+}
 function toTitleCase(s){return s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase())}
 
-// REVERTED TO RAW NAME FROM API
 function formatName(fullName) {
+    // JUST RETURN FULL NAME FROM API
     return fullName || "";
 }
 
@@ -683,7 +689,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V25.0) ---
+             // --- ROBUST HOME/AWAY DETECTION (V26.0) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
              
@@ -754,7 +760,7 @@ function openModal(m){
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS (V25.0 - Equal Spacing)
+  // 2. LINEUPS
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -789,7 +795,7 @@ function openModal(m){
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); 
               
-              let pStats = findPlayerStats(p.name, playersFull); // V21 Matcher
+              let pStats = findPlayerStats(p.name, playersFull); // FIXED SEARCH V26.0
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
@@ -809,7 +815,7 @@ function openModal(m){
               el.style.left = xPct + "%";
               el.onclick = () => showPlayerStats(p.name, pStats, s.events);
               
-              // V21 IMAGE LOGIC
+              // NEW IMG LOGIC: Fallback built-in
               let content = `<div class="p-dot ${isHome?'home':'away'}">
                   <span class="p-num-fallback">${p.num}</span>`;
               if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
@@ -855,7 +861,7 @@ function openModal(m){
         let isH = null;
         let parts = cleanP.split(' ');
         
-        // Deep Search (V25.0)
+        // Deep Search (V26.0 - Parts Check)
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
              else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
@@ -949,11 +955,11 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${stats.a_xg.toFixed(2)}). `;
     else story += `in a tight game. `;
     if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted after the sending off. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting with 10 men. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
     el.innerHTML = story;
 }
 
-// FUZZY MATCH PLAYER STATS (V21.0 - BRUTE FORCE MAPPER)
+// FUZZY MATCH PLAYER STATS (V26.0 - BRUTE FORCE MAPPER)
 function findPlayerStats(name, list) {
     if(!list) return null;
     let normName = normalizeName(name);

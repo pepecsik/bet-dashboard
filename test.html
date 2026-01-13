@@ -180,6 +180,17 @@ body{
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 .history-card{ width: 100%; background:var(--bg-soft); border-radius:14px; padding:14px; font-weight:700; display:none; height:260px; overflow:hidden; }
 
+/* LOADING SKELETON */
+.skeleton {
+  background: var(--bg-soft);
+  background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  color: transparent !important; border-radius: 10px; pointer-events: none;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sk-row { height: var(--row-h); margin-bottom: var(--gap); }
+
 /* ANIMATIONS & OVERLAYS */
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); }
 .status-orange { background: var(--accent-orange) !important; color: #1c1f23 !important; animation: nervousShiver 0.3s infinite linear; box-shadow: 0 0 15px rgba(255, 159, 67, 0.6); }
@@ -199,7 +210,6 @@ body{
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; }
 .modal-overlay.active .modal-card { transform: translateY(0); }
-/* HEADER ADJUSTED SIZE */
 .modal-header { background: var(--bg-soft); padding: 20px 15px; text-align: center; position: relative; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
 .modal-back-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; }
 .modal-title { font-weight: 800; font-size: 16px; margin-bottom: 2px; }
@@ -481,7 +491,7 @@ body{
 </div>
 
 <script>
-// UPDATE THIS TO YOUR DEPLOYED WEB APP URL
+// REPLACE THIS URL IF YOU DEPLOYED NEW SCRIPT
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
@@ -499,7 +509,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V10.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V11.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -519,7 +529,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V10.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V11.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -575,6 +585,7 @@ function loadData(){
         }
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
+            // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
             weekly.innerHTML+=`<div class="week-row"><div class="week-label">${l}</div><div class="week-gbp ${g?'green':'red'}">${formatGBP(vE)}</div><div class="week-eur">${formatEUR(vD)}</div></div>`});
         }
         if(data.ranking) {
@@ -608,7 +619,7 @@ function openModal(m){
   const s=m.stats||{};
   switchTab('stats'); 
 
-  // HEADER LOGO SCALE FIX
+  // HEADER LOGO SCALE FIX (1.15)
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
@@ -681,12 +692,8 @@ function openModal(m){
 
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-  // STATS BARS (Added Yellow Cards, Removed Inside Box)
+  // STATS BARS (Removed Yellow Cards)
   const sb=document.getElementById("statsArea");sb.innerHTML="";
-  // Calculate Yellow Cards manually since it's not a top-level stat in our JSON but we have total cards and red cards
-  let hYel = (s.h_cards||0) - (s.h_red||0); if(hYel<0) hYel=0;
-  let aYel = (s.a_cards||0) - (s.a_red||0); if(aYel<0) aYel=0;
-
   const sl=[
     {l:"Expected Goals",h:s.h_xg,a:s.a_xg,dec:true}, 
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
@@ -694,8 +701,7 @@ function openModal(m){
     {l:"Shots Target",h:s.h_shots,a:s.a_shots},
     {l:"Saves",h:s.h_saves,a:s.a_saves},
     {l:"Fouls",h:s.h_fouls,a:s.a_fouls},
-    {l:"Corners",h:s.h_corners,a:s.a_corners},
-    {l:"Yellow Cards",h:hYel,a:aYel} // Added this
+    {l:"Corners",h:s.h_corners,a:s.a_corners}
   ];
   sl.forEach(st=>{
     let t=st.h+st.a,hp=0,ap=0;
@@ -827,7 +833,7 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-// === ADVANCED NARRATIVE GENERATOR ===
+// === ADVANCED NARRATIVE GENERATOR (V11.0 - Extended) ===
 function generateStory(home, away, stats, score, status, startTime, date) {
     const el = document.getElementById("aiSummaryText");
     
@@ -841,8 +847,13 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         let story = `<b>📅 MATCH PREVIEW:</b> `;
         if(isToday) {
              story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) story += `<br><br><b>📋 Team News:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
-             else story += `Lineups are expected roughly an hour before kick-off.`;
+             if(hasLineups) {
+                 story += `<br><br><b>📋 Tactical Setups:</b> The team sheets are in! ${home} line up in a <b>${stats.lineups.h.formation || "?"}</b> formation, looking to control the game at home. `;
+                 story += `${away} counter with a <b>${stats.lineups.a.formation || "?"}</b>, aiming to upset the hosts. `;
+                 story += `Check the Lineups tab for the full player lists.`;
+             } else {
+                 story += `Lineups are expected roughly an hour before kick-off.`;
+             }
         } else {
              let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage and real-time statistics.`;
@@ -856,29 +867,65 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     
     let story = "";
     
+    // HEADLINE
     if(status === "FT") {
-       if(hG > aG) story = `<b>FULL TIME:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story = `<b>FULL TIME:</b> ${away} snatch the win away from home. `;
-       else story = `<b>FULL TIME:</b> Honors even at the final whistle. `;
+       if(hG > aG) story = `<b>🏁 FULL TIME:</b> ${home} claim a massive victory. A dominant performance at home sees them take all three points. `;
+       else if(aG > hG) story = `<b>🏁 FULL TIME:</b> ${away} snatch a brilliant win on the road. A tactical masterclass from the visitors. `;
+       else story = `<b>🏁 FULL TIME:</b> It ends in a stalemate. Both sides cancel each other out in a tight tactical battle. `;
     } else if (status === "HT") {
-        story += `<b>HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
     } else {
-        story += `<b>LIVE ${time}':</b> `;
-        if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-        else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `All square at ${hG}-${hG}. `;
+        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
+        if(hG > aG) story += `${home} are leading ${hG}-${aG} and look comfortable. `;
+        else if(aG > hG) story += `${away} have shocked the hosts and lead ${aG}-${hG}. `;
+        else story += `It remains all square at ${hG}-${hG} as both teams push for the opener. `;
     }
 
-    // STATS NARRATIVE
-    let xgDiff = (stats.h_xg - stats.a_xg).toFixed(2);
-    if(parseFloat(xgDiff) > 0.5) story += `<br><br>${home} created better chances (xG ${stats.h_xg}) but the scoreline tells the story. `;
-    else if(parseFloat(xgDiff) < -0.5) story += `<br><br>${away} looked dangerous (xG ${stats.a_xg}) throughout. `;
-    
-    if(stats.h_poss > 60) story += `${home} dominated possession with ${stats.h_poss}%. `;
-    else if(stats.a_poss > 60) story += `${away} controlled the ball with ${stats.a_poss}%. `;
+    story += "<br><br>";
+
+    // TACTICAL ANALYSIS
+    let hPoss = stats.h_poss || 50;
+    if(hPoss > 60) story += `<b>📊 Possession Battle:</b> ${home} have completely monopolized the ball with ${hPoss}% possession, pinning ${away} back in their own half. `;
+    else if(hPoss < 40) story += `<b>📊 Possession Battle:</b> ${away} are dictating the tempo with ${100-hPoss}% of the ball, forcing ${home} to play on the counter-attack. `;
+    else story += `<b>📊 Possession Battle:</b> It has been an evenly contested midfield battle, with possession split ${hPoss}% to ${100-hPoss}%. `;
+
+    // CHANCE QUALITY
+    let hXG = stats.h_xg || 0;
+    let aXG = stats.a_xg || 0;
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.8) story += `However, ${home} have been far more clinical, creating high-quality chances (xG ${hXG.toFixed(2)}) compared to ${away}'s ${aXG.toFixed(2)}. `;
+    else if(xgDiff < -0.8) story += `But it is ${away} who look the more dangerous side, generating an xG of ${aXG.toFixed(2)} against ${home}'s ${hXG.toFixed(2)}. `;
+    else story += `Chances have been hard to come by for both sides (xG ${hXG.toFixed(2)} vs ${aXG.toFixed(2)}), with defenses staying compact. `;
+
+    // AGGRESSION
+    let fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
+    if(fouls > 25) story += `<br><br><b>⚠️ Discipline:</b> It's turning into a scrappy affair with ${fouls} fouls already committed. The referee has been busy. `;
 
     // CARDS
-    if(stats.h_red > 0 || stats.a_red > 0) story += `The dynamic shifted dramatically after the red card. `;
+    if(stats.h_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted when ${home} were reduced to 10 men. `;
+    if(stats.a_red > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle after the sending off. `;
+
+    // STAR PLAYER
+    let bestPlayer = null;
+    let highestRat = 0;
+    let bestStats = {};
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+        });
+    }
+
+    if(bestPlayer && highestRat > 0) {
+        story += `<br><br>🌟 <b>Man of the Match:</b> <b>${formatName(bestPlayer)}</b> is running the show with a rating of ${highestRat.toFixed(1)}. `;
+        let feats = [];
+        if(bestStats.goals > 0) feats.push(`${bestStats.goals} Goal(s)`);
+        if(bestStats.assists > 0) feats.push(`${bestStats.assists} Assist(s)`);
+        if(bestStats.key_passes > 1) feats.push(`${bestStats.key_passes} Key Passes`);
+        if(bestStats.tackles > 2) feats.push(`${bestStats.tackles} Tackles`);
+        if(bestStats.saves > 2) feats.push(`${bestStats.saves} Saves`);
+        
+        if(feats.length > 0) story += `Key contributions: ${feats.join(", ")}.`;
+    }
 
     el.innerHTML = story;
 }
@@ -901,6 +948,7 @@ function showPlayerStats(name, stats, events) {
     document.getElementById("ppName").textContent = stats.name || name; 
     document.getElementById("ppImg").src = stats.photo || "";
     
+    // FIX UNDEFINED GOALS BY COUNTING EVENTS
     let goals = stats.goals;
     if(goals === undefined) {
        goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;

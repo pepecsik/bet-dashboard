@@ -70,15 +70,15 @@ body{
 /* === MOBILE STABILITY ENGINE === */
 @media (max-width: 768px){
   html, body {
-    height: auto !important;
+    height: 100% !important; /* Force full height */
     overflow-y: auto !important; /* Native Scroll */
     -webkit-overflow-scrolling: touch;
     position: relative;
   }
   .app{
-    /* NO TRANSFORM SCALE - PREVENTS CRASHES */
     width: 100%;
     height: auto !important;
+    min-height: 100%; /* Ensure it fills screen */
     display: block !important;
     zoom: 0.85; 
   }
@@ -406,7 +406,7 @@ body{
 .pp-lbl { font-size: 9px; opacity: 0.6; }
 .close-pp { position: absolute; top: 8px; right: 10px; font-size: 16px; cursor: pointer; opacity: 0.5; }
 
-/* TABLE STYLING */
+/* TABLE STYLING (FIXED LOGO SIZE) */
 .tbl-grid { display: grid; grid-template-columns: 25px 1.5fr 44px 44px 44px 60px; align-items: center; gap: 2px; }
 .tbl-header { padding: 10px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-row); }
 .tbl-row { padding: 8px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; font-weight: 600; }
@@ -552,7 +552,7 @@ renderSkeletons();
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V32.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V33.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -572,16 +572,31 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V32.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V33.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
         const headerRow=document.createElement("div");headerRow.className="row";
+        
+        // --- RESTORED SORTING LOGIC (FRONTEND) ---
+        let colMaps = [];
+        data.headers.forEach((h, i) => {
+            const valStr = String(h.name);
+            const match = valStr.match(/^(\d+)[\.\-\s]*(.*)$/);
+            const order = match ? parseInt(match[1], 10) : 999;
+            colMaps.push({ originalIndex: i, order: order, data: h });
+        });
+        colMaps.sort((a, b) => a.order - b.order);
+        
         const isWinningGreen=h=>{if(!h)return false;const l=h.toLowerCase();return ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(l)};
         
-        data.headers.forEach((h,i)=>{
+        colMaps.forEach((map)=>{
+           let h = map.data;
+           let i = map.originalIndex;
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
+           
            data.matches.forEach(m=>{const c=m.cells[i],st=m.status?m.status.trim().toUpperCase():"";if(!c||!c.value)return;hasB=true;if(!isWinningGreen(c.color))allG=false;if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;if(st!=="FT")pen++});
+           
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells&&data.betSummary[1].cells[i]) {
                tot+=(data.betSummary[1].cells[i].value||0);
            }
@@ -609,23 +624,38 @@ function loadData(){
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h, hRed)}<span>-</span>${renderTeam(a, aRed)}</div></div><div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
           left.appendChild(lr);
           const rr=document.createElement("div");rr.className="row";
-          m.cells.forEach(c=>{const el=document.createElement("div");el.className="bet";if(c.value){el.textContent=c.value;el.style.background=c.color}rr.appendChild(el)});
+          
+          // --- SORT MATCH CELLS ---
+          colMaps.forEach(map => {
+              const c = m.cells[map.originalIndex];
+              const el=document.createElement("div");el.className="bet";
+              if(c && c.value){el.textContent=c.value;el.style.background=c.color}
+              rr.appendChild(el);
+          });
           right.appendChild(rr);
         });
         left.appendChild(document.createElement("div")).className="left-divider";right.appendChild(document.createElement("div")).className="right-divider";
-    } catch(err) { console.error(err); }
-
-    try {
+        
+        // --- SORT SUMMARY ROWS ---
         if(data.betSummary && Array.isArray(data.betSummary)) {
             ["BET","WIN","WIN PP"].forEach((l,i)=>{
                 const lb=document.createElement("div");lb.className="left-label";lb.textContent=l;left.appendChild(lb);
                 const rr=document.createElement("div");rr.className="row";
                 if(data.betSummary[i] && data.betSummary[i].cells) {
-                    data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
+                    colMaps.forEach(map => {
+                        const c = data.betSummary[i].cells[map.originalIndex];
+                        const el=document.createElement("div");el.className="bet";
+                        el.textContent=formatGBP(c.value);el.style.background=c.color;
+                        rr.appendChild(el);
+                    });
                 }
                 right.appendChild(rr);
             });
         }
+
+    } catch(err) { console.error(err); }
+
+    try {
         if(data.totals) {
             data.totals.forEach(t=>{let l=t.label;if(l==="TOTAL WIN"||l==="HIGHEST POSB. WIN")l="HIGHEST POSB. WIN";const g=["TOTAL WIN","TOTAL WIN PP","AVG. WIN","HIGHEST POSB. WIN"].includes(l),vD=t.cells[0]?.value||0,vE=t.cells[1]?.value||0;
             // FIXED: GBP is vD (First), EUR is vE (Second) - based on your latest request
@@ -703,17 +733,17 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V28.0 - Normalization) ---
+             // --- ROBUST HOME/AWAY DETECTION (V33.0 - Part Matching) ---
              let isH = null;
-             let lastName = cleanP.split(' ').pop();
+             let parts = cleanP.split(' ');
              
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(s.lineups.h.start.some(p => normalizeName(p.name).includes(lastName)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(lastName))) isH = true;
-                 else if(s.lineups.a.start.some(p => normalizeName(p.name).includes(lastName)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(lastName))) isH = false;
+                 if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
+                 else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
              }
              if(isH === null && s.players && s.players.h) {
-                 if(s.players.h.some(p => normalizeName(p.name).includes(lastName))) isH = true;
-                 else if(s.players.a.some(p => normalizeName(p.name).includes(lastName))) isH = false;
+                 if(parts.some(pt => pt.length>2 && s.players.h.some(p => normalizeName(p.name).includes(pt)))) isH = true;
+                 else if(parts.some(pt => pt.length>2 && s.players.a.some(p => normalizeName(p.name).includes(pt)))) isH = false;
              }
              if(isH === null) isH = true; 
              
@@ -774,7 +804,7 @@ function openModal(m){
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="stat-bar-container"><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS (V28.0 - Equal Spacing)
+  // 2. LINEUPS (V33.0 - EQUIDISTANT SPACING)
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -790,17 +820,17 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // EQUAL SPACING: GK 5% -> Def 17.5% -> Mid 30% -> Fwd 42.5%
+             // 5% -> 17.3% -> 29.6% -> 42% (Equal Gap ~12.3%)
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=17.5; 
-             else if(rIdx===2) yPct=30; 
-             else yPct=42.5; 
+             else if(rIdx===1) yPct=17.3; 
+             else if(rIdx===2) yPct=29.6; 
+             else yPct=42; 
           } else { 
-             // EQUAL SPACING: GK 95% -> Def 82.5% -> Mid 70% -> Fwd 57.5%
+             // 95% -> 82.7% -> 70.4% -> 58% (Equal Gap ~12.3%)
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=82.5; 
-             else if(rIdx===2) yPct=70; 
-             else yPct=57.5; 
+             else if(rIdx===1) yPct=82.7; 
+             else if(rIdx===2) yPct=70.4; 
+             else yPct=58; 
           }
           
           line.forEach((p, i) => {
@@ -809,7 +839,7 @@ function openModal(m){
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); 
               
-              let pStats = findPlayerStats(p.name, playersFull); // V21 Matcher
+              let pStats = findPlayerStats(p.name, playersFull);
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
@@ -875,7 +905,7 @@ function openModal(m){
         let isH = null;
         let parts = cleanP.split(' ');
         
-        // Deep Search (V28.0 - Parts Check)
+        // Deep Search (V33.0 - Parts Check)
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
              else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
@@ -1003,7 +1033,7 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     el.innerHTML = story;
 }
 
-// FUZZY MATCH PLAYER STATS (V26.0 - BRUTE FORCE MAPPER)
+// FUZZY MATCH PLAYER STATS (V33.0 - BRUTE FORCE MAPPER)
 function findPlayerStats(name, list) {
     if(!list) return null;
     let normName = normalizeName(name);

@@ -53,8 +53,8 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  height: 100vh; /* Ensure body takes full height */
-  overflow: hidden; /* Prevent body scroll */
+  height: 100vh; 
+  overflow: hidden; 
 }
 
 .app{
@@ -71,7 +71,7 @@ body{
     transform: scale(0.78);
     transform-origin: top left;
     width: 128%;
-    height: 128vh; /* Adjusted for scaling */
+    height: 128vh; 
   }
 }
 
@@ -79,8 +79,8 @@ body{
 .main{ 
     display:flex; gap:10px; padding:10px; 
     overflow:hidden; 
-    flex: 1; /* Take remaining space */
-    min-height: 0; /* Crucial for scrolling inside flex */
+    flex: 1; 
+    min-height: 0; /* Critical for scroll */
 }
 
 .left-card{
@@ -89,7 +89,7 @@ body{
   overflow-y:auto; 
   max-height:100%; 
   scrollbar-width:none;
-  padding-bottom: 60px; /* EXTRA PADDING FOR MOBILE SCROLL */
+  padding-bottom: 80px; /* EXTRA PADDING FOR MOBILE SCROLL */
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -216,7 +216,7 @@ body{
 /* BIG WIN */
 .big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
 .big-win-text { 
-    font-size: 22vw; /* REDUCED SIZE AS REQUESTED */
+    font-size: 20vw; /* ADJUSTED SMALLER */
     font-weight: 900; color: #7CFF5B; 
     text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; 
     transform: scale(0.5); 
@@ -538,7 +538,7 @@ renderSkeletons();
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V22.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V23.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -558,7 +558,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V22.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V23.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -675,7 +675,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V21.0 - Normalization) ---
+             // --- ROBUST HOME/AWAY DETECTION (V23.0) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
              
@@ -762,17 +762,17 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // EQUAL SPACING: GK 5% -> Def 17.5% -> Mid 30% -> Fwd 42.5%
+             // FINAL SPACING: GK 5%, Def 20%, Mid 35%, Fwd 42%
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=17.5; 
-             else if(rIdx===2) yPct=30; 
-             else yPct=42.5; 
+             else if(rIdx===1) yPct=20; 
+             else if(rIdx===2) yPct=35; 
+             else yPct=42; 
           } else { 
-             // EQUAL SPACING: GK 95% -> Def 82.5% -> Mid 70% -> Fwd 57.5%
+             // FINAL SPACING: GK 95%, Def 80%, Mid 65%, Fwd 58%
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=82.5; 
-             else if(rIdx===2) yPct=70; 
-             else yPct=57.5; 
+             else if(rIdx===1) yPct=80; 
+             else if(rIdx===2) yPct=65; 
+             else yPct=58; 
           }
           
           line.forEach((p, i) => {
@@ -781,7 +781,7 @@ function openModal(m){
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); 
               
-              let pStats = findPlayerStats(p.name, playersFull); // FIXED SEARCH V21.0
+              let pStats = findPlayerStats(p.name, playersFull); // FIXED SEARCH V23.0
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
@@ -847,7 +847,7 @@ function openModal(m){
         let isH = null;
         let parts = cleanP.split(' ');
         
-        // Deep Search (V21.0 - Parts Check)
+        // Deep Search (V23.0 - Parts Check)
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
              else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
@@ -903,6 +903,7 @@ function generateStory(home, away, stats, score, status, startTime, date) {
         let today = new Date();
         let isToday = matchDate && matchDate.getDate() === today.getDate();
         let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+
         let story = `<b>📅 MATCH PREVIEW:</b> `;
         if(isToday) {
              story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;

@@ -53,6 +53,7 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
+  overflow: hidden; /* Prevents double scrollbars on mobile */
 }
 
 .app{
@@ -61,12 +62,19 @@ body{
   grid-template-rows:1fr auto;
 }
 
+/* === MOBILE FIXES APPLIED HERE === */
 @media (max-width: 768px){
   .app{
     transform: scale(0.78);
     transform-origin: top left;
-    width: 128%;
-    height: 128%;
+    width: 128.3%; /* Slight adjustment */
+    height: 128.3%;
+    position: absolute; /* Pins the app to view to prevent floating cutoff */
+    top: 0; left: 0;
+  }
+  /* Adds breathing room at bottom of lists so FT games don't hide behind edge */
+  .left-card, .right-card {
+      padding-bottom: 80px !important; 
   }
 }
 
@@ -199,9 +207,20 @@ body{
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 
-/* BIG WIN */
+/* BIG WIN - FIXED */
 .big-win-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2200; opacity: 0; }
-.big-win-text { font-size: 35vw; font-weight: 900; color: #7CFF5B; text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; transform: scale(0.5); }
+.big-win-text { 
+    font-size: 30vw; /* Slightly smaller to fit */
+    font-weight: 900; 
+    color: #7CFF5B; 
+    text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B; 
+    transform: scale(0.5);
+    white-space: nowrap; /* KEEPS IT ON ONE LINE */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2vw; /* SPACE BETWEEN POUND AND NUMBERS */
+}
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 @keyframes bigWinAnim { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 1; transform: scale(1.1); } 10% { transform: scale(1); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.4); } }
 
@@ -746,13 +765,13 @@ function openModal(m){
           let yPct = 0;
           if(isHome) { 
              // EQUAL SPACING: GK 5% -> Def 17.5% -> Mid 30% -> Fwd 42.5%
-             if(rIdx===0) yPct=5;      
+             if(rIdx===0) yPct=5;       
              else if(rIdx===1) yPct=17.5; 
              else if(rIdx===2) yPct=30; 
              else yPct=42.5; 
           } else { 
              // EQUAL SPACING: GK 95% -> Def 82.5% -> Mid 70% -> Fwd 57.5%
-             if(rIdx===0) yPct=95;     
+             if(rIdx===0) yPct=95;      
              else if(rIdx===1) yPct=82.5; 
              else if(rIdx===2) yPct=70; 
              else yPct=57.5; 
@@ -906,12 +925,12 @@ function generateStory(home, away, stats, score, status, startTime, date) {
        else if(aG > hG) story = `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
        else story = `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
     } else if (status === "HT") {
-        story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
+       story += `<b>⏸️ HALF TIME:</b> The players head into the break with the score at ${hG}-${aG}. `;
     } else {
-        story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
-        if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-        else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-        else story += `It remains all square at ${hG}-${hG}. `;
+       story += `<b>🔴 LIVE UPDATE (${time}'):</b> We are deep into the action here. `;
+       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
+       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+       else story += `It remains all square at ${hG}-${hG}. `;
     }
     story += "<br><br>";
     let hPoss = stats.h_poss || 50;

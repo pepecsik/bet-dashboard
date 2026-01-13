@@ -516,7 +516,7 @@ document.body.addEventListener('click',()=>{if("Notification" in window&&Notific
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V18.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V19.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -536,7 +536,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V18.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V19.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -611,6 +611,11 @@ function formatName(fullName) {
     return fullName || "";
 }
 
+// === ACCENT REMOVER HELPER ===
+function removeAccents(str) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 // === MATCH MODAL LOGIC ===
 function switchTab(t){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -635,31 +640,32 @@ function openModal(m){
   if(s.events){
       s.events.forEach(e => {
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
-             let cleanP = e.player.trim();
+             let cleanP = removeAccents(e.player.trim()); // Normalize
              
-             // --- ROBUST HOME/AWAY DETECTION (V12.0) ---
+             // --- ROBUST HOME/AWAY DETECTION (V19.0 - Accents) ---
              let isH = null;
              let lastName = cleanP.split(' ').pop();
+             
              if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(s.lineups.h.start.some(p => p.name.includes(lastName)) || s.lineups.h.sub?.some(p => p.name.includes(lastName))) isH = true;
-                 else if(s.lineups.a.start.some(p => p.name.includes(lastName)) || s.lineups.a.sub?.some(p => p.name.includes(lastName))) isH = false;
+                 if(s.lineups.h.start.some(p => removeAccents(p.name).includes(lastName)) || s.lineups.h.sub?.some(p => removeAccents(p.name).includes(lastName))) isH = true;
+                 else if(s.lineups.a.start.some(p => removeAccents(p.name).includes(lastName)) || s.lineups.a.sub?.some(p => removeAccents(p.name).includes(lastName))) isH = false;
              }
              if(isH === null && s.players && s.players.h) {
-                 if(s.players.h.some(p => p.name.includes(lastName))) isH = true;
-                 else if(s.players.a.some(p => p.name.includes(lastName))) isH = false;
+                 if(s.players.h.some(p => removeAccents(p.name).includes(lastName))) isH = true;
+                 else if(s.players.a.some(p => removeAccents(p.name).includes(lastName))) isH = false;
              }
              if(isH === null) isH = true; 
              
-             if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail };
+             if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
              goalsMap[cleanP].times.push(e.time + "'");
          }
       });
   }
   
-  Object.keys(goalsMap).forEach(player => {
-      let g = goalsMap[player];
+  Object.keys(goalsMap).forEach(key => {
+      let g = goalsMap[key];
       let timesStr = g.times.join(", ");
-      let name = formatName(player);
+      let name = formatName(g.rawName); // Use original name for display
       let html = "";
       
       let icon = "⚽";
@@ -723,16 +729,16 @@ function openModal(m){
       lines.forEach((line, rIdx) => {
           let yPct = 0;
           if(isHome) { 
-             // Adjusted Spacing: GK 5%, Def 20%, Mid 30% (Closer to Def), Fwd 42%
+             // Adjusted Spacing: GK 5%, Def 14%, Mid 32%, Fwd 42%
              if(rIdx===0) yPct=5;      
-             else if(rIdx===1) yPct=20; 
-             else if(rIdx===2) yPct=30; 
+             else if(rIdx===1) yPct=14; // Closer to GK
+             else if(rIdx===2) yPct=32; 
              else yPct=42; 
           } else { 
-             // Adjusted Spacing: GK 95%, Def 80%, Mid 70%, Fwd 58%
+             // Adjusted Spacing: GK 95%, Def 86%, Mid 68%, Fwd 58%
              if(rIdx===0) yPct=95;     
-             else if(rIdx===1) yPct=80; 
-             else if(rIdx===2) yPct=70; 
+             else if(rIdx===1) yPct=86; // Closer to GK
+             else if(rIdx===2) yPct=68; 
              else yPct=58; 
           }
           
@@ -742,7 +748,7 @@ function openModal(m){
               let segment = 100 / count;
               let xPct = (segment * i) + (segment / 2); // Center within segment
               
-              let pStats = findPlayerStats(p.name, playersFull);
+              let pStats = findPlayerStats(p.name, playersFull); // FIXED SEARCH
               let rat = pStats ? pStats.rating.toFixed(1) : "-";
               let photoUrl = pStats ? pStats.photo : "";
               let rClass = "rat-mid";
@@ -752,8 +758,8 @@ function openModal(m){
               let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
               let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
               
-              let lastName = p.name.split(" ").pop();
-              let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && e.player.includes(lastName));
+              let lastName = removeAccents(p.name.split(" ").pop());
+              let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && removeAccents(e.player).includes(lastName));
               let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
               let el = document.createElement("div");
@@ -804,16 +810,16 @@ function openModal(m){
     sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
   } else {
     [...s.events].reverse().forEach(e => {
-        let cleanP = e.player.trim();
+        let cleanP = removeAccents(e.player.trim());
         let isH = null;
         let lastName = cleanP.split(' ').pop();
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
-             if(s.lineups.h.start.some(p => p.name.includes(lastName)) || s.lineups.h.sub?.some(p => p.name.includes(lastName))) isH = true;
-             else if(s.lineups.a.start.some(p => p.name.includes(lastName)) || s.lineups.a.sub?.some(p => p.name.includes(lastName))) isH = false;
+             if(s.lineups.h.start.some(p => removeAccents(p.name).includes(lastName)) || s.lineups.h.sub?.some(p => removeAccents(p.name).includes(lastName))) isH = true;
+             else if(s.lineups.a.start.some(p => removeAccents(p.name).includes(lastName)) || s.lineups.a.sub?.some(p => removeAccents(p.name).includes(lastName))) isH = false;
         }
         if(isH === null && s.players && s.players.h) {
-             if(s.players.h.some(p => p.name.includes(lastName))) isH = true;
-             else if(s.players.a.some(p => p.name.includes(lastName))) isH = false;
+             if(s.players.h.some(p => removeAccents(p.name).includes(lastName))) isH = true;
+             else if(s.players.a.some(p => removeAccents(p.name).includes(lastName))) isH = false;
         }
         if(isH === null) isH = true; 
 
@@ -913,9 +919,10 @@ function generateStory(home, away, stats, score, status, startTime, date) {
 // FUZZY MATCH PLAYER STATS (FIXED FOR PHOTOS - LAST NAME ONLY)
 function findPlayerStats(name, list) {
     if(!list) return null;
-    let lastName = name.split(" ").pop();
+    let lastName = removeAccents(name.split(" ").pop());
+    
     // 1. Last Name Only (Most Robust)
-    let found = list.find(x => x.name.includes(lastName));
+    let found = list.find(x => removeAccents(x.name).includes(lastName));
     if(found) return found;
     // 2. Exact
     found = list.find(x => x.name === name);

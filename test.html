@@ -3,20 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-
-<script>
-if(window.navigator && navigator.serviceWorker) {
-  navigator.serviceWorker.getRegistrations()
-  .then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister();
-    }
-  });
-}
-</script>
 
 <link rel="manifest" href="/bet-dashboard/manifest.json">
 <meta name="theme-color" content="#134d2b">
@@ -57,6 +43,7 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
+  /* YOUR PREFERRED SCROLLING LOCK */
   height: 100vh;
   overflow: hidden; 
 }
@@ -67,47 +54,19 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE STABILITY ENGINE === */
 @media (max-width: 768px){
-  html, body {
-    height: 100% !important; /* Force full height */
-    overflow-y: auto !important; /* Native Scroll */
-    -webkit-overflow-scrolling: touch;
-    position: relative;
-  }
   .app{
-    width: 100%;
-    height: auto !important;
-    min-height: 100%; /* Ensure it fills screen */
-    display: block !important;
-    zoom: 0.85; 
+    transform: scale(0.78);
+    transform-origin: top left;
+    width: 128%;
+    height: 128%;
   }
-  .main {
-     height: auto !important;
-     overflow: visible !important;
-     display: flex;
-     padding-bottom: 120px !important;
-  }
-  .left-card {
-     min-width: 65vw; 
-     height: auto !important;
-     max-height: none !important;
-     overflow: visible !important;
-  }
-  .right-card {
-     overflow-x: auto;
-  }
-  /* Footer fixed to bottom on mobile */
-  .summary {
-     position: fixed; bottom: 10px; left: 10px; right: 10px; width: calc(100% - 20px); z-index: 1000;
-     margin: 0;
-  }
-  .big-win-text { font-size: 15vw !important; }
 }
 
 /* MAIN LAYOUT */
 .main{ display:flex; gap:10px; padding:10px; overflow:hidden; }
 
+/* LEFT CARD (MATCHES) */
 .left-card{
   width:var(--left-w); background:var(--bg-card); border-radius:14px;
   padding:8px; display:flex; flex-direction:column; gap:var(--gap);
@@ -118,7 +77,7 @@ body{
 .left-header{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; position: relative; flex-shrink: 0;
+  font-size:12px; font-weight:700; position: relative; 
 }
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
@@ -132,11 +91,11 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
-.left-divider{height:8px; flex-shrink: 0;}
+.left-divider{height:8px}
 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
-  gap:var(--gap); transition: background 0.2s; flex-shrink: 0;
+  gap:var(--gap); transition: background 0.2s;
 }
 .left-row:active { background: rgba(255,255,255,0.05); }
 
@@ -147,7 +106,7 @@ body{
 .left-cell.match{text-align:center}
 .left-label{
   height:var(--row-h); background:var(--bg-soft); border-radius:10px;
-  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink: 0;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
 }
 
 .team-logo{ width:38px; height:38px; object-fit:contain; }
@@ -161,7 +120,7 @@ body{
   background: #ff4d4d; border-radius: 2px;
 }
 
-/* RIGHT CARD */
+/* RIGHT CARD (BETS) */
 .right-card{
   flex:1; background:var(--bg-card); border-radius:14px;
   overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
@@ -182,7 +141,7 @@ body{
 }
 
 /* FOOTER */
-.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; flex-shrink: 0; }
+.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px; overflow: hidden; border: 1px solid #2f343a; }
 .summary-toggle{
   background:var(--bg-soft); padding:8px 12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
@@ -273,7 +232,7 @@ body{
 .tab-btn.active { color: #fff; border-bottom: 2px solid var(--accent-orange); background: rgba(255,255,255,0.02); }
 .modal-scroll-area { padding: 15px; overflow-y: auto; flex: 1; position:relative; }
 
-/* AI STORY BOX */
+/* AI STORY BOX (PREMIUM) */
 .ai-story-box {
     background: linear-gradient(135deg, #2f343a 0%, #262a30 100%);
     border: 1px solid rgba(255,255,255,0.1);
@@ -342,7 +301,7 @@ body{
     width: 100%; height: 100%; object-fit: cover; border-radius:50%; 
     position:absolute; top:0; left:0;
 }
-.p-num-fallback { z-index: 0; } /* Behind image */
+.p-num-fallback { z-index: 0; } 
 
 .p-dot.home { border-color: #333; }
 .p-dot.away { border-color: #fff; }
@@ -552,7 +511,7 @@ renderSkeletons();
 
 function renderSkeletons(){
   const left=document.getElementById("left"),right=document.getElementById("right");left.innerHTML="";right.innerHTML="";
-  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V33.0</span></div>`;
+  const lh=document.createElement("div");lh.className="left-header";lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V34.0</span></div>`;
   left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
   const rh=document.createElement("div");rh.className="row";for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
   right.appendChild(rh);right.appendChild(document.createElement("div")).className="right-divider";
@@ -572,7 +531,7 @@ function loadData(){
     }
 
     const lh=document.createElement("div");lh.className="left-header";
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V33.0</span></div>`;
+    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"><span style="font-size:8px;color:#7CFF5B;position:absolute;bottom:-2px;right:-2px;background:#000;padding:1px 3px;border-radius:4px;">V34.0</span></div>`;
     left.appendChild(lh);left.appendChild(document.createElement("div")).className="left-divider";
 
     try {
@@ -723,14 +682,7 @@ function openModal(m){
   document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
   document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
 
-  try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date); } catch(e) { 
-      // FALLBACK TO PREVENT "WAITING" STUCK STATE
-      document.getElementById("aiSummaryWrapper").innerHTML = `
-        <div class="ai-story-box">
-            <div class="ai-title">⚡ Match Story</div>
-            <b>Live Update:</b> Match is in progress. Check stats for details.
-        </div>`; 
-  }
+  try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
   // 1. STATS - GROUPED GOALS
   let hG=[], aG=[];
@@ -740,7 +692,7 @@ function openModal(m){
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
              
-             // --- ROBUST HOME/AWAY DETECTION (V33.0 - Part Matching) ---
+             // --- ROBUST HOME/AWAY DETECTION (V34.0 - Part Matching) ---
              let isH = null;
              let parts = cleanP.split(' ');
              
@@ -811,7 +763,7 @@ function openModal(m){
     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="stat-bar-container"><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
   });
 
-  // 2. LINEUPS (V33.0 - EQUIDISTANT SPACING)
+  // 2. LINEUPS (V34.0 - EQUIDISTANT SPACING)
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -912,7 +864,7 @@ function openModal(m){
         let isH = null;
         let parts = cleanP.split(' ');
         
-        // Deep Search (V33.0 - Parts Check)
+        // Deep Search (V34.0 - Parts Check)
         if(s.lineups && s.lineups.h && s.lineups.h.start) {
              if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
              else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
@@ -960,6 +912,145 @@ function openModal(m){
 
   document.getElementById("matchModal").classList.add("active");
 }
+
+function generateStory(home, away, stats, score, status, startTime, date) {
+    const el = document.getElementById("aiSummaryWrapper");
+    if(status === "NS") {
+        let matchDate = date ? new Date(date) : null;
+        let today = new Date();
+        let isToday = matchDate && matchDate.getDate() === today.getDate();
+        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+
+        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
+        if(isToday) {
+             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
+             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
+             else story += `Lineups are expected roughly an hour before kick-off.`;
+        } else {
+             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
+             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
+        }
+        story += `</div>`;
+        el.innerHTML = story;
+        return;
+    }
+
+    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
+    const time = parseInt(status) || (status==="FT"?90:0);
+    const hPoss = stats.h_poss || 50;
+    const aPoss = stats.a_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
+    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
+
+    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
+
+    // 1. HEADLINE
+    if(status === "FT") {
+       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
+       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
+       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
+    } else if (status === "HT") {
+        story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+    } else {
+        story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
+        if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
+        else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+        else story += `It remains all square at ${hG}-${hG}. `;
+    }
+    story += "<br><br>";
+
+    // 2. CONTEXT
+    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
+    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
+    else story += `Possession is even `;
+
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
+    else story += `in a tight game. `;
+
+    // 3. CARDS
+    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
+
+    // 4. STAR PLAYER
+    let bestPlayer = null;
+    let highestRat = 0;
+    let bestStats = {};
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+        });
+    }
+
+    if(bestPlayer && highestRat > 0) {
+        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
+    }
+
+    story += `</div>`;
+    el.innerHTML = story;
+}
+
+// FUZZY MATCH PLAYER STATS (V34.0 - BRUTE FORCE MAPPER)
+function findPlayerStats(name, list) {
+    if(!list) return null;
+    let normName = normalizeName(name);
+    let parts = normName.split(" ");
+    
+    // 1. Try exact normalized match
+    let found = list.find(x => normalizeName(x.name) === normName);
+    if(found) return found;
+
+    // 2. Try strict inclusion (one contains other)
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return xn.includes(normName) || normName.includes(xn);
+    });
+    if(found) return found;
+
+    // 3. Try matching ANY significant part (len > 2)
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return parts.some(p => p.length > 2 && xn.includes(p));
+    });
+    return found;
+}
+
+function showPlayerStats(name, stats, events) {
+    const pop = document.getElementById("playerPopup");
+    if(!stats) return; 
+    document.getElementById("ppName").textContent = stats.name || name; 
+    document.getElementById("ppImg").src = stats.photo || "";
+    let goals = stats.goals;
+    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
+    let assists = stats.assists;
+    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    const grid = document.getElementById("ppStats");
+    grid.innerHTML = `
+      <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
+      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
+      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
+    `;
+    pop.style.display = "block";
+}
+
+function closeModal(id){document.getElementById(id).classList.remove("active")}
+function openTable(){
+  const b=document.getElementById("tableBody");b.innerHTML="";
+  if(!tableCache||tableCache.length===0){b.innerHTML="<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading...</div>"}
+  else{tableCache.forEach(t=>{let f="";if(t.form)f=t.form.split('').map(c=>`<span class="form-dot dot-${c}"></span>`).join('');b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd>0?'+'+t.gd:t.gd}</div><div class="tbl-form-wrap">${f}</div></div>`})}
+  document.getElementById("tableModal").classList.add("active");
+}
+
+renderSkeletons();loadData();setInterval(loadData,REFRESH_MS);
+document.getElementById("rankingCard").onclick=()=>{const h=document.getElementById("historyCard");const o=h.style.display==="none"||!h.style.display;h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
+document.getElementById("summaryToggle").onclick=()=>{document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};
+const bm=document.getElementById("btnMatches"),bn=document.getElementById("btnMoney");if(bm&&bn){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
+function drawHistoryChart(t){if(historyChart&&historyChart._type===t)return;const c=document.getElementById("historyChart");if(!c)return;const x=c.getContext("2d");if(historyChart){historyChart.destroy();historyChart=null}const s=chartDataCache?chartDataCache[t]:null;if(!s||!s.length)return;const l=s.map(r=>new Date(r.date).toLocaleDateString()),p=["Snackbar","Timbo","Pepe"],cl={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};historyChart=new Chart(x,{type:"line",data:{labels:l,datasets:p.map(k=>({label:k,data:s.map(r=>r[k]),borderColor:cl[k],backgroundColor:cl[k],tension:0.3,pointRadius:5,pointHoverRadius:6}))},options:{plugins:{datalabels:{formatter:(v,c)=>{const d=c.dataset.data,i=c.dataIndex;if(i===0)return null;const f=v-d[i-1];if(f<=0)return null;return `+${f}`},color:c=>c.dataset.borderColor,font:{weight:"bold",size:10},align:"top",offset:6}}}});historyChart._type=t}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>

@@ -1696,17 +1696,17 @@ function drawHistoryChart(type){
   data: {
     labels,
     datasets: players.map(p => {
-      // PREMIUM: Create Gradient Fill for each player
+      // PREMIUM: Gradient Fill
       const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-      gradient.addColorStop(0, hexToRgba(colors[p], 0.3)); // Top: 30% opacity
-      gradient.addColorStop(1, hexToRgba(colors[p], 0.0)); // Bottom: transparent
+      gradient.addColorStop(0, hexToRgba(colors[p], 0.3)); 
+      gradient.addColorStop(1, hexToRgba(colors[p], 0.0)); 
 
       return {
         label: p, 
         data: source.map(r => r[p]),
         borderColor: colors[p], 
-        backgroundColor: gradient, // Use gradient
-        fill: true, // Enable filling area under line
+        backgroundColor: gradient, 
+        fill: true, 
         tension: 0.3, 
         pointRadius: 4, 
         pointHoverRadius: 6,
@@ -1717,12 +1717,20 @@ function drawHistoryChart(type){
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+        // FIX: Add padding so labels don't hit the edges
+        padding: { top: 20, right: 20, left: 10, bottom: 5 }
+    },
     scales: {
-        x: { display: false }, // Hide X axis grid for cleaner look
-        y: { grid: { color: 'rgba(255,255,255,0.05)' } } // Subtle Y grid
+        x: { display: false }, 
+        y: { 
+            display: false, 
+            // FIX: 'grace' adds empty space above the highest point for the label
+            grace: '15%' 
+        } 
     },
     plugins: {
-      legend: { display: false }, // Hide legend to save space
+      legend: { display: false }, 
       datalabels: {
         formatter: (value, ctx) => {
           const data = ctx.dataset.data;
@@ -1734,7 +1742,12 @@ function drawHistoryChart(type){
         },
         color: ctx => ctx.dataset.borderColor,
         font: { weight: "bold", size: 10 },
-        align: "top", offset: 6
+        // FIX: Anchor 'end' pushes the label to the outer edge of the dot
+        anchor: 'end',
+        align: 'top', 
+        offset: 4,
+        // FIX: Ensure labels render even if they slightly overlap the canvas edge
+        clip: false 
       }
     }
   }

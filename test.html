@@ -78,7 +78,6 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE FIX === */
 @media (max-width: 768px){
   body {
     height: auto;
@@ -116,24 +115,43 @@ body{
   }
 }
 
-.main{ display:flex; gap:10px; padding:10px; overflow:hidden; position: relative; z-index: 5; }
+.main{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  overflow:hidden;
+  position: relative; 
+  z-index: 5; 
+}
 
 .left-card{
-  width:var(--left-w); background:var(--bg-card); border-radius:14px;
-  padding:8px; display:flex; flex-direction:column; gap:var(--gap);
-  overflow-y:auto; max-height:100%; scrollbar-width:none;
+  width:var(--left-w);
+  background:var(--bg-card);
+  border-radius:14px;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+  overflow-y:auto; 
+  max-height:100%;
+  scrollbar-width:none;
   /* GLASSY BORDER DESKTOP */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
-  height:var(--row-h); background:var(--bg-soft); border-radius:10px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; position: relative; 
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  position: relative; 
 }
 
-/* BUTTONS */
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
   cursor: pointer; transition: transform 0.1s; width: 28px; height: 28px;
@@ -154,7 +172,8 @@ body{
 
 .left-divider{height:8px}
 
-/* SCORE CHANGE FLASH ANIMATION (SILVER) */
+/* === SCORE CHANGE FLASH (Silver Pulse) === */
+/* Applied to PILLS only, not rows */
 @keyframes flashUpdate {
   0% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); border-color: transparent; }
   50% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.8); background-color: rgba(255,255,255,0.1); }
@@ -165,11 +184,13 @@ body{
   animation: flashUpdate 2s infinite !important;
   z-index: 100;
   position: relative;
+  border-radius: 10px; /* Ensure flash respects shape */
 }
 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
   gap:var(--gap); cursor: pointer; 
+  /* JUICY CLICK TRANSITION */
   transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s;
   position: relative; z-index: 5; border-radius: 12px; 
 }
@@ -212,7 +233,7 @@ body{
   width:var(--bet-w); height:var(--row-h); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
-  /* Smooth border transition */
+  /* Smooth transition for flash */
   border: 1px solid transparent; 
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
@@ -416,12 +437,9 @@ body{
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
 .dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
 
-#errorLog { display: none; position: fixed; top: 0; left: 0; width: 100%; background: red; color: white; padding: 10px; z-index: 9999; font-size: 12px; }
 </style>
 </head>
 <body>
-
-<div id="errorLog"></div>
 
 <div class="app">
   <div class="main">
@@ -524,14 +542,18 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-function showError(e) {
-    document.getElementById("errorLog").style.display = "block";
-    document.getElementById("errorLog").innerText = e.toString();
-}
-
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+
+// ADDED HELPER FOR CHART
+function hexToRgba(hex, alpha) {
+  if(!hex) return `rgba(255,255,255,${alpha})`;
+  let r=0,g=0,b=0;
+  if(hex.length===4){r=parseInt(hex[1]+hex[1],16);g=parseInt(hex[2]+hex[2],16);b=parseInt(hex[3]+hex[3],16);}
+  else if(hex.length===7){r=parseInt(hex.substring(1,3),16);g=parseInt(hex.substring(3,5),16);b=parseInt(hex.substring(5,7),16);}
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
@@ -565,7 +587,7 @@ function renderTeam(raw){
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
-let prevMatches={}, chartDataCache=null, historyChart=null, tableCache=null, isFirstLoad=true;
+let prevMatches={}, chartDataCache=null, historyChart=null, tableCache=null;
 
 function renderSkeletons() {
   const left=document.getElementById("left"), right=document.getElementById("right");
@@ -605,7 +627,7 @@ function loadData(){
               if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
               if(st!=="FT")pen++;
            });
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
            if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
            else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
@@ -615,69 +637,60 @@ function loadData(){
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
-        data.matches.forEach((m, i)=>{
+        data.matches.forEach((m)=>{
           const lr=document.createElement("div");
           let rowClass="left-row";
           
-          if(!isFirstLoad && prevMatches[m.match]&&prevMatches[m.match].score!==m.score) rowClass+=" flash-update";
-          
+          // CHECK FOR SCORE CHANGE -> ADD SILVER FLASH
+          let flashClass = "";
+          if(prevMatches[m.match] && prevMatches[m.match].score !== m.score){
+             flashClass = "flash-active";
+          }
           prevMatches[m.match]={score:m.score};
+
           lr.className=rowClass; 
-          
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // TARGETED FLASH FOR SCORE PILL
-          const scoreClass = rowClass.includes("flash-update") ? "flash-active" : "";
-          
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell ${scoreClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
+          // TARGETED FLASH ON PILL
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell ${flashClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
           left.appendChild(lr);
 
-          const rr=document.createElement("div"); 
-          rr.className="row";
-
+          const rr=document.createElement("div"); rr.className="row";
           m.cells.forEach(c=>{
               const el=document.createElement("div");
-              // TARGETED FLASH FOR BETS
-              el.className = `bet ${scoreClass}`;
+              // TARGETED FLASH ON BETS
+              el.className=`bet ${flashClass}`; 
               if(c.value){el.textContent=c.value;el.style.background=c.color}
               rr.appendChild(el);
           });
           right.appendChild(rr);
         });
 
-        isFirstLoad = false;
-
         left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
 
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
-          if(data.betSummary && data.betSummary[i] && data.betSummary[i].cells) {
-            data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
-          }
+          data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
           right.appendChild(rr);
         });
 
-        if(data.totals) {
-          data.totals.forEach(t=>{
-            const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-            let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
-            let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
-          });
-        }
+        data.totals.forEach(t=>{
+          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+        });
         
-        if(data.ranking) {
-          data.ranking.forEach((r,i)=>{
-            const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
-            ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-          });
-        }
-    } catch(e){ showError(e); }
+        data.ranking.forEach((r,i)=>{
+          const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
+          ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+        });
+    } catch(e){ console.error(e); }
   });
 }
 

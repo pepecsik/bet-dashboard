@@ -171,40 +171,36 @@ body{
 
 .left-divider{height:8px}
 
-/* === STYLISH NOTIFICATION GLOW === */
-@keyframes neonPulse {
+/* === 30-SECOND BREATHING GLOW === */
+@keyframes breathingGlow {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
     transform: scale(1);
   }
-  30% {
+  50% {
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); /* Strong glow */
+    border-color: rgba(255, 255, 255, 0.9);        /* White border */
     transform: scale(1.02);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-  }
-  60% {
-    box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0); /* Expands outward and fades */
-    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-    border: 1px solid transparent;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
     transform: scale(1);
   }
 }
 
 .flash-active {
-  animation: neonPulse 1.2s ease-out;
+  /* Runs infinitely for the life of the element (which is 30s max) */
+  animation: breathingGlow 3s ease-in-out infinite; 
+  z-index: 100 !important;
+  background-clip: padding-box;
   position: relative;
-  z-index: 100 !important; /* Ensure glow sits on top of neighbors */
 }
 
-/* Specific tweaks to ensure the glow looks good on pills */
-.score-pill.flash-active, .bet.flash-active {
-  /* No background change, just the outer glow */
-  background-clip: padding-box; 
-}
-
+/* Ensure transition smoothness */
+.score-pill, .bet { transition: all 0.3s; }
+ 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
   gap:var(--gap); cursor: pointer; 
@@ -556,6 +552,10 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
+// Add this at the very top of your <script> section, before loadData
+let prevMatches = {};
+let isFirstLoad = true; // Prevents everything from flashing when you first open the app
+ 
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
@@ -567,6 +567,7 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+ 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -621,16 +622,19 @@ function loadData(){
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         
-        // Only clear innerHTML if we are doing a full re-render. 
-        // Note: For smoother updates in a real app, you'd compare data, but this works for now.
+        // Clear previous HTML
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         
-        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
+        // Update Caches
+        if(data.chartData) chartDataCache=data.chartData; 
+        if(data.leagueTable) tableCache=data.leagueTable;
 
+        // 1. RENDER HEADER (Logo & Date)
         const lh=document.createElement("div"); lh.className="left-header"; 
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
+        // 2. RENDER HEADER PILLS (Names of the people betting)
         const headerRow=document.createElement("div"); headerRow.className="row";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
@@ -644,8 +648,15 @@ function loadData(){
               if(st!=="FT")pen++;
            });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           
            const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
-           if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
+           
+           // Status Logic
+           if(hasB&&!hasR&&allG&&pen===0){
+               p.classList.add("status-green");
+               // Only trigger confetti if it's not the first load (to avoid blasting on refresh)
+               if(!isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500); }
+           }
            else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
            else if(h.status==='orange')p.classList.add("status-orange");
            else if(h.status==='red')p.classList.add("status-red");
@@ -653,44 +664,49 @@ function loadData(){
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
+        // 3. RENDER MATCHES & BETS
         data.matches.forEach((m, idx)=>{
-          // Generate a safe unique ID for this match
-          const matchId = "m_" + idx; 
-
-          const lr=document.createElement("div");
-          lr.className="left-row"; // Removed flash-update from here
-          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
-
-          // CHECK FOR SCORE CHANGE
-          const hasChanged = prevMatches[m.match] && prevMatches[m.match].score !== m.score;
-          prevMatches[m.match]={score:m.score};
+          // Check if Score Changed
+          // We only flash if it's NOT the first load, AND the score is different from last time
+          const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
+          
+          // Update the "Previous" memory for the NEXT loop
+          prevMatches[m.match] = { score: m.score };
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // Added ID to the score container
+          // LEFT SIDE: Match & Score
+          const lr=document.createElement("div");
+          lr.className="left-row"; 
+          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
+          
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
           <div class="left-cell">
-            <div id="score_${matchId}" class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.2s;">
+            <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.2s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
             </div>
           </div>`;
           left.appendChild(lr);
 
+          // RIGHT SIDE: Bets
           const rr=document.createElement("div"); rr.className="row";
           m.cells.forEach(c=>{
               const el=document.createElement("div");
-              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; // Apply flash class if score changed
+              // If the score changed, the bet pills for this row also get the flash class
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; 
               if(c.value){el.textContent=c.value;el.style.background=c.color}
               rr.appendChild(el);
           });
           right.appendChild(rr);
         });
 
+        // 4. BOTTOM SECTIONS
         left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
 
+        // Summary Rows (Bet/Win/Win PP)
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
@@ -698,6 +714,7 @@ function loadData(){
           right.appendChild(rr);
         });
 
+        // Weekly Summary
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
           let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
@@ -705,10 +722,15 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
+        // Ranking
         data.ranking.forEach((r,i)=>{
           const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
           ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
+
+        // Mark first load as complete
+        isFirstLoad = false;
+
     } catch(e){ console.error(e); }
   });
 }
@@ -832,12 +854,20 @@ const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnM
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
 function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; const ctx=document.getElementById("historyChart").getContext("2d");
+  if(historyChart&&historyChart._type===t)return; 
+  const ctx=document.getElementById("historyChart").getContext("2d");
   if(historyChart){historyChart.destroy();historyChart=null}
-  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
+  
+  const d=chartDataCache?chartDataCache[t]:null; 
+  if(!d)return;
+  
   const labs=d.map(r=>new Date(r.date).toLocaleDateString());
   const ps=["Snackbar","Timbo","Pepe"];
   const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+
+  // JITTER SETTINGS
+  // Much larger offset to physically separate the 22px dots
+  const jitterAmount = t === 'matches' ? 0.6 : 0.3; 
 
   historyChart=new Chart(ctx,{
     type:"line",
@@ -849,12 +879,9 @@ function drawHistoryChart(t){
         grad.addColorStop(0,hexToRgba(c,0.3)); 
         grad.addColorStop(1,hexToRgba(c,0));
         
-        // Jitter logic to prevent exact overlap
-        const jitteredData = d.map(r=> {
-             let val = r[p];
-             if(t === 'matches') return val + (idx * 0.15); 
-             return val + (idx * 0.05); 
-        });
+        // 1. Apply aggressive vertical jitter based on player index
+        // Player 0 stays put, Player 1 moves up a bit, Player 2 moves up a lot
+        const jitteredData = d.map(r=> r[p] + (idx * jitterAmount));
 
         return {
             label:p,
@@ -864,11 +891,11 @@ function drawHistoryChart(t){
             fill:true,
             tension:0.3,
             
-            // BIGGER DOTS TO HOLD NUMBERS
-            pointRadius: 11, 
-            pointHoverRadius: 13,
-            pointBackgroundColor: c, // Solid neon color
-            pointBorderColor: "#1c1f23", // Dark border to define the circle
+            // 2. DOT STYLING
+            pointRadius: 12, // Big enough for text
+            pointHoverRadius: 14,
+            pointBackgroundColor: c, 
+            pointBorderColor: "#1c1f23", 
             pointBorderWidth: 2,
             borderWidth:2
         }
@@ -878,35 +905,40 @@ function drawHistoryChart(t){
         responsive:true,
         maintainAspectRatio:false,
         layout:{padding:{top:25,right:20,left:10,bottom:5}},
-        scales:{x:{display:false},y:{display:false,grace:'15%'}},
+        scales:{
+            x:{display:false},
+            // Grace area ensures top dots don't get cut off
+            y:{display:false, grace:'20%'} 
+        },
         plugins:{
             legend:{display:false},
             datalabels:{
                 formatter:(v,c)=>{
-                    // Remove jitter to calculate real math
+                    // 3. CLEAN DATA CALCULATION
                     const d=c.dataset.data; 
                     const i=c.dataIndex;
                     if(i===0)return null;
                     
-                    const jitter = (c.datasetIndex * (t==='matches'?0.15:0.05));
-                    const currentVal = v - jitter;
-                    const prevVal = d[i-1] - jitter;
+                    // Remove the jitter to get the real math
+                    const currentJitter = (c.datasetIndex * jitterAmount);
+                    const currentVal = v - currentJitter;
+                    const prevVal = d[i-1] - currentJitter;
+                    
                     const cleanDf = Math.round((currentVal-prevVal) * 100) / 100;
 
-                    // Only show if positive
-                    if(cleanDf<=0)return null;
+                    // Hide +0 or negative changes to reduce clutter
+                    if(cleanDf<=0) return null;
                     
-                    // If it's a whole number, remove decimals (e.g. "+3" instead of "+3.0")
                     return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
                 },
-                color: '#111111', // Dark text to contrast against neon dots
+                color: '#1c1f23', 
                 font:{
-                    weight:"900", // Extra bold
-                    size: 9,
+                    weight:"900", 
+                    size: 10,
                     family: "Inter, sans-serif"
                 },
-                align:'center', // Inside the dot
-                anchor:'center', // Inside the dot
+                align:'center',
+                anchor:'center',
                 offset: 0
             }
         }

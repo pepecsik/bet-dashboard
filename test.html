@@ -53,6 +53,7 @@ if ("serviceWorker" in navigator) {
 
 *{
   box-sizing:border-box;
+  /* 1. REMOVE BLUE TAP BOX */
   -webkit-tap-highlight-color: transparent; 
   outline: none;
   user-select: none;
@@ -61,15 +62,16 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  /* PREMIUM BACKGROUND */
+  /* 2. PREMIERE BACKGROUND */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
   overflow: hidden; 
+  /* 3. PREMIERE TYPOGRAPHY */
   letter-spacing: -0.02em; 
 }
 
-/* PREMIUM NUMBERS */
+/* 4. MONOSPACE NUMBERS (Like Finance Apps) */
 .bet, .week-gbp, .rank-money, .ta-c, .stat-value-high {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -81,7 +83,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE FIX === */
+/* === MOBILE OPTIMIZATION === */
 @media (max-width: 768px){
   body {
     height: auto;
@@ -109,6 +111,7 @@ body{
   .left-card, .right-card {
     max-height: none; 
     overflow: visible;
+    /* GLASSY BORDER */
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
@@ -177,6 +180,7 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
   z-index: 20;
 }
+/* JUICY CLICK EFFECT */
 .pl-btn:active { transform: translateY(-50%) scale(0.9); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
 
@@ -227,6 +231,7 @@ body{
   border-radius: 12px; 
 }
 
+/* JUICY ROW CLICK */
 .left-row:active { 
   background-color: rgba(255, 255, 255, 0.15); 
   transform: scale(0.96); 
@@ -240,7 +245,7 @@ body{
   justify-content:center;
   font-size:12px;
   font-weight:600;
-  pointer-events: none; 
+  pointer-events: none; /* Allows click to pass to row */
 }
 .left-cell.match{text-align:center}
 
@@ -880,6 +885,7 @@ const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
 // HELPER: Convert HEX to RGBA for gradients
 function hexToRgba(hex, alpha) {
+  if(!hex) return `rgba(255,255,255,${alpha})`; // SAFETY FALLBACK
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
     r = parseInt(hex[1] + hex[1], 16);
@@ -930,12 +936,11 @@ function renderTeam(raw){
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
-let prevMatches = {};
-let chartDataCache = null;
-let historyChart = null;
-let tableCache = null;
+let prevMatches={};
+let chartDataCache=null;
+let historyChart=null;
+let tableCache=null;
 
-// RENDER SKELETONS (UNCHANGED FROM WORKING)
 function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
@@ -1089,24 +1094,21 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCHES - NOW WITH SCORE FLASH ANIMATION ONLY */
+    /* MATCHES - SCORE FLASH ONLY */
     data.matches.forEach((m,i)=>{
       const lr=document.createElement("div");
-      
       let rowClass = "left-row";
       
-      // Check for score change
+      // Check for score change (Flash update)
       if(prevMatches[m.match] && prevMatches[m.match].score !== m.score) {
           rowClass += " flash-update";
       }
-      
+      prevMatches[m.match] = { score: m.score };
+
       lr.className = rowClass;
       lr.style.gridTemplateColumns = "1fr 90px"; 
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m); 
-
-      // Store current state for next loop
-      prevMatches[m.match] = { score: m.score };
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
       const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
@@ -1153,12 +1155,9 @@ function loadData(){
     });
 
     data.totals.forEach(t=>{
-      // UPDATED TO MATCH YOUR "HIGH. POS. WIN"
       const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-      // FIXED CURRENCY SWAP
       let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
       let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
-      
       weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
     });
 
@@ -1535,18 +1534,20 @@ function drawHistoryChart(type){
   data: {
     labels,
     datasets: players.map(p => {
+      // SAFE HEX CONVERSION
+      const baseColor = colors[p] || "#ffffff";
       const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-      gradient.addColorStop(0, hexToRgba(colors[p], 0.3)); 
-      gradient.addColorStop(1, hexToRgba(colors[p], 0.0)); 
+      gradient.addColorStop(0, hexToRgba(baseColor, 0.3)); 
+      gradient.addColorStop(1, hexToRgba(baseColor, 0.0)); 
 
       return {
         label: p, 
         data: source.map(r => r[p]),
-        borderColor: colors[p], 
+        borderColor: baseColor, 
         backgroundColor: gradient, 
         fill: true, 
         tension: 0.3, 
-        pointRadius: 12, // Larger dot to hold number
+        pointRadius: 12, // Big Dot for Number
         pointHoverRadius: 14,
         borderWidth: 2
       };

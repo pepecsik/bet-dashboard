@@ -53,19 +53,27 @@ if ("serviceWorker" in navigator) {
 
 *{
   box-sizing:border-box;
-  /* !!! THE MAGIC FIX !!! Removes the ugly blue square on tap */
   -webkit-tap-highlight-color: transparent; 
   outline: none;
-  user-select: none; /* Prevents text selection on long press */
+  user-select: none;
 }
 
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
+  /* 1. PREMIUM: Subtler gradient */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
   overflow: hidden; 
+  /* 2. PREMIUM TYPOGRAPHY: Tighter tracking */
+  letter-spacing: -0.02em; 
+}
+
+/* PREMIUM NUMBERS: Tabular lining (monospaced numbers in variable font) */
+.bet, .week-gbp, .rank-money, .ta-c, .stat-value-high {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 .app{
@@ -74,7 +82,7 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE FIX (CLICKS & SCROLLING) === */
+/* === MOBILE FIX === */
 @media (max-width: 768px){
   body {
     height: auto;
@@ -196,26 +204,31 @@ body{
 
 .left-divider{height:8px}
 
-/* === JUICY CLICKS ON ROW === */
+/* 3. PREMIUM ANIMATION: CASCADE ENTRY */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-entry {
+  opacity: 0; /* Start invisible */
+  animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 .left-row{
   height:var(--row-h);
   display:grid;
   grid-template-columns:1fr 90px;
   gap:var(--gap);
   cursor: pointer; 
-  /* Snappy transition */
   transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s;
   position: relative;
   z-index: 5;
-  /* Make sure highlight is rounded like the pill */
   border-radius: 12px; 
 }
 
-/* THE CLICK STATE */
 .left-row:active { 
-  /* A lighter flash, instead of ugly grey */
   background-color: rgba(255, 255, 255, 0.15); 
-  /* Visible shrink */
   transform: scale(0.96); 
 }
 
@@ -227,7 +240,6 @@ body{
   justify-content:center;
   font-size:12px;
   font-weight:600;
-  /* Allow clicks to pass through to the row */
   pointer-events: none; 
 }
 .left-cell.match{text-align:center}
@@ -866,6 +878,21 @@ function vibe(){
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
+// HELPER: Convert HEX to RGBA for gradients
+function hexToRgba(hex, alpha) {
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 4) {
+    r = parseInt(hex[1] + hex[1], 16);
+    g = parseInt(hex[2] + hex[2], 16);
+    b = parseInt(hex[3] + hex[3], 16);
+  } else if (hex.length === 7) {
+    r = parseInt(hex.substring(1, 3), 16);
+    g = parseInt(hex.substring(3, 5), 16);
+    b = parseInt(hex.substring(5, 7), 16);
+  }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -1058,13 +1085,14 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCHES */
+    /* MATCHES - NOW WITH CASCADE ANIMATION */
     data.matches.forEach((m,i)=>{
       const lr=document.createElement("div");
-      lr.className="left-row";
+      lr.className="left-row animate-entry"; // Added animation class
+      lr.style.animationDelay = (i * 0.05) + "s"; // Staggered Delay
       lr.style.gridTemplateColumns = "1fr 90px"; 
       lr.style.cursor = "pointer";
-      lr.onclick = () => openModal(m); // THIS NOW CALLS THE NEW MODAL LOGIC
+      lr.onclick = () => openModal(m); 
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
       const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
@@ -1085,7 +1113,8 @@ function loadData(){
       left.appendChild(lr);
 
       const rr=document.createElement("div");
-      rr.className="row";
+      rr.className="row animate-entry"; // Added animation class
+      rr.style.animationDelay = (i * 0.05) + "s"; // Staggered Delay
       m.cells.forEach((c,j)=>{
         const el=document.createElement("div");
         el.className="bet";
@@ -1666,14 +1695,34 @@ function drawHistoryChart(type){
   type: "line",
   data: {
     labels,
-    datasets: players.map(p => ({
-      label: p, data: source.map(r => r[p]),
-      borderColor: colors[p], backgroundColor: colors[p],
-      tension: 0.3, pointRadius: 5, pointHoverRadius: 6
-    }))
+    datasets: players.map(p => {
+      // PREMIUM: Create Gradient Fill for each player
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, hexToRgba(colors[p], 0.3)); // Top: 30% opacity
+      gradient.addColorStop(1, hexToRgba(colors[p], 0.0)); // Bottom: transparent
+
+      return {
+        label: p, 
+        data: source.map(r => r[p]),
+        borderColor: colors[p], 
+        backgroundColor: gradient, // Use gradient
+        fill: true, // Enable filling area under line
+        tension: 0.3, 
+        pointRadius: 4, 
+        pointHoverRadius: 6,
+        borderWidth: 2
+      };
+    })
   },
   options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+        x: { display: false }, // Hide X axis grid for cleaner look
+        y: { grid: { color: 'rgba(255,255,255,0.05)' } } // Subtle Y grid
+    },
     plugins: {
+      legend: { display: false }, // Hide legend to save space
       datalabels: {
         formatter: (value, ctx) => {
           const data = ctx.dataset.data;

@@ -53,8 +53,10 @@ if ("serviceWorker" in navigator) {
 
 *{
   box-sizing:border-box;
-  /* Removes the default ugly blue tap highlight on mobile */
+  /* !!! THE MAGIC FIX !!! Removes the ugly blue square on tap */
   -webkit-tap-highlight-color: transparent; 
+  outline: none;
+  user-select: none; /* Prevents text selection on long press */
 }
 
 body{
@@ -159,7 +161,7 @@ body{
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.1s;
   width: 28px; height: 28px;
   border-radius: 50%;
   overflow: hidden; 
@@ -168,7 +170,7 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
   z-index: 20;
 }
-.pl-btn:hover { transform: translateY(-50%) scale(1.1); }
+.pl-btn:active { transform: translateY(-50%) scale(0.9); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
 
 /* BRAND LOGO BUTTON */
@@ -194,20 +196,27 @@ body{
 
 .left-divider{height:8px}
 
-/* JUICY CLICKS ON ROW */
+/* === JUICY CLICKS ON ROW === */
 .left-row{
   height:var(--row-h);
   display:grid;
   grid-template-columns:1fr 90px;
   gap:var(--gap);
   cursor: pointer; 
-  transition: transform 0.1s ease, background 0.2s;
+  /* Snappy transition */
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s;
   position: relative;
   z-index: 5;
+  /* Make sure highlight is rounded like the pill */
+  border-radius: 12px; 
 }
+
+/* THE CLICK STATE */
 .left-row:active { 
-  background: rgba(255,255,255,0.05); 
-  transform: scale(0.98); 
+  /* A lighter flash, instead of ugly grey */
+  background-color: rgba(255, 255, 255, 0.15); 
+  /* Visible shrink */
+  transform: scale(0.96); 
 }
 
 .left-cell{
@@ -218,6 +227,8 @@ body{
   justify-content:center;
   font-size:12px;
   font-weight:600;
+  /* Allow clicks to pass through to the row */
+  pointer-events: none; 
 }
 .left-cell.match{text-align:center}
 
@@ -342,11 +353,11 @@ body{
   cursor:pointer;
   display: flex;
   flex-direction: column; 
-  /* JUICY CLICK ON RANKING CARD */
   transition: transform 0.1s;
 }
 .ranking-card:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
+  background: rgba(255,255,255,0.1);
 }
 
 #rankingBody {
@@ -847,6 +858,11 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
+// HELPER: Vibration (Android Only)
+function vibe(){
+  if(navigator.vibrate) navigator.vibrate(15);
+}
+
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 
@@ -1095,7 +1111,6 @@ function loadData(){
     });
 
     data.totals.forEach(t=>{
-      // Added "HIGH. POS. WIN" to this list so it turns green
       const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
       weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div><div class="week-eur">${formatEUR(t.cells[0].value)}</div></div>`;
     });
@@ -1173,12 +1188,14 @@ function formatName(fullName) {
 }
 
 function switchTab(t){
+  vibe();
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');
   ['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none');
 }
 
 function openModal(m){
+  vibe();
   document.getElementById('playerPopup').style.display = 'none'; 
   const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
   const s=m.stats||{};
@@ -1612,12 +1629,14 @@ loadData();
 setInterval(loadData,REFRESH_MS);
 
 document.getElementById("rankingCard").onclick=()=>{
+  vibe();
   const h=document.getElementById("historyCard");
   const open = h.style.display === "none" || !h.style.display;
   h.style.display = open ? "block" : "none";
   if(open) drawHistoryChart("matches");
 };
 document.getElementById("summaryToggle").onclick=()=>{
+  vibe();
   document.getElementById("summaryContentWrap").classList.toggle("hidden");
   document.getElementById("summaryToggle").classList.toggle("open");
   document.getElementById("historyCard").style.display="none";

@@ -58,6 +58,7 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
+  /* Keep your working background */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
@@ -114,20 +115,41 @@ body{
   }
 }
 
-.main{ display:flex; gap:10px; padding:10px; overflow:hidden; position: relative; z-index: 5; }
+.main{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  overflow:hidden;
+  position: relative; 
+  z-index: 5; 
+}
 
 .left-card{
-  width:var(--left-w); background:var(--bg-card); border-radius:14px;
-  padding:8px; display:flex; flex-direction:column; gap:var(--gap);
-  overflow-y:auto; max-height:100%; scrollbar-width:none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
+  width:var(--left-w);
+  background:var(--bg-card);
+  border-radius:14px;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+  overflow-y:auto; 
+  max-height:100%;
+  scrollbar-width:none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
-  height:var(--row-h); background:var(--bg-soft); border-radius:10px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; position: relative; 
+  height:var(--row-h);
+  background:var(--bg-soft);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  position: relative; 
 }
 
 .pl-btn {
@@ -150,22 +172,23 @@ body{
 
 .left-divider{height:8px}
 
-/* === UPDATED: SILVER FLASH ANIMATION (Pills Only) === */
+/* === NEW: SILVER FLASH ANIMATION (Pills Only) === */
 @keyframes flashSilver {
   0% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); border-color: transparent; }
   50% { 
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2); 
-    border-color: rgba(255, 255, 255, 0.8); 
-    background-color: rgba(255,255,255,0.15); 
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.2); 
+    border-color: rgba(255, 255, 255, 0.9); 
+    background-color: rgba(255,255,255,0.2); 
   }
   100% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); border-color: transparent; }
 }
 
 .flash-active {
-  animation: flashSilver 1.5s infinite !important;
+  animation: flashSilver 1.2s infinite !important;
   z-index: 100;
   position: relative;
-  border-radius: 10px; /* Ensure flash respects shape */
+  /* Ensure it looks like a pill highlight */
+  border: 1px solid transparent; 
 }
 
 .left-row{
@@ -588,91 +611,98 @@ function renderSkeletons() {
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-    const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
-    left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
-    if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
+    try {
+        const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
+        left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
+        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-    const lh=document.createElement("div"); lh.className="left-header"; 
-    lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
-    left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+        const lh=document.createElement("div"); lh.className="left-header"; 
+        lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-    const headerRow=document.createElement("div"); headerRow.className="row";
-    const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
+        const headerRow=document.createElement("div"); headerRow.className="row";
+        const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
-    data.headers.forEach((h,i)=>{
-       let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-       data.matches.forEach(m=>{
-          const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
-          if(!c||!c.value)return; hasB=true;
-          if(!isWinningGreen(c.color))allG=false;
-          if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
-          if(st!=="FT")pen++;
-       });
-       if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
-       const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
-       if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
-       else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
-       else if(h.status==='orange')p.classList.add("status-orange");
-       else if(h.status==='red')p.classList.add("status-red");
-       headerRow.appendChild(p);
-    });
-    right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
+        data.headers.forEach((h,i)=>{
+           let tot=0,pen=0,hasB=false,allG=true,hasR=false;
+           data.matches.forEach(m=>{
+              const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
+              if(!c||!c.value)return; hasB=true;
+              if(!isWinningGreen(c.color))allG=false;
+              if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
+              if(st!=="FT")pen++;
+           });
+           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
+           if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
+           else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
+           else if(h.status==='orange')p.classList.add("status-orange");
+           else if(h.status==='red')p.classList.add("status-red");
+           headerRow.appendChild(p);
+        });
+        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
-    data.matches.forEach((m)=>{
-      const lr=document.createElement("div");
-      let rowClass="left-row";
-      
-      // CHECK FOR SCORE CHANGE -> ADD SILVER FLASH
-      let flashClass = "";
-      if(prevMatches[m.match] && prevMatches[m.match].score !== m.score){
-         flashClass = "flash-active";
-      }
-      prevMatches[m.match]={score:m.score};
+        data.matches.forEach((m)=>{
+          const lr=document.createElement("div");
+          let rowClass="left-row";
+          
+          // CHECK FOR SCORE CHANGE -> ADD SILVER FLASH
+          let flashClass = "";
+          if(prevMatches[m.match] && prevMatches[m.match].score !== m.score){
+             flashClass = "flash-active";
+          }
+          prevMatches[m.match]={score:m.score};
 
-      lr.className=rowClass; 
-      lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
+          lr.className=rowClass; 
+          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
 
-      const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
-      const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-      const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
-      
-      // TARGETED FLASH ON PILL
-      lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell ${flashClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
-      left.appendChild(lr);
+          const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
+          const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
+          const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
+          
+          // TARGETED FLASH ON PILL
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell ${flashClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
+          left.appendChild(lr);
 
-      const rr=document.createElement("div"); rr.className="row";
-      m.cells.forEach(c=>{
-          const el=document.createElement("div");
-          // TARGETED FLASH ON BETS
-          el.className=`bet ${flashClass}`; 
-          if(c.value){el.textContent=c.value;el.style.background=c.color}
-          rr.appendChild(el);
-      });
-      right.appendChild(rr);
-    });
+          const rr=document.createElement("div"); rr.className="row";
+          m.cells.forEach(c=>{
+              const el=document.createElement("div");
+              // TARGETED FLASH ON BETS
+              el.className=`bet ${flashClass}`; 
+              if(c.value){el.textContent=c.value;el.style.background=c.color}
+              rr.appendChild(el);
+          });
+          right.appendChild(rr);
+        });
 
-    left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
+        left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
 
-    ["BET","WIN","WIN PP"].forEach((l,i)=>{
-      const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
-      const rr=document.createElement("div"); rr.className="row";
-      data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
-      right.appendChild(rr);
-    });
+        ["BET","WIN","WIN PP"].forEach((l,i)=>{
+          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
+          const rr=document.createElement("div"); rr.className="row";
+          if(data.betSummary && data.betSummary[i] && data.betSummary[i].cells) {
+            data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
+          }
+          right.appendChild(rr);
+        });
 
-    data.totals.forEach(t=>{
-      const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-      // FIXED CURRENCY SWAP FROM PREVIOUS STEP
-      let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
-      let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
-      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
-    });
-
-    data.ranking.forEach((r,i)=>{
-      const medals = ["🥇", "🥈", "🥉"];
-      const rankDisplay = medals[i] || (i + 1);
-      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-    });
+        if(data.totals) {
+          data.totals.forEach(t=>{
+            const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+            // FIXED CURRENCY SWAP FROM PREVIOUS STEP
+            let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
+            let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
+            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
+          });
+        }
+        
+        if(data.ranking) {
+          data.ranking.forEach((r,i)=>{
+            const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
+            ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+          });
+        }
+    } catch(e){ showError(e); }
   });
 }
 

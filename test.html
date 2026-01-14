@@ -61,16 +61,14 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  /* 1. PREMIUM: Subtler gradient */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
   overflow: hidden; 
-  /* 2. PREMIUM TYPOGRAPHY: Tighter tracking */
   letter-spacing: -0.02em; 
 }
 
-/* PREMIUM NUMBERS: Tabular lining (monospaced numbers in variable font) */
+/* PREMIUM NUMBERS */
 .bet, .week-gbp, .rank-money, .ta-c, .stat-value-high {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -204,15 +202,27 @@ body{
 
 .left-divider{height:8px}
 
-/* 3. PREMIUM ANIMATION: CASCADE ENTRY */
+/* === ANIMATIONS === */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-entry {
-  opacity: 0; /* Start invisible */
+  opacity: 0; 
   animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* CHANGE FLASH ANIMATION */
+@keyframes flashUpdate {
+  0% { box-shadow: inset 0 0 0 0 rgba(255, 215, 0, 0); }
+  50% { box-shadow: inset 0 0 15px 0 rgba(255, 215, 0, 0.3); border: 1px solid rgba(255, 215, 0, 0.5); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+.flash-update {
+  animation: flashUpdate 3s infinite; /* Gentle pulse */
+  z-index: 25 !important;
 }
 
 .left-row{
@@ -930,7 +940,11 @@ function renderTeam(raw){
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
-let prev={}, chartDataCache=null, historyChart=null, tableCache=null;
+let prevMatches = {};
+let chartDataCache = null;
+let historyChart = null;
+let tableCache = null;
+let isFirstLoad = true; // CONTROL FLAG FOR ANIMATION
 
 function renderSkeletons() {
   const left = document.getElementById("left");
@@ -1085,14 +1099,30 @@ function loadData(){
     right.appendChild(headerRow);
     right.appendChild(document.createElement("div")).className="right-divider";
 
-    /* MATCHES - NOW WITH CASCADE ANIMATION */
+    /* MATCHES - NOW WITH SMART ANIMATION */
     data.matches.forEach((m,i)=>{
       const lr=document.createElement("div");
-      lr.className="left-row animate-entry"; // Added animation class
-      lr.style.animationDelay = (i * 0.05) + "s"; // Staggered Delay
+      
+      // Determine classes: 
+      // 1. animate-entry only on first load
+      // 2. flash-update if score changed
+      let rowClass = "left-row";
+      if(isFirstLoad) rowClass += " animate-entry";
+      
+      // Check for score change
+      if(!isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score) {
+          rowClass += " flash-update";
+      }
+      
+      lr.className = rowClass;
+      if(isFirstLoad) lr.style.animationDelay = (i * 0.05) + "s"; // Staggered Delay
+      
       lr.style.gridTemplateColumns = "1fr 90px"; 
       lr.style.cursor = "pointer";
       lr.onclick = () => openModal(m); 
+
+      // Store current state for next loop
+      prevMatches[m.match] = { score: m.score };
 
       const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
       const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
@@ -1113,8 +1143,12 @@ function loadData(){
       left.appendChild(lr);
 
       const rr=document.createElement("div");
-      rr.className="row animate-entry"; // Added animation class
-      rr.style.animationDelay = (i * 0.05) + "s"; // Staggered Delay
+      // Apply same animation logic to bets side
+      let rightRowClass = "row";
+      if(isFirstLoad) rightRowClass += " animate-entry";
+      rr.className = rightRowClass;
+      if(isFirstLoad) rr.style.animationDelay = (i * 0.05) + "s";
+
       m.cells.forEach((c,j)=>{
         const el=document.createElement("div");
         el.className="bet";
@@ -1123,6 +1157,9 @@ function loadData(){
       });
       right.appendChild(rr);
     });
+
+    // Disable entrance animation for future updates
+    isFirstLoad = false;
 
     left.appendChild(document.createElement("div")).className="left-divider";
     right.appendChild(document.createElement("div")).className="right-divider";
@@ -1499,185 +1536,6 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
-function generateStory(home, away, stats, score, status, startTime, date) {
-    const el = document.getElementById("aiSummaryWrapper");
-    if(status === "NS") {
-        let matchDate = date ? new Date(date) : null;
-        let today = new Date();
-        let isToday = matchDate && matchDate.getDate() === today.getDate();
-        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
-
-        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
-        if(isToday) {
-             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
-             else story += `Lineups are expected roughly an hour before kick-off.`;
-        } else {
-             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
-             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
-        }
-        story += `</div>`;
-        el.innerHTML = story;
-        return;
-    }
-
-    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
-    const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const aPoss = stats.a_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
-    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
-
-    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
-
-    if(status === "FT") {
-       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
-    } else if (status === "HT") {
-       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
-    } else {
-       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
-       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-       else story += `It remains all square at ${hG}-${hG}. `;
-    }
-    story += "<br><br>";
-
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
-    else story += `Possession is even `;
-
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
-    else story += `in a tight game. `;
-
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
-
-    let bestPlayer = null;
-    let highestRat = 0;
-    let bestStats = {};
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
-        });
-    }
-
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
-    }
-
-    story += `</div>`;
-    el.innerHTML = story;
-}
-
-function findPlayerStats(name, list) {
-    if(!list) return null;
-    let normName = normalizeName(name);
-    let parts = normName.split(" ");
-    
-    let found = list.find(x => normalizeName(x.name) === normName);
-    if(found) return found;
-
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return xn.includes(normName) || normName.includes(xn);
-    });
-    if(found) return found;
-
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return parts.some(p => p.length > 2 && xn.includes(p));
-    });
-    return found;
-}
-
-function showPlayerStats(name, stats, events) {
-    const pop = document.getElementById("playerPopup");
-    if(!stats) return; 
-    document.getElementById("ppName").textContent = stats.name || name; 
-    document.getElementById("ppImg").src = stats.photo || "";
-    let goals = stats.goals;
-    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
-    let assists = stats.assists;
-    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
-    const grid = document.getElementById("ppStats");
-    grid.innerHTML = `
-      <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
-      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
-      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
-    `;
-    pop.style.display = "block";
-}
-
-function openTable() {
-  const tbody = document.getElementById("tableBody");
-  tbody.innerHTML = "";
-  if(!tableCache || tableCache.length === 0) {
-    tbody.innerHTML = "<div style='text-align:center;padding:20px;color:#9aa0a6'>Loading Standings...</div>";
-  } else {
-    tableCache.forEach(t => {
-      let formDots = "";
-      if(t.form) {
-        formDots = t.form.split('').map(char => {
-          let css = 'dot-D'; if(char === 'W') css = 'dot-W'; if(char === 'L') css = 'dot-L';
-          return `<span class="form-dot ${css}"></span>`;
-        }).join('');
-      }
-
-      tbody.innerHTML += `
-        <div class="tbl-row tbl-grid">
-          <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
-          <div class="tbl-team-wrap">
-            <img src="${t.logo}" class="tbl-logo">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.team}</span>
-          </div>
-          <div class="ta-c">${t.mp}</div>
-          <div class="ta-c txt-green">${t.pts}</div>
-          <div class="ta-c" style="color:#9aa0a6">${t.gd > 0 ? '+'+t.gd : t.gd}</div>
-          <div class="tbl-form-wrap">${formDots}</div>
-        </div>
-      `;
-    });
-  }
-  document.getElementById("tableModal").classList.add("active");
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
-}
-
-renderSkeletons();
-loadData();
-setInterval(loadData,REFRESH_MS);
-
-document.getElementById("rankingCard").onclick=()=>{
-  vibe();
-  const h=document.getElementById("historyCard");
-  const open = h.style.display === "none" || !h.style.display;
-  h.style.display = open ? "block" : "none";
-  if(open) drawHistoryChart("matches");
-};
-document.getElementById("summaryToggle").onclick=()=>{
-  vibe();
-  document.getElementById("summaryContentWrap").classList.toggle("hidden");
-  document.getElementById("summaryToggle").classList.toggle("open");
-  document.getElementById("historyCard").style.display="none";
-};
-
-const btnMatches = document.getElementById("btnMatches");
-const btnMoney = document.getElementById("btnMoney");
-if(btnMatches && btnMoney){
-  btnMatches.onclick = ()=>{ btnMatches.classList.add("active"); btnMoney.classList.remove("active"); drawHistoryChart("matches"); };
-  btnMoney.onclick = ()=>{ btnMoney.classList.add("active"); btnMatches.classList.remove("active"); drawHistoryChart("money"); };
-}
-
 function drawHistoryChart(type){
   if(historyChart && historyChart._type === type) return;
   const canvas = document.getElementById("historyChart");
@@ -1696,7 +1554,6 @@ function drawHistoryChart(type){
   data: {
     labels,
     datasets: players.map(p => {
-      // PREMIUM: Gradient Fill
       const gradient = ctx.createLinearGradient(0, 0, 0, 300);
       gradient.addColorStop(0, hexToRgba(colors[p], 0.3)); 
       gradient.addColorStop(1, hexToRgba(colors[p], 0.0)); 
@@ -1708,8 +1565,8 @@ function drawHistoryChart(type){
         backgroundColor: gradient, 
         fill: true, 
         tension: 0.3, 
-        pointRadius: 4, 
-        pointHoverRadius: 6,
+        pointRadius: 12, // Larger dot to hold number
+        pointHoverRadius: 14,
         borderWidth: 2
       };
     })
@@ -1738,19 +1595,12 @@ function drawHistoryChart(type){
           if (diff <= 0) return null;
           return `+${diff}`;
         },
-        // FIX: High-Contrast Badges
-        color: ctx => ctx.dataset.borderColor, // Text matches line color
-        backgroundColor: '#2f343a', // Solid Dark Background (Masks lines behind it)
-        borderRadius: 4, // Rounded corners
-        padding: { top: 2, bottom: 1, left: 4, right: 4 }, // Breathing room
-        font: { weight: "800", size: 10 },
-        anchor: 'end',
-        align: 'top', 
-        offset: 5,
-        clip: false,
-        // Add a subtle border to separate overlapping badges
-        borderWidth: 1,
-        borderColor: '#2f343a' 
+        color: '#1c1f23', // Dark text inside colored dot
+        font: { weight: "800", size: 9 },
+        align: 'center', // Center inside dot
+        anchor: 'center', 
+        offset: 0,
+        clip: false
       }
     }
   }

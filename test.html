@@ -73,7 +73,6 @@ body{
 
 /* === ANIMATIONS === */
 
-/* 1. Roll-in Entrance (SLOWED DOWN) */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -83,7 +82,6 @@ body{
   opacity: 0; 
 }
 
-/* 2. 30-Second Breathing Glow */
 @keyframes breathingGlow {
   0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
   50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
@@ -97,7 +95,6 @@ body{
 }
 .score-pill, .bet { transition: all 0.3s; }
 
-/* 3. Skeleton Shimmer */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
   background-size: 200% 100%;
@@ -681,6 +678,7 @@ function loadData(){
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
+          // STATUS LOGIC: IF NS -> Show Time. ELSE -> Show Status (Min/FT)
           const displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
 
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
@@ -827,7 +825,6 @@ function normalizeName(s){if(!s || typeof s !== 'string')return"";let r=s.toLowe
 function formatName(n){return n||""}
 function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
 
-// NEW ROBUST OPEN MODAL
 function openModal(m){
   vibe(); document.getElementById('playerPopup').style.display='none';
   
@@ -855,78 +852,72 @@ function openModal(m){
 
       try{ generateStory(h,a,s,m.score,m.status,m.startTime,m.date) } catch(e){}
 
-      // RENDER GOALS/EVENTS (Check if exists)
-      if(s.events && s.events.length > 0) {
-          let hG=[],aG=[],gMap={};
-          s.events.forEach(e=>{
-            if((e.type==="Goal"&&e.detail!=="Missed Penalty")||(e.type==="Card"&&e.detail==="Red Card")){
-               let cP=normalizeName(e.player.trim()), isH=null, pts=cP.split(' ');
-               if(s.lineups?.h?.start){if(pts.some(pt=>pt.length>2&&(s.lineups.h.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.h.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=true;else if(pts.some(pt=>pt.length>2&&(s.lineups.a.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.a.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=false}
-               if(isH===null)isH=true;
-               if(!gMap[cP])gMap[cP]={times:[],isHome:isH,isOG:e.detail==="Own Goal",type:e.type,detail:e.detail,rawName:e.player};
-               gMap[cP].times.push(e.time+"'");
-            }
-          });
-          Object.keys(gMap).forEach(k=>{
-             let g=gMap[k], tStr=g.times.join(", "), icon=g.type==="Card"?"🟥":"⚽", og=g.isOG?` <span class="og-tag">(OG)</span>`:"";
-             let h=`<div class="el-item"><span>${g.rawName}${og}</span> <span class="el-time">${tStr}</span> <span class="el-icon">${icon}</span></div>`;
-             let aw=`<div class="el-item"><span class="el-icon">${icon}</span>${og} <span class="el-time">${tStr}</span> <span>${g.rawName}</span></div>`;
-             if(g.isHome) hG.push(h); else aG.push(aw);
-          });
-          document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
-      } else {
-          document.getElementById("goalsArea").innerHTML = `<div style="text-align:center;padding:10px;color:#9aa0a6;width:100%">No events yet</div>`;
-      }
+      // RENDER GOALS/EVENTS
+      let hG=[],aG=[],gMap={};
+      if(s.events) s.events.forEach(e=>{
+        if((e.type==="Goal"&&e.detail!=="Missed Penalty")||(e.type==="Card"&&e.detail==="Red Card")){
+           let cP=normalizeName(e.player.trim()), isH=null, pts=cP.split(' ');
+           if(s.lineups?.h?.start){if(pts.some(pt=>pt.length>2&&(s.lineups.h.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.h.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=true;else if(pts.some(pt=>pt.length>2&&(s.lineups.a.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.a.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=false}
+           if(isH===null)isH=true;
+           if(!gMap[cP])gMap[cP]={times:[],isHome:isH,isOG:e.detail==="Own Goal",type:e.type,detail:e.detail,rawName:e.player};
+           gMap[cP].times.push(e.time+"'");
+        }
+      });
+      Object.keys(gMap).forEach(k=>{
+         let g=gMap[k], tStr=g.times.join(", "), icon=g.type==="Card"?"🟥":"⚽", og=g.isOG?` <span class="og-tag">(OG)</span>`:"";
+         let h=`<div class="el-item"><span>${g.rawName}${og}</span> <span class="el-time">${tStr}</span> <span class="el-icon">${icon}</span></div>`;
+         let aw=`<div class="el-item"><span class="el-icon">${icon}</span>${og} <span class="el-time">${tStr}</span> <span>${g.rawName}</span></div>`;
+         if(g.isHome) hG.push(h); else aG.push(aw);
+      });
+      if(Object.keys(gMap).length===0&&s.scorers){s.scorers.split(",").forEach(i=>{let r=i.trim();if(!r)return;let isH=r.includes("(H)"),n=r.replace(/\(.*\)/g,"").trim();if(isH)hG.push(`<div class="el-item"><span>${n}</span> ⚽</div>`);else aG.push(`<div class="el-item">⚽ <span>${n}</span></div>`)})};
+      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-      // RENDER STATS (Check if exists)
-      if(s.h_xg !== undefined || s.h_shots !== undefined) {
-          const sb=document.getElementById("statsArea"); sb.innerHTML="";
-          let xgH=parseFloat(s.h_xg)||0, xgA=parseFloat(s.a_xg)||0;
-          [{l:"Expected Goals",h:xgH,a:xgA,dec:true},{l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},{l:"Shots",h:s.h_shots_tot,a:s.a_shots_tot},{l:"On Target",h:s.h_shots,a:s.a_shots},{l:"Corners",h:s.h_corners,a:s.a_corners}].forEach(st=>{
-             let t=st.h+st.a, hp=0, ap=0;
-             if(t>0){hp=(st.h/t)*100; ap=(st.a/t)*100; if(st.pct){hp=st.h;ap=st.a} if(st.dec){let tx=st.h+st.a+0.001;hp=(st.h/tx)*100;ap=100-hp}}
-             let ht=st.pct?st.h+"%":st.dec?st.h.toFixed(2):st.h, at=st.pct?st.a+"%":st.dec?st.a.toFixed(2):st.a;
-             if(ht===undefined) ht="-"; if(at===undefined) at="-";
-             sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-half away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
-          });
-      }
+      // RENDER STATS (Reverted to permissive rendering)
+      const sb=document.getElementById("statsArea"); sb.innerHTML="";
+      let xgH=parseFloat(s.h_xg)||0, xgA=parseFloat(s.a_xg)||0;
+      [{l:"Expected Goals",h:xgH,a:xgA,dec:true},{l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},{l:"Shots",h:s.h_shots_tot,a:s.a_shots_tot},{l:"On Target",h:s.h_shots,a:s.a_shots},{l:"Corners",h:s.h_corners,a:s.a_corners}].forEach(st=>{
+         let t=st.h+st.a, hp=0, ap=0;
+         if(t>0){hp=(st.h/t)*100; ap=(st.a/t)*100; if(st.pct){hp=st.h;ap=st.a} if(st.dec){let tx=st.h+st.a+0.001;hp=(st.h/tx)*100;ap=100-hp}}
+         let ht=st.pct?st.h+"%":st.dec?st.h.toFixed(2):st.h, at=st.pct?st.a+"%":st.dec?st.a.toFixed(2):st.a;
+         if(ht===undefined) ht="-"; if(at===undefined) at="-";
+         sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-half away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
+      });
 
-      // RENDER LINEUPS (Check if exists)
-      if(s.lineups && s.lineups.h && s.lineups.h.start) {
-          const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
-          const subsCont=document.getElementById("subsArea"); subsCont.innerHTML="";
-          const renderPitch=(team,isHome,pFull)=>{
-             if(!team.start)return;
-             let lines=[[],[],[],[]], rows={G:0,D:1,M:2,F:3};
-             team.start.forEach(p=>lines[rows[p.pos]||2].push(p));
-             lines.forEach((line,rIdx)=>{
-                let yPct=isHome?(rIdx===0?5:rIdx===1?17.3:rIdx===2?29.6:42):(rIdx===0?95:rIdx===1?82.7:rIdx===2?70.4:58);
-                line.forEach((p,i)=>{
-                   let seg=100/line.length, xPct=(seg*i)+(seg/2), pStats=findPlayerStats(p.name,pFull);
-                   let rat=pStats?pStats.rating.toFixed(1):"-", ph=pStats?pStats.photo:"", rC=rat>=7?"rat-high":rat<6&&rat!=="-"?"rat-low":"rat-mid";
-                   let el=document.createElement("div"); el.className="pitch-player"; el.style.top=yPct+"%"; el.style.left=xPct+"%"; el.onclick=()=>showPlayerStats(p.name,pStats,s.events);
-                   let c=`<div class="p-dot ${isHome?'home':'away'}"><span class="p-num-fallback">${p.num}</span>`;
-                   if(ph)c+=`<img src="${ph}" class="p-img-dot" onerror="this.style.display='none'">`;
-                   el.innerHTML=c+`</div><div class="p-rat ${rC}">${rat}</div><div class="p-name">${formatName(p.name)}</div>`;
-                   pp.appendChild(el);
-                });
-             });
-             if(team.sub&&team.sub.length>0){
-                let h=`<div class="subs-header">${isHome?h:a} SUBS</div>`;
-                team.sub.forEach(sp=>{
-                   let came=s.events?s.events.find(e=>e.type==="subst"&&e.assist===sp.name):null;
-                   h+=`<div class="sub-row">${came?'<div class="sub-icon">▲</div>':''} <span>${sp.name}</span></div>`;
-                });
-                let col=document.createElement("div"); col.style.flex="1"; col.innerHTML=h; subsCont.appendChild(col);
-             }
-          };
-          subsCont.style.display="flex"; subsCont.style.gap="10px";
-          renderPitch(s.lineups?.h||{},true,s.players?.h||[]); renderPitch(s.lineups?.a||{},false,s.players?.a||[]);
-      }
+      // RENDER LINEUPS
+      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+      const subsCont=document.getElementById("subsArea"); subsCont.innerHTML="";
+      const renderPitch=(team,isHome,pFull)=>{
+         if(!team.start)return;
+         let lines=[[],[],[],[]], rows={G:0,D:1,M:2,F:3};
+         team.start.forEach(p=>lines[rows[p.pos]||2].push(p));
+         lines.forEach((line,rIdx)=>{
+            let yPct=isHome?(rIdx===0?5:rIdx===1?17.3:rIdx===2?29.6:42):(rIdx===0?95:rIdx===1?82.7:rIdx===2?70.4:58);
+            line.forEach((p,i)=>{
+               let seg=100/line.length, xPct=(seg*i)+(seg/2), pStats=findPlayerStats(p.name,pFull);
+               let rat=pStats?pStats.rating.toFixed(1):"-", ph=pStats?pStats.photo:"", rC=rat>=7?"rat-high":rat<6&&rat!=="-"?"rat-low":"rat-mid";
+               let el=document.createElement("div"); el.className="pitch-player"; el.style.top=yPct+"%"; el.style.left=xPct+"%"; el.onclick=()=>showPlayerStats(p.name,pStats,s.events);
+               let c=`<div class="p-dot ${isHome?'home':'away'}"><span class="p-num-fallback">${p.num}</span>`;
+               if(ph)c+=`<img src="${ph}" class="p-img-dot" onerror="this.style.display='none'">`;
+               el.innerHTML=c+`</div><div class="p-rat ${rC}">${rat}</div><div class="p-name">${formatName(p.name)}</div>`;
+               pp.appendChild(el);
+            });
+         });
+         if(team.sub&&team.sub.length>0){
+            let h=`<div class="subs-header">${isHome?h:a} SUBS</div>`;
+            team.sub.forEach(sp=>{
+               let came=s.events?s.events.find(e=>e.type==="subst"&&e.assist===sp.name):null;
+               h+=`<div class="sub-row">${came?'<div class="sub-icon">▲</div>':''} <span>${sp.name}</span></div>`;
+            });
+            let col=document.createElement("div"); col.style.flex="1"; col.innerHTML=h; subsCont.appendChild(col);
+         }
+      };
+      subsCont.style.display="flex"; subsCont.style.gap="10px";
+      renderPitch(s.lineups?.h||{},true,s.players?.h||[]); renderPitch(s.lineups?.a||{},false,s.players?.a||[]);
 
       // RENDER SUMMARY TIMELINE
-      if(s.events && s.events.length > 0) {
-         const sv=document.getElementById("summaryTimeline"); sv.innerHTML="";
+      const sv=document.getElementById("summaryTimeline"); sv.innerHTML="";
+      if(!s.events||s.events.length===0) sv.innerHTML="<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
+      else {
          [...s.events].reverse().forEach(e=>{
             let cP=normalizeName(e.player.trim()), isH=true; 
             if(s.lineups?.a?.start?.some(p=>normalizeName(p.name).includes(cP))) isH=false;
@@ -945,28 +936,11 @@ function openModal(m){
 
   } catch (err) {
       console.error(err);
-      // Even if error, show modal so user isn't stuck
+      // Fallback
       document.getElementById("matchModal").classList.add("active");
   }
 }
 
-function findPlayerStats(n,l){if(!l)return null;let nm=normalizeName(n);return l.find(x=>normalizeName(x.name).includes(nm)||nm.includes(normalizeName(x.name)))}
-function showPlayerStats(n,st,ev){
-  const pop=document.getElementById("playerPopup"); if(!st)return;
-  document.getElementById("ppName").textContent=st.name||n; document.getElementById("ppImg").src=st.photo||"";
-  const g=document.getElementById("ppStats");
-  g.innerHTML=`<div class="pp-stat"><div class="pp-val">${st.rating}</div><div class="pp-lbl">Rat</div></div><div class="pp-stat"><div class="pp-val">${st.goals||0}</div><div class="pp-lbl">G</div></div><div class="pp-stat"><div class="pp-val">${st.shots||0}</div><div class="pp-lbl">S</div></div>`;
-  pop.style.display="block";
-}
-function generateStory(h,a,s,sc,st,tm,dt){
-  const el=document.getElementById("aiSummaryWrapper");
-  if(st==="NS"){el.innerHTML=`<div class="ai-story-box"><div class="ai-title">Match Preview</div>Game starts ${tm}</div>`;return;}
-  let [hG,aG]=(sc||"0-0").split("-"), txt=`<div class="ai-story-box"><div class="ai-title">Match Story</div>`;
-  if(st==="FT") txt+=`<b>Full Time:</b> ${h} ${hG}-${aG} ${a}. `; else txt+=`<b>Live (${st}):</b> ${h} ${hG}-${aG} ${a}. `;
-  if((s.h_poss||50)>55) txt+=`${h} dominating possession. `;
-  if(parseFloat(s.h_xg)>parseFloat(s.a_xg)+0.5) txt+=`${h} creating better chances. `;
-  el.innerHTML=txt+"</div>";
-}
 function openTable(){
     const b=document.getElementById("tableBody");
     b.innerHTML="";

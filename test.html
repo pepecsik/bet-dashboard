@@ -58,7 +58,6 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  /* Keep your working background */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
@@ -172,23 +171,28 @@ body{
 
 .left-divider{height:8px}
 
-/* === NEW: SILVER FLASH ANIMATION (Pills Only) === */
-@keyframes flashSilver {
-  0% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); border-color: transparent; }
-  50% { 
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.2); 
-    border-color: rgba(255, 255, 255, 0.9); 
-    background-color: rgba(255,255,255,0.2); 
-  }
-  100% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); border-color: transparent; }
+/* === NEW INTENSE FLASH ANIMATION === */
+@keyframes intenseFlash {
+  0% { background-color: #ffffff; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.8); transform: scale(1.05); }
+  100% { background-color: transparent; color: inherit; box-shadow: none; transform: scale(1); }
+}
+/* This class will be added via JS for 1 second */
+.flash-active {
+  animation: intenseFlash 1.2s ease-out;
+  border-radius: 8px; /* Ensures flash respects rounded corners */
 }
 
-.flash-active {
-  animation: flashSilver 1.2s infinite !important;
-  z-index: 100;
-  position: relative;
-  /* Ensure it looks like a pill highlight */
-  border: 1px solid transparent; 
+/* Specific tweaks for the score pill flash */
+.score-pill.flash-active {
+  background-color: #ffffff !important; 
+  color: #000 !important;
+}
+
+/* Specific tweaks for bet pills flash */
+.bet.flash-active {
+  background-color: #ffffff !important;
+  color: #000 !important;
+  z-index: 50;
 }
 
 .left-row{
@@ -236,9 +240,6 @@ body{
   width:var(--bet-w); height:var(--row-h); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
-  /* Smooth transition for flash */
-  border: 1px solid transparent; 
-  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
 .summary { 
@@ -440,12 +441,9 @@ body{
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
 .dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
 
-#errorLog { display: none; position: fixed; top: 0; left: 0; width: 100%; background: red; color: white; padding: 10px; z-index: 9999; font-size: 12px; }
 </style>
 </head>
 <body>
-
-<div id="errorLog"></div>
 
 <div class="app">
   <div class="main">
@@ -551,7 +549,6 @@ const REFRESH_MS=30000;
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
-// ADDED HELPER FOR CHART
 function hexToRgba(hex, alpha) {
   if(!hex) return `rgba(255,255,255,${alpha})`;
   let r=0,g=0,b=0;
@@ -613,7 +610,11 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
+        
+        // Only clear innerHTML if we are doing a full re-render. 
+        // Note: For smoother updates in a real app, you'd compare data, but this works for now.
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
+        
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
         const lh=document.createElement("div"); lh.className="left-header"; 
@@ -632,7 +633,7 @@ function loadData(){
               if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
               if(st!=="FT")pen++;
            });
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
            if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
            else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
@@ -642,33 +643,36 @@ function loadData(){
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
-        data.matches.forEach((m)=>{
-          const lr=document.createElement("div");
-          let rowClass="left-row";
-          
-          // CHECK FOR SCORE CHANGE -> ADD SILVER FLASH
-          let flashClass = "";
-          if(prevMatches[m.match] && prevMatches[m.match].score !== m.score){
-             flashClass = "flash-active";
-          }
-          prevMatches[m.match]={score:m.score};
+        data.matches.forEach((m, idx)=>{
+          // Generate a safe unique ID for this match
+          const matchId = "m_" + idx; 
 
-          lr.className=rowClass; 
+          const lr=document.createElement("div");
+          lr.className="left-row"; // Removed flash-update from here
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
+
+          // CHECK FOR SCORE CHANGE
+          const hasChanged = prevMatches[m.match] && prevMatches[m.match].score !== m.score;
+          prevMatches[m.match]={score:m.score};
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // TARGETED FLASH ON PILL
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell ${flashClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span><span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div>`;
+          // Added ID to the score container
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
+          <div class="left-cell">
+            <div id="score_${matchId}" class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.2s;">
+                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+                <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
+            </div>
+          </div>`;
           left.appendChild(lr);
 
           const rr=document.createElement("div"); rr.className="row";
           m.cells.forEach(c=>{
               const el=document.createElement("div");
-              // TARGETED FLASH ON BETS
-              el.className=`bet ${flashClass}`; 
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; // Apply flash class if score changed
               if(c.value){el.textContent=c.value;el.style.background=c.color}
               rr.appendChild(el);
           });
@@ -680,29 +684,22 @@ function loadData(){
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
-          if(data.betSummary && data.betSummary[i] && data.betSummary[i].cells) {
-            data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
-          }
+          data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
           right.appendChild(rr);
         });
 
-        if(data.totals) {
-          data.totals.forEach(t=>{
-            const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-            // FIXED CURRENCY SWAP FROM PREVIOUS STEP
-            let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
-            let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
-            weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
-          });
-        }
+        data.totals.forEach(t=>{
+          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+        });
         
-        if(data.ranking) {
-          data.ranking.forEach((r,i)=>{
-            const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
-            ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-          });
-        }
-    } catch(e){ showError(e); }
+        data.ranking.forEach((r,i)=>{
+          const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
+          ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+        });
+    } catch(e){ console.error(e); }
   });
 }
 
@@ -797,15 +794,116 @@ function openModal(m){
   document.getElementById("matchModal").classList.add("active");
 }
 
+function generateStory(h,a,s,sc,st,tm,dt){
+  const el=document.getElementById("aiSummaryWrapper");
+  if(st==="NS"){el.innerHTML=`<div class="ai-story-box"><div class="ai-title">Match Preview</div>Game starts ${tm}</div>`;return;}
+  let [hG,aG]=(sc||"0-0").split("-"), txt=`<div class="ai-story-box"><div class="ai-title">Match Story</div>`;
+  if(st==="FT") txt+=`<b>Full Time:</b> ${h} ${hG}-${aG} ${a}. `; else txt+=`<b>Live (${st}):</b> ${h} ${hG}-${aG} ${a}. `;
+  if((s.h_poss||50)>55) txt+=`${h} dominating possession. `;
+  if(parseFloat(s.h_xg)>parseFloat(s.a_xg)+0.5) txt+=`${h} creating better chances. `;
+  el.innerHTML=txt+"</div>";
+}
+
+function findPlayerStats(n,l){if(!l)return null;let nm=normalizeName(n);return l.find(x=>normalizeName(x.name).includes(nm)||nm.includes(normalizeName(x.name)))}
+function showPlayerStats(n,st,ev){
+  const pop=document.getElementById("playerPopup"); if(!st)return;
+  document.getElementById("ppName").textContent=st.name||n; document.getElementById("ppImg").src=st.photo||"";
+  const g=document.getElementById("ppStats");
+  g.innerHTML=`<div class="pp-stat"><div class="pp-val">${st.rating}</div><div class="pp-lbl">Rat</div></div><div class="pp-stat"><div class="pp-val">${st.goals||0}</div><div class="pp-lbl">G</div></div><div class="pp-stat"><div class="pp-val">${st.shots||0}</div><div class="pp-lbl">S</div></div>`;
+  pop.style.display="block";
+}
+function openTable(){const b=document.getElementById("tableBody");b.innerHTML="";if(!tableCache)b.innerHTML="Loading...";else tableCache.forEach(t=>{b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap"></div></div>`});document.getElementById("tableModal").classList.add("active")}
+function closeModal(id){document.getElementById(id).classList.remove("active")}
+
+renderSkeletons(); loadData(); setInterval(loadData,REFRESH_MS);
+document.getElementById("rankingCard").onclick=()=>{vibe();const h=document.getElementById("historyCard"),o=h.style.display!=="block";h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
+document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};
+const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
+if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
+
 function drawHistoryChart(t){
   if(historyChart&&historyChart._type===t)return; const ctx=document.getElementById("historyChart").getContext("2d");
   if(historyChart){historyChart.destroy();historyChart=null}
   const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
-  const labs=d.map(r=>new Date(r.date).toLocaleDateString()), ps=["Snackbar","Timbo","Pepe"], cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
-  historyChart=new Chart(ctx,{type:"line",data:{labels:labs,datasets:ps.map(p=>{
-    const c=cols[p]||"#fff", grad=ctx.createLinearGradient(0,0,0,300); grad.addColorStop(0,hexToRgba(c,0.3)); grad.addColorStop(1,hexToRgba(c,0));
-    return {label:p,data:d.map(r=>r[p]),borderColor:c,backgroundColor:grad,fill:true,tension:0.3,pointRadius:12,pointHoverRadius:14,borderWidth:2}
-  })},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:25,right:20,left:10,bottom:5}},scales:{x:{display:false},y:{display:false,grace:'15%'}},plugins:{legend:{display:false},datalabels:{formatter:(v,c)=>{const d=c.dataset.data,i=c.dataIndex;if(i===0)return null;const df=v-d[i-1];return df<=0?null:`+${df}`},color:'#1c1f23',font:{weight:"800",size:9},align:'center',anchor:'center',offset:0}}}});
+  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
+  const ps=["Snackbar","Timbo","Pepe"];
+  // Define colors
+  const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+
+  historyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labs,
+      datasets:ps.map((p, idx)=>{
+        const c=cols[p]||"#fff"; 
+        const grad=ctx.createLinearGradient(0,0,0,300); 
+        grad.addColorStop(0,hexToRgba(c,0.3)); 
+        grad.addColorStop(1,hexToRgba(c,0));
+        
+        // JITTER LOGIC:
+        // We add a tiny, invisible amount to the value based on the player index.
+        // This forces Chart.js to render them at slightly different heights so dots don't perfectly cover each other.
+        // We use '0.1' offset. It's visually distinct but mathematically negligible for the chart scale.
+        const jitteredData = d.map(r=> {
+             let val = r[p];
+             if(t === 'matches') return val + (idx * 0.15); // Spread matches slightly
+             return val + (idx * 0.05); // Spread money very slightly
+        });
+
+        return {
+            label:p,
+            data: jitteredData, // Use the jittered data
+            borderColor:c,
+            backgroundColor: c, // Solid fill for the dot
+            fill:true,
+            backgroundColor:grad, // Gradient for the area under line
+            tension:0.3,
+            
+            // SMALLER, FILLED DOTS
+            pointRadius: 4, 
+            pointHoverRadius: 6,
+            pointBackgroundColor: c, // Filled with line color
+            pointBorderColor: "#1c1f23", // Dark border to separate overlapping dots
+            pointBorderWidth: 1,
+            borderWidth:2
+        }
+      })
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:{top:25,right:20,left:10,bottom:5}},
+        scales:{x:{display:false},y:{display:false,grace:'15%'}},
+        plugins:{
+            legend:{display:false},
+            datalabels:{
+                formatter:(v,c)=>{
+                    // Calculate real difference (ignoring the jitter we added)
+                    const d=c.dataset.data; 
+                    const i=c.dataIndex;
+                    if(i===0)return null;
+                    
+                    // Remove jitter to get real math
+                    const jitter = (c.datasetIndex * (t==='matches'?0.15:0.05));
+                    const currentVal = v - jitter;
+                    const prevVal = d[i-1] - jitter;
+                    
+                    const df=currentVal-prevVal;
+                    // Round it to handle floating point errors from jitter
+                    const cleanDf = Math.round(df * 100) / 100;
+
+                    if(cleanDf<=0)return null;
+                    return `+${cleanDf}`;
+                },
+                color: (c) => c.dataset.borderColor, // Text color same as line
+                font:{weight:"800",size:9},
+                align:'top', // Move text ABOVE the dot
+                offset: 4,   // Push it up slightly
+                anchor:'center'
+            }
+        }
+    }
+  });
   historyChart._type=t;
 }
 </script>

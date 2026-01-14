@@ -56,10 +56,8 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  /* 1. PREMIUM BACKGROUND: Replaced flat color with a deep spotlight gradient */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
-  /* Desktop default: Fixed app height */
   height: 100vh;
   overflow: hidden; 
 }
@@ -70,44 +68,48 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE SCROLL & ZOOM FIX === */
+/* === MOBILE FIX (CLICKS & SCROLLING) === */
 @media (max-width: 768px){
-  /* 1. Unlock the body height so you can scroll vertically */
   body {
     height: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* 2. Apply the Zoom (Scale) you like */
-  .app{
-    transform: scale(0.78);
-    transform-origin: top left;
-    /* Compensate width for the scale down */
-    width: 128.2%; 
-    /* Allow height to grow naturally */
-    height: auto;
-    min-height: 128vh; /* Ensures it fills screen even when zoomed */
+  .app {
+    /* CHANGED: 'zoom' handles touch coordinates better than 'transform: scale' */
+    zoom: 0.78; 
+    
     display: flex;
     flex-direction: column;
-    margin-bottom: -20%; /* Removes empty space at bottom caused by scale */
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
-  /* 3. Unlock internal containers so the page scrolls, not the cards */
   .main {
+    flex-direction: row; 
     height: auto;
     overflow: visible;
-    flex-direction: row; /* Keep Left/Right side-by-side */
+    margin-bottom: 10px;
   }
   
   .left-card, .right-card {
-    max-height: none; /* Let them grow */
+    max-height: none; 
     overflow: visible;
+    /* Glassy look */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   
-  /* Adjust summary to sit nicely at bottom */
   .summary {
     margin: 10px;
+    /* Glassy look */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 10; /* Ensures footer is clickable */
   }
 }
 
@@ -117,6 +119,8 @@ body{
   gap:10px;
   padding:10px;
   overflow:hidden;
+  position: relative; 
+  z-index: 5; /* Ensures main content is clickable */
 }
 
 /* LEFT CARD */
@@ -131,7 +135,7 @@ body{
   overflow-y:auto; 
   max-height:100%;
   scrollbar-width:none;
-  /* 2. GLASSY BORDERS (Applied globally) */
+  /* Glassy Border (Desktop too) */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -157,13 +161,13 @@ body{
   transform: translateY(-50%);
   cursor: pointer;
   transition: transform 0.2s;
-    
   width: 28px; height: 28px;
   border-radius: 50%;
   overflow: hidden; 
   background: #ffffff; 
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  z-index: 20;
 }
 .pl-btn:hover { transform: translateY(-50%) scale(1.1); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
@@ -180,6 +184,7 @@ body{
   border-radius: 8px; 
   overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  z-index: 20;
 }
 
 .brand-logo { 
@@ -190,18 +195,20 @@ body{
 
 .left-divider{height:8px}
 
+/* JUICY CLICKS ON ROW */
 .left-row{
   height:var(--row-h);
   display:grid;
   grid-template-columns:1fr 90px;
   gap:var(--gap);
-  /* 3. JUICY CLICKS: Smooth transition for the press effect */
+  cursor: pointer; /* Ensure pointer shows */
   transition: transform 0.1s ease, background 0.2s;
+  position: relative;
+  z-index: 5;
 }
 .left-row:active { 
   background: rgba(255,255,255,0.05); 
-  /* 3. JUICY CLICKS: Physical press down */
-  transform: scale(0.98);
+  transform: scale(0.98); 
 }
 
 .left-cell{
@@ -226,9 +233,7 @@ body{
   font-weight:700;
 }
 
-.team-logo{ 
-  width:38px; height:38px; object-fit:contain; 
-}
+.team-logo{ width:38px; height:38px; object-fit:contain; }
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
@@ -241,7 +246,7 @@ body{
   overflow-y:auto;
   padding:8px;
   scrollbar-width:none;
-  /* 2. GLASSY BORDERS */
+  /* Glassy Border */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -289,9 +294,11 @@ body{
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
   overflow: hidden;            
-  /* 2. GLASSY BORDERS */
+  /* Glassy Border */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 10;
 }
 
 .summary-toggle{
@@ -469,7 +476,7 @@ body{
   background: #7CFF5B !important; 
   color: #1c1f23 !important;      
   border: 1px solid #7CFF5B;
-  animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
+  animation: greenHeartbeat 1.5s infinite; 
 }
 
 /* === RICH MATCH MODAL STYLES === */
@@ -534,7 +541,7 @@ body{
 }
 .ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
 
-/* STATS STYLES (CORRECTED FACE-OFF) */
+/* STATS STYLES */
 .stat-row { margin-bottom: 12px; }
 .stat-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
 .stat-name { opacity: 0.6; }
@@ -557,9 +564,7 @@ body{
   transition: width 0.5s; 
   position: absolute;
 }
-/* Home Bar: Grows from Right to Left (Center to Left) */
 .sb-half.home .sb-fill { right: 0; }
-/* Away Bar: Grows from Left to Right (Center to Right) */
 .sb-half.away .sb-fill { left: 0; }
 
 .sb-fill.orange { background: var(--accent-orange) !important; box-shadow: 0 0 10px var(--accent-orange); }
@@ -709,7 +714,7 @@ body{
 .ta-r { display: flex; justify-content: flex-end; width: 100%; } 
 .ta-l { display: flex; justify-content: flex-start; width: 100%; }
 
-/* 4. NEON TEXT SHADOWS */
+/* NEON TEXT */
 .txt-green, .week-gbp.green, .status-green {
   text-shadow: 0 0 10px rgba(124, 255, 91, 0.4);
 }

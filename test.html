@@ -61,6 +61,7 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
+  /* PREMIUM BACKGROUND */
   background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   height: 100vh;
@@ -201,17 +202,6 @@ body{
 }
 
 .left-divider{height:8px}
-
-/* === ANIMATIONS === */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-entry {
-  opacity: 0; 
-  animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
 
 /* SCORE CHANGE FLASH ANIMATION */
 @keyframes flashUpdate {
@@ -944,8 +934,8 @@ let prevMatches = {};
 let chartDataCache = null;
 let historyChart = null;
 let tableCache = null;
-let isFirstLoad = true; 
 
+// RENDER SKELETONS (UNCHANGED FROM WORKING)
 function renderSkeletons() {
   const left = document.getElementById("left");
   const right = document.getElementById("right");
@@ -994,199 +984,189 @@ function renderSkeletons() {
 
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-    try {
-        const left=document.getElementById("left");
-        const right=document.getElementById("right");
-        const weekly=document.getElementById("weeklyCard");
-        const ranking=document.getElementById("rankingBody");
+    const left=document.getElementById("left");
+    const right=document.getElementById("right");
+    const weekly=document.getElementById("weeklyCard");
+    const ranking=document.getElementById("rankingBody");
 
-        left.innerHTML=""; right.innerHTML="";
-        weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
-        ranking.innerHTML="";
+    left.innerHTML=""; right.innerHTML="";
+    weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>';
+    ranking.innerHTML="";
 
-        if(data.chartData) chartDataCache = data.chartData;
-        if(data.leagueTable) tableCache = data.leagueTable;
+    if(data.chartData) chartDataCache = data.chartData;
+    if(data.leagueTable) tableCache = data.leagueTable;
 
-        /* --- LEFT HEADER --- */
-        const lh=document.createElement("div");
-        lh.className="left-header"; 
-        const dateText = data.date ? data.date : "Live";
+    /* --- LEFT HEADER --- */
+    const lh=document.createElement("div");
+    lh.className="left-header"; 
+    const dateText = data.date ? data.date : "Live";
+      
+    lh.innerHTML = `
+      <div class="pl-btn" onclick="openTable()">
+        <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
+          <span>MATCHES</span>
+          <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
+      </div>
+      <div class="brand-btn">
+         <img src="apple-touch-icon.png" class="brand-logo">
+      </div>
+    `;
+    left.appendChild(lh);
+    left.appendChild(document.createElement("div")).className="left-divider";
+
+    /* --- RIGHT HEADER --- */
+    const headerRow = document.createElement("div");
+    headerRow.className = "row";
+    
+    const isWinningGreen = (hex) => {
+        if(!hex) return false;
+        const h = hex.toLowerCase();
+        return ['#7cff5b', '#00ff00', '#b6d7a8', '#93c47d', '#6aa84f', '#38761d', '#d9ead3'].includes(h);
+    };
+
+    data.headers.forEach((currentHeader, i) => {
+       const currentName = currentHeader.name; 
+       const sheetStatus = currentHeader.status;
+       
+       let totalWinAmount = 0;
+       let colPendingMatches = 0;      
+       let colHasBets = false;         
+       let allBetsAreGreen = true;     
+       let hasRed = false;             
+
+       data.matches.forEach(m => {
+          const cell = m.cells[i];
+          const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
           
-        lh.innerHTML = `
-          <div class="pl-btn" onclick="openTable()">
-            <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;">
-              <span>MATCHES</span>
-              <span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${dateText}</span>
-          </div>
-          <div class="brand-btn">
-             <img src="apple-touch-icon.png" class="brand-logo">
-          </div>
-        `;
-        left.appendChild(lh);
-        left.appendChild(document.createElement("div")).className="left-divider";
+          if(!cell || !cell.value) return; 
+          colHasBets = true;
 
-        /* --- RIGHT HEADER --- */
-        const headerRow = document.createElement("div");
-        headerRow.className = "row";
-        
-        const isWinningGreen = (hex) => {
-            if(!hex) return false;
-            const h = hex.toLowerCase();
-            return ['#7cff5b', '#00ff00', '#b6d7a8', '#93c47d', '#6aa84f', '#38761d', '#d9ead3'].includes(h);
-        };
+          if (!isWinningGreen(cell.color)) {
+              allBetsAreGreen = false;
+          }
 
-        data.headers.forEach((currentHeader, i) => {
-           const currentName = currentHeader.name; 
-           const sheetStatus = currentHeader.status;
-           
-           let totalWinAmount = 0;
-           let colPendingMatches = 0;      
-           let colHasBets = false;         
-           let allBetsAreGreen = true;     
-           let hasRed = false;             
-
-           data.matches.forEach(m => {
-              const cell = m.cells[i];
-              const matchStatus = m.status ? m.status.trim().toUpperCase() : "";
-              
-              if(!cell || !cell.value) return; 
-              colHasBets = true;
-
-              if (!isWinningGreen(cell.color)) {
-                  allBetsAreGreen = false;
-              }
-
-              if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
-                 hasRed = true;
-              }
-              
-              if(matchStatus !== "FT") {
-                 colPendingMatches++;
-              }
-           });
-
-           if(colHasBets) {
-              if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
-                  totalWinAmount += (data.betSummary[1].cells[i].value || 0);
-              }
-           }
-
-           const p = document.createElement("div");
-           p.className = "header-pill";
-           p.textContent = currentName;
-           
-           if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches === 0) {
-                p.classList.add("status-green");
-                setTimeout(() => { 
-                    fireScreenBlaster(p); 
-                    showBigWin(formatGBP(totalWinAmount)); 
-                }, 500); 
-           } 
-           else if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches > 0) {
-                p.classList.add("status-green-live"); 
-           }
-           else if (sheetStatus === 'orange') {
-                p.classList.add("status-orange");
-           }
-           else if (sheetStatus === 'red') {
-                p.classList.add("status-red");
-           }
-           
-           headerRow.appendChild(p);
-        });
-
-        right.appendChild(headerRow);
-        right.appendChild(document.createElement("div")).className="right-divider";
-
-        /* MATCHES - NOW WITH SMART ANIMATION */
-        data.matches.forEach((m,i)=>{
-          const lr=document.createElement("div");
-          
-          let rowClass = "left-row";
-          if(isFirstLoad) rowClass += " animate-entry";
-          
-          if(!isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score) {
-              rowClass += " flash-update";
+          if(cell.color && (cell.color === '#ff0000' || cell.color === '#ff4d4d' || cell.color === 'red')) {
+             hasRed = true;
           }
           
-          lr.className = rowClass;
-          if(isFirstLoad) lr.style.animationDelay = (i * 0.05) + "s";
-          
-          lr.style.gridTemplateColumns = "1fr 90px"; 
-          lr.style.cursor = "pointer";
-          lr.onclick = () => openModal(m); 
+          if(matchStatus !== "FT") {
+             colPendingMatches++;
+          }
+       });
 
-          prevMatches[m.match] = { score: m.score };
+       if(colHasBets) {
+          if(data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+              totalWinAmount += (data.betSummary[1].cells[i].value || 0);
+          }
+       }
 
-          const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
-          const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
-          const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
-          const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
-          const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
-          const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
+       const p = document.createElement("div");
+       p.className = "header-pill";
+       p.textContent = currentName;
+       
+       if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches === 0) {
+            p.classList.add("status-green");
+            setTimeout(() => { 
+                fireScreenBlaster(p); 
+                showBigWin(formatGBP(totalWinAmount)); 
+            }, 500); 
+       } 
+       else if (colHasBets && !hasRed && allBetsAreGreen && colPendingMatches > 0) {
+            p.classList.add("status-green-live"); 
+       }
+       else if (sheetStatus === 'orange') {
+            p.classList.add("status-orange");
+       }
+       else if (sheetStatus === 'red') {
+            p.classList.add("status-red");
+       }
+       
+       headerRow.appendChild(p);
+    });
 
-          lr.innerHTML = `
-            <div class="left-cell match">
-              <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
-            </div>
-            <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
-               <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
-               <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
-            </div>
-          `;
-          left.appendChild(lr);
+    right.appendChild(headerRow);
+    right.appendChild(document.createElement("div")).className="right-divider";
 
-          const rr=document.createElement("div");
-          let rightRowClass = "row";
-          if(isFirstLoad) rightRowClass += " animate-entry";
-          rr.className = rightRowClass;
-          if(isFirstLoad) rr.style.animationDelay = (i * 0.05) + "s";
+    /* MATCHES - NOW WITH SCORE FLASH ANIMATION ONLY */
+    data.matches.forEach((m,i)=>{
+      const lr=document.createElement("div");
+      
+      let rowClass = "left-row";
+      
+      // Check for score change
+      if(prevMatches[m.match] && prevMatches[m.match].score !== m.score) {
+          rowClass += " flash-update";
+      }
+      
+      lr.className = rowClass;
+      lr.style.gridTemplateColumns = "1fr 90px"; 
+      lr.style.cursor = "pointer";
+      lr.onclick = () => openModal(m); 
 
-          m.cells.forEach((c,j)=>{
-            const el=document.createElement("div");
-            el.className="bet";
-            if(c.value){ el.textContent=c.value; el.style.background=c.color; }
-            rr.appendChild(el);
-          });
-          right.appendChild(rr);
-        });
+      // Store current state for next loop
+      prevMatches[m.match] = { score: m.score };
 
-        isFirstLoad = false;
+      const [home, away] = m.match.split("-").map(t => t.trim().toUpperCase());
+      const isLive = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
+      const badgeColor = isLive ? "#7CFF5B" : "#9aa0a6"; 
+      const badgeBg = isLive ? "rgba(124, 255, 91, 0.15)" : "transparent";
+      const badgeBorder = isLive ? "1px solid #7CFF5B" : "1px solid transparent";
+      const displayScore = (m.score && m.score.trim().length > 0) ? m.score : "";
 
-        left.appendChild(document.createElement("div")).className="left-divider";
-        right.appendChild(document.createElement("div")).className="right-divider";
+      lr.innerHTML = `
+        <div class="left-cell match">
+          <div class="match-teams">${renderTeam(home)}<span>-</span>${renderTeam(away)}</div>
+        </div>
+        <div class="left-cell" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:0 2px;background:var(--bg-soft);">
+           <span style="color:${badgeColor};background:${badgeBg};border:${badgeBorder};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+           <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${displayScore}</span>
+        </div>
+      `;
+      left.appendChild(lr);
 
-        ["BET","WIN","WIN PP"].forEach((label,i)=>{
-          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
-          left.appendChild(lab);
-          const rr=document.createElement("div"); rr.className="row";
-          data.betSummary[i].cells.forEach(c=>{
-            const el=document.createElement("div"); el.className="bet";
-            el.textContent=formatGBP(c.value); el.style.background=c.color;
-            rr.appendChild(el);
-          });
-          right.appendChild(rr);
-        });
+      const rr=document.createElement("div");
+      rr.className="row";
+      m.cells.forEach((c,j)=>{
+        const el=document.createElement("div");
+        el.className="bet";
+        if(c.value){ el.textContent=c.value; el.style.background=c.color; }
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
 
-        data.totals.forEach(t=>{
-          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-          // SAFETY FIX: Check if cells exist before accessing value
-          let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
-          let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
-          
-          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
-        });
+    left.appendChild(document.createElement("div")).className="left-divider";
+    right.appendChild(document.createElement("div")).className="right-divider";
 
-        data.ranking.forEach((r,i)=>{
-          const medals = ["🥇", "🥈", "🥉"];
-          const rankDisplay = medals[i] || (i + 1);
-          ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-        });
-    } catch(err) {
-        console.error("Critical rendering error:", err);
-    }
+    ["BET","WIN","WIN PP"].forEach((label,i)=>{
+      const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=label;
+      left.appendChild(lab);
+      const rr=document.createElement("div"); rr.className="row";
+      data.betSummary[i].cells.forEach(c=>{
+        const el=document.createElement("div"); el.className="bet";
+        el.textContent=formatGBP(c.value); el.style.background=c.color;
+        rr.appendChild(el);
+      });
+      right.appendChild(rr);
+    });
+
+    data.totals.forEach(t=>{
+      // UPDATED TO MATCH YOUR "HIGH. POS. WIN"
+      const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+      // FIXED CURRENCY SWAP
+      let gbpVal = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
+      let eurVal = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
+      
+      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbpVal)}</div><div class="week-eur">${formatEUR(eurVal)}</div></div>`;
+    });
+
+    data.ranking.forEach((r,i)=>{
+      const medals = ["🥇", "🥈", "🥉"];
+      const rankDisplay = medals[i] || (i + 1);
+      ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rankDisplay}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+    });
   });
 }
 

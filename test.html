@@ -73,7 +73,7 @@ body{
 
 /* === ANIMATIONS === */
 
-/* 1. Roll-in Entrance (SLOW) */
+/* 1. Roll-in Entrance (SLOWED DOWN) */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -845,103 +845,129 @@ function drawHistoryChart(t){
 // UI & HELPERS
 function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=document.getElementById("bigWinText");if(!o||!t||o.classList.contains('big-win-active'))return;t.textContent=txt;o.classList.add("big-win-active");setTimeout(()=>o.classList.remove("big-win-active"),5000)}
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}else{setTimeout(()=>el.dataset.fired="",3000)}}())}
-function normalizeName(s){if(!s)return"";let r=s.toLowerCase(),m={'ø':'o','ß':'ss','ı':'i','ş':'s','ğ':'g','ç':'c','ü':'u','ö':'o','ä':'a','ñ':'n','é':'e','è':'e','ê':'e','á':'a','à':'a','â':'a','í':'i','ó':'o','ú':'u'};for(let k in m)r=r.replace(new RegExp(k,'g'),m[k]);return r.normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function normalizeName(s){if(!s || typeof s !== 'string')return"";let r=s.toLowerCase(),m={'ø':'o','ß':'ss','ı':'i','ş':'s','ğ':'g','ç':'c','ü':'u','ö':'o','ä':'a','ñ':'n','é':'e','è':'e','ê':'e','á':'a','à':'a','â':'a','í':'i','ó':'o','ú':'u'};for(let k in m)r=r.replace(new RegExp(k,'g'),m[k]);return r.normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function formatName(n){return n||""}
 function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
 
 function openModal(m){
-  vibe(); document.getElementById('playerPopup').style.display='none';
-  const [h,a]=m.match.split("-").map(x=>x.trim()), s=m.stats||{}; switchTab('stats');
-  document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(h)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(a)}</div></div>`;
-  document.getElementById("mStatus").textContent=m.status+" • "+(m.score||"0-0");
-  try{generateStory(h,a,s,m.score,m.status,m.startTime,m.date)}catch(e){document.getElementById("aiSummaryWrapper").innerHTML="Waiting for analysis..."}
+  vibe(); 
+  document.getElementById('playerPopup').style.display='none';
+  
+  // RESET CONTENT TO AVOID STALE DATA
+  document.getElementById("mTitle").innerHTML = "Loading...";
+  document.getElementById("mStatus").innerHTML = "";
+  document.getElementById("goalsArea").innerHTML = "";
+  document.getElementById("statsArea").innerHTML = "";
+  document.getElementById("pitchPlayers").innerHTML = "";
+  document.getElementById("subsArea").innerHTML = "";
+  document.getElementById("summaryTimeline").innerHTML = "";
+  document.getElementById("aiSummaryWrapper").innerHTML = "";
 
-  // Handle case where stats might be empty (e.g., NS game)
-  if(!s.events && !s.scorers) {
-      document.getElementById("goalsArea").innerHTML = `<div style="text-align:center;padding:10px;color:#9aa0a6;">Match has not started yet.</div>`;
-      document.getElementById("statsArea").innerHTML = "";
-      document.getElementById("pitchPlayers").innerHTML = "";
-      document.getElementById("subsArea").innerHTML = "";
-      document.getElementById("summaryTimeline").innerHTML = "";
+  try {
+      const [h,a]=m.match.split("-").map(x=>x.trim());
+      const s=m.stats||{}; 
+      
+      switchTab('stats'); 
+
+      // Header
+      document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(h)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(a)}</div></div>`;
+      
+      // Status Logic for Modal
+      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
+
+      try{ generateStory(h,a,s,m.score,m.status,m.startTime,m.date) } catch(e){}
+
+      // HANDLE EMPTY STATS GRACEFULLY
+      if(!s.events && !s.scorers) {
+          document.getElementById("goalsArea").innerHTML = `<div style="text-align:center;padding:20px;color:#9aa0a6;">Match data not available yet.</div>`;
+          document.getElementById("matchModal").classList.add("active");
+          return;
+      }
+
+      let hG=[],aG=[],gMap={};
+      if(s.events) s.events.forEach(e=>{
+        if((e.type==="Goal"&&e.detail!=="Missed Penalty")||(e.type==="Card"&&e.detail==="Red Card")){
+           let cP=normalizeName(e.player.trim()), isH=null, pts=cP.split(' ');
+           if(s.lineups?.h?.start){if(pts.some(pt=>pt.length>2&&(s.lineups.h.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.h.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=true;else if(pts.some(pt=>pt.length>2&&(s.lineups.a.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.a.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=false}
+           if(isH===null)isH=true;
+           if(!gMap[cP])gMap[cP]={times:[],isHome:isH,isOG:e.detail==="Own Goal",type:e.type,detail:e.detail,rawName:e.player};
+           gMap[cP].times.push(e.time+"'");
+        }
+      });
+      Object.keys(gMap).forEach(k=>{
+         let g=gMap[k], tStr=g.times.join(", "), icon=g.type==="Card"?"🟥":"⚽", og=g.isOG?` <span class="og-tag">(OG)</span>`:"";
+         let h=`<div class="el-item"><span>${g.rawName}${og}</span> <span class="el-time">${tStr}</span> <span class="el-icon">${icon}</span></div>`;
+         let aw=`<div class="el-item"><span class="el-icon">${icon}</span>${og} <span class="el-time">${tStr}</span> <span>${g.rawName}</span></div>`;
+         if(g.isHome) hG.push(h); else aG.push(aw);
+      });
+      if(Object.keys(gMap).length===0&&s.scorers){s.scorers.split(",").forEach(i=>{let r=i.trim();if(!r)return;let isH=r.includes("(H)"),n=r.replace(/\(.*\)/g,"").trim();if(isH)hG.push(`<div class="el-item"><span>${n}</span> ⚽</div>`);else aG.push(`<div class="el-item">⚽ <span>${n}</span></div>`)})};
+      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+
+      const sb=document.getElementById("statsArea"); sb.innerHTML="";
+      let xgH=parseFloat(s.h_xg)||0, xgA=parseFloat(s.a_xg)||0;
+      [{l:"Expected Goals",h:xgH,a:xgA,dec:true},{l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},{l:"Shots",h:s.h_shots_tot,a:s.a_shots_tot},{l:"On Target",h:s.h_shots,a:s.a_shots},{l:"Corners",h:s.h_corners,a:s.a_corners}].forEach(st=>{
+         let t=st.h+st.a, hp=0, ap=0;
+         if(t>0){hp=(st.h/t)*100; ap=(st.a/t)*100; if(st.pct){hp=st.h;ap=st.a} if(st.dec){let tx=st.h+st.a+0.001;hp=(st.h/tx)*100;ap=100-hp}}
+         let ht=st.pct?st.h+"%":st.dec?st.h.toFixed(2):st.h, at=st.pct?st.a+"%":st.dec?st.a.toFixed(2):st.a;
+         sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-half away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
+      });
+
+      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+      const subsCont=document.getElementById("subsArea"); subsCont.innerHTML="";
+      const renderPitch=(team,isHome,pFull)=>{
+         if(!team.start)return;
+         let lines=[[],[],[],[]], rows={G:0,D:1,M:2,F:3};
+         team.start.forEach(p=>lines[rows[p.pos]||2].push(p));
+         lines.forEach((line,rIdx)=>{
+            let yPct=isHome?(rIdx===0?5:rIdx===1?17.3:rIdx===2?29.6:42):(rIdx===0?95:rIdx===1?82.7:rIdx===2?70.4:58);
+            line.forEach((p,i)=>{
+               let seg=100/line.length, xPct=(seg*i)+(seg/2), pStats=findPlayerStats(p.name,pFull);
+               let rat=pStats?pStats.rating.toFixed(1):"-", ph=pStats?pStats.photo:"", rC=rat>=7?"rat-high":rat<6&&rat!=="-"?"rat-low":"rat-mid";
+               let el=document.createElement("div"); el.className="pitch-player"; el.style.top=yPct+"%"; el.style.left=xPct+"%"; el.onclick=()=>showPlayerStats(p.name,pStats,s.events);
+               let c=`<div class="p-dot ${isHome?'home':'away'}"><span class="p-num-fallback">${p.num}</span>`;
+               if(ph)c+=`<img src="${ph}" class="p-img-dot" onerror="this.style.display='none'">`;
+               el.innerHTML=c+`</div><div class="p-rat ${rC}">${rat}</div><div class="p-name">${formatName(p.name)}</div>`;
+               pp.appendChild(el);
+            });
+         });
+         if(team.sub&&team.sub.length>0){
+            let h=`<div class="subs-header">${isHome?h:a} SUBS</div>`;
+            team.sub.forEach(sp=>{
+               let came=s.events?s.events.find(e=>e.type==="subst"&&e.assist===sp.name):null;
+               h+=`<div class="sub-row">${came?'<div class="sub-icon">▲</div>':''} <span>${sp.name}</span></div>`;
+            });
+            let col=document.createElement("div"); col.style.flex="1"; col.innerHTML=h; subsCont.appendChild(col);
+         }
+      };
+      subsCont.style.display="flex"; subsCont.style.gap="10px";
+      renderPitch(s.lineups?.h||{},true,s.players?.h||[]); renderPitch(s.lineups?.a||{},false,s.players?.a||[]);
+
+      const sv=document.getElementById("summaryTimeline"); sv.innerHTML="";
+      if(!s.events||s.events.length===0) sv.innerHTML="<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
+      else {
+         [...s.events].reverse().forEach(e=>{
+            let cP=normalizeName(e.player.trim()), isH=true; 
+            if(s.lineups?.a?.start?.some(p=>normalizeName(p.name).includes(cP))) isH=false;
+            let icon="•", d=e.detail||"", cls="sum-icon";
+            if(e.type==="Goal"){icon="⚽";if(d.includes("Penalty"))icon="❌";if(d.includes("Own"))cls+=" red";}
+            else if(e.type==="Card"){icon=d.includes("Red")?"🟥":"🟨";}
+            else if(e.type==="subst")icon="🔄";
+            let hHTML=isH?`<div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${d}</span></div> <span class="${cls}">${icon}</span>`:"";
+            let aHTML=!isH?`<span class="${cls}">${icon}</span> <div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${d}</span></div>`:"";
+            let r=document.createElement("div"); r.className="sum-row"; r.innerHTML=`<div class="sum-side home">${hHTML}</div><div class="sum-time">${e.time}'</div><div class="sum-side away">${aHTML}</div>`;
+            sv.appendChild(r);
+         });
+      }
+      
       document.getElementById("matchModal").classList.add("active");
-      return;
+
+  } catch (err) {
+      console.error("Error opening modal:", err);
+      // Fallback: If anything fails, still open the modal with a generic message
+      document.getElementById("goalsArea").innerHTML = `<div style='text-align:center; padding:20px; opacity:0.6'>Error loading match stats.</div>`;
+      document.getElementById("matchModal").classList.add("active");
   }
-
-  let hG=[],aG=[],gMap={};
-  if(s.events) s.events.forEach(e=>{
-    if((e.type==="Goal"&&e.detail!=="Missed Penalty")||(e.type==="Card"&&e.detail==="Red Card")){
-       let cP=normalizeName(e.player.trim()), isH=null, pts=cP.split(' ');
-       if(s.lineups?.h?.start){if(pts.some(pt=>pt.length>2&&(s.lineups.h.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.h.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=true;else if(pts.some(pt=>pt.length>2&&(s.lineups.a.start.some(p=>normalizeName(p.name).includes(pt))||s.lineups.a.sub?.some(p=>normalizeName(p.name).includes(pt)))))isH=false}
-       if(isH===null)isH=true;
-       if(!gMap[cP])gMap[cP]={times:[],isHome:isH,isOG:e.detail==="Own Goal",type:e.type,detail:e.detail,rawName:e.player};
-       gMap[cP].times.push(e.time+"'");
-    }
-  });
-  Object.keys(gMap).forEach(k=>{
-     let g=gMap[k], tStr=g.times.join(", "), icon=g.type==="Card"?"🟥":"⚽", og=g.isOG?` <span class="og-tag">(OG)</span>`:"";
-     let h=`<div class="el-item"><span>${g.rawName}${og}</span> <span class="el-time">${tStr}</span> <span class="el-icon">${icon}</span></div>`;
-     let aw=`<div class="el-item"><span class="el-icon">${icon}</span>${og} <span class="el-time">${tStr}</span> <span>${g.rawName}</span></div>`;
-     if(g.isHome) hG.push(h); else aG.push(aw);
-  });
-  if(Object.keys(gMap).length===0&&s.scorers){s.scorers.split(",").forEach(i=>{let r=i.trim();if(!r)return;let isH=r.includes("(H)"),n=r.replace(/\(.*\)/g,"").trim();if(isH)hG.push(`<div class="el-item"><span>${n}</span> ⚽</div>`);else aG.push(`<div class="el-item">⚽ <span>${n}</span></div>`)})};
-  document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
-
-  const sb=document.getElementById("statsArea"); sb.innerHTML="";
-  let xgH=parseFloat(s.h_xg)||0, xgA=parseFloat(s.a_xg)||0;
-  [{l:"Expected Goals",h:xgH,a:xgA,dec:true},{l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},{l:"Shots",h:s.h_shots_tot,a:s.a_shots_tot},{l:"On Target",h:s.h_shots,a:s.a_shots},{l:"Corners",h:s.h_corners,a:s.a_corners}].forEach(st=>{
-     let t=st.h+st.a, hp=0, ap=0;
-     if(t>0){hp=(st.h/t)*100; ap=(st.a/t)*100; if(st.pct){hp=st.h;ap=st.a} if(st.dec){let tx=st.h+st.a+0.001;hp=(st.h/tx)*100;ap=100-hp}}
-     let ht=st.pct?st.h+"%":st.dec?st.h.toFixed(2):st.h, at=st.pct?st.a+"%":st.dec?st.a.toFixed(2):st.a;
-     sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="sb-half away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
-  });
-
-  const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
-  const subsCont=document.getElementById("subsArea"); subsCont.innerHTML="";
-  const renderPitch=(team,isHome,pFull)=>{
-     if(!team.start)return;
-     let lines=[[],[],[],[]], rows={G:0,D:1,M:2,F:3};
-     team.start.forEach(p=>lines[rows[p.pos]||2].push(p));
-     lines.forEach((line,rIdx)=>{
-        let yPct=isHome?(rIdx===0?5:rIdx===1?17.3:rIdx===2?29.6:42):(rIdx===0?95:rIdx===1?82.7:rIdx===2?70.4:58);
-        line.forEach((p,i)=>{
-           let seg=100/line.length, xPct=(seg*i)+(seg/2), pStats=findPlayerStats(p.name,pFull);
-           let rat=pStats?pStats.rating.toFixed(1):"-", ph=pStats?pStats.photo:"", rC=rat>=7?"rat-high":rat<6&&rat!=="-"?"rat-low":"rat-mid";
-           let el=document.createElement("div"); el.className="pitch-player"; el.style.top=yPct+"%"; el.style.left=xPct+"%"; el.onclick=()=>showPlayerStats(p.name,pStats,s.events);
-           let c=`<div class="p-dot ${isHome?'home':'away'}"><span class="p-num-fallback">${p.num}</span>`;
-           if(ph)c+=`<img src="${ph}" class="p-img-dot" onerror="this.style.display='none'">`;
-           el.innerHTML=c+`</div><div class="p-rat ${rC}">${rat}</div><div class="p-name">${formatName(p.name)}</div>`;
-           pp.appendChild(el);
-        });
-     });
-     if(team.sub&&team.sub.length>0){
-        let h=`<div class="subs-header">${isHome?h:a} SUBS</div>`;
-        team.sub.forEach(sp=>{
-           let came=s.events?s.events.find(e=>e.type==="subst"&&e.assist===sp.name):null;
-           h+=`<div class="sub-row">${came?'<div class="sub-icon">▲</div>':''} <span>${sp.name}</span></div>`;
-        });
-        let col=document.createElement("div"); col.style.flex="1"; col.innerHTML=h; subsCont.appendChild(col);
-     }
-  };
-  subsCont.style.display="flex"; subsCont.style.gap="10px";
-  renderPitch(s.lineups?.h||{},true,s.players?.h||[]); renderPitch(s.lineups?.a||{},false,s.players?.a||[]);
-
-  const sv=document.getElementById("summaryTimeline"); sv.innerHTML="";
-  if(!s.events||s.events.length===0) sv.innerHTML="<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
-  else {
-     [...s.events].reverse().forEach(e=>{
-        let cP=normalizeName(e.player.trim()), isH=true; 
-        if(s.lineups?.a?.start?.some(p=>normalizeName(p.name).includes(cP))) isH=false;
-        let icon="•", d=e.detail||"", cls="sum-icon";
-        if(e.type==="Goal"){icon="⚽";if(d.includes("Penalty"))icon="❌";if(d.includes("Own"))cls+=" red";}
-        else if(e.type==="Card"){icon=d.includes("Red")?"🟥":"🟨";}
-        else if(e.type==="subst")icon="🔄";
-        let hHTML=isH?`<div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${d}</span></div> <span class="${cls}">${icon}</span>`:"";
-        let aHTML=!isH?`<span class="${cls}">${icon}</span> <div class="sum-text"><span class="sum-player">${e.player}</span><span class="sum-detail">${d}</span></div>`:"";
-        let r=document.createElement("div"); r.className="sum-row"; r.innerHTML=`<div class="sum-side home">${hHTML}</div><div class="sum-time">${e.time}'</div><div class="sum-side away">${aHTML}</div>`;
-        sv.appendChild(r);
-     });
-  }
-  document.getElementById("matchModal").classList.add("active");
 }
 
 function openTable(){

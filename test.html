@@ -65,100 +65,65 @@ body{
   letter-spacing: -0.02em; 
 }
 
-/* === ROLL-IN ENTRANCE ANIMATION === */
-@keyframes rollIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-enter {
-  animation: rollIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  opacity: 0; /* Start invisible so it can fade in */
-}
-
-/* === LEGEND FIX (Fit Content) === */
-.legend-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-  font-size: 11px;
-  font-weight: 700;
-  margin: 0 auto 10px auto; /* Centered with margin bottom */
-  background: rgba(0,0,0,0.2);
-  padding: 6px 12px;
-  border-radius: 20px; /* Rounded pill shape */
-  width: fit-content;  /* <--- THIS FIXES THE WIDE BACKGROUND */
-  border: 1px solid rgba(255,255,255,0.05);
-}
-.legend-item { display: flex; align-items: center; gap: 6px; }
-.legend-dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
-
-/* === NEW DARK BUTTONS (Toggle Group) === */
-.toggle-group {
-  display: flex;
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 2px;
-}
-.toggle-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted); /* Grey text when inactive */
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: Inter, sans-serif;
-}
-.toggle-btn:active { transform: scale(0.95); }
-.toggle-btn.active {
-  background: var(--bg-soft); /* Lighter grey active background */
-  color: #fff; /* White text active */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  border: 1px solid rgba(255,255,255,0.05);
-}
- 
 /* PREMIUM NUMBERS */
 .bet, .week-gbp, .rank-money, .ta-c, .stat-value-high {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
+/* === ANIMATIONS === */
+
+/* 1. Roll-in Entrance */
+@keyframes rollIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-enter {
+  animation: rollIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0; 
+}
+
+/* 2. 30-Second Breathing Glow */
+@keyframes breathingGlow {
+  0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
+  50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
+  100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
+}
+.flash-active {
+  animation: breathingGlow 3s ease-in-out infinite; 
+  z-index: 100 !important;
+  background-clip: padding-box;
+  position: relative;
+}
+.score-pill, .bet { transition: all 0.3s; }
+
+/* 3. Skeleton Shimmer */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  color: transparent !important; border-radius: 10px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sk-row { height: var(--row-h); margin-bottom: var(--gap); }
+
+/* === APP LAYOUT === */
 .app{
   height:100vh;
   display:grid;
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE FIX === */
 @media (max-width: 768px){
-  body {
-    height: auto;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  body { height: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .app {
     zoom: 0.78; 
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
+    display: flex; flex-direction: column;
+    width: 100%; height: auto; min-height: 100vh; overflow: visible;
   }
-  .main {
-    flex-direction: row; 
-    height: auto;
-    overflow: visible;
-    margin-bottom: 10px;
-  }
+  .main { flex-direction: row; height: auto; overflow: visible; margin-bottom: 10px; }
   .left-card, .right-card {
-    max-height: none; 
-    overflow: visible;
+    max-height: none; overflow: visible;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
@@ -166,46 +131,30 @@ body{
     margin: 10px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    position: relative;
-    z-index: 10; 
+    position: relative; z-index: 10; 
   }
+  /* Hide "History" title text on very small screens */
+  @media (max-width: 360px) { .history-title-text { display: none; } }
 }
 
 .main{
-  display:flex;
-  gap:10px;
-  padding:10px;
-  overflow:hidden;
-  position: relative; 
-  z-index: 5; 
+  display:flex; gap:10px; padding:10px;
+  overflow:hidden; position: relative; z-index: 5; 
 }
 
+/* === LEFT CARD (MATCHES) === */
 .left-card{
-  width:var(--left-w);
-  background:var(--bg-card);
-  border-radius:14px;
-  padding:8px;
-  display:flex;
-  flex-direction:column;
-  gap:var(--gap);
-  overflow-y:auto; 
-  max-height:100%;
-  scrollbar-width:none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  width:var(--left-w); background:var(--bg-card); border-radius:14px;
+  padding:8px; display:flex; flex-direction:column; gap:var(--gap);
+  overflow-y:auto; max-height:100%; scrollbar-width:none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
-  height:var(--row-h);
-  background:var(--bg-soft);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-  position: relative; 
+  height:var(--row-h); background:var(--bg-soft); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; position: relative; 
 }
 
 .pl-btn {
@@ -228,36 +177,6 @@ body{
 
 .left-divider{height:8px}
 
-/* === 30-SECOND BREATHING GLOW === */
-@keyframes breathingGlow {
-  0% {
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.1);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); /* Strong glow */
-    border-color: rgba(255, 255, 255, 0.9);        /* White border */
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.1);
-    transform: scale(1);
-  }
-}
-
-.flash-active {
-  /* Runs infinitely for the life of the element (which is 30s max) */
-  animation: breathingGlow 3s ease-in-out infinite; 
-  z-index: 100 !important;
-  background-clip: padding-box;
-  position: relative;
-}
-
-/* Ensure transition smoothness */
-.score-pill, .bet { transition: all 0.3s; }
- 
 .left-row{
   height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
   gap:var(--gap); cursor: pointer; 
@@ -282,6 +201,7 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
+/* === RIGHT CARD (BETS) === */
 .right-card{
   flex:1; background:var(--bg-card); border-radius:14px;
   overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
@@ -305,6 +225,7 @@ body{
   font-size:13px; font-weight:800; color:#111;
 }
 
+/* === SUMMARY & FOOTER === */
 .summary { 
   background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px;        
   overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
@@ -360,21 +281,48 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
+/* === HISTORY CARD (Updated Layout) === */
 .history-card{
   width: 100%; background:var(--bg-soft); border-radius:14px;
-  padding:14px; font-weight:700; display:none; height:260px; overflow:hidden;
+  padding:12px 14px 4px 14px; 
+  display:none; 
+  height: auto; min-height: 200px; /* Fix cutoff */
+  overflow: visible;
 }
 
-.skeleton {
-  background: var(--bg-soft);
-  background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  color: transparent !important; border-radius: 10px;
+.history-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; margin-bottom: 0px;
 }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-.sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
+/* Legend (Fit Content) */
+.legend-row {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  font-size: 10px; font-weight: 700; margin: 0; 
+  background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 12px;
+  width: fit-content; border: 1px solid rgba(255,255,255,0.05);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
+
+/* Dark Buttons (Toggle Group) */
+.toggle-group {
+  display: flex; background: rgba(0,0,0,0.2);
+  border-radius: 8px; padding: 3px; gap: 2px;
+}
+.toggle-btn {
+  background: transparent; border: none; color: var(--text-muted);
+  font-size: 10px; font-weight: 700; padding: 4px 12px;
+  border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
+  font-family: Inter, sans-serif;
+}
+.toggle-btn:active { transform: scale(0.95); }
+.toggle-btn.active {
+  background: var(--bg-soft); color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* === OVERLAYS & MODALS === */
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
@@ -526,21 +474,22 @@ body{
         </div>
       </div>
       <div class="history-card" id="historyCard">
-       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span>📈 History</span>
-        <div class="toggle-group">
-         <button id="btnMatches" class="toggle-btn active">Matches</button>
-         <button id="btnMoney" class="toggle-btn">Money</button>
-        </div>
+       <div class="history-header">
+         <span class="history-title-text" style="font-weight:700; font-size:13px;">📈 History</span>
+         
+         <div class="legend-row">
+            <div class="legend-item" style="color:#7CFF5B"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
+            <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
+            <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
+         </div>
+
+         <div class="toggle-group">
+          <button id="btnMatches" class="toggle-btn active">Matches</button>
+          <button id="btnMoney" class="toggle-btn">Money</button>
+         </div>
        </div>
        
-       <div class="legend-row">
-          <div class="legend-item" style="color:#7CFF5B"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
-          <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
-          <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
-       </div>
-
-       <canvas id="historyChart" height="140"></canvas>
+       <canvas id="historyChart" height="150"></canvas>
       </div>
     </div>
   </footer>
@@ -820,10 +769,6 @@ function drawHistoryChart(t){
         grad.addColorStop(0,hexToRgba(c,0.3)); 
         grad.addColorStop(1,hexToRgba(c,0));
         
-        // NEW LOGIC: Right / Left / Right
-        // Player 1 (idx 0): Right
-        // Player 2 (idx 1): Left
-        // Player 3 (idx 2): Right
         const labelAlign = idx === 1 ? 'left' : 'right'; 
 
         return {
@@ -833,16 +778,12 @@ function drawHistoryChart(t){
             backgroundColor:grad,
             fill:true,
             tension:0.3,
-            
-            // CLEAN DOTS
             pointRadius: 6, 
             pointHoverRadius: 8,
             pointBackgroundColor: "#1c1f23",
             pointBorderColor: c,
             pointBorderWidth: 2,
             borderWidth: 2,
-
-            // Store alignment for the plugin
             _customAlign: labelAlign
         }
       })
@@ -850,25 +791,16 @@ function drawHistoryChart(t){
     options:{
         responsive:true, 
         maintainAspectRatio:false,
-        layout:{padding:{top:30,right:30,left:0,bottom:10}}, // Added Right padding so "Right" labels don't get cut off
+        // ADJUSTED PADDING: Less top, enough bottom
+        layout:{padding:{top:15,right:30,left:0,bottom:30}}, 
         scales:{
-            // HIDE DATES
             x:{ display:false },
-            
-            // SHOW POINTS ON LEFT
             y:{
                 display:true, 
                 position:'left',
-                grid: {
-                    color: 'rgba(255, 255, 255, 0.05)', // Very subtle grid lines
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#9aa0a6', // Muted text color
-                    font: { size: 10, family: 'Inter', weight:'600' },
-                    precision: 0 // No decimals on the axis
-                },
-                grace:'10%'
+                grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
+                grace:'5%' // Slightly reduced grace to tighten it up
             }
         },
         animation: {
@@ -898,11 +830,9 @@ function drawHistoryChart(t){
                 color: '#000000',
                 font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
                 padding: { top: 2, bottom: 2, left: 4, right: 4 },
-                
-                // USE THE LEFT/RIGHT LOGIC
                 align: (c) => c.dataset._customAlign,
                 anchor: 'center',
-                offset: 8, // Push label further out to the side
+                offset: 8,
                 display: 'auto'
             }
         }

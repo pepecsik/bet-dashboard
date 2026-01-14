@@ -716,7 +716,6 @@ function drawHistoryChart(t){
   if(historyChart&&historyChart._type===t)return; 
   const ctx=document.getElementById("historyChart").getContext("2d");
   
-  // Reset chart if exists
   if(historyChart){historyChart.destroy();historyChart=null}
   
   const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
@@ -734,57 +733,65 @@ function drawHistoryChart(t){
         grad.addColorStop(0,hexToRgba(c,0.3)); 
         grad.addColorStop(1,hexToRgba(c,0));
         
-        // LOGIC: Alternating positions to prevent overlap
-        // Player 0 (Snackbar): Label on Top
-        // Player 1 (Timbo): Label on Bottom
-        // Player 2 (Pepe): Label on Top
-        const labelAlign = idx === 1 ? 'start' : 'end'; // 'start' is below, 'end' is above
-        const labelAnchor = idx === 1 ? 'start' : 'end';
+        // NEW LOGIC: Right / Left / Right
+        // Player 1 (idx 0): Right
+        // Player 2 (idx 1): Left
+        // Player 3 (idx 2): Right
+        const labelAlign = idx === 1 ? 'left' : 'right'; 
 
         return {
             label:p,
-            data: d.map(r=>r[p]), // No fake jitter, straight data
+            data: d.map(r=>r[p]), 
             borderColor:c,
             backgroundColor:grad,
             fill:true,
             tension:0.3,
             
-            // CLEANER DOTS
-            pointRadius: 6, // Smaller, cleaner dots
+            // CLEAN DOTS
+            pointRadius: 6, 
             pointHoverRadius: 8,
-            pointBackgroundColor: "#1c1f23", // Dark center
-            pointBorderColor: c, // Colored ring
+            pointBackgroundColor: "#1c1f23",
+            pointBorderColor: c,
             pointBorderWidth: 2,
             borderWidth: 2,
 
-            // STORE ALIGNMENT SETTINGS FOR THE PLUGIN
-            _customAlign: labelAlign,
-            _customAnchor: labelAnchor
+            // Store alignment for the plugin
+            _customAlign: labelAlign
         }
       })
     },
     options:{
         responsive:true, 
         maintainAspectRatio:false,
-        layout:{padding:{top:30,right:20,left:10,bottom:20}}, // More padding for floating labels
+        layout:{padding:{top:30,right:30,left:0,bottom:10}}, // Added Right padding so "Right" labels don't get cut off
         scales:{
-            x:{display:false},
-            y:{display:false, grace:'10%'} // Grace ensures top label isn't cut off
-        },
-        // RISE UP ANIMATION
-        animation: {
-            y: {
-                duration: 2000,
-                easing: 'easeOutQuart' // Smooth "pop" effect
-            },
-            x: {
-                duration: 0 // Show X axis immediately
+            // HIDE DATES
+            x:{ display:false },
+            
+            // SHOW POINTS ON LEFT
+            y:{
+                display:true, 
+                position:'left',
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.05)', // Very subtle grid lines
+                    drawBorder: false
+                },
+                ticks: {
+                    color: '#9aa0a6', // Muted text color
+                    font: { size: 10, family: 'Inter', weight:'600' },
+                    precision: 0 // No decimals on the axis
+                },
+                grace:'10%'
             }
+        },
+        animation: {
+            y: { duration: 2000, easing: 'easeOutQuart' },
+            x: { duration: 0 }
         },
         plugins:{
             legend:{display:false},
             tooltip: {
-                enabled: true, // Enable default tooltip for precise checking
+                enabled: true,
                 mode: 'index',
                 intersect: false,
                 backgroundColor: 'rgba(28, 31, 35, 0.9)',
@@ -796,29 +803,20 @@ function drawHistoryChart(t){
                     const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
                     const prevVal = d[i-1];
                     const cleanDf = Math.round((v-prevVal) * 100) / 100;
-                    if(cleanDf<=0) return null; // Only show positive gains
+                    if(cleanDf<=0) return null;
                     return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
                 },
-                // PILL STYLE BADGE
-                backgroundColor: (c) => c.dataset.borderColor, // Background matches line color
+                backgroundColor: (c) => c.dataset.borderColor,
                 borderRadius: 4,
-                color: '#000000', // Black text on neon background
-                font:{
-                    weight:"800",
-                    size: 9,
-                    family: "Inter, sans-serif"
-                },
-                padding: {
-                    top: 2, bottom: 2, left: 4, right: 4
-                },
-                // DYNAMIC POSITIONING
-                align: (c) => c.dataset._customAlign, // Use the alternating positions
-                anchor: (c) => c.dataset._customAnchor,
-                offset: 4, // Distance from the dot
+                color: '#000000',
+                font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
+                padding: { top: 2, bottom: 2, left: 4, right: 4 },
                 
-                // COLLISION HANDLING
-                // If they still overlap, hide the one that is less important
-                display: 'auto' 
+                // USE THE LEFT/RIGHT LOGIC
+                align: (c) => c.dataset._customAlign,
+                anchor: 'center',
+                offset: 8, // Push label further out to the side
+                display: 'auto'
             }
         }
     }

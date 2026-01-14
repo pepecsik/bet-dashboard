@@ -552,10 +552,12 @@ body{
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const REFRESH_MS=30000;
 
-// Add this at the very top of your <script> section, before loadData
+// GLOBAL VARIABLES
 let prevMatches = {};
-let isFirstLoad = true; // Prevents everything from flashing when you first open the app
- 
+let isFirstLoad = true; 
+let chartDataCache=null, historyChart=null, tableCache=null;
+
+// HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
@@ -567,7 +569,6 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
- 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -600,8 +601,6 @@ function renderTeam(raw){
   return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
 }
 
-let prevMatches={}, chartDataCache=null, historyChart=null, tableCache=null;
-
 function renderSkeletons() {
   const left=document.getElementById("left"), right=document.getElementById("right");
   left.innerHTML=""; right.innerHTML="";
@@ -617,24 +616,18 @@ function renderSkeletons() {
   }
 }
 
+// MAIN LOAD FUNCTION
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
-        
-        // Clear previous HTML
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
-        
-        // Update Caches
-        if(data.chartData) chartDataCache=data.chartData; 
-        if(data.leagueTable) tableCache=data.leagueTable;
+        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        // 1. RENDER HEADER (Logo & Date)
         const lh=document.createElement("div"); lh.className="left-header"; 
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        // 2. RENDER HEADER PILLS (Names of the people betting)
         const headerRow=document.createElement("div"); headerRow.className="row";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
@@ -648,14 +641,10 @@ function loadData(){
               if(st!=="FT")pen++;
            });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
-           
            const p=document.createElement("div"); p.className="header-pill"; p.textContent=h.name;
-           
-           // Status Logic
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
-               // Only trigger confetti if it's not the first load (to avoid blasting on refresh)
-               if(!isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500); }
+               if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
            }
            else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
            else if(h.status==='orange')p.classList.add("status-orange");
@@ -664,49 +653,40 @@ function loadData(){
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // 3. RENDER MATCHES & BETS
-        data.matches.forEach((m, idx)=>{
-          // Check if Score Changed
-          // We only flash if it's NOT the first load, AND the score is different from last time
+        data.matches.forEach((m)=>{
+          // ANIMATION LOGIC: Check if score changed since last load
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
-          
-          // Update the "Previous" memory for the NEXT loop
-          prevMatches[m.match] = { score: m.score };
+          prevMatches[m.match]={score:m.score};
+
+          const lr=document.createElement("div");
+          lr.className="left-row"; 
+          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // LEFT SIDE: Match & Score
-          const lr=document.createElement("div");
-          lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
-          
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
           <div class="left-cell">
-            <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.2s;">
+             <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
-            </div>
+             </div>
           </div>`;
           left.appendChild(lr);
 
-          // RIGHT SIDE: Bets
           const rr=document.createElement("div"); rr.className="row";
           m.cells.forEach(c=>{
               const el=document.createElement("div");
-              // If the score changed, the bet pills for this row also get the flash class
-              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; 
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               if(c.value){el.textContent=c.value;el.style.background=c.color}
               rr.appendChild(el);
           });
           right.appendChild(rr);
         });
 
-        // 4. BOTTOM SECTIONS
         left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
 
-        // Summary Rows (Bet/Win/Win PP)
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
@@ -714,7 +694,6 @@ function loadData(){
           right.appendChild(rr);
         });
 
-        // Weekly Summary
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
           let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
@@ -722,22 +701,73 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
-        // Ranking
         data.ranking.forEach((r,i)=>{
           const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
           ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // Mark first load as complete
-        isFirstLoad = false;
-
+        isFirstLoad = false; // Flag that first load is done
     } catch(e){ console.error(e); }
   });
 }
 
+// CHART FUNCTION (FIXED OVERLAP & JITTER)
+function drawHistoryChart(t){
+  if(historyChart&&historyChart._type===t)return; const ctx=document.getElementById("historyChart").getContext("2d");
+  if(historyChart){historyChart.destroy();historyChart=null}
+  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
+  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
+  const ps=["Snackbar","Timbo","Pepe"], cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+  
+  // High vertical separation to prevent overlap
+  const jitterAmount = t === 'matches' ? 0.6 : 0.3; 
+
+  historyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labs,
+      datasets:ps.map((p, idx)=>{
+        const c=cols[p]||"#fff"; 
+        const grad=ctx.createLinearGradient(0,0,0,300); 
+        grad.addColorStop(0,hexToRgba(c,0.3)); 
+        grad.addColorStop(1,hexToRgba(c,0));
+        
+        // Offset data points vertically
+        const jitteredData = d.map(r=> r[p] + (idx * jitterAmount));
+
+        return {
+            label:p,data:jitteredData,borderColor:c,backgroundColor:grad,fill:true,tension:0.3,
+            pointRadius:12, pointHoverRadius:14, pointBackgroundColor:c, pointBorderColor:"#1c1f23", pointBorderWidth:2, borderWidth:2
+        }
+      })
+    },
+    options:{
+        responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:25,right:20,left:10,bottom:5}},
+        scales:{x:{display:false},y:{display:false,grace:'20%'}},
+        plugins:{
+            legend:{display:false},
+            datalabels:{
+                formatter:(v,c)=>{
+                    const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
+                    const jitter = (c.datasetIndex * jitterAmount);
+                    const currentVal = v - jitter;
+                    const prevVal = d[i-1] - jitter;
+                    const cleanDf = Math.round((currentVal-prevVal) * 100) / 100;
+                    if(cleanDf<=0)return null;
+                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
+                },
+                color:'#1c1f23', font:{weight:"900",size:10,family:"Inter,sans-serif"}, align:'center', anchor:'center', offset:0
+            }
+        }
+    }
+  });
+  historyChart._type=t;
+}
+
+// UI & HELPERS
 function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=document.getElementById("bigWinText");if(!o||!t||o.classList.contains('big-win-active'))return;t.textContent=txt;o.classList.add("big-win-active");setTimeout(()=>o.classList.remove("big-win-active"),5000)}
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}else{setTimeout(()=>el.dataset.fired="",3000)}}())}
-
 function normalizeName(s){if(!s)return"";let r=s.toLowerCase(),m={'ø':'o','ß':'ss','ı':'i','ş':'s','ğ':'g','ç':'c','ü':'u','ö':'o','ä':'a','ñ':'n','é':'e','è':'e','ê':'e','á':'a','à':'a','â':'a','í':'i','ó':'o','ú':'u'};for(let k in m)r=r.replace(new RegExp(k,'g'),m[k]);return r.normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function formatName(n){return n||""}
 function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
@@ -811,7 +841,7 @@ function openModal(m){
   if(!s.events||s.events.length===0) sv.innerHTML="<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
   else {
      [...s.events].reverse().forEach(e=>{
-        let cP=normalizeName(e.player.trim()), isH=true; // simplified for safety
+        let cP=normalizeName(e.player.trim()), isH=true; 
         if(s.lineups?.a?.start?.some(p=>normalizeName(p.name).includes(cP))) isH=false;
         let icon="•", d=e.detail||"", cls="sum-icon";
         if(e.type==="Goal"){icon="⚽";if(d.includes("Penalty"))icon="❌";if(d.includes("Own"))cls+=" red";}
@@ -847,105 +877,19 @@ function showPlayerStats(n,st,ev){
 function openTable(){const b=document.getElementById("tableBody");b.innerHTML="";if(!tableCache)b.innerHTML="Loading...";else tableCache.forEach(t=>{b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap"></div></div>`});document.getElementById("tableModal").classList.add("active")}
 function closeModal(id){document.getElementById(id).classList.remove("active")}
 
-renderSkeletons(); loadData(); setInterval(loadData,REFRESH_MS);
+// INITIALIZE
+renderSkeletons(); 
+loadData(); 
+setInterval(loadData,REFRESH_MS);
+
+// EVENT LISTENERS
 document.getElementById("rankingCard").onclick=()=>{vibe();const h=document.getElementById("historyCard"),o=h.style.display!=="block";h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
-function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; 
-  const ctx=document.getElementById("historyChart").getContext("2d");
-  if(historyChart){historyChart.destroy();historyChart=null}
-  
-  const d=chartDataCache?chartDataCache[t]:null; 
-  if(!d)return;
-  
-  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
-  const ps=["Snackbar","Timbo","Pepe"];
-  const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
-
-  // JITTER SETTINGS
-  // Much larger offset to physically separate the 22px dots
-  const jitterAmount = t === 'matches' ? 0.6 : 0.3; 
-
-  historyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:labs,
-      datasets:ps.map((p, idx)=>{
-        const c=cols[p]||"#fff"; 
-        const grad=ctx.createLinearGradient(0,0,0,300); 
-        grad.addColorStop(0,hexToRgba(c,0.3)); 
-        grad.addColorStop(1,hexToRgba(c,0));
-        
-        // 1. Apply aggressive vertical jitter based on player index
-        // Player 0 stays put, Player 1 moves up a bit, Player 2 moves up a lot
-        const jitteredData = d.map(r=> r[p] + (idx * jitterAmount));
-
-        return {
-            label:p,
-            data: jitteredData,
-            borderColor:c,
-            backgroundColor:grad,
-            fill:true,
-            tension:0.3,
-            
-            // 2. DOT STYLING
-            pointRadius: 12, // Big enough for text
-            pointHoverRadius: 14,
-            pointBackgroundColor: c, 
-            pointBorderColor: "#1c1f23", 
-            pointBorderWidth: 2,
-            borderWidth:2
-        }
-      })
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        layout:{padding:{top:25,right:20,left:10,bottom:5}},
-        scales:{
-            x:{display:false},
-            // Grace area ensures top dots don't get cut off
-            y:{display:false, grace:'20%'} 
-        },
-        plugins:{
-            legend:{display:false},
-            datalabels:{
-                formatter:(v,c)=>{
-                    // 3. CLEAN DATA CALCULATION
-                    const d=c.dataset.data; 
-                    const i=c.dataIndex;
-                    if(i===0)return null;
-                    
-                    // Remove the jitter to get the real math
-                    const currentJitter = (c.datasetIndex * jitterAmount);
-                    const currentVal = v - currentJitter;
-                    const prevVal = d[i-1] - currentJitter;
-                    
-                    const cleanDf = Math.round((currentVal-prevVal) * 100) / 100;
-
-                    // Hide +0 or negative changes to reduce clutter
-                    if(cleanDf<=0) return null;
-                    
-                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
-                },
-                color: '#1c1f23', 
-                font:{
-                    weight:"900", 
-                    size: 10,
-                    family: "Inter, sans-serif"
-                },
-                align:'center',
-                anchor:'center',
-                offset: 0
-            }
-        }
-    }
-  });
-  historyChart._type=t;
-}
+// REGISTER PLUGINS
+Chart.register(ChartDataLabels);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>

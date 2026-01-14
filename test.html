@@ -711,16 +711,18 @@ function loadData(){
   });
 }
 
-// CHART FUNCTION (FIXED OVERLAP & JITTER)
+// UPDATED CHART FUNCTION: Clean Badges + Animation + Overlap Fix
 function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; const ctx=document.getElementById("historyChart").getContext("2d");
+  if(historyChart&&historyChart._type===t)return; 
+  const ctx=document.getElementById("historyChart").getContext("2d");
+  
+  // Reset chart if exists
   if(historyChart){historyChart.destroy();historyChart=null}
+  
   const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
   const labs=d.map(r=>new Date(r.date).toLocaleDateString());
-  const ps=["Snackbar","Timbo","Pepe"], cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
-  
-  // High vertical separation to prevent overlap
-  const jitterAmount = t === 'matches' ? 0.6 : 0.3; 
+  const ps=["Snackbar","Timbo","Pepe"];
+  const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
 
   historyChart=new Chart(ctx,{
     type:"line",
@@ -732,39 +734,97 @@ function drawHistoryChart(t){
         grad.addColorStop(0,hexToRgba(c,0.3)); 
         grad.addColorStop(1,hexToRgba(c,0));
         
-        // Offset data points vertically
-        const jitteredData = d.map(r=> r[p] + (idx * jitterAmount));
+        // LOGIC: Alternating positions to prevent overlap
+        // Player 0 (Snackbar): Label on Top
+        // Player 1 (Timbo): Label on Bottom
+        // Player 2 (Pepe): Label on Top
+        const labelAlign = idx === 1 ? 'start' : 'end'; // 'start' is below, 'end' is above
+        const labelAnchor = idx === 1 ? 'start' : 'end';
 
         return {
-            label:p,data:jitteredData,borderColor:c,backgroundColor:grad,fill:true,tension:0.3,
-            pointRadius:12, pointHoverRadius:14, pointBackgroundColor:c, pointBorderColor:"#1c1f23", pointBorderWidth:2, borderWidth:2
+            label:p,
+            data: d.map(r=>r[p]), // No fake jitter, straight data
+            borderColor:c,
+            backgroundColor:grad,
+            fill:true,
+            tension:0.3,
+            
+            // CLEANER DOTS
+            pointRadius: 6, // Smaller, cleaner dots
+            pointHoverRadius: 8,
+            pointBackgroundColor: "#1c1f23", // Dark center
+            pointBorderColor: c, // Colored ring
+            pointBorderWidth: 2,
+            borderWidth: 2,
+
+            // STORE ALIGNMENT SETTINGS FOR THE PLUGIN
+            _customAlign: labelAlign,
+            _customAnchor: labelAnchor
         }
       })
     },
     options:{
-        responsive:true, maintainAspectRatio:false,
-        layout:{padding:{top:25,right:20,left:10,bottom:5}},
-        scales:{x:{display:false},y:{display:false,grace:'20%'}},
+        responsive:true, 
+        maintainAspectRatio:false,
+        layout:{padding:{top:30,right:20,left:10,bottom:20}}, // More padding for floating labels
+        scales:{
+            x:{display:false},
+            y:{display:false, grace:'10%'} // Grace ensures top label isn't cut off
+        },
+        // RISE UP ANIMATION
+        animation: {
+            y: {
+                duration: 2000,
+                easing: 'easeOutQuart' // Smooth "pop" effect
+            },
+            x: {
+                duration: 0 // Show X axis immediately
+            }
+        },
         plugins:{
             legend:{display:false},
+            tooltip: {
+                enabled: true, // Enable default tooltip for precise checking
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(28, 31, 35, 0.9)',
+                titleColor: '#fff',
+                bodyFont: { family: "Inter" }
+            },
             datalabels:{
                 formatter:(v,c)=>{
                     const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
-                    const jitter = (c.datasetIndex * jitterAmount);
-                    const currentVal = v - jitter;
-                    const prevVal = d[i-1] - jitter;
-                    const cleanDf = Math.round((currentVal-prevVal) * 100) / 100;
-                    if(cleanDf<=0)return null;
+                    const prevVal = d[i-1];
+                    const cleanDf = Math.round((v-prevVal) * 100) / 100;
+                    if(cleanDf<=0) return null; // Only show positive gains
                     return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
                 },
-                color:'#1c1f23', font:{weight:"900",size:10,family:"Inter,sans-serif"}, align:'center', anchor:'center', offset:0
+                // PILL STYLE BADGE
+                backgroundColor: (c) => c.dataset.borderColor, // Background matches line color
+                borderRadius: 4,
+                color: '#000000', // Black text on neon background
+                font:{
+                    weight:"800",
+                    size: 9,
+                    family: "Inter, sans-serif"
+                },
+                padding: {
+                    top: 2, bottom: 2, left: 4, right: 4
+                },
+                // DYNAMIC POSITIONING
+                align: (c) => c.dataset._customAlign, // Use the alternating positions
+                anchor: (c) => c.dataset._customAnchor,
+                offset: 4, // Distance from the dot
+                
+                // COLLISION HANDLING
+                // If they still overlap, hide the one that is less important
+                display: 'auto' 
             }
         }
     }
   });
   historyChart._type=t;
 }
-
 // UI & HELPERS
 function showBigWin(txt){const o=document.getElementById("bigWinOverlay"),t=document.getElementById("bigWinText");if(!o||!t||o.classList.contains('big-win-active'))return;t.textContent=txt;o.classList.add("big-win-active");setTimeout(()=>o.classList.remove("big-win-active"),5000)}
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}else{setTimeout(()=>el.dataset.fired="",3000)}}())}

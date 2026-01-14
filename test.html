@@ -58,7 +58,7 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  /* Added overflow hidden to prevent body scroll when modal is open on mobile */
+  /* DEFAULT: Desktop behaves as an app (fixed height) */
   height: 100vh;
   overflow: hidden; 
 }
@@ -69,12 +69,34 @@ body{
   grid-template-rows:1fr auto;
 }
 
+/* === MOBILE SCROLL FIX === */
+/* On mobile, we unlock the height so you can scroll the WHOLE page */
 @media (max-width: 768px){
+  body {
+    height: auto;
+    overflow-y: auto; /* Allow scrolling */
+  }
   .app{
-    transform: scale(0.78);
-    transform-origin: top left;
-    width: 128%;
-    height: 128%;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    transform: none; /* Removed the scale trick to fix scrolling issues */
+    width: 100%;
+  }
+  .main {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+  .left-card, .right-card {
+    width: 100%;
+    max-height: none; /* Let card grow */
+    overflow: visible;
+    flex: none;
+  }
+  .summary {
+    margin-bottom: 20px;
   }
 }
 
@@ -220,7 +242,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px; /* CHANGED: Smaller font */
+  font-size:13px; 
   font-weight:700;
   transition: all 0.5s ease;
 }
@@ -426,7 +448,7 @@ body{
   animation: greenHeartbeat 1.5s infinite; /* Heartbeat Animation */
 }
 
-/* === NEW RICH MODAL STYLES (FROM TEST FILE) === */
+/* === RICH MATCH MODAL STYLES === */
 .modal-overlay { 
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
   background: rgba(0,0,0,0.85); z-index: 2100; backdrop-filter: blur(4px); 
@@ -488,16 +510,34 @@ body{
 }
 .ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
 
-/* STATS STYLES */
+/* STATS STYLES (CORRECTED FACE-OFF) */
 .stat-row { margin-bottom: 12px; }
 .stat-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
 .stat-name { opacity: 0.6; }
 .stat-value-high { color: #7CFF5B; font-weight:800; }
-.stat-bar-container { display: flex; height: 6px; gap: 4px; border-radius: 3px; overflow: hidden; background: #333; }
-.sb-track { flex: 1; background: rgba(255,255,255,0.1); position: relative; }
-.sb-fill { height: 100%; background: #999; transition: width 0.5s; }
-.sb-track.home .sb-fill { position: absolute; right: 0; background: #fff; }
-.sb-track.away .sb-fill { position: absolute; left: 0; background: #fff; }
+
+.stat-bar-container { 
+  display: flex; height: 6px; gap: 4px; overflow: hidden; 
+  background: transparent; /* Container is transparent now */
+}
+.sb-half {
+  flex: 1;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.sb-fill {
+  height: 100%; 
+  background: #999; 
+  transition: width 0.5s; 
+  position: absolute;
+}
+/* Home Bar: Grows from Right to Left (Center to Left) */
+.sb-half.home .sb-fill { right: 0; }
+/* Away Bar: Grows from Left to Right (Center to Right) */
+.sb-half.away .sb-fill { left: 0; }
+
 .sb-fill.orange { background: var(--accent-orange) !important; box-shadow: 0 0 10px var(--accent-orange); }
 
 .event-list-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; font-size: 11px; font-weight: 500; gap: 10px; }
@@ -1079,7 +1119,7 @@ function fireScreenBlaster(element) {
   }());
 }
 
-/* === RICH MATCH MODAL LOGIC (FROM TEST FILE) === */
+/* === RICH MATCH MODAL LOGIC === */
 
 function normalizeName(str) {
   if(!str) return "";
@@ -1174,8 +1214,8 @@ function openModal(m){
 
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-  // STATS BARS
-  const sb=document.getElementById("statsArea");sb.innerHTML="";
+  // === STATS BARS FIX (CENTER SPLIT) ===
+  const sb=document.getElementById("statsArea"); sb.innerHTML="";
   const sl=[
     {l:"Expected Goals",h:parseFloat(s.h_xg)||0,a:parseFloat(s.a_xg)||0,dec:true}, 
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
@@ -1185,11 +1225,47 @@ function openModal(m){
     {l:"Fouls",h:s.h_fouls,a:s.a_fouls},
     {l:"Corners",h:s.h_corners,a:s.a_corners}
   ];
+  
   sl.forEach(st=>{
-    let t=st.h+st.a,hp=0,ap=0;
-    if(t>0){hp=(st.h/t)*100;ap=(st.a/t)*100;if(st.pct){hp=st.h;ap=st.a}if(st.dec){hp=(st.h/(st.h+st.a+0.001))*100;ap=100-hp}}
-    let ht=st.h||0,at=st.a||0;if(st.pct){ht+="%";at+="%"}if(st.dec){ht=st.h.toFixed(2);at=st.a.toFixed(2)}
-    sb.innerHTML+=`<div class="stat-row"><div class="stat-label"><span class="${st.h>st.a?'stat-value-high':''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a>st.h?'stat-value-high':''}">${at}</span></div><div class="stat-bar-container"><div class="sb-track home"><div class="sb-fill ${st.h>=st.a?'orange':''}" style="width:${hp}%"></div></div><div class="stat-bar-container"><div class="sb-track away"><div class="sb-fill ${st.a>=st.h?'orange':''}" style="width:${ap}%"></div></div></div></div>`;
+    let t = st.h + st.a;
+    let hp = 0, ap = 0;
+    
+    // Calculate Percentages relative to total
+    if(t > 0){
+        hp = (st.h / t) * 100;
+        ap = (st.a / t) * 100;
+        
+        // Handle special cases (Possession is already %)
+        if(st.pct){ hp = st.h; ap = st.a; }
+        
+        // Handle xG (Small numbers need scaling to look good)
+        if(st.dec){ 
+            let totalXG = st.h + st.a + 0.001; // Avoid divide by zero
+            hp = (st.h / totalXG) * 100;
+            ap = 100 - hp; 
+        }
+    }
+
+    let ht=st.h||0,at=st.a||0;
+    if(st.pct){ht+="%";at+="%"}
+    if(st.dec){ht=st.h.toFixed(2);at=st.a.toFixed(2)}
+
+    sb.innerHTML += `
+    <div class="stat-row">
+       <div class="stat-label">
+          <span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span>
+          <span class="stat-name">${st.l}</span>
+          <span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span>
+       </div>
+       <div class="stat-bar-container">
+          <div class="sb-half home">
+             <div class="sb-fill ${st.h >= st.a ? 'orange' : ''}" style="width:${hp}%"></div>
+          </div>
+          <div class="sb-half away">
+             <div class="sb-fill ${st.a >= st.h ? 'orange' : ''}" style="width:${ap}%"></div>
+          </div>
+       </div>
+    </div>`;
   });
 
   // 2. LINEUPS

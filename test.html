@@ -73,13 +73,12 @@ body{
 
 /* === ANIMATIONS === */
 
-/* 1. Roll-in Entrance (SLOWED DOWN) */
+/* 1. Roll-in Entrance (SLOW) */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-enter {
-  /* Changed from 0.5s to 0.8s */
   animation: rollIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   opacity: 0; 
 }
@@ -684,16 +683,15 @@ function loadData(){
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // ADDED TIME FOR NOT STARTED GAMES
-          const timeDisplay = m.status === "NS" ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-weight:600">${m.startTime||""}</div>` : "";
+          // DISPLAY STATUS: Show Time if NS, otherwise show status (Min or FT)
+          const displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
 
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
           <div class="left-cell">
              <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
-                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${m.status}</span>
+                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
              </div>
-             ${timeDisplay}
           </div>`;
           left.appendChild(lr);
 

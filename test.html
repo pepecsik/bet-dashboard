@@ -1072,7 +1072,8 @@ function loadData(){
 
     data.totals.forEach(t=>{
       const green=["TOTAL WIN","TOTAL WIN PP","AVG. WIN"].includes(t.label);
-      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[0].value)}</div><div class="week-eur">${formatEUR(t.cells[1].value)}</div></div>`;
+      // FIXED: Swapped cells[1] (was right) to be GBP (left), and cells[0] (was left) to be EUR (right)
+      weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div><div class="week-eur">${formatEUR(t.cells[0].value)}</div></div>`;
     });
 
     data.ranking.forEach((r,i)=>{

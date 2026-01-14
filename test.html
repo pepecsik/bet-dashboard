@@ -171,28 +171,38 @@ body{
 
 .left-divider{height:8px}
 
-/* === NEW INTENSE FLASH ANIMATION === */
-@keyframes intenseFlash {
-  0% { background-color: #ffffff; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.8); transform: scale(1.05); }
-  100% { background-color: transparent; color: inherit; box-shadow: none; transform: scale(1); }
+/* === STYLISH NOTIFICATION GLOW === */
+@keyframes neonPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 1);
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.02);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+  60% {
+    box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0); /* Expands outward and fades */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    border: 1px solid transparent;
+    transform: scale(1);
+  }
 }
-/* This class will be added via JS for 1 second */
+
 .flash-active {
-  animation: intenseFlash 1.2s ease-out;
-  border-radius: 8px; /* Ensures flash respects rounded corners */
+  animation: neonPulse 1.2s ease-out;
+  position: relative;
+  z-index: 100 !important; /* Ensure glow sits on top of neighbors */
 }
 
-/* Specific tweaks for the score pill flash */
-.score-pill.flash-active {
-  background-color: #ffffff !important; 
-  color: #000 !important;
-}
-
-/* Specific tweaks for bet pills flash */
-.bet.flash-active {
-  background-color: #ffffff !important;
-  color: #000 !important;
-  z-index: 50;
+/* Specific tweaks to ensure the glow looks good on pills */
+.score-pill.flash-active, .bet.flash-active {
+  /* No background change, just the outer glow */
+  background-clip: padding-box; 
 }
 
 .left-row{
@@ -827,7 +837,6 @@ function drawHistoryChart(t){
   const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
   const labs=d.map(r=>new Date(r.date).toLocaleDateString());
   const ps=["Snackbar","Timbo","Pepe"];
-  // Define colors
   const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
 
   historyChart=new Chart(ctx,{
@@ -840,31 +849,27 @@ function drawHistoryChart(t){
         grad.addColorStop(0,hexToRgba(c,0.3)); 
         grad.addColorStop(1,hexToRgba(c,0));
         
-        // JITTER LOGIC:
-        // We add a tiny, invisible amount to the value based on the player index.
-        // This forces Chart.js to render them at slightly different heights so dots don't perfectly cover each other.
-        // We use '0.1' offset. It's visually distinct but mathematically negligible for the chart scale.
+        // Jitter logic to prevent exact overlap
         const jitteredData = d.map(r=> {
              let val = r[p];
-             if(t === 'matches') return val + (idx * 0.15); // Spread matches slightly
-             return val + (idx * 0.05); // Spread money very slightly
+             if(t === 'matches') return val + (idx * 0.15); 
+             return val + (idx * 0.05); 
         });
 
         return {
             label:p,
-            data: jitteredData, // Use the jittered data
+            data: jitteredData,
             borderColor:c,
-            backgroundColor: c, // Solid fill for the dot
+            backgroundColor:grad,
             fill:true,
-            backgroundColor:grad, // Gradient for the area under line
             tension:0.3,
             
-            // SMALLER, FILLED DOTS
-            pointRadius: 4, 
-            pointHoverRadius: 6,
-            pointBackgroundColor: c, // Filled with line color
-            pointBorderColor: "#1c1f23", // Dark border to separate overlapping dots
-            pointBorderWidth: 1,
+            // BIGGER DOTS TO HOLD NUMBERS
+            pointRadius: 11, 
+            pointHoverRadius: 13,
+            pointBackgroundColor: c, // Solid neon color
+            pointBorderColor: "#1c1f23", // Dark border to define the circle
+            pointBorderWidth: 2,
             borderWidth:2
         }
       })
@@ -878,28 +883,31 @@ function drawHistoryChart(t){
             legend:{display:false},
             datalabels:{
                 formatter:(v,c)=>{
-                    // Calculate real difference (ignoring the jitter we added)
+                    // Remove jitter to calculate real math
                     const d=c.dataset.data; 
                     const i=c.dataIndex;
                     if(i===0)return null;
                     
-                    // Remove jitter to get real math
                     const jitter = (c.datasetIndex * (t==='matches'?0.15:0.05));
                     const currentVal = v - jitter;
                     const prevVal = d[i-1] - jitter;
-                    
-                    const df=currentVal-prevVal;
-                    // Round it to handle floating point errors from jitter
-                    const cleanDf = Math.round(df * 100) / 100;
+                    const cleanDf = Math.round((currentVal-prevVal) * 100) / 100;
 
+                    // Only show if positive
                     if(cleanDf<=0)return null;
-                    return `+${cleanDf}`;
+                    
+                    // If it's a whole number, remove decimals (e.g. "+3" instead of "+3.0")
+                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
                 },
-                color: (c) => c.dataset.borderColor, // Text color same as line
-                font:{weight:"800",size:9},
-                align:'top', // Move text ABOVE the dot
-                offset: 4,   // Push it up slightly
-                anchor:'center'
+                color: '#111111', // Dark text to contrast against neon dots
+                font:{
+                    weight:"900", // Extra bold
+                    size: 9,
+                    family: "Inter, sans-serif"
+                },
+                align:'center', // Inside the dot
+                anchor:'center', // Inside the dot
+                offset: 0
             }
         }
     }

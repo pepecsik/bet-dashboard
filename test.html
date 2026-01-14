@@ -73,23 +73,54 @@ body{
 
 .animate-enter {
   animation: rollIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  opacity: 0; /* Start invisible */
+  opacity: 0; /* Start invisible so it can fade in */
 }
 
-/* === HISTORY CHART LEGEND === */
+/* === LEGEND FIX (Fit Content) === */
 .legend-row {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 15px;
   font-size: 11px;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin: 0 auto 10px auto; /* Centered with margin bottom */
   background: rgba(0,0,0,0.2);
-  padding: 6px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 20px; /* Rounded pill shape */
+  width: fit-content;  /* <--- THIS FIXES THE WIDE BACKGROUND */
+  border: 1px solid rgba(255,255,255,0.05);
 }
-.legend-item { display: flex; align-items: center; gap: 5px; }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
+
+/* === NEW DARK BUTTONS (Toggle Group) === */
+.toggle-group {
+  display: flex;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted); /* Grey text when inactive */
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: Inter, sans-serif;
+}
+.toggle-btn:active { transform: scale(0.95); }
+.toggle-btn.active {
+  background: var(--bg-soft); /* Lighter grey active background */
+  color: #fff; /* White text active */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+}
  
 /* PREMIUM NUMBERS */
 .bet, .week-gbp, .rank-money, .ta-c, .stat-value-high {
@@ -495,21 +526,21 @@ body{
         </div>
       </div>
       <div class="history-card" id="historyCard">
-       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span>📈 History</span>
-        <div>
-         <button id="btnMatches" class="active">Matches</button>
-         <button id="btnMoney">Money</button>
+        <div class="toggle-group">
+         <button id="btnMatches" class="toggle-btn active">Matches</button>
+         <button id="btnMoney" class="toggle-btn">Money</button>
         </div>
        </div>
        
        <div class="legend-row">
-          <div class="legend-item"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
+          <div class="legend-item" style="color:#7CFF5B"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
+          <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
+          <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
        </div>
 
-       <canvas id="historyChart" height="120"></canvas>
+       <canvas id="historyChart" height="140"></canvas>
       </div>
     </div>
   </footer>
@@ -654,17 +685,13 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
-        
-        // 1. SETUP
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        // 2. HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        // 3. HEADER PILLS
         const headerRow=document.createElement("div"); headerRow.className="row";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
@@ -687,9 +714,10 @@ function loadData(){
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // 4. MATCHES (WITH ROLL-IN ANIMATION)
+        // Store match count to offset the summary animation later
+        const matchCount = data.matches.length;
+
         data.matches.forEach((m, idx)=>{
-          // Flash Logic
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
 
@@ -697,11 +725,10 @@ function loadData(){
           lr.className="left-row"; 
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
 
-          // === NEW: ROLL-IN ANIMATION ===
-          // If it's the first load, add the animation class and a staggered delay
+          // ROLL-IN ANIMATION (LEFT)
           if(isFirstLoad) {
             lr.classList.add("animate-enter");
-            lr.style.animationDelay = (idx * 0.07) + "s"; // 0.07s delay per row
+            lr.style.animationDelay = (idx * 0.05) + "s";
           }
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
@@ -719,10 +746,10 @@ function loadData(){
 
           const rr=document.createElement("div"); rr.className="row";
           
-          // === ROLL-IN ANIMATION FOR RIGHT SIDE ===
+          // ROLL-IN ANIMATION (RIGHT)
           if(isFirstLoad) {
             rr.classList.add("animate-enter");
-            rr.style.animationDelay = (idx * 0.07) + "s";
+            rr.style.animationDelay = (idx * 0.05) + "s";
           }
 
           m.cells.forEach(c=>{
@@ -734,12 +761,22 @@ function loadData(){
           right.appendChild(rr);
         });
 
-        // 5. FOOTER
         left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
 
+        // === SUMMARY ROWS WITH ANIMATION ===
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
-          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; left.appendChild(lab);
+          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
+          left.appendChild(lab);
+          
           const rr=document.createElement("div"); rr.className="row";
+          
+          // Add animation: Start delay AFTER the last match row (matchCount)
+          if(isFirstLoad) {
+            rr.classList.add("animate-enter");
+            // e.g. if 10 matches, summary starts at 10 * 0.05 = 0.5s delay
+            rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
+          }
+
           data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
           right.appendChild(rr);
         });
@@ -756,7 +793,7 @@ function loadData(){
           ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        isFirstLoad = false; // Disable animation for next 30s refresh
+        isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
 }

@@ -58,7 +58,7 @@ body{
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg-main);
   color:var(--text-main);
-  /* DEFAULT: Desktop behaves as an app (fixed height) */
+  /* Desktop default: Fixed app height */
   height: 100vh;
   overflow: hidden; 
 }
@@ -69,34 +69,44 @@ body{
   grid-template-rows:1fr auto;
 }
 
-/* === MOBILE SCROLL FIX === */
-/* On mobile, we unlock the height so you can scroll the WHOLE page */
+/* === MOBILE SCROLL & ZOOM FIX === */
 @media (max-width: 768px){
+  /* 1. Unlock the body height so you can scroll vertically */
   body {
     height: auto;
-    overflow-y: auto; /* Allow scrolling */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
+
+  /* 2. Apply the Zoom (Scale) you like */
   .app{
+    transform: scale(0.78);
+    transform-origin: top left;
+    /* Compensate width for the scale down */
+    width: 128.2%; 
+    /* Allow height to grow naturally */
+    height: auto;
+    min-height: 128vh; /* Ensures it fills screen even when zoomed */
     display: flex;
     flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-    transform: none; /* Removed the scale trick to fix scrolling issues */
-    width: 100%;
+    margin-bottom: -20%; /* Removes empty space at bottom caused by scale */
   }
+
+  /* 3. Unlock internal containers so the page scrolls, not the cards */
   .main {
-    flex-direction: column;
     height: auto;
     overflow: visible;
+    flex-direction: row; /* Keep Left/Right side-by-side */
   }
+  
   .left-card, .right-card {
-    width: 100%;
-    max-height: none; /* Let card grow */
+    max-height: none; /* Let them grow */
     overflow: visible;
-    flex: none;
   }
+  
+  /* Adjust summary to sit nicely at bottom */
   .summary {
-    margin-bottom: 20px;
+    margin: 10px;
   }
 }
 
@@ -518,7 +528,7 @@ body{
 
 .stat-bar-container { 
   display: flex; height: 6px; gap: 4px; overflow: hidden; 
-  background: transparent; /* Container is transparent now */
+  background: transparent; 
 }
 .sb-half {
   flex: 1;
@@ -1214,10 +1224,15 @@ function openModal(m){
 
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-  // === STATS BARS FIX (CENTER SPLIT) ===
+  // === STATS BARS FIX (CENTER SPLIT & XG FIX) ===
   const sb=document.getElementById("statsArea"); sb.innerHTML="";
+  
+  // Safe parsing for xG
+  let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
+  let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
+
   const sl=[
-    {l:"Expected Goals",h:parseFloat(s.h_xg)||0,a:parseFloat(s.a_xg)||0,dec:true}, 
+    {l:"Expected Goals",h:xgH, a:xgA, dec:true}, 
     {l:"Possession",h:s.h_poss,a:s.a_poss,pct:true},
     {l:"Shots Total",h:s.h_shots_tot,a:s.a_shots_tot},
     {l:"Shots Target",h:s.h_shots,a:s.a_shots},

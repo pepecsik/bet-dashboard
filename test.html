@@ -56,7 +56,8 @@ if ("serviceWorker" in navigator) {
 body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  background:var(--bg-main);
+  /* 1. PREMIUM BACKGROUND: Replaced flat color with a deep spotlight gradient */
+  background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%);
   color:var(--text-main);
   /* Desktop default: Fixed app height */
   height: 100vh;
@@ -130,6 +131,9 @@ body{
   overflow-y:auto; 
   max-height:100%;
   scrollbar-width:none;
+  /* 2. GLASSY BORDERS (Applied globally) */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -191,9 +195,14 @@ body{
   display:grid;
   grid-template-columns:1fr 90px;
   gap:var(--gap);
-  transition: background 0.2s;
+  /* 3. JUICY CLICKS: Smooth transition for the press effect */
+  transition: transform 0.1s ease, background 0.2s;
 }
-.left-row:active { background: rgba(255,255,255,0.05); }
+.left-row:active { 
+  background: rgba(255,255,255,0.05); 
+  /* 3. JUICY CLICKS: Physical press down */
+  transform: scale(0.98);
+}
 
 .left-cell{
   background:var(--bg-soft);
@@ -232,6 +241,9 @@ body{
   overflow-y:auto;
   padding:8px;
   scrollbar-width:none;
+  /* 2. GLASSY BORDERS */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .right-card::-webkit-scrollbar { display: none; }
 
@@ -277,7 +289,9 @@ body{
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
   overflow: hidden;            
-  border: 1px solid #2f343a; 
+  /* 2. GLASSY BORDERS */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .summary-toggle{
@@ -695,7 +709,10 @@ body{
 .ta-r { display: flex; justify-content: flex-end; width: 100%; } 
 .ta-l { display: flex; justify-content: flex-start; width: 100%; }
 
-.txt-green { color: #7CFF5B; }
+/* 4. NEON TEXT SHADOWS */
+.txt-green, .week-gbp.green, .status-green {
+  text-shadow: 0 0 10px rgba(124, 255, 91, 0.4);
+}
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
 .dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }

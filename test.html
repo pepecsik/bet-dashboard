@@ -1718,14 +1718,12 @@ function drawHistoryChart(type){
     responsive: true,
     maintainAspectRatio: false,
     layout: {
-        // FIX: Add padding so labels don't hit the edges
-        padding: { top: 20, right: 20, left: 10, bottom: 5 }
+        padding: { top: 25, right: 20, left: 10, bottom: 5 }
     },
     scales: {
         x: { display: false }, 
         y: { 
             display: false, 
-            // FIX: 'grace' adds empty space above the highest point for the label
             grace: '15%' 
         } 
     },
@@ -1740,14 +1738,19 @@ function drawHistoryChart(type){
           if (diff <= 0) return null;
           return `+${diff}`;
         },
-        color: ctx => ctx.dataset.borderColor,
-        font: { weight: "bold", size: 10 },
-        // FIX: Anchor 'end' pushes the label to the outer edge of the dot
+        // FIX: High-Contrast Badges
+        color: ctx => ctx.dataset.borderColor, // Text matches line color
+        backgroundColor: '#2f343a', // Solid Dark Background (Masks lines behind it)
+        borderRadius: 4, // Rounded corners
+        padding: { top: 2, bottom: 1, left: 4, right: 4 }, // Breathing room
+        font: { weight: "800", size: 10 },
         anchor: 'end',
         align: 'top', 
-        offset: 4,
-        // FIX: Ensure labels render even if they slightly overlap the canvas edge
-        clip: false 
+        offset: 5,
+        clip: false,
+        // Add a subtle border to separate overlapping badges
+        borderWidth: 1,
+        borderColor: '#2f343a' 
       }
     }
   }

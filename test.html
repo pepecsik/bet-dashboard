@@ -51,7 +51,11 @@ if ("serviceWorker" in navigator) {
   --week-row-h:30px;
 }
 
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+  /* Removes the default ugly blue tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent; 
+}
 
 body{
   margin:0;
@@ -77,9 +81,7 @@ body{
   }
 
   .app {
-    /* CHANGED: 'zoom' handles touch coordinates better than 'transform: scale' */
     zoom: 0.78; 
-    
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -98,18 +100,16 @@ body{
   .left-card, .right-card {
     max-height: none; 
     overflow: visible;
-    /* Glassy look */
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
   
   .summary {
     margin: 10px;
-    /* Glassy look */
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
-    z-index: 10; /* Ensures footer is clickable */
+    z-index: 10; 
   }
 }
 
@@ -120,7 +120,7 @@ body{
   padding:10px;
   overflow:hidden;
   position: relative; 
-  z-index: 5; /* Ensures main content is clickable */
+  z-index: 5; 
 }
 
 /* LEFT CARD */
@@ -135,7 +135,6 @@ body{
   overflow-y:auto; 
   max-height:100%;
   scrollbar-width:none;
-  /* Glassy Border (Desktop too) */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -201,7 +200,7 @@ body{
   display:grid;
   grid-template-columns:1fr 90px;
   gap:var(--gap);
-  cursor: pointer; /* Ensure pointer shows */
+  cursor: pointer; 
   transition: transform 0.1s ease, background 0.2s;
   position: relative;
   z-index: 5;
@@ -246,7 +245,6 @@ body{
   overflow-y:auto;
   padding:8px;
   scrollbar-width:none;
-  /* Glassy Border */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -294,7 +292,6 @@ body{
   margin: 0 10px 10px 10px; 
   border-radius: 14px;        
   overflow: hidden;            
-  /* Glassy Border */
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
@@ -345,6 +342,11 @@ body{
   cursor:pointer;
   display: flex;
   flex-direction: column; 
+  /* JUICY CLICK ON RANKING CARD */
+  transition: transform 0.1s;
+}
+.ranking-card:active {
+  transform: scale(0.98);
 }
 
 #rankingBody {

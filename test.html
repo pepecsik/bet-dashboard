@@ -43,7 +43,7 @@ if ("serviceWorker" in navigator) {
   --row-h:50px;
   --gap:6px;
   --left-w:230px; 
-  --bet-w:80px;     
+  --bet-w:80px;      
   --summary-w:200px; 
   --week-row-h:30px;
 }
@@ -199,6 +199,15 @@ body{
 .team-logo{ width:38px; height:38px; object-fit:contain; }
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
+
+/* RED CARD ICON STYLES */
+.team-wrap-rel { position: relative; display: flex; align-items: center; justify-content: center; }
+.rc-badge {
+    position: absolute; bottom: -2px; right: -4px;
+    width: 10px; height: 13px; background: #ff4d4d;
+    border: 1px solid white; border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 10;
+}
 
 /* === RIGHT CARD (BETS) === */
 .right-card{
@@ -362,6 +371,9 @@ body{
 .tab-btn { flex: 1; padding: 12px; text-align: center; font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; background: transparent; border: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
 .tab-btn.active { color: #fff; border-bottom: 2px solid var(--accent-orange); background: rgba(255,255,255,0.02); }
 .modal-scroll-area { padding: 15px; overflow-y: auto; flex: 1; position:relative; }
+
+/* TABLE SCROLL FIX */
+.scroll-fix { overflow-y: auto; flex: 1; width: 100%; }
 
 .ai-story-box { background: linear-gradient(135deg, #2f343a 0%, #262a30 100%); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid var(--accent-orange); border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; line-height: 1.5; color: #e0e0e0; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 .ai-title { font-size: 10px; color: var(--accent-orange); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
@@ -553,7 +565,7 @@ body{
       <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
       <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
     </div>
-    <div class="tab-content active" style="padding-top:0;">
+    <div class="tab-content active scroll-fix" style="padding-top:0;">
       <div id="tableBody"></div>
     </div>
   </div>
@@ -681,10 +693,19 @@ function loadData(){
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // STATUS LOGIC: IF NS -> Show Time. ELSE -> Show Status (Min/FT)
           const displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
 
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div>
+          // RED CARD CHECK
+          const hRed = (m.stats && m.stats.h_red) || 0;
+          const aRed = (m.stats && m.stats.a_red) || 0;
+
+          lr.innerHTML=`<div class="left-cell match">
+               <div class="match-teams">
+                   <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
+                   <span>-</span>
+                   <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
+               </div>
+          </div>
           <div class="left-cell">
              <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
@@ -786,6 +807,7 @@ function drawHistoryChart(t){
             y:{
                 display:true, 
                 position:'left',
+                beginAtZero: true, // FORCE 0 START
                 grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
                 ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
                 grace:'5%' 
@@ -917,7 +939,7 @@ function findPlayerStats(name, list) {
     if(!list) return null;
     let normName = normalizeName(name);
     let parts = normName.split(" ");
-    
+     
     let found = list.find(x => normalizeName(x.name) === normName);
     if(found) return found;
 

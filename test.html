@@ -43,7 +43,8 @@ if ("serviceWorker" in navigator) {
   --row-h:50px;
   --gap:6px;
   --left-w:230px; 
-  --bet-w:50px;      
+  --header-pill-w:50px; /* New: Makes header pills square */
+  --bet-w:80px; /* Keeps bet pills rectangular */
   --summary-w:200px; 
   --week-row-h:30px;
 }
@@ -213,7 +214,7 @@ body{
 /* AVATAR STYLES */
 .header-pill.has-avatar {
     padding: 0; 
-    overflow: hidden; /* This cuts off the edges of the zoomed image */
+    overflow: hidden; 
     display: flex; 
     align-items: center; 
     justify-content: center;
@@ -224,26 +225,17 @@ body{
 .avatar-img {
     width: 100%; 
     height: 100%;
-    
-    /* 1. FORCE FILL: This makes the image cover the whole button, no black bars */
     object-fit: cover; 
-    
-    /* 2. CROP POSITION: Focus slightly higher to hide the nameplate at the bottom */
-    object-position: center 25%; 
-    
-    /* 3. ZOOM: Scale up to remove the borders. Adjust 1.5 to 1.6 if you need more zoom */
-    transform: scale(1.5); 
-    
+    object-position: center 40%; /* Lowered focus to center face */
+    transform: scale(1.8); /* Increased zoom */
     display: block;
     transition: transform 0.2s;
 }
 
 .header-pill.has-avatar:hover .avatar-img {
-    /* Zoom even more when hovering */
-    transform: scale(1.7); 
+    transform: scale(2.0); /* Increased hover zoom */
 }
 
-/* Status colors apply to the container background, showing behind transparent parts */
 /* === RIGHT CARD (BETS) === */
 .right-card{
   flex:1; background:var(--bg-card); border-radius:14px;
@@ -256,14 +248,16 @@ body{
 .row{ display:flex; gap:var(--gap); }
 
 .header-pill{
-  width:var(--bet-w); height:var(--row-h); background:var(--bg-soft);
+  width:var(--header-pill-w); /* Uses the new square width */
+  height:var(--row-h); background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:700; transition: all 0.5s ease;
 }
 .right-divider{height:8px}
 
 .bet{
-  width:var(--bet-w); height:var(--row-h); border-radius:10px;
+  width:var(--bet-w); /* Keeps bet pills rectangular */
+  height:var(--row-h); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
 }

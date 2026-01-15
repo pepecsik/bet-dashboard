@@ -43,8 +43,8 @@ if ("serviceWorker" in navigator) {
   --row-h:50px;
   --gap:6px;
   --left-w:230px; 
-  --header-pill-w:50px; /* New: Makes header pills square */
-  --bet-w:80px; /* Keeps bet pills rectangular */
+  --header-pill-w:50px; /* Square size for the actual pill */
+  --bet-w:80px; /* Wider size for columns */
   --summary-w:200px; 
   --week-row-h:30px;
 }
@@ -212,6 +212,15 @@ body{
 }
 
 /* AVATAR STYLES */
+/* New wrapper to center the square pill above wide columns */
+.header-pill-wrapper {
+    width: var(--bet-w); /* Match column width */
+    height: var(--row-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .header-pill.has-avatar {
     padding: 0; 
     overflow: hidden; 
@@ -226,14 +235,15 @@ body{
     width: 100%; 
     height: 100%;
     object-fit: cover; 
-    object-position: center 40%; /* Lowered focus to center face */
-    transform: scale(1.8); /* Increased zoom */
+    /* Changed from 40% to 65% to move faces down */
+    object-position: center 65%; 
+    transform: scale(1.8); 
     display: block;
     transition: transform 0.2s;
 }
 
 .header-pill.has-avatar:hover .avatar-img {
-    transform: scale(2.0); /* Increased hover zoom */
+    transform: scale(2.0); 
 }
 
 /* === RIGHT CARD (BETS) === */
@@ -248,7 +258,7 @@ body{
 .row{ display:flex; gap:var(--gap); }
 
 .header-pill{
-  width:var(--header-pill-w); /* Uses the new square width */
+  width:var(--header-pill-w); /* Square width */
   height:var(--row-h); background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:700; transition: all 0.5s ease;
@@ -256,7 +266,7 @@ body{
 .right-divider{height:8px}
 
 .bet{
-  width:var(--bet-w); /* Keeps bet pills rectangular */
+  width:var(--bet-w); /* Wider column width */
   height:var(--row-h); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
@@ -702,6 +712,11 @@ function loadData(){
            });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            
+           // 1. Create a wrapper for centering
+           const wrapper = document.createElement("div");
+           wrapper.className = "header-pill-wrapper";
+
+           // 2. Create the actual pill (square)
            const p=document.createElement("div"); 
            p.className="header-pill";
            
@@ -713,7 +728,7 @@ function loadData(){
                p.textContent=h.name;
            }
 
-           // COLOR/STATUS LOGIC (Applies to the PILL background)
+           // COLOR/STATUS LOGIC
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
                if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
@@ -722,7 +737,9 @@ function loadData(){
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
            
-           headerRow.appendChild(p);
+           // 3. Put pill in wrapper, wrapper in row
+           wrapper.appendChild(p);
+           headerRow.appendChild(wrapper);
         });
 
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";

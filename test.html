@@ -224,7 +224,7 @@ body{
 /* AVATAR STYLES */
 .header-pill-wrapper {
     width: var(--bet-w); 
-    height: var(--header-h); /* Wrapper matches big header */
+    height: var(--header-h);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,20 +243,23 @@ body{
 .avatar-img {
     width: 100%; 
     height: 100%;
-    object-fit: cover; 
     
-    /* Focus slightly above center to frame face */
-    object-position: center 30%; 
+    /* "contain" ensures the whole square image fits inside the box */
+    object-fit: contain; 
     
-    /* Increased scale to eliminate side borders */
-    transform: scale(2.1); 
+    /* Centers it perfectly */
+    object-position: center; 
+    
+    /* No scaling needed anymore since you cropped them */
+    transform: none; 
     
     display: block;
     transition: transform 0.2s;
 }
 
 .header-pill.has-avatar:hover .avatar-img {
-    transform: scale(2.3); 
+    /* Just a small pop effect when you hover */
+    transform: scale(1.05); 
 }
 
 /* === RIGHT CARD (BETS) === */

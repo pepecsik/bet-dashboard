@@ -43,7 +43,7 @@ if ("serviceWorker" in navigator) {
   
   /* --- DIMENSIONS --- */
   
-  /* 1. MATCH ROWS (Compact) */
+  /* 1. MATCH ROWS (Back to small/compact) */
   --row-h:50px; 
   
   /* 2. HEADER ROW (Big & Bold) */
@@ -244,15 +244,18 @@ body{
     width: 100%; 
     height: 100%;
     object-fit: cover; 
-    /* MOVED CAMERA UP (LOWER %) TO PUSH FACE DOWN */
-    object-position: center 35%; 
-    transform: scale(1.8); 
+    
+    /* 15% focuses near the TOP of the source image. 
+       This pushes the visual content DOWN into the frame. */
+    object-position: center 15%; 
+    
+    transform: scale(1.7); /* Slight adjustment to fit better */
     display: block;
     transition: transform 0.2s;
 }
 
 .header-pill.has-avatar:hover .avatar-img {
-    transform: scale(2.0); 
+    transform: scale(1.9); 
 }
 
 /* === RIGHT CARD (BETS) === */
@@ -372,7 +375,6 @@ body{
   border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
   font-family: Inter, sans-serif;
 }
-.toggle-btn:active { transform: scale(0.95); }
 .toggle-btn.active {
   background: var(--bg-soft); color: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);

@@ -211,20 +211,25 @@ body{
 }
 
 /* AVATAR STYLES */
-.avatar-svg {
-    height: 38px;
-    width: 38px;
+.header-pill.has-avatar {
+    padding: 0; 
+    overflow: hidden; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    background: var(--bg-soft); /* Default background behind transparency */
+}
+
+.avatar-img {
+    width: 100%; 
+    height: 100%;
+    object-fit: contain; 
     display: block;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
     transition: transform 0.2s;
 }
-.header-pill.has-avatar {
-    padding: 0;
-    overflow: hidden;
-    background: transparent !important; /* Let avatar handle background or stick to transparent */
-}
-.header-pill.has-avatar:hover .avatar-svg {
-    transform: scale(1.1);
+
+.header-pill.has-avatar:hover .avatar-img {
+    transform: scale(1.1); 
 }
 
 /* === RIGHT CARD (BETS) === */
@@ -673,34 +678,13 @@ function loadData(){
         const headerRow=document.createElement("div"); headerRow.className="row";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
-        // === CUSTOM AVATARS DEFINITION ===
-        // === CUSTOM AVATARS DEFINITION ===
+        // === AVATAR CONFIGURATION ===
         const AVATARS = {
-            "Snackbar": `<svg viewBox="0 0 100 100" class="avatar-svg">
-                <path d="M15,100 L85,100 L85,50 Q85,0 50,0 Q15,0 15,50 Z" fill="#f3f4f6"/>
-                <ellipse cx="50" cy="55" rx="30" ry="34" fill="#e0ac69"/>
-                <path d="M32,55 Q38,50 44,55" fill="none" stroke="#222" stroke-width="2"/>
-                <path d="M30,53 L32,55 M44,55 L46,53" stroke="#222" stroke-width="1.5"/>
-                <path d="M56,55 Q62,50 68,55" fill="none" stroke="#222" stroke-width="2"/>
-                <path d="M54,53 L56,55 M68,55 L70,53" stroke="#222" stroke-width="1.5"/>
-                <rect x="42" y="68" width="16" height="40" transform="rotate(-10 50 80)" fill="#8B4513" rx="3"/>
-            </svg>`,
-            "Timbo": `<svg viewBox="0 0 100 100" class="avatar-svg">
-                <rect x="15" y="35" width="70" height="55" rx="15" fill="#f5cca0"/>
-                <path d="M25,35 Q50,15 75,35 Z" fill="#3b82f6"/>
-                <circle cx="35" cy="55" r="3" fill="#222"/>
-                <circle cx="65" cy="55" r="3" fill="#222"/>
-                <path d="M40,75 L60,75" stroke="#222" stroke-width="3" stroke-linecap="round"/>
-            </svg>`,
-            "Pepe": `<svg viewBox="0 0 100 100" class="avatar-svg">
-                <circle cx="50" cy="50" r="42" fill="#e0ac69"/>
-                <path d="M20,30 L50,50 L80,30" stroke="#222" stroke-width="2"/>
-                <circle cx="35" cy="45" r="14" fill="#222"/>
-                <circle cx="65" cy="45" r="5" fill="#222"/>
-                <path d="M35,70 Q50,85 65,70 Z" fill="#440000"/>
-                <rect x="48" y="72" width="7" height="6" fill="#FFD700"/>
-            </svg>`
+            "Snackbar": "./snackbar.png", 
+            "Timbo":    "./timbo.png",
+            "Pepe":     "./pepe.png"
         };
+
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{
@@ -717,26 +701,24 @@ function loadData(){
            
            // AVATAR LOGIC
            if(AVATARS[h.name]) {
-               p.innerHTML = AVATARS[h.name];
                p.classList.add("has-avatar");
-               // If green/winning, we add a glow effect to the avatar instead of background
-               if(hasB&&!hasR&&allG&&pen===0) {
-                   p.style.filter = "drop-shadow(0 0 8px #7CFF5B)";
-                   if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
-               } else if(hasB&&!hasR&&allG&&pen>0) {
-                   p.style.filter = "drop-shadow(0 0 5px #7CFF5B)";
-               }
+               p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
            } else {
                p.textContent=h.name;
-               // STANDARD PILL LOGIC FOR NON-AVATARS
-               if(hasB&&!hasR&&allG&&pen===0){p.classList.add("status-green");if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}}
-               else if(hasB&&!hasR&&allG&&pen>0)p.classList.add("status-green-live");
-               else if(h.status==='orange')p.classList.add("status-orange");
-               else if(h.status==='red')p.classList.add("status-red");
            }
+
+           // COLOR/STATUS LOGIC (Applies to the PILL background)
+           if(hasB&&!hasR&&allG&&pen===0){
+               p.classList.add("status-green");
+               if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
+           }
+           else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
+           else if(h.status==='orange') p.classList.add("status-orange");
+           else if(h.status==='red') p.classList.add("status-red");
            
            headerRow.appendChild(p);
         });
+
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
         const matchCount = data.matches.length;

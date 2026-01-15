@@ -41,14 +41,17 @@ if ("serviceWorker" in navigator) {
   --text-muted:#9aa0a6;
   --accent-orange: #ff9f43;
   
-  /* INCREASED ROW HEIGHT AGAIN FOR BIGGER HEADER */
-  --row-h:70px; 
+  /* --- DIMENSIONS --- */
+  
+  /* 1. MATCH ROWS (Compact) */
+  --row-h:50px; 
+  
+  /* 2. HEADER ROW (Big & Bold) */
+  --header-h:70px; 
+  --header-pill-w:70px; /* Square header pills */
+  
   --gap:6px;
   --left-w:230px; 
-  
-  /* Ensure header pill width matches height for perfect squares */
-  --header-pill-w:var(--row-h); 
-  
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
@@ -157,17 +160,15 @@ body{
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
-  height:var(--row-h); background:var(--bg-soft); border-radius:10px;
+  height:var(--header-h); /* BIG HEADER ROW */
+  background:var(--bg-soft); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  /* SCALED UP FONT */
-  font-size:15px; font-weight:800; position: relative; 
+  font-size:16px; font-weight:800; position: relative; 
 }
 
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; transition: transform 0.1s; 
-  /* SCALED UP ICON */
-  width: 38px; height: 38px;
+  cursor: pointer; transition: transform 0.1s; width: 40px; height: 40px;
   border-radius: 50%; overflow: hidden; background: #ffffff; 
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 20;
@@ -177,8 +178,7 @@ body{
 
 .brand-btn {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  /* SCALED UP ICON */
-  width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
   background: transparent; border-radius: 8px; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 20;
 }
@@ -187,7 +187,8 @@ body{
 .left-divider{height:8px}
 
 .left-row{
-  height:var(--row-h); display:grid; grid-template-columns:1fr 90px;
+  height:var(--row-h); /* COMPACT MATCH ROWS */
+  display:grid; grid-template-columns:1fr 90px;
   gap:var(--gap); cursor: pointer; 
   transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s;
   position: relative; z-index: 5; border-radius: 12px; 
@@ -223,7 +224,7 @@ body{
 /* AVATAR STYLES */
 .header-pill-wrapper {
     width: var(--bet-w); 
-    height: var(--row-h);
+    height: var(--header-h); /* Wrapper matches big header */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,8 +244,8 @@ body{
     width: 100%; 
     height: 100%;
     object-fit: cover; 
-    /* Adjusted to center 85% to move faces down further */
-    object-position: center 85%; 
+    /* MOVED CAMERA UP (LOWER %) TO PUSH FACE DOWN */
+    object-position: center 35%; 
     transform: scale(1.8); 
     display: block;
     transition: transform 0.2s;
@@ -267,16 +268,17 @@ body{
 
 .header-pill{
   width:var(--header-pill-w); 
-  height:var(--row-h); background:var(--bg-soft);
+  height:var(--header-h); /* BIG HEADER PILL */
+  background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
-  /* SCALED UP FONT */
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 .right-divider{height:8px}
 
 .bet{
   width:var(--bet-w); 
-  height:var(--row-h); border-radius:10px;
+  height:var(--row-h); /* COMPACT BET ROW */
+  border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
 }

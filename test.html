@@ -72,6 +72,11 @@ body{
   height: 100vh;
   overflow: hidden; 
   letter-spacing: -0.02em; 
+  
+  /* PREMIUM POLISH: CRISP FONTS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* PREMIUM NUMBERS */
@@ -133,13 +138,11 @@ body{
   .main { flex-direction: row; height: auto; overflow: visible; margin-bottom: 10px; }
   .left-card, .right-card {
     max-height: none; overflow: visible;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); /* Deep shadow */
   }
   .summary {
     margin: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); /* Deep shadow */
     position: relative; z-index: 10; 
   }
   @media (max-width: 360px) { .history-title-text { display: none; } }
@@ -152,10 +155,18 @@ body{
 
 /* === LEFT CARD (MATCHES) === */
 .left-card{
-  width:var(--left-w); background:var(--bg-card); border-radius:14px;
+  width:var(--left-w); 
+  
+  /* PREMIUM POLISH: GLASSMORPHISM */
+  background: rgba(38, 42, 48, 0.85); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+  
+  border-radius:14px;
   padding:8px; display:flex; flex-direction:column; gap:var(--gap);
   overflow-y:auto; max-height:100%; scrollbar-width:none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -224,7 +235,7 @@ body{
 /* AVATAR STYLES */
 .header-pill-wrapper {
     width: var(--bet-w); 
-    height: var(--header-h);
+    height: var(--header-h); /* Wrapper matches big header */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,30 +254,35 @@ body{
 .avatar-img {
     width: 100%; 
     height: 100%;
+    object-fit: cover; 
     
-    /* "contain" ensures the whole square image fits inside the box */
-    object-fit: contain; 
+    /* 15% focuses near the TOP of the source image to push visuals DOWN */
+    object-position: center 15%; 
     
-    /* Centers it perfectly */
-    object-position: center; 
-    
-    /* No scaling needed anymore since you cropped them */
-    transform: none; 
+    /* Scale 2.1 eliminates side borders */
+    transform: scale(2.1); 
     
     display: block;
     transition: transform 0.2s;
 }
 
 .header-pill.has-avatar:hover .avatar-img {
-    /* Just a small pop effect when you hover */
-    transform: scale(1.05); 
+    transform: scale(2.3); 
 }
 
 /* === RIGHT CARD (BETS) === */
 .right-card{
-  flex:1; background:var(--bg-card); border-radius:14px;
+  flex:1; 
+  
+  /* PREMIUM POLISH: GLASSMORPHISM */
+  background: rgba(38, 42, 48, 0.85); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+
+  border-radius:14px;
   overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .right-card::-webkit-scrollbar { display: none; }
 
@@ -292,9 +308,16 @@ body{
 
 /* === SUMMARY & FOOTER === */
 .summary { 
-  background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px;        
-  overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08); position: relative; z-index: 10;
+  /* PREMIUM POLISH: GLASSMORPHISM */
+  background: rgba(38, 42, 48, 0.85); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+
+  margin: 0 10px 10px 10px; border-radius: 14px;        
+  overflow: hidden; 
+  position: relative; z-index: 10;
 }
 
 .summary-toggle{
@@ -406,10 +429,26 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
-.status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
+/* PREMIUM POLISH: JUICY GRADIENTS & BORDERS */
+.status-green { 
+    background: linear-gradient(135deg, #7CFF5B 0%, #4caf50 100%) !important; 
+    color: #052e16 !important; 
+    border: 1px solid rgba(255,255,255,0.2); 
+    box-shadow: 0 4px 15px rgba(124, 255, 91, 0.3); 
+    animation: none; 
+}
+
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 .status-orange { background: var(--accent-orange) !important; color: #1c1f23 !important; animation: nervousShiver 0.3s infinite linear; box-shadow: 0 0 15px rgba(255, 159, 67, 0.6); }
-.status-red { background: #ff4d4d !important; color: #fff !important; opacity: 0.8; border: 1px solid #992222; }
+
+.status-red { 
+    background: linear-gradient(135deg, #ff4d4d 0%, #cc0000 100%) !important; 
+    color: #fff !important; 
+    opacity: 0.9; 
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 15px rgba(255, 77, 77, 0.3);
+}
+
 @keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
 .status-green-live { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; animation: greenHeartbeat 1.5s infinite; }
 
@@ -517,6 +556,22 @@ body{
 .tbl-form-wrap { display: flex; gap: 2px; justify-content: flex-end; }
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
 .dot-W { background: #7CFF5B; } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
+
+/* PREMIUM POLISH: CUSTOM SCROLLBARS */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
 
 </style>
 </head>

@@ -43,7 +43,8 @@ if ("serviceWorker" in navigator) {
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  --header-h:70px; 
+  /* UPDATED: Header slightly smaller */
+  --header-h:55px; 
   --header-pill-w:70px;
   --gap:6px;
   --left-w:230px; 
@@ -834,12 +835,23 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
-        // SHAME AND FIRE RANKING LOGIC
+        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
           
-          if(i===0) rowClass += " on-fire";
+          // Fire Logic: Only if money actually increased from last history point
+          if(i===0) {
+              if(data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
+                  const hist = data.chartData.money;
+                  const currentMoney = hist[hist.length-1][r.name] || 0;
+                  const prevMoney = hist[hist.length-2][r.name] || 0;
+                  if(currentMoney > prevMoney) {
+                      rowClass += " on-fire";
+                  }
+              }
+          }
+
           if(i===data.ranking.length-1 && data.ranking.length>2) {
              rankIcon = "💩"; 
              rowClass += " shame-row";
@@ -955,7 +967,7 @@ function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
     
-    // --- 1. CONSENSUS LOGIC (FIXED) ---
+    // --- 1. GROUP PREDICTIONS (UPDATED) ---
     let consensusHTML = "";
     
     if(matchData && matchData.cells) {
@@ -1002,21 +1014,29 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
             const hPct = (votes.H / votes.Total) * 100;
             const dPct = (votes.D / votes.Total) * 100;
             const aPct = (votes.A / votes.Total) * 100;
+
+            // Determine MAX percentage for coloring
+            const maxPct = Math.max(hPct, dPct, aPct);
+            
+            // Logic: Highest is Green (#7CFF5B), others are Dark Gray (#555)
+            const hColor = hPct === maxPct ? '#7CFF5B' : '#555';
+            const dColor = dPct === maxPct ? '#7CFF5B' : '#555';
+            const aColor = aPct === maxPct ? '#7CFF5B' : '#555';
             
             consensusHTML = `
             <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Consensus</div>
+                <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
                 
                 <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
-                    <div class="animate-bar" style="width:${hPct}%; background:#7CFF5B;"></div>
-                    <div class="animate-bar" style="width:${dPct}%; background:#aaa;"></div>
-                    <div class="animate-bar" style="width:${aPct}%; background:#ff4d4d;"></div>
+                    <div class="animate-bar" style="width:${hPct}%; background:${hColor};"></div>
+                    <div class="animate-bar" style="width:${dPct}%; background:${dColor};"></div>
+                    <div class="animate-bar" style="width:${aPct}%; background:${aColor};"></div>
                 </div>
                 
                 <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
-                    <span style="color:${hPct>0?'#7CFF5B':'#555'}">${Math.round(hPct)}% ${home}</span>
-                    <span style="color:${dPct>0?'#ddd':'#555'}">${Math.round(dPct)}% Draw</span>
-                    <span style="color:${aPct>0?'#ff4d4d':'#555'}">${Math.round(aPct)}% ${away}</span>
+                    <span style="color:${hPct>0?hColor:'#555'}">${Math.round(hPct)}% ${home}</span>
+                    <span style="color:${dPct>0?dColor:'#555'}">${Math.round(dPct)}% Draw</span>
+                    <span style="color:${aPct>0?aColor:'#555'}">${Math.round(aPct)}% ${away}</span>
                 </div>
             </div>`;
         }

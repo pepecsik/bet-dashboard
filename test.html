@@ -12,22 +12,12 @@
 <meta name="apple-mobile-web-app-title" content="Juice Bets">
 
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png">
-<link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png">
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/bet-dashboard/sw.js").catch(e => console.log(e));
-  });
-}
-</script>
- 
-<title>Bet Dashboard</title>
+<title>Bet Dashboard v2</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -85,6 +75,7 @@ body{
   opacity: 0; 
 }
 
+/* ORIGINAL FLASH (White) for updates */
 @keyframes breathingGlow {
   0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
   50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
@@ -96,6 +87,22 @@ body{
   background-clip: padding-box;
   position: relative;
 }
+
+/* NEW: SWEAT-O-METER PULSE (Orange/Red) */
+/* Distinct from flash-active. Faster, more anxious. */
+@keyframes nervousPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.0); transform: scale(1); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 159, 67, 0.3); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.0); transform: scale(1); }
+}
+.sweat-active {
+    animation: nervousPulse 0.8s ease-in-out infinite !important;
+    border: 1px solid var(--accent-orange) !important;
+    color: #1c1f23 !important;
+    background: var(--accent-orange) !important;
+    font-weight: 800;
+}
+
 .score-pill, .bet { transition: all 0.3s; }
 
 .skeleton {
@@ -150,12 +157,17 @@ body{
 }
 .left-card::-webkit-scrollbar { display: none; }
 
-.left-header{
+/* GLASSMORPHISM HEADERS */
+.left-header {
   height:var(--header-h);
-  background:var(--bg-soft); border-radius:10px;
+  background: rgba(47, 52, 58, 0.85); /* Semi transparent */
+  backdrop-filter: blur(12px); /* Blur effect */
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-size:11px; /* Smaller text for Matches */
-  font-weight:800; position: relative; 
+  font-size:11px; 
+  font-weight:800; position: sticky; top: 0; z-index: 20; 
 }
 
 .pl-btn {
@@ -212,33 +224,6 @@ body{
     z-index: 10;
 }
 
-.header-pill-wrapper {
-    width: var(--bet-w); 
-    height: var(--header-h);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.header-pill.has-avatar {
-    padding: 0; 
-    overflow: hidden; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    background: var(--bg-soft); 
-    position: relative;
-}
-
-.avatar-img {
-    width: 100%; height: 100%;
-    object-fit: contain; object-position: center; 
-    transform: none; display: block;
-    transition: transform 0.2s;
-}
-
-.header-pill.has-avatar:hover .avatar-img { transform: scale(1.05); }
-
 /* === RIGHT CARD (BETS) === */
 .right-card{
   flex:1; background:var(--bg-card); border-radius:14px;
@@ -250,21 +235,72 @@ body{
 .rows{ display:flex; flex-direction:column; gap:var(--gap); min-width:max-content; }
 .row{ display:flex; gap:var(--gap); }
 
+.header-row-sticky {
+  position: sticky; top: 0; z-index: 20; 
+  background: rgba(38, 42, 48, 0.1); /* Transparent to let pills handle blur */
+}
+
+.header-pill-wrapper {
+    width: var(--bet-w); 
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Glassmorphism for pills container */
+    background: rgba(47, 52, 58, 0.85); 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
 .header-pill{
   width:var(--header-pill-w); 
-  height:var(--header-h);
+  height:50px; /* Smaller inner pill */
   background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
+
+.header-pill.has-avatar { padding: 0; overflow: hidden; position: relative; }
+.avatar-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
 .right-divider{height:8px}
 
+/* --- TICKET STUB BET STYLING --- */
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius:10px;
+  border-radius: 4px; /* Slight rounded corners */
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
+  position: relative;
+  
+  /* The Serrated Edge (Receipt Look) */
+  --bet-bg: #ccc; /* Default, overridden in JS */
+  background: radial-gradient(circle at 0 50%, transparent 4px, var(--bet-bg) 5px), 
+              radial-gradient(circle at 100% 50%, transparent 4px, var(--bet-bg) 5px);
+  background-size: 51% 100%;
+  background-position: 0 0, 100% 0;
+  background-repeat: no-repeat;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+}
+
+/* === TROLL BAR === */
+.troll-bar {
+  margin: 0 10px 10px;
+  padding: 10px;
+  background: linear-gradient(90deg, #ff9f43, #ff4d4d);
+  color: #1c1f23;
+  font-weight: 800; font-size: 11px;
+  text-align: center; border-radius: 8px;
+  display: none; /* Hidden by default */
+  animation: rollIn 0.5s ease;
+  box-shadow: 0 4px 15px rgba(255, 77, 77, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative; z-index: 15;
 }
 
 /* === SUMMARY & FOOTER === */
@@ -394,8 +430,6 @@ body{
 .animate-bar { 
     transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); 
     width: 0%; 
-    
-    /* ADD THIS if you want 0% to still show a tiny line */
     min-width: 4px; 
 }
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
@@ -461,7 +495,7 @@ body{
 .sum-player { font-weight: 700; color: #fff; }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
-.pitch-container { width: 100%; aspect-ratio: 2/3; background: #2e5a2e; background: repeating-linear-gradient(0deg, #2e5a2e 0px, #2e5a2e 40px, #366336 40px, #366336 80px); border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 20px; }
+.pitch-container { width: 100%; aspect-ratio: 2/3; background: #2e5a2e; background: repeating-linear-gradient(0deg, #2e5a2e 0px, #2e5a2e 40px, #366336 40px, #366336 80px); border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 20px; transition: background 1s ease; }
 .pitch-line { position: absolute; border: 1px solid rgba(255,255,255,0.3); }
 .center-line { top: 50%; left: 0; right: 0; }
 .center-circle { top: 50%; left: 50%; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); }
@@ -521,6 +555,8 @@ body{
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
+
+  <div id="trollBar" class="troll-bar"></div>
 
   <footer class="summary">
     <div class="summary-toggle open" id="summaryToggle"></div>
@@ -632,6 +668,7 @@ const REFRESH_MS=30000;
 let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
+let hasTrolled = false;
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
@@ -683,8 +720,11 @@ function renderSkeletons() {
   const lh=document.createElement("div"); lh.className="left-header"; 
   lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
   left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
-  const rh=document.createElement("div"); rh.className="row";
-  for(let i=0;i<5;i++){const p=document.createElement("div");p.className="header-pill skeleton";rh.appendChild(p)}
+  const rh=document.createElement("div"); rh.className="row header-row-sticky";
+  for(let i=0;i<5;i++){
+    const w=document.createElement("div"); w.className="header-pill-wrapper";
+    const p=document.createElement("div");p.className="header-pill skeleton"; w.appendChild(p); rh.appendChild(w);
+  }
   right.appendChild(rh); right.appendChild(document.createElement("div")).className="right-divider";
   for(let i=0;i<10;i++){
     const lr=document.createElement("div"); lr.className="left-row sk-row"; lr.innerHTML=`<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`; left.appendChild(lr);
@@ -704,8 +744,8 @@ function loadData(){
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        // NO STICKY HEADER
-        const headerRow=document.createElement("div"); headerRow.className="row";
+        // HEADER ROW STICKY
+        const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
         // === AVATAR CONFIGURATION ===
@@ -781,6 +821,15 @@ function loadData(){
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
 
+          // SWEAT-O-METER LOGIC
+          const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
+          const minutes = parseInt(m.status) || 0;
+          const isClose = Math.abs(hScore - aScore) === 1;
+          const isLate = (minutes >= 85 || m.status === "ET") && m.status !== "FT" && m.status !== "HT";
+          
+          // If Live, Late, and 1 Goal Difference -> SWEAT
+          const isSweating = isLate && isClose && live;
+
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
                     <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
@@ -789,7 +838,7 @@ function loadData(){
                 </div>
           </div>
           <div class="left-cell">
-             <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
+             <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${isSweating ? 'sweat-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
              </div>
@@ -806,7 +855,15 @@ function loadData(){
           m.cells.forEach(c=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
-              if(c.value){el.textContent=c.value;el.style.background=c.color}
+              if(c.value){
+                  el.textContent=c.value;
+                  // Set CSS variable for ticket stub gradient
+                  el.style.setProperty('--bet-bg', c.color || '#262a30');
+                  el.style.backgroundColor = c.color; // Fallback
+              } else {
+                  // Empty bet styling
+                  el.style.setProperty('--bet-bg', 'transparent');
+              }
               rr.appendChild(el);
           });
           right.appendChild(rr);
@@ -822,7 +879,14 @@ function loadData(){
             rr.classList.add("animate-enter");
             rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
           }
-          data.betSummary[i].cells.forEach(c=>{const el=document.createElement("div");el.className="bet";el.textContent=formatGBP(c.value);el.style.background=c.color;rr.appendChild(el)});
+          data.betSummary[i].cells.forEach(c=>{
+             const el=document.createElement("div");
+             el.className="bet";
+             el.textContent=formatGBP(c.value);
+             el.style.setProperty('--bet-bg', c.color || '#2f343a');
+             el.style.backgroundColor = c.color;
+             rr.appendChild(el);
+          });
           right.appendChild(rr);
         });
 
@@ -838,7 +902,7 @@ function loadData(){
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
           
-          // Fire Logic: Only if money actually increased from last history point
+          // Fire Logic
           if(i===0) {
               if(data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
                   const hist = data.chartData.money;
@@ -858,9 +922,38 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
+        // TROLL BAR TRIGGER
+        if(!hasTrolled && data.ranking && data.ranking.length > 1) {
+            triggerTroll(data.ranking);
+            hasTrolled = true;
+        }
+
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
+}
+
+function triggerTroll(rankingData) {
+    if(!rankingData || rankingData.length < 2) return;
+    const loser = rankingData[rankingData.length - 1];
+    const winner = rankingData[0];
+    
+    const roasts = [
+        `Someone tell ${loser.name} this isn't golf. High scores are good.`,
+        `${loser.name} is donating to the bookies again.`,
+        `Alert: ${loser.name} has forgotten how to win.`,
+        `Is ${loser.name} actually trying to lose?`,
+        `Look at ${winner.name} carrying the team!`
+    ];
+
+    // 20% chance to show message
+    if(Math.random() > 0.8) { 
+        const msg = roasts[Math.floor(Math.random() * roasts.length)];
+        const el = document.getElementById("trollBar");
+        el.innerText = "🔥 TRASH TALK: " + msg;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 8000);
+    }
 }
 
 function drawHistoryChart(t){
@@ -1087,6 +1180,20 @@ function openModal(m){
 
   try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
+  // PITCH PRESSURE GRADIENT
+  const pitch = document.getElementById("pitch");
+  if (s.h_xg !== undefined && s.a_xg !== undefined) {
+    if (s.h_xg > s.a_xg) {
+       // Green tint on the AWAY (top) half to show Home pressure
+       pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
+    } else if (s.a_xg > s.h_xg) {
+       // Red/Orange tint on HOME (bottom) half to show Away pressure
+       pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
+    } else {
+        pitch.style.background = "#2e5a2e"; // Reset
+    }
+  }
+
   // 1. GENERATE GROUP PREDICTIONS
   let consensusHTML = "";
   if(m && m.cells) {
@@ -1113,7 +1220,6 @@ function openModal(m){
           const dPct = (votes.D / votes.Total) * 100;
           const aPct = (votes.A / votes.Total) * 100;
           
-          // --- NEW COLOR LOGIC ---
           const sortArr = [
               {type:'H', val:hPct, label:hCode},
               {type:'D', val:dPct, label:'Draw'},
@@ -1122,23 +1228,20 @@ function openModal(m){
 
           let colors = { H:'#555', D:'#555', A:'#555' };
 
-          // Case 1: Tie for top place
           if(sortArr[0].val === sortArr[1].val) {
-              colors[sortArr[0].type] = '#7CFF5B'; // Green 1
-              colors[sortArr[1].type] = '#4BAA35'; // Green 2 (Darker)
-              colors[sortArr[2].type] = '#ff4d4d'; // Red (Lowest)
+              colors[sortArr[0].type] = '#7CFF5B'; 
+              colors[sortArr[1].type] = '#4BAA35'; 
+              colors[sortArr[2].type] = '#ff4d4d'; 
           } 
-          // Case 2: Tie for bottom place
           else if(sortArr[1].val === sortArr[2].val) {
-              colors[sortArr[0].type] = '#7CFF5B'; // Green (Winner)
-              colors[sortArr[1].type] = '#ff9f43'; // Orange 1
-              colors[sortArr[2].type] = '#d67d26'; // Orange 2 (Darker)
+              colors[sortArr[0].type] = '#7CFF5B'; 
+              colors[sortArr[1].type] = '#ff9f43'; 
+              colors[sortArr[2].type] = '#d67d26'; 
           } 
-          // Case 3: Distinct
           else {
-              colors[sortArr[0].type] = '#7CFF5B'; // Green
-              colors[sortArr[1].type] = '#ff9f43'; // Orange
-              colors[sortArr[2].type] = '#ff4d4d'; // Red
+              colors[sortArr[0].type] = '#7CFF5B'; 
+              colors[sortArr[1].type] = '#ff9f43'; 
+              colors[sortArr[2].type] = '#ff4d4d'; 
           }
 
           consensusHTML = `
@@ -1287,7 +1390,6 @@ function openModal(m){
       sb.innerHTML = allStatsHTML;
   }
   
-  // TRIGGER ANIMATIONS AFTER RENDER
   setTimeout(() => {
       document.querySelectorAll('.animate-bar').forEach(bar => {
           if(bar.getAttribute('data-width')) {
@@ -1369,7 +1471,7 @@ function openModal(m){
                    subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
                 }
              } else {
-                subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
+                 subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
              }
           });
           let col = document.createElement("div");
@@ -1496,8 +1598,5 @@ if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");
 
 Chart.register(ChartDataLabels);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-<script>Chart.register(ChartDataLabels);</script>
 </body>
 </html>

@@ -42,14 +42,9 @@ if ("serviceWorker" in navigator) {
   --accent-orange: #ff9f43;
   
   /* --- DIMENSIONS --- */
-  
-  /* 1. MATCH ROWS (Compact) */
   --row-h:50px; 
-  
-  /* 2. HEADER ROW (Big & Bold) */
   --header-h:70px; 
-  --header-pill-w:70px; /* Square header pills */
-  
+  --header-pill-w:70px;
   --gap:6px;
   --left-w:230px; 
   --bet-w:80px; 
@@ -81,8 +76,6 @@ body{
 }
 
 /* === ANIMATIONS === */
-
-/* 1. Roll-in Entrance */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -92,7 +85,6 @@ body{
   opacity: 0; 
 }
 
-/* 2. 30-Second Breathing Glow */
 @keyframes breathingGlow {
   0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
   50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
@@ -106,7 +98,6 @@ body{
 }
 .score-pill, .bet { transition: all 0.3s; }
 
-/* 3. Skeleton Shimmer */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
   background-size: 200% 100%;
@@ -160,7 +151,7 @@ body{
 .left-card::-webkit-scrollbar { display: none; }
 
 .left-header{
-  height:var(--header-h); /* BIG HEADER ROW */
+  height:var(--header-h);
   background:var(--bg-soft); border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; position: relative; 
@@ -187,7 +178,7 @@ body{
 .left-divider{height:8px}
 
 .left-row{
-  height:var(--row-h); /* COMPACT MATCH ROWS */
+  height:var(--row-h);
   display:grid; grid-template-columns:1fr 90px;
   gap:var(--gap); cursor: pointer; 
   transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s;
@@ -211,7 +202,6 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
-/* RED CARD ICON STYLES */
 .team-wrap-rel { position: relative; display: flex; align-items: center; justify-content: center; }
 .rc-badge {
     position: absolute; bottom: -2px; right: -4px;
@@ -221,7 +211,6 @@ body{
     z-index: 10;
 }
 
-/* AVATAR STYLES */
 .header-pill-wrapper {
     width: var(--bet-w); 
     height: var(--header-h);
@@ -241,26 +230,13 @@ body{
 }
 
 .avatar-img {
-    width: 100%; 
-    height: 100%;
-    
-    /* "contain" ensures the whole square image fits inside the box */
-    object-fit: contain; 
-    
-    /* Centers it perfectly */
-    object-position: center; 
-    
-    /* No scaling needed anymore since you cropped them */
-    transform: none; 
-    
-    display: block;
+    width: 100%; height: 100%;
+    object-fit: contain; object-position: center; 
+    transform: none; display: block;
     transition: transform 0.2s;
 }
 
-.header-pill.has-avatar:hover .avatar-img {
-    /* Just a small pop effect when you hover */
-    transform: scale(1.05); 
-}
+.header-pill.has-avatar:hover .avatar-img { transform: scale(1.05); }
 
 /* === RIGHT CARD (BETS) === */
 .right-card{
@@ -275,16 +251,23 @@ body{
 
 .header-pill{
   width:var(--header-pill-w); 
-  height:var(--header-h); /* BIG HEADER PILL */
+  height:var(--header-h);
   background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 .right-divider{height:8px}
 
+/* STICKY HEADER CLASS */
+.header-row-sticky {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg-card); padding-bottom: 8px;
+  margin-bottom: 0 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
 .bet{
   width:var(--bet-w); 
-  height:var(--row-h); /* COMPACT BET ROW */
+  height:var(--row-h);
   border-radius:10px;
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
@@ -346,6 +329,13 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
+/* SHAME & FIRE RANKING */
+.shame-row { background: linear-gradient(90deg, #3e2723 0%, var(--bg-row) 100%) !important; border: 1px solid #5d4037; opacity: 0.8; }
+.shame-row .rank-pos { font-size: 1.4em; filter: grayscale(0); }
+@keyframes firePulse { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); } 70% { box-shadow: 0 0 10px 10px rgba(255, 159, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } }
+.on-fire { border: 1px solid var(--accent-orange) !important; animation: firePulse 2s infinite; position: relative; overflow: visible; }
+.on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
+
 /* === HISTORY CARD === */
 .history-card{
   width: 100%; background:var(--bg-soft); border-radius:14px;
@@ -406,22 +396,12 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
-/* === NEW ANIMATIONS === */
-@keyframes growWidth {
-  from { width: 0 !important; }
-}
+/* === ANIMATIONS & EXTRA TIME === */
+@keyframes growWidth { from { width: 0 !important; } }
+.animate-bar { animation: growWidth 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: left; }
+.sb-half.away .animate-bar { transform-origin: left; } 
+.extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
-.animate-bar {
-  animation: growWidth 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  transform-origin: left;
-}
-
-/* Fix for the right-aligned bars (Away team) so they grow from the center outward */
-.sb-half.away .animate-bar {
-  transform-origin: left; 
-} 
-
- 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 .status-orange { background: var(--accent-orange) !important; color: #1c1f23 !important; animation: nervousShiver 0.3s infinite linear; box-shadow: 0 0 15px rgba(255, 159, 67, 0.6); }
@@ -725,7 +705,8 @@ function loadData(){
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        const headerRow=document.createElement("div"); headerRow.className="row";
+        // STICKY HEADER CHANGE
+        const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
         // === AVATAR CONFIGURATION ===
@@ -746,15 +727,12 @@ function loadData(){
            });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            
-           // 1. Create a wrapper for centering
            const wrapper = document.createElement("div");
            wrapper.className = "header-pill-wrapper";
 
-           // 2. Create the actual pill (square)
            const p=document.createElement("div"); 
            p.className="header-pill";
            
-           // AVATAR LOGIC
            if(AVATARS[h.name]) {
                p.classList.add("has-avatar");
                p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
@@ -762,7 +740,6 @@ function loadData(){
                p.textContent=h.name;
            }
 
-           // COLOR/STATUS LOGIC
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
                if(!isFirstLoad){setTimeout(()=>{fireScreenBlaster(p);showBigWin(formatGBP(tot))},500)}
@@ -771,7 +748,6 @@ function loadData(){
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
            
-           // 3. Put pill in wrapper, wrapper in row
            wrapper.appendChild(p);
            headerRow.appendChild(wrapper);
         });
@@ -797,18 +773,21 @@ function loadData(){
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          const displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
+          // EXTRA TIME LOGIC
+          let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
+          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
+             displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
+          }
 
-          // RED CARD CHECK
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
 
           lr.innerHTML=`<div class="left-cell match">
-               <div class="match-teams">
-                   <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
-                   <span>-</span>
-                   <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
-               </div>
+                <div class="match-teams">
+                    <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
+                    <span>-</span>
+                    <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
+                </div>
           </div>
           <div class="left-cell">
              <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
@@ -855,9 +834,18 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
+        // SHAME AND FIRE RANKING LOGIC
         data.ranking.forEach((r,i)=>{
-          const m=["🥇","🥈","🥉"], rd=m[i]||(i+1);
-          ranking.innerHTML+=`<div class="rank-row"><div class="rank-pos" style="font-size:1.2em">${rd}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+          let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
+          let rowClass = "rank-row";
+          
+          if(i===0) rowClass += " on-fire";
+          if(i===data.ranking.length-1 && data.ranking.length>2) {
+             rankIcon = "💩"; 
+             rowClass += " shame-row";
+          }
+
+          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
         isFirstLoad = false;
@@ -1007,8 +995,6 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
                      votes.Total++;
                      votes.D++;
                  }
-                 // If it's something totally random (like a name "Steve"), we ignore it 
-                 // instead of counting it as a draw.
              }
         });
         
@@ -1036,7 +1022,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
         }
     }
 
-    // --- 2. STORY GENERATION (Keep this the same as before) ---
+    // --- 2. STORY GENERATION ---
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -1106,61 +1092,11 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
     el.innerHTML = consensusHTML + story;
 }
 
-    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
-    const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const aPoss = stats.a_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
-
-    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
-
-    if(status === "FT") {
-       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
-    } else if (status === "HT") {
-       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
-    } else {
-       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
-       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-       else story += `It remains all square at ${hG}-${hG}. `;
-    }
-    story += "<br><br>";
-
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
-    else story += `Possession is even `;
-
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
-    else story += `in a tight game. `;
-
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
-
-    let bestPlayer = null, highestRat = 0;
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
-        });
-    }
-
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
-    }
-
-    story += `</div>`;
-    el.innerHTML = consensusHTML + story;
-}
-
 function findPlayerStats(name, list) {
     if(!list) return null;
     let normName = normalizeName(name);
     let parts = normName.split(" ");
-     
+      
     let found = list.find(x => normalizeName(x.name) === normName);
     if(found) return found;
 
@@ -1208,8 +1144,7 @@ function openModal(m){
   const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
   document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
-  // notice we added 'm' at the end
-try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+  try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
   // 1. STATS - GROUPED GOALS
   let hG=[], aG=[];
@@ -1276,7 +1211,6 @@ try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m);
   sb.innerHTML = "";
 
   // 1. IF MATCH HASN'T STARTED, HIDE FAKE STATS
-  // This removes the "50/50" issue
   if (m.status === "NS" || m.status === "PST") {
       sb.innerHTML = `
         <div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;">
@@ -1287,8 +1221,6 @@ try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m);
   } 
   else {
       // 2. LIVE OR FINISHED MATCH - SHOW ANIMATED BARS
-      
-      // Calculate xG safely
       let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
       let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
 
@@ -1303,24 +1235,21 @@ try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m);
       ];
       
       sl.forEach(st => {
-        // Skip if both are 0 (e.g. no cards yet)
         if (!st.h && !st.a && !st.pct && !st.dec) return; 
 
         let t = (st.h || 0) + (st.a || 0);
         let hp = 0, ap = 0;
         
-        // Calculate percentages
         if(t > 0){
            hp = (st.h / t) * 100;
            ap = (st.a / t) * 100;
-           if(st.pct){ hp = st.h; ap = st.a; } // Possession is already %
-           if(st.dec){ // xG scaling
+           if(st.pct){ hp = st.h; ap = st.a; } 
+           if(st.dec){ 
                let totalXG = st.h + st.a + 0.001; 
                hp = (st.h / totalXG) * 100;
                ap = 100 - hp; 
            }
         } else if (st.pct) {
-            // Default 50/50 for possession if 0 (start of game)
             hp = 50; ap = 50; 
         }
 
@@ -1513,6 +1442,32 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
 renderSkeletons(); 
 loadData(); 
 setInterval(loadData,REFRESH_MS);
+
+// GOD MODE EASTER EGG
+let godModeClicks = 0;
+let godModeTimer;
+setTimeout(() => {
+    const brandBtn = document.querySelector('.brand-btn');
+    if(brandBtn) {
+        brandBtn.onclick = (e) => {
+            e.stopPropagation(); godModeClicks++; vibe();
+            clearTimeout(godModeTimer);
+            godModeTimer = setTimeout(() => { godModeClicks = 0; }, 1000);
+            if(godModeClicks === 5) {
+                document.body.style.animation = "nervousShiver 0.2s infinite";
+                var end = Date.now() + 3000;
+                (function frame() {
+                    confetti({particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#7CFF5B', '#ff9f43', '#ffffff']});
+                    confetti({particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#7CFF5B', '#ff9f43', '#ffffff']});
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                    else document.body.style.animation = "none";
+                }());
+                showBigWin("GOD MODE ACTIVATED");
+                godModeClicks = 0;
+            }
+        };
+    }
+}, 1000);
 
 document.getElementById("rankingCard").onclick=()=>{vibe();const h=document.getElementById("historyCard"),o=h.style.display!=="block";h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};

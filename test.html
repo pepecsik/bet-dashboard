@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.3</title>
+<title>Bet Dashboard v2.4</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -262,11 +262,11 @@ body{
 }
 
 /* BIGGER AVATARS MODIFICATION */
+/* NOTE: Removed "background: transparent" so the color board shows */
 .header-pill.has-avatar { 
     padding: 0; 
     overflow: visible; /* Allow slight pop-out */
     position: relative; 
-    /* background color is inherited from element style now */
 }
 .avatar-img { 
     width: 100%; height: 100%; 
@@ -859,7 +859,7 @@ function loadData(){
             rr.style.animationDelay = (idx * 0.05) + "s";
           }
 
-          m.cells.forEach(c=>{
+          m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               
@@ -868,30 +868,29 @@ function loadData(){
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
                   
-                  // --- NEW BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
-                  if(live && isLate) {
+                  // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
+                  // 1. Check if Column is Dead (Avatar is Red)
+                  const headerInfo = data.headers[cellIndex];
+                  const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+
+                  if(live && isLate && !isColumnDead) {
                       let bet = String(c.value).toUpperCase();
-                      let isSweaty = false;
+                      let isWinning = false;
                       
                       // Check for EXACT SCORE bets (contains "-")
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
                           // Exact match ONLY (Green)
-                          if(bH === hScore && bA === aScore) isSweaty = true;
+                          if(bH === hScore && bA === aScore) isWinning = true;
                       } 
                       // Check for 1X2 bets
                       else {
-                          // Is Winning?
-                          let winning = false;
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) winning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) winning = true;
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) winning = true;
-                          
-                          if(winning) isSweaty = true;
-                          // NO MORE PULSING FOR 1 GOAL AWAY
+                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
                       }
 
-                      if(isSweaty) {
+                      if(isWinning) {
                           el.classList.add("sweat-active");
                       }
                   }
@@ -969,19 +968,30 @@ function loadData(){
 }
 
 function triggerDailyTroll(headers, betSummary) {
-    if(!betSummary || !betSummary[1]) return; // Index 1 is usually "WIN" row
-    
+    // FIND THE ROW LABELED "WIN" (To be safe, don't assume index 1)
+    let winRow = null;
+    if(betSummary[1] && betSummary[1].label === "WIN") winRow = betSummary[1].cells;
+    else if(betSummary[2] && betSummary[2].label === "WIN") winRow = betSummary[2].cells;
+    else winRow = betSummary[1].cells; // Fallback
+
+    if(!winRow) return;
+
     // Calculate Daily Performance
-    const winRow = betSummary[1].cells;
     const dailyRank = headers.map((h, i) => {
-         return { name: h.name, val: winRow[i]?.value || 0 };
-    }).sort((a,b) => b.val - a.val);
+         let val = Number(winRow[i]?.value);
+         if(isNaN(val)) val = 0;
+         return { name: h.name, val: val };
+    }).sort((a,b) => b.val - a.val); // Sort High to Low
 
     const winner = dailyRank[0];
     const loser = dailyRank[dailyRank.length - 1];
 
-    console.log("Daily Winner: " + winner.name, "Daily Loser: " + loser.name); // DEBUG
+    // Check if everyone is at 0 (Game hasn't started)
+    if(winner.val === 0 && loser.val === 0) return;
 
+    console.log("Daily Winner: " + winner.name + " (" + winner.val + ")", "Daily Loser: " + loser.name + " (" + loser.val + ")"); 
+
+    let msg = "";
     const roasts = [
         `Today's MVP: ${winner.name} is printing cash! 💸`,
         `${loser.name} is donating to the bookies today. 📉`,
@@ -991,13 +1001,17 @@ function triggerDailyTroll(headers, betSummary) {
         `Follow ${winner.name}'s bets if you like money.`
     ];
 
-    // ALWAYS SHOW MESSAGE
-    const msg = roasts[Math.floor(Math.random() * roasts.length)];
+    // Special case: If Loser is actually positive (everyone won), use milder roast
+    if(loser.val > 0) {
+        msg = `Everyone is winning, but ${winner.name} is winning the most! 🤑`;
+    } else {
+        msg = roasts[Math.floor(Math.random() * roasts.length)];
+    }
+
     const el = document.getElementById("trollBar");
     el.innerText = "🔥 TRASH TALK: " + msg;
     el.style.display = "block";
     
-    // Auto hide after 8 seconds
     setTimeout(() => el.style.display = "none", 8000);
 }
 

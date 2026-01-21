@@ -1142,7 +1142,8 @@ function openModal(m){
   const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
   document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
-  try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+  // notice we added 'm' at the end
+try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
   // 1. STATS - GROUPED GOALS
   let hG=[], aG=[];
@@ -1254,10 +1255,10 @@ function openModal(m){
        </div>
        <div class="stat-bar-container">
           <div class="sb-half home">
-             <div class="sb-fill ${st.h >= st.a ? 'orange' : ''}" style="width:${hp}%"></div>
+             <div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:${hp}%"></div>
           </div>
           <div class="sb-half away">
-             <div class="sb-fill ${st.a >= st.h ? 'orange' : ''}" style="width:${ap}%"></div>
+             <div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:${ap}%"></div>
           </div>
        </div>
     </div>`;

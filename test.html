@@ -391,7 +391,13 @@ body{
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
 /* === ANIMATIONS & EXTRA TIME === */
-.animate-bar { transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); width: 0%; }
+.animate-bar { 
+    transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); 
+    width: 0%; 
+    
+    /* ADD THIS if you want 0% to still show a tiny line */
+    min-width: 4px; 
+}
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }

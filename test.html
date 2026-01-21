@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.6</title>
+<title>Bet Dashboard v2.7</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -104,16 +104,19 @@ body{
 
 .score-pill, .bet { transition: all 0.3s; }
 
-/* === UPDATED DARK SKELETON === */
+/* === DARK SKELETON (FIXED) === */
+/* Removed gradient, using solid pulse to avoid white flash */
 .skeleton {
-  /* Much darker gradient for subtle effect */
-  background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.02) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite; /* Slower animation */
+  background-color: #2a2e33;
+  animation: darkPulse 1.5s infinite ease-in-out;
   color: transparent !important; 
   border-radius: 10px;
 }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes darkPulse { 
+  0% { opacity: 0.6; } 
+  50% { opacity: 1; } 
+  100% { opacity: 0.6; } 
+}
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
@@ -875,6 +878,7 @@ function loadData(){
                   el.style.backgroundColor = c.color; 
                   
                   // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
+                  // 1. Check if Column is Dead (Avatar is Red)
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
@@ -882,10 +886,13 @@ function loadData(){
                       let bet = String(c.value).toUpperCase();
                       let isWinning = false;
                       
+                      // Check for EXACT SCORE bets (contains "-")
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
+                          // Exact match ONLY (Green)
                           if(bH === hScore && bA === aScore) isWinning = true;
                       } 
+                      // Check for 1X2 bets
                       else {
                           if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
                           else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
@@ -933,10 +940,12 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
+        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
           
+          // Fire Logic
           if(i===0) {
               if(data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
                   const hist = data.chartData.money;
@@ -970,11 +979,13 @@ function loadData(){
 function triggerVibeCheck(totals, isLive) {
     if(!totals) return;
     
-    // Find the "TOTAL WIN" row
-    const winRow = totals.find(t => t.label === "TOTAL WIN");
+    // Find the "TOTAL WIN" row - RELAXED MATCHING (Just find first row if label missing)
+    let winRow = totals.find(t => t.label.toUpperCase() === "TOTAL WIN");
+    if(!winRow && totals.length > 0) winRow = totals[0]; // Fallback to first row
+
     if(!winRow) return;
 
-    const winVal = winRow.cells[1]?.value || 0; // GBP value
+    const winVal = winRow.cells[1]?.value || 0; // GBP value is usually index 1
     
     let msg = "";
     
@@ -1013,6 +1024,7 @@ function triggerVibeCheck(totals, isLive) {
     el.innerText = "🔥 VIBE CHECK: " + msg;
     el.style.display = "block";
     
+    // Auto hide after 8 seconds
     setTimeout(() => el.style.display = "none", 8000);
 }
 

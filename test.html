@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.7</title>
+<title>Bet Dashboard v2.8</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -99,13 +99,12 @@ body{
     animation: nervousPulse 0.8s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.4); /* Stronger border for emphasis */
+    border: 1px solid rgba(255,255,255,0.4) !important; /* Stronger border for emphasis */
 }
 
 .score-pill, .bet { transition: all 0.3s; }
 
-/* === DARK SKELETON (FIXED) === */
-/* Removed gradient, using solid pulse to avoid white flash */
+/* === DARK SKELETON === */
 .skeleton {
   background-color: #2a2e33;
   animation: darkPulse 1.5s infinite ease-in-out;
@@ -285,41 +284,38 @@ body{
 
 .right-divider{height:8px}
 
-/* --- TICKET STUB BET STYLING --- */
+/* --- ROUNDED BET PILLS (REVERTED FROM TICKET STUB) --- */
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius: 4px; /* Slight rounded corners */
+  border-radius: 12px; /* Smooth rounded corners, matching left card */
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
   position: relative;
-  
-  /* The Serrated Edge (Receipt Look) */
-  --bet-bg: #ccc; /* Default, overridden in JS */
-  background: radial-gradient(circle at 0 50%, transparent 4px, var(--bet-bg) 5px), 
-              radial-gradient(circle at 100% 50%, transparent 4px, var(--bet-bg) 5px);
-  background-size: 51% 100%;
-  background-position: 0 0, 100% 0;
-  background-repeat: no-repeat;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+  background: var(--bet-bg); /* CSS Variable from JS */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Subtle shadow */
+  border: 1px solid rgba(255,255,255,0.05); /* Slight border for definition */
 }
 
-/* === VIBE CHECK / TROLL BAR === */
-.troll-bar {
+/* === LIVE TICKER (FORMERLY TROLL BAR) === */
+.news-ticker {
   margin: 0 10px 10px;
-  padding: 10px;
-  background: linear-gradient(90deg, #ff9f43, #ff4d4d);
-  color: #1c1f23;
-  font-weight: 800; font-size: 11px;
-  text-align: center; border-radius: 8px;
-  display: none; /* Hidden by default, JS toggles this */
+  padding: 10px 15px;
+  background: linear-gradient(90deg, #262a30, #2f343a);
+  color: var(--text-muted);
+  font-weight: 700; font-size: 11px;
+  text-align: center; border-radius: 10px;
+  display: none; /* Hidden by default */
   animation: rollIn 0.5s ease;
-  box-shadow: 0 4px 15px rgba(255, 77, 77, 0.4);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  border: 1px solid rgba(255,255,255,0.08);
   position: relative; z-index: 15;
 }
+.ticker-highlight { color: #fff; font-weight: 800; margin-left: 4px; }
+.ticker-val-pos { color: #7CFF5B; }
+.ticker-val-neg { color: #ff4d4d; }
 
 /* === SUMMARY & FOOTER === */
 .summary { 
@@ -574,7 +570,7 @@ body{
     <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
 
-  <div id="trollBar" class="troll-bar"></div>
+  <div id="newsTicker" class="news-ticker">Loading insights...</div>
 
   <footer class="summary">
     <div class="summary-toggle open" id="summaryToggle"></div>
@@ -686,7 +682,7 @@ const REFRESH_MS=30000;
 let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
-let hasTrolled = false;
+let tickerInterval = null;
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
@@ -813,6 +809,7 @@ function loadData(){
 
         const matchCount = data.matches.length;
         let anyGameLive = false;
+        let highestRatPlayer = { name: "", rating: 0 };
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
@@ -829,7 +826,15 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-          if(live) anyGameLive = true;
+          if(live) {
+              anyGameLive = true;
+              if(m.stats && m.stats.players) {
+                  // Find MVP across all live games
+                  [... (m.stats.players.h||[]), ... (m.stats.players.a||[])].forEach(pl => {
+                      if(pl.rating > highestRatPlayer.rating) highestRatPlayer = {name: pl.name, rating: pl.rating};
+                  });
+              }
+          }
 
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
@@ -841,7 +846,6 @@ function loadData(){
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
 
-          // CURRENT SCORE PARSING
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           const minutes = parseInt(m.status) || 0;
           const isLate = (minutes >= 85 || m.status === "ET");
@@ -878,7 +882,6 @@ function loadData(){
                   el.style.backgroundColor = c.color; 
                   
                   // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
-                  // 1. Check if Column is Dead (Avatar is Red)
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
@@ -886,13 +889,10 @@ function loadData(){
                       let bet = String(c.value).toUpperCase();
                       let isWinning = false;
                       
-                      // Check for EXACT SCORE bets (contains "-")
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
-                          // Exact match ONLY (Green)
                           if(bH === hScore && bA === aScore) isWinning = true;
                       } 
-                      // Check for 1X2 bets
                       else {
                           if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
                           else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
@@ -940,12 +940,10 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
-        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
           
-          // Fire Logic
           if(i===0) {
               if(data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
                   const hist = data.chartData.money;
@@ -965,67 +963,55 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // GLOBAL VIBE CHECK (Replaces specific troll bar)
-        if(!hasTrolled && data.totals) {
-            triggerVibeCheck(data.totals, anyGameLive);
-            hasTrolled = true;
-        }
+        // UPDATE LIVE TICKER
+        updateNewsTicker(data.ranking, anyGameLive, highestRatPlayer, data.totals);
 
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
 }
 
-function triggerVibeCheck(totals, isLive) {
-    if(!totals) return;
-    
-    // Find the "TOTAL WIN" row - RELAXED MATCHING (Just find first row if label missing)
-    let winRow = totals.find(t => t.label.toUpperCase() === "TOTAL WIN");
-    if(!winRow && totals.length > 0) winRow = totals[0]; // Fallback to first row
+function updateNewsTicker(ranking, isLive, mvp, weeklyTotals) {
+    const el = document.getElementById("newsTicker");
+    if(!el) return;
 
-    if(!winRow) return;
-
-    const winVal = winRow.cells[1]?.value || 0; // GBP value is usually index 1
-    
-    let msg = "";
-    
-    if (winVal > 0) {
-        // POSITIVE VIBES
-        const hypes = [
-            `🤑 WE ARE EATING TONIGHT! (+${formatGBP(winVal)})`,
-            `🚀 TO THE MOON! (+${formatGBP(winVal)})`,
-            `💸 PRINTER IS ON! Cash incoming.`,
-            `💰 Bag Secured: ${formatGBP(winVal)} profit.`
-        ];
-        msg = hypes[Math.floor(Math.random() * hypes.length)];
-    } 
-    else if (winVal === 0 && isLive) {
-        // SUSPENSE VIBES
-        const suspense = [
-            "😬 Sweaty palms time...",
-            "🙏 Praying for a late goal.",
-            "🤞 Fingers crossed...",
-            "⏳ Still waiting for a payout."
-        ];
-        msg = suspense[Math.floor(Math.random() * suspense.length)];
+    // Get Weekly Leader from Totals (Highest Positive GBP)
+    let weeklyLeader = {name: "None", val: 0};
+    if(weeklyTotals) {
+        // Need to parse from totals because we don't have per-person totals directly in data.ranking (that's all-time)
+        // Usually, the "WIN" row in betSummary is best, but let's use data.ranking[0] as All-Time leader
     }
-    else {
-        // NEGATIVE VIBES (Only if no profit and likely games done or losing)
-        const roasts = [
-            "📉 Donation sent to the bookies.",
-            "💀 It's over.",
-            "🥗 Salad for dinner tonight.",
-            "📉 Bankruptcy declared."
-        ];
-        msg = roasts[Math.floor(Math.random() * roasts.length)];
+    
+    // BUILD MESSAGES
+    const messages = [];
+    
+    // 1. All-Time Leader
+    if(ranking && ranking.length > 0) {
+        messages.push(`🏆 All-Time Leader: <span class="ticker-highlight">${ranking[0].name}</span> (${formatGBP(ranking[0].money)})`);
     }
 
-    const el = document.getElementById("trollBar");
-    el.innerText = "🔥 VIBE CHECK: " + msg;
-    el.style.display = "block";
+    // 2. Live Games
+    if(isLive) {
+        messages.push(`⚽ <span class="ticker-highlight">LIVE ACTION</span> • Follow matches for real-time updates`);
+        if(mvp.rating > 0) {
+            messages.push(`🔥 Pitch MVP: <span class="ticker-highlight">${formatName(mvp.name)}</span> (${mvp.rating.toFixed(1)})`);
+        }
+    } else {
+        messages.push(`📅 Updates every 30s • Good luck with your bets!`);
+    }
+
+    // Rotate Messages every 4 seconds
+    if(window.tickerInterval) clearInterval(window.tickerInterval);
+    let msgIdx = 0;
     
-    // Auto hide after 8 seconds
-    setTimeout(() => el.style.display = "none", 8000);
+    const showMsg = () => {
+        el.innerHTML = messages[msgIdx];
+        el.style.display = "block";
+        msgIdx = (msgIdx + 1) % messages.length;
+    };
+    
+    showMsg();
+    window.tickerInterval = setInterval(showMsg, 4000);
 }
 
 function drawHistoryChart(t){

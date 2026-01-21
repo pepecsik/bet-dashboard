@@ -43,7 +43,6 @@ if ("serviceWorker" in navigator) {
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  /* Compact Header */
   --header-h:55px; 
   --header-pill-w:70px;
   --gap:6px;
@@ -398,9 +397,7 @@ body{
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
 /* === ANIMATIONS & EXTRA TIME === */
-@keyframes growWidth { from { width: 0 !important; } }
-.animate-bar { animation: growWidth 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: left; }
-.sb-half.away .animate-bar { transform-origin: left; } 
+.animate-bar { transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); width: 0%; }
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
@@ -967,7 +964,6 @@ function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.
 
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
-    
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -1117,24 +1113,46 @@ function openModal(m){
           const dPct = (votes.D / votes.Total) * 100;
           const aPct = (votes.A / votes.Total) * 100;
           
-          // Color Logic: Highest is Green, others are Gray
-          const maxPct = Math.max(hPct, dPct, aPct);
-          const hColor = hPct === maxPct ? '#7CFF5B' : '#555';
-          const dColor = dPct === maxPct ? '#7CFF5B' : '#555';
-          const aColor = aPct === maxPct ? '#7CFF5B' : '#555';
-          
+          // --- NEW COLOR LOGIC ---
+          const sortArr = [
+              {type:'H', val:hPct, label:hCode},
+              {type:'D', val:dPct, label:'Draw'},
+              {type:'A', val:aPct, label:aCode}
+          ].sort((a,b)=>b.val - a.val);
+
+          let colors = { H:'#555', D:'#555', A:'#555' };
+
+          // Case 1: Tie for top place
+          if(sortArr[0].val === sortArr[1].val) {
+              colors[sortArr[0].type] = '#7CFF5B'; // Green 1
+              colors[sortArr[1].type] = '#4BAA35'; // Green 2 (Darker)
+              colors[sortArr[2].type] = '#ff4d4d'; // Red (Lowest)
+          } 
+          // Case 2: Tie for bottom place
+          else if(sortArr[1].val === sortArr[2].val) {
+              colors[sortArr[0].type] = '#7CFF5B'; // Green (Winner)
+              colors[sortArr[1].type] = '#ff9f43'; // Orange 1
+              colors[sortArr[2].type] = '#d67d26'; // Orange 2 (Darker)
+          } 
+          // Case 3: Distinct
+          else {
+              colors[sortArr[0].type] = '#7CFF5B'; // Green
+              colors[sortArr[1].type] = '#ff9f43'; // Orange
+              colors[sortArr[2].type] = '#ff4d4d'; // Red
+          }
+
           consensusHTML = `
           <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
               <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
               <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
-                  <div class="animate-bar" style="width:${hPct}%; background:${hColor};"></div>
-                  <div class="animate-bar" style="width:${dPct}%; background:${dColor};"></div>
-                  <div class="animate-bar" style="width:${aPct}%; background:${aColor};"></div>
+                  <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
+                  <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
+                  <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
               </div>
               <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
-                  <span style="color:${hPct>0?hColor:'#555'}">${Math.round(hPct)}% ${hCode}</span>
-                  <span style="color:${dPct>0?dColor:'#555'}">${Math.round(dPct)}% Draw</span>
-                  <span style="color:${aPct>0?aColor:'#555'}">${Math.round(aPct)}% ${aCode}</span>
+                  <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
+                  <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
+                  <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
               </div>
           </div>`;
       }
@@ -1225,7 +1243,7 @@ function openModal(m){
         {l:"Corners", h:s.h_corners, a:s.a_corners}
       ];
       
-      let allStatsHTML = ""; // Build string first to help animation
+      let allStatsHTML = ""; 
       sl.forEach(st => {
         if (!st.h && !st.a && !st.pct && !st.dec) return; 
 
@@ -1258,16 +1276,25 @@ function openModal(m){
            </div>
            <div class="stat-bar-container">
               <div class="sb-half home">
-                 <div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:${hp}%"></div>
+                 <div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div>
               </div>
               <div class="sb-half away">
-                 <div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:${ap}%"></div>
+                 <div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div>
               </div>
            </div>
         </div>`;
       });
       sb.innerHTML = allStatsHTML;
   }
+  
+  // TRIGGER ANIMATIONS AFTER RENDER
+  setTimeout(() => {
+      document.querySelectorAll('.animate-bar').forEach(bar => {
+          if(bar.getAttribute('data-width')) {
+              bar.style.width = bar.getAttribute('data-width');
+          }
+      });
+  }, 50);
 
   // 4. LINEUPS
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";

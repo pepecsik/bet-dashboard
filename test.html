@@ -406,6 +406,22 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
+/* === NEW ANIMATIONS === */
+@keyframes growWidth {
+  from { width: 0 !important; }
+}
+
+.animate-bar {
+  animation: growWidth 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: left;
+}
+
+/* Fix for the right-aligned bars (Away team) so they grow from the center outward */
+.sb-half.away .animate-bar {
+  transform-origin: left; 
+} 
+
+ 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
 @keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
 .status-orange { background: var(--accent-orange) !important; color: #1c1f23 !important; animation: nervousShiver 0.3s infinite linear; box-shadow: 0 0 15px rgba(255, 159, 67, 0.6); }
@@ -666,7 +682,7 @@ const TEAM_LOGOS={
  CTY:"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/200px-Manchester_City_FC_badge.svg.png",
  MAN:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/200px-Manchester_United_FC_crest.svg.png",
  NWC:"https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/200px-Newcastle_United_Logo.svg.png",
- NOT:"https://upload.wikimedia.org/wikipedia/en/thumb/dd/Nottingham_Forest_F.C._logo.svg/200px-Nottingham_Forest_F.C._logo.svg.png",
+ NOT:"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/Nottingham_Forest_F.C._logo.svg/960px-Nottingham_Forest_F.C._logo.svg.png",
  SUN:"https://1000logos.net/wp-content/uploads/2020/09/Sunderland-logo.png",
  TOT:"https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/200px-Tottenham_Hotspur.svg.png",
  WHA:"https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/200px-West_Ham_United_FC_logo.svg.png",
@@ -948,8 +964,60 @@ function normalizeName(str) {
 function formatName(n){return n||""}
 function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
 
-function generateStory(home, away, stats, score, status, startTime, date) {
+function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
+    
+    // --- 1. NEW: CALCULATE CONSENSUS ---
+    let consensusHTML = "";
+    
+    // Check if we have match data to count votes
+    if(matchData && matchData.cells) {
+        let votes = { H: 0, D: 0, A: 0, Total: 0 };
+        
+        matchData.cells.forEach(c => {
+             if(!c.value) return; // Skip empty cells
+             votes.Total++;
+             
+             // Logic: Check if it's a Score (2-1) or an Outcome (1, X, 2)
+             if(String(c.value).includes("-")) {
+                 const [hScore, aScore] = c.value.split("-").map(Number);
+                 if(hScore > aScore) votes.H++;
+                 else if(aScore > hScore) votes.A++;
+                 else votes.D++;
+             } else {
+                 const val = String(c.value).toUpperCase();
+                 if(val === "H" || val === "1") votes.H++;
+                 else if(val === "A" || val === "2") votes.A++;
+                 else votes.D++;
+             }
+        });
+        
+        // Only show if people have actually bet
+        if(votes.Total > 0) {
+            const hPct = (votes.H / votes.Total) * 100;
+            const dPct = (votes.D / votes.Total) * 100;
+            const aPct = (votes.A / votes.Total) * 100;
+            
+            consensusHTML = `
+            <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Consensus</div>
+                
+                <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+                    <div class="animate-bar" style="width:${hPct}%; background:#7CFF5B;"></div>
+                    <div class="animate-bar" style="width:${dPct}%; background:#aaa;"></div>
+                    <div class="animate-bar" style="width:${aPct}%; background:#ff4d4d;"></div>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
+                    <span style="color:${hPct>0?'#7CFF5B':'#555'}">${Math.round(hPct)}% ${home}</span>
+                    <span style="color:${dPct>0?'#ddd':'#555'}">${Math.round(dPct)}% Draw</span>
+                    <span style="color:${aPct>0?'#ff4d4d':'#555'}">${Math.round(aPct)}% ${away}</span>
+                </div>
+            </div>`;
+        }
+    }
+
+    // --- 2. EXISTING STORY GENERATION ---
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -966,7 +1034,9 @@ function generateStory(home, away, stats, score, status, startTime, date) {
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
         }
         story += `</div>`;
-        el.innerHTML = story;
+        
+        // Combine Consensus + Story
+        el.innerHTML = consensusHTML + story;
         return;
     }
 
@@ -976,7 +1046,6 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     const aPoss = stats.a_poss || 50;
     const hXG = stats.h_xg || 0;
     const aXG = stats.a_xg || 0;
-    const fouls = (stats.h_fouls || 0) + (stats.a_fouls || 0);
 
     let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
 
@@ -1006,12 +1075,10 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
     if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
 
-    let bestPlayer = null;
-    let highestRat = 0;
-    let bestStats = {};
+    let bestPlayer = null, highestRat = 0;
     if(stats.players && stats.players.h) {
         [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; bestStats = p; }
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
         });
     }
 
@@ -1020,7 +1087,7 @@ function generateStory(home, away, stats, score, status, startTime, date) {
     }
 
     story += `</div>`;
-    el.innerHTML = story;
+    el.innerHTML = consensusHTML + story;
 }
 
 function findPlayerStats(name, list) {

@@ -43,7 +43,7 @@ if ("serviceWorker" in navigator) {
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  /* UPDATED: Header slightly smaller */
+  /* Compact Header */
   --header-h:55px; 
   --header-pill-w:70px;
   --gap:6px;
@@ -578,6 +578,7 @@ body{
     </div>
     <div class="modal-scroll-area">
        <div id="viewStats">
+         <div id="consensusArea"></div>
          <div class="event-list-row" id="goalsArea"></div>
          <div class="divider-line"></div>
          <div class="event-list-row" id="cardsArea"></div>
@@ -967,82 +968,6 @@ function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
     
-    // --- 1. GROUP PREDICTIONS (UPDATED) ---
-    let consensusHTML = "";
-    
-    if(matchData && matchData.cells) {
-        let votes = { H: 0, D: 0, A: 0, Total: 0 };
-        
-        // Normalize team names for comparison (remove spaces, uppercase)
-        const hName = String(home).toUpperCase().trim();
-        const aName = String(away).toUpperCase().trim();
-
-        matchData.cells.forEach(c => {
-             if(!c.value) return; 
-             
-             let val = String(c.value).toUpperCase().trim();
-             
-             // A. CHECK IF IT IS A SCORE (e.g. "4-1")
-             if(val.includes("-")) {
-                 votes.Total++;
-                 const [hS, aS] = val.split("-").map(Number);
-                 if(hS > aS) votes.H++;
-                 else if(aS > hS) votes.A++;
-                 else votes.D++;
-             } 
-             // B. CHECK FOR STANDARD CODES (1, X, 2, H, A)
-             else {
-                 // Check Home
-                 if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) {
-                     votes.Total++;
-                     votes.H++;
-                 }
-                 // Check Away
-                 else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) {
-                     votes.Total++;
-                     votes.A++;
-                 }
-                 // Check Draw
-                 else if(val === "X" || val === "D" || val === "DRAW") {
-                     votes.Total++;
-                     votes.D++;
-                 }
-             }
-        });
-        
-        if(votes.Total > 0) {
-            const hPct = (votes.H / votes.Total) * 100;
-            const dPct = (votes.D / votes.Total) * 100;
-            const aPct = (votes.A / votes.Total) * 100;
-
-            // Determine MAX percentage for coloring
-            const maxPct = Math.max(hPct, dPct, aPct);
-            
-            // Logic: Highest is Green (#7CFF5B), others are Dark Gray (#555)
-            const hColor = hPct === maxPct ? '#7CFF5B' : '#555';
-            const dColor = dPct === maxPct ? '#7CFF5B' : '#555';
-            const aColor = aPct === maxPct ? '#7CFF5B' : '#555';
-            
-            consensusHTML = `
-            <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
-                
-                <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
-                    <div class="animate-bar" style="width:${hPct}%; background:${hColor};"></div>
-                    <div class="animate-bar" style="width:${dPct}%; background:${dColor};"></div>
-                    <div class="animate-bar" style="width:${aPct}%; background:${aColor};"></div>
-                </div>
-                
-                <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
-                    <span style="color:${hPct>0?hColor:'#555'}">${Math.round(hPct)}% ${home}</span>
-                    <span style="color:${dPct>0?dColor:'#555'}">${Math.round(dPct)}% Draw</span>
-                    <span style="color:${aPct>0?aColor:'#555'}">${Math.round(aPct)}% ${away}</span>
-                </div>
-            </div>`;
-        }
-    }
-
-    // --- 2. STORY GENERATION ---
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -1059,7 +984,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
         }
         story += `</div>`;
-        el.innerHTML = consensusHTML + story;
+        el.innerHTML = story;
         return;
     }
 
@@ -1109,7 +1034,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
     }
 
     story += `</div>`;
-    el.innerHTML = consensusHTML + story;
+    el.innerHTML = story;
 }
 
 function findPlayerStats(name, list) {
@@ -1166,14 +1091,63 @@ function openModal(m){
 
   try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
-  // 1. STATS - GROUPED GOALS
+  // 1. GENERATE GROUP PREDICTIONS
+  let consensusHTML = "";
+  if(m && m.cells) {
+      let votes = { H: 0, D: 0, A: 0, Total: 0 };
+      const hName = String(hCode).toUpperCase().trim();
+      const aName = String(aCode).toUpperCase().trim();
+
+      m.cells.forEach(c => {
+           if(!c.value) return; 
+           let val = String(c.value).toUpperCase().trim();
+           if(val.includes("-")) {
+               votes.Total++;
+               const [hS, aS] = val.split("-").map(Number);
+               if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
+           } else {
+               if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
+               else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
+               else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
+           }
+      });
+      
+      if(votes.Total > 0) {
+          const hPct = (votes.H / votes.Total) * 100;
+          const dPct = (votes.D / votes.Total) * 100;
+          const aPct = (votes.A / votes.Total) * 100;
+          
+          // Color Logic: Highest is Green, others are Gray
+          const maxPct = Math.max(hPct, dPct, aPct);
+          const hColor = hPct === maxPct ? '#7CFF5B' : '#555';
+          const dColor = dPct === maxPct ? '#7CFF5B' : '#555';
+          const aColor = aPct === maxPct ? '#7CFF5B' : '#555';
+          
+          consensusHTML = `
+          <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
+              <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+                  <div class="animate-bar" style="width:${hPct}%; background:${hColor};"></div>
+                  <div class="animate-bar" style="width:${dPct}%; background:${dColor};"></div>
+                  <div class="animate-bar" style="width:${aPct}%; background:${aColor};"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
+                  <span style="color:${hPct>0?hColor:'#555'}">${Math.round(hPct)}% ${hCode}</span>
+                  <span style="color:${dPct>0?dColor:'#555'}">${Math.round(dPct)}% Draw</span>
+                  <span style="color:${aPct>0?aColor:'#555'}">${Math.round(aPct)}% ${aCode}</span>
+              </div>
+          </div>`;
+      }
+  }
+  document.getElementById("consensusArea").innerHTML = consensusHTML;
+
+  // 2. STATS - GROUPED GOALS
   let hG=[], aG=[];
   let goalsMap = {}; 
   if(s.events){
       s.events.forEach(e => {
          if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
              let cleanP = normalizeName(e.player.trim());
-             
              let isH = null;
              let parts = cleanP.split(' ');
              
@@ -1198,7 +1172,6 @@ function openModal(m){
       let timesStr = g.times.join(", ");
       let name = formatName(g.rawName);
       let html = "";
-      
       let icon = "⚽";
       if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
       let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
@@ -1226,11 +1199,10 @@ function openModal(m){
 
   document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-  // === STATS AREA LOGIC ===
+  // 3. STATS AREA (FIXED ANIMATION)
   const sb = document.getElementById("statsArea"); 
   sb.innerHTML = "";
 
-  // 1. IF MATCH HASN'T STARTED, HIDE FAKE STATS
   if (m.status === "NS" || m.status === "PST") {
       sb.innerHTML = `
         <div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;">
@@ -1240,7 +1212,6 @@ function openModal(m){
         </div>`;
   } 
   else {
-      // 2. LIVE OR FINISHED MATCH - SHOW ANIMATED BARS
       let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
       let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
 
@@ -1254,6 +1225,7 @@ function openModal(m){
         {l:"Corners", h:s.h_corners, a:s.a_corners}
       ];
       
+      let allStatsHTML = ""; // Build string first to help animation
       sl.forEach(st => {
         if (!st.h && !st.a && !st.pct && !st.dec) return; 
 
@@ -1277,7 +1249,7 @@ function openModal(m){
         if(st.pct){ ht += "%"; at += "%"; }
         if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
 
-        sb.innerHTML += `
+        allStatsHTML += `
         <div class="stat-row">
            <div class="stat-label">
               <span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span>
@@ -1294,9 +1266,10 @@ function openModal(m){
            </div>
         </div>`;
       });
+      sb.innerHTML = allStatsHTML;
   }
 
-  // 2. LINEUPS
+  // 4. LINEUPS
   const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
   const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
   
@@ -1383,7 +1356,7 @@ function openModal(m){
   renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
   renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
 
-  // 3. SUMMARY TIMELINE
+  // 5. SUMMARY TIMELINE
   const sv=document.getElementById("summaryTimeline"); sv.innerHTML = "";
   if(!s.events||s.events.length===0){
     sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";

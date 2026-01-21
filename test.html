@@ -150,20 +150,14 @@ body{
 }
 .left-card::-webkit-scrollbar { display: none; }
 
-.left-header {
-  height: var(--header-h);
-  background: var(--bg-soft); 
-  border-radius: 10px;
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  
-  /* CHANGED: Smaller font for the word "MATCHES" */
-  font-size: 11px; 
-  
-  font-weight: 800; 
-  position: relative; 
+.left-header{
+  height:var(--header-h);
+  background:var(--bg-soft); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; /* Smaller text for Matches */
+  font-weight:800; position: relative; 
 }
+
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
   cursor: pointer; transition: transform 0.1s; width: 40px; height: 40px;
@@ -264,13 +258,6 @@ body{
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 .right-divider{height:8px}
-
-/* STICKY HEADER CLASS */
-.header-row-sticky {
-  position: sticky; top: 0; z-index: 50;
-  background: var(--bg-card); padding-bottom: 8px;
-  margin-bottom: 0 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
 
 .bet{
   width:var(--bet-w); 
@@ -711,8 +698,8 @@ function loadData(){
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        // STICKY HEADER CHANGE
-        const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
+        // NO STICKY HEADER
+        const headerRow=document.createElement("div"); headerRow.className="row";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
 
         // === AVATAR CONFIGURATION ===

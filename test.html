@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.4</title>
+<title>Bet Dashboard v2.5</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -957,8 +957,8 @@ function loadData(){
         });
 
         // TROLL BAR TRIGGER (DAILY LOGIC)
-        if(!hasTrolled && data.betSummary && data.betSummary.length > 1) {
-            triggerDailyTroll(data.headers, data.betSummary);
+        if(!hasTrolled && data.headers && data.headers.length > 1) {
+            triggerDailyTroll(data.headers);
             hasTrolled = true;
         }
 
@@ -967,51 +967,33 @@ function loadData(){
   });
 }
 
-function triggerDailyTroll(headers, betSummary) {
-    // FIND THE ROW LABELED "WIN" (To be safe, don't assume index 1)
-    let winRow = null;
-    if(betSummary[1] && betSummary[1].label === "WIN") winRow = betSummary[1].cells;
-    else if(betSummary[2] && betSummary[2].label === "WIN") winRow = betSummary[2].cells;
-    else winRow = betSummary[1].cells; // Fallback
+function triggerDailyTroll(headers) {
+    if (!headers || headers.length < 2) return;
 
-    if(!winRow) return;
+    // The columns are ALREADY sorted by performance (Left = Best, Right = Worst)
+    const winner = headers[0].name;
+    const loser = headers[headers.length - 1].name;
 
-    // Calculate Daily Performance
-    const dailyRank = headers.map((h, i) => {
-         let val = Number(winRow[i]?.value);
-         if(isNaN(val)) val = 0;
-         return { name: h.name, val: val };
-    }).sort((a,b) => b.val - a.val); // Sort High to Low
+    // Avoid weirdness if only one player type exists or names identical
+    if (winner === loser) return; 
 
-    const winner = dailyRank[0];
-    const loser = dailyRank[dailyRank.length - 1];
+    console.log("Best Column: " + winner, "Worst Column: " + loser);
 
-    // Check if everyone is at 0 (Game hasn't started)
-    if(winner.val === 0 && loser.val === 0) return;
-
-    console.log("Daily Winner: " + winner.name + " (" + winner.val + ")", "Daily Loser: " + loser.name + " (" + loser.val + ")"); 
-
-    let msg = "";
     const roasts = [
-        `Today's MVP: ${winner.name} is printing cash! 💸`,
-        `${loser.name} is donating to the bookies today. 📉`,
-        `Someone stop ${loser.name}, it's getting embarrassing.`,
-        `${winner.name} is the main character today.`,
-        `Bankroll Alert: ${loser.name} is down bad right now.`,
-        `Follow ${winner.name}'s bets if you like money.`
+        `Performance Check: ${winner} is carrying, ${loser} is dragging.`,
+        `${loser} needs to study ${winner}'s playbook.`,
+        `Alert: ${loser}'s picks are looking tragic right now.`,
+        `${winner} is cooking! ${loser} is cooked.`,
+        `Can someone wake up ${loser}? ${winner} is doing all the work.`,
+        `Gap between ${winner} and ${loser} is getting embarrassing.`
     ];
 
-    // Special case: If Loser is actually positive (everyone won), use milder roast
-    if(loser.val > 0) {
-        msg = `Everyone is winning, but ${winner.name} is winning the most! 🤑`;
-    } else {
-        msg = roasts[Math.floor(Math.random() * roasts.length)];
-    }
-
+    const msg = roasts[Math.floor(Math.random() * roasts.length)];
     const el = document.getElementById("trollBar");
     el.innerText = "🔥 TRASH TALK: " + msg;
     el.style.display = "block";
     
+    // Auto hide after 8 seconds
     setTimeout(() => el.style.display = "none", 8000);
 }
 

@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.2</title>
+<title>Bet Dashboard v2.3</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -99,7 +99,7 @@ body{
     animation: nervousPulse 0.8s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4); /* Stronger border for emphasis */
 }
 
 .score-pill, .bet { transition: all 0.3s; }
@@ -262,11 +262,11 @@ body{
 }
 
 /* BIGGER AVATARS MODIFICATION */
-/* NOTE: Removed "background: transparent" so the color board shows */
 .header-pill.has-avatar { 
     padding: 0; 
     overflow: visible; /* Allow slight pop-out */
     position: relative; 
+    /* background color is inherited from element style now */
 }
 .avatar-img { 
     width: 100%; height: 100%; 
@@ -300,7 +300,6 @@ body{
 }
 
 /* === TROLL BAR === */
-/* Found here in CSS, HTML element is below class "app" */
 .troll-bar {
   margin: 0 10px 10px;
   padding: 10px;
@@ -869,7 +868,7 @@ function loadData(){
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
                   
-                  // --- NEW BET PULSE LOGIC (85+ MINS ONLY) ---
+                  // --- NEW BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
                   if(live && isLate) {
                       let bet = String(c.value).toUpperCase();
                       let isSweaty = false;
@@ -877,9 +876,8 @@ function loadData(){
                       // Check for EXACT SCORE bets (contains "-")
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
-                          // Exact match (Winning) OR 1 goal difference in sum of goals
+                          // Exact match ONLY (Green)
                           if(bH === hScore && bA === aScore) isSweaty = true;
-                          else if((Math.abs(hScore - bH) + Math.abs(aScore - bA)) === 1) isSweaty = true;
                       } 
                       // Check for 1X2 bets
                       else {
@@ -890,12 +888,7 @@ function loadData(){
                           else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) winning = true;
                           
                           if(winning) isSweaty = true;
-                          else {
-                              // Is 1 goal away?
-                              if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
-                              else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
-                              else if((bet === "X" || bet === "D" || bet === "DRAW") && Math.abs(hScore - aScore) === 1) isSweaty = true; // 1 goal diff, need 1 to draw
-                          }
+                          // NO MORE PULSING FOR 1 GOAL AWAY
                       }
 
                       if(isSweaty) {
@@ -964,9 +957,9 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // TROLL BAR TRIGGER (ALWAYS SHOW if data exists)
-        if(!hasTrolled && data.ranking && data.ranking.length > 1) {
-            triggerTroll(data.ranking);
+        // TROLL BAR TRIGGER (DAILY LOGIC)
+        if(!hasTrolled && data.betSummary && data.betSummary.length > 1) {
+            triggerDailyTroll(data.headers, data.betSummary);
             hasTrolled = true;
         }
 
@@ -975,19 +968,27 @@ function loadData(){
   });
 }
 
-function triggerTroll(rankingData) {
-    if(!rankingData || rankingData.length < 2) return;
-    const loser = rankingData[rankingData.length - 1];
-    const winner = rankingData[0];
+function triggerDailyTroll(headers, betSummary) {
+    if(!betSummary || !betSummary[1]) return; // Index 1 is usually "WIN" row
     
-    console.log("Triggering Troll Bar for: " + loser.name); // DEBUG
+    // Calculate Daily Performance
+    const winRow = betSummary[1].cells;
+    const dailyRank = headers.map((h, i) => {
+         return { name: h.name, val: winRow[i]?.value || 0 };
+    }).sort((a,b) => b.val - a.val);
+
+    const winner = dailyRank[0];
+    const loser = dailyRank[dailyRank.length - 1];
+
+    console.log("Daily Winner: " + winner.name, "Daily Loser: " + loser.name); // DEBUG
 
     const roasts = [
-        `Someone tell ${loser.name} this isn't golf. High scores are good.`,
-        `${loser.name} is donating to the bookies again.`,
-        `Alert: ${loser.name} has forgotten how to win.`,
-        `Is ${loser.name} actually trying to lose?`,
-        `Look at ${winner.name} carrying the team!`
+        `Today's MVP: ${winner.name} is printing cash! 💸`,
+        `${loser.name} is donating to the bookies today. 📉`,
+        `Someone stop ${loser.name}, it's getting embarrassing.`,
+        `${winner.name} is the main character today.`,
+        `Bankroll Alert: ${loser.name} is down bad right now.`,
+        `Follow ${winner.name}'s bets if you like money.`
     ];
 
     // ALWAYS SHOW MESSAGE

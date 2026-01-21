@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.1</title>
+<title>Bet Dashboard v2.2</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -262,11 +262,11 @@ body{
 }
 
 /* BIGGER AVATARS MODIFICATION */
+/* NOTE: Removed "background: transparent" so the color board shows */
 .header-pill.has-avatar { 
     padding: 0; 
     overflow: visible; /* Allow slight pop-out */
     position: relative; 
-    background: transparent !important;
 }
 .avatar-img { 
     width: 100%; height: 100%; 
@@ -274,6 +274,7 @@ body{
     display: block; 
     transform: scale(1.35); /* MAKE AVATAR BIGGER */
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4));
+    z-index: 5;
 }
 
 .right-divider{height:8px}
@@ -299,6 +300,7 @@ body{
 }
 
 /* === TROLL BAR === */
+/* Found here in CSS, HTML element is below class "app" */
 .troll-bar {
   margin: 0 10px 10px;
   padding: 10px;
@@ -306,7 +308,7 @@ body{
   color: #1c1f23;
   font-weight: 800; font-size: 11px;
   text-align: center; border-radius: 8px;
-  display: none; /* Hidden by default */
+  display: none; /* Hidden by default, JS toggles this */
   animation: rollIn 0.5s ease;
   box-shadow: 0 4px 15px rgba(255, 77, 77, 0.4);
   text-transform: uppercase;
@@ -833,7 +835,9 @@ function loadData(){
 
           // CURRENT SCORE PARSING
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          
+          const minutes = parseInt(m.status) || 0;
+          const isLate = (minutes >= 85 || m.status === "ET");
+
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
                     <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
@@ -865,9 +869,8 @@ function loadData(){
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
                   
-                  // --- NEW BET PULSE LOGIC ---
-                  // Only pulse if LIVE
-                  if(live) {
+                  // --- NEW BET PULSE LOGIC (85+ MINS ONLY) ---
+                  if(live && isLate) {
                       let bet = String(c.value).toUpperCase();
                       let isSweaty = false;
                       
@@ -875,7 +878,6 @@ function loadData(){
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
                           // Exact match (Winning) OR 1 goal difference in sum of goals
-                          // E.g. Score 1-0. Bet 1-1 (Need 1A). Bet 2-0 (Need 1H).
                           if(bH === hScore && bA === aScore) isSweaty = true;
                           else if((Math.abs(hScore - bH) + Math.abs(aScore - bA)) === 1) isSweaty = true;
                       } 
@@ -890,7 +892,6 @@ function loadData(){
                           if(winning) isSweaty = true;
                           else {
                               // Is 1 goal away?
-                              // Home Bet: Drawing (-1) or Losing by 1? (Losing by 1 requires 2 goals to win, so no. Drawing requires 1 goal).
                               if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
                               else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
                               else if((bet === "X" || bet === "D" || bet === "DRAW") && Math.abs(hScore - aScore) === 1) isSweaty = true; // 1 goal diff, need 1 to draw
@@ -979,6 +980,8 @@ function triggerTroll(rankingData) {
     const loser = rankingData[rankingData.length - 1];
     const winner = rankingData[0];
     
+    console.log("Triggering Troll Bar for: " + loser.name); // DEBUG
+
     const roasts = [
         `Someone tell ${loser.name} this isn't golf. High scores are good.`,
         `${loser.name} is donating to the bookies again.`,
@@ -992,6 +995,8 @@ function triggerTroll(rankingData) {
     const el = document.getElementById("trollBar");
     el.innerText = "🔥 TRASH TALK: " + msg;
     el.style.display = "block";
+    
+    // Auto hide after 8 seconds
     setTimeout(() => el.style.display = "none", 8000);
 }
 

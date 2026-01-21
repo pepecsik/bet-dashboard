@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2</title>
+<title>Bet Dashboard v2.1</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -88,19 +88,18 @@ body{
   position: relative;
 }
 
-/* NEW: SWEAT-O-METER PULSE (Orange/Red) */
-/* Distinct from flash-active. Faster, more anxious. */
+/* NEW: SWEAT-O-METER PULSE */
+/* Applies to BET PILLS. Does NOT change color, just pulses size/brightness */
 @keyframes nervousPulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.0); transform: scale(1); }
-  50% { box-shadow: 0 0 0 6px rgba(255, 159, 67, 0.3); transform: scale(1.04); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.0); transform: scale(1); }
+  0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  50% { transform: scale(1.06); filter: brightness(1.3); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
 }
 .sweat-active {
     animation: nervousPulse 0.8s ease-in-out infinite !important;
-    border: 1px solid var(--accent-orange) !important;
-    color: #1c1f23 !important;
-    background: var(--accent-orange) !important;
-    font-weight: 800;
+    z-index: 10;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
 .score-pill, .bet { transition: all 0.3s; }
@@ -256,14 +255,26 @@ body{
 
 .header-pill{
   width:var(--header-pill-w); 
-  height:50px; /* Smaller inner pill */
+  height:50px; 
   background:var(--bg-soft);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 
-.header-pill.has-avatar { padding: 0; overflow: hidden; position: relative; }
-.avatar-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* BIGGER AVATARS MODIFICATION */
+.header-pill.has-avatar { 
+    padding: 0; 
+    overflow: visible; /* Allow slight pop-out */
+    position: relative; 
+    background: transparent !important;
+}
+.avatar-img { 
+    width: 100%; height: 100%; 
+    object-fit: contain; 
+    display: block; 
+    transform: scale(1.35); /* MAKE AVATAR BIGGER */
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4));
+}
 
 .right-divider{height:8px}
 
@@ -812,7 +823,6 @@ function loadData(){
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
-          // EXTRA TIME LOGIC
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
              displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
@@ -821,15 +831,9 @@ function loadData(){
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
 
-          // SWEAT-O-METER LOGIC
+          // CURRENT SCORE PARSING
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          const minutes = parseInt(m.status) || 0;
-          const isClose = Math.abs(hScore - aScore) === 1;
-          const isLate = (minutes >= 85 || m.status === "ET") && m.status !== "FT" && m.status !== "HT";
           
-          // If Live, Late, and 1 Goal Difference -> SWEAT
-          const isSweating = isLate && isClose && live;
-
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
                     <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
@@ -838,7 +842,7 @@ function loadData(){
                 </div>
           </div>
           <div class="left-cell">
-             <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${isSweating ? 'sweat-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
+             <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
              </div>
@@ -855,13 +859,50 @@ function loadData(){
           m.cells.forEach(c=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
+              
               if(c.value){
                   el.textContent=c.value;
-                  // Set CSS variable for ticket stub gradient
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
-                  el.style.backgroundColor = c.color; // Fallback
+                  el.style.backgroundColor = c.color; 
+                  
+                  // --- NEW BET PULSE LOGIC ---
+                  // Only pulse if LIVE
+                  if(live) {
+                      let bet = String(c.value).toUpperCase();
+                      let isSweaty = false;
+                      
+                      // Check for EXACT SCORE bets (contains "-")
+                      if(bet.includes("-")) {
+                          let [bH, bA] = bet.split("-").map(Number);
+                          // Exact match (Winning) OR 1 goal difference in sum of goals
+                          // E.g. Score 1-0. Bet 1-1 (Need 1A). Bet 2-0 (Need 1H).
+                          if(bH === hScore && bA === aScore) isSweaty = true;
+                          else if((Math.abs(hScore - bH) + Math.abs(aScore - bA)) === 1) isSweaty = true;
+                      } 
+                      // Check for 1X2 bets
+                      else {
+                          // Is Winning?
+                          let winning = false;
+                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) winning = true;
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) winning = true;
+                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) winning = true;
+                          
+                          if(winning) isSweaty = true;
+                          else {
+                              // Is 1 goal away?
+                              // Home Bet: Drawing (-1) or Losing by 1? (Losing by 1 requires 2 goals to win, so no. Drawing requires 1 goal).
+                              if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
+                              else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && hScore === aScore) isSweaty = true; // Drawing, need 1 goal
+                              else if((bet === "X" || bet === "D" || bet === "DRAW") && Math.abs(hScore - aScore) === 1) isSweaty = true; // 1 goal diff, need 1 to draw
+                          }
+                      }
+
+                      if(isSweaty) {
+                          el.classList.add("sweat-active");
+                      }
+                  }
+
               } else {
-                  // Empty bet styling
                   el.style.setProperty('--bet-bg', 'transparent');
               }
               rr.appendChild(el);
@@ -922,7 +963,7 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // TROLL BAR TRIGGER
+        // TROLL BAR TRIGGER (ALWAYS SHOW if data exists)
         if(!hasTrolled && data.ranking && data.ranking.length > 1) {
             triggerTroll(data.ranking);
             hasTrolled = true;
@@ -946,14 +987,12 @@ function triggerTroll(rankingData) {
         `Look at ${winner.name} carrying the team!`
     ];
 
-    // 20% chance to show message
-    if(Math.random() > 0.8) { 
-        const msg = roasts[Math.floor(Math.random() * roasts.length)];
-        const el = document.getElementById("trollBar");
-        el.innerText = "🔥 TRASH TALK: " + msg;
-        el.style.display = "block";
-        setTimeout(() => el.style.display = "none", 8000);
-    }
+    // ALWAYS SHOW MESSAGE
+    const msg = roasts[Math.floor(Math.random() * roasts.length)];
+    const el = document.getElementById("trollBar");
+    el.innerText = "🔥 TRASH TALK: " + msg;
+    el.style.display = "block";
+    setTimeout(() => el.style.display = "none", 8000);
 }
 
 function drawHistoryChart(t){

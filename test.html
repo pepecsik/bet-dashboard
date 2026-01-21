@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.5</title>
+<title>Bet Dashboard v2.6</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -104,11 +104,14 @@ body{
 
 .score-pill, .bet { transition: all 0.3s; }
 
+/* === UPDATED DARK SKELETON === */
 .skeleton {
-  background: linear-gradient(90deg, var(--bg-soft) 25%, #3c4249 50%, var(--bg-soft) 75%);
+  /* Much darker gradient for subtle effect */
+  background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.02) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  color: transparent !important; border-radius: 10px;
+  animation: shimmer 2s infinite; /* Slower animation */
+  color: transparent !important; 
+  border-radius: 10px;
 }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
@@ -299,7 +302,7 @@ body{
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
 }
 
-/* === TROLL BAR === */
+/* === VIBE CHECK / TROLL BAR === */
 .troll-bar {
   margin: 0 10px 10px;
   padding: 10px;
@@ -806,6 +809,7 @@ function loadData(){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
         const matchCount = data.matches.length;
+        let anyGameLive = false;
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
@@ -822,6 +826,8 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
+          if(live) anyGameLive = true;
+
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
@@ -869,7 +875,6 @@ function loadData(){
                   el.style.backgroundColor = c.color; 
                   
                   // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
-                  // 1. Check if Column is Dead (Avatar is Red)
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
@@ -877,13 +882,10 @@ function loadData(){
                       let bet = String(c.value).toUpperCase();
                       let isWinning = false;
                       
-                      // Check for EXACT SCORE bets (contains "-")
                       if(bet.includes("-")) {
                           let [bH, bA] = bet.split("-").map(Number);
-                          // Exact match ONLY (Green)
                           if(bH === hScore && bA === aScore) isWinning = true;
                       } 
-                      // Check for 1X2 bets
                       else {
                           if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
                           else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
@@ -931,12 +933,10 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
-        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
           
-          // Fire Logic
           if(i===0) {
               if(data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
                   const hist = data.chartData.money;
@@ -956,9 +956,9 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // TROLL BAR TRIGGER (DAILY LOGIC)
-        if(!hasTrolled && data.headers && data.headers.length > 1) {
-            triggerDailyTroll(data.headers);
+        // GLOBAL VIBE CHECK (Replaces specific troll bar)
+        if(!hasTrolled && data.totals) {
+            triggerVibeCheck(data.totals, anyGameLive);
             hasTrolled = true;
         }
 
@@ -967,33 +967,52 @@ function loadData(){
   });
 }
 
-function triggerDailyTroll(headers) {
-    if (!headers || headers.length < 2) return;
+function triggerVibeCheck(totals, isLive) {
+    if(!totals) return;
+    
+    // Find the "TOTAL WIN" row
+    const winRow = totals.find(t => t.label === "TOTAL WIN");
+    if(!winRow) return;
 
-    // The columns are ALREADY sorted by performance (Left = Best, Right = Worst)
-    const winner = headers[0].name;
-    const loser = headers[headers.length - 1].name;
+    const winVal = winRow.cells[1]?.value || 0; // GBP value
+    
+    let msg = "";
+    
+    if (winVal > 0) {
+        // POSITIVE VIBES
+        const hypes = [
+            `🤑 WE ARE EATING TONIGHT! (+${formatGBP(winVal)})`,
+            `🚀 TO THE MOON! (+${formatGBP(winVal)})`,
+            `💸 PRINTER IS ON! Cash incoming.`,
+            `💰 Bag Secured: ${formatGBP(winVal)} profit.`
+        ];
+        msg = hypes[Math.floor(Math.random() * hypes.length)];
+    } 
+    else if (winVal === 0 && isLive) {
+        // SUSPENSE VIBES
+        const suspense = [
+            "😬 Sweaty palms time...",
+            "🙏 Praying for a late goal.",
+            "🤞 Fingers crossed...",
+            "⏳ Still waiting for a payout."
+        ];
+        msg = suspense[Math.floor(Math.random() * suspense.length)];
+    }
+    else {
+        // NEGATIVE VIBES (Only if no profit and likely games done or losing)
+        const roasts = [
+            "📉 Donation sent to the bookies.",
+            "💀 It's over.",
+            "🥗 Salad for dinner tonight.",
+            "📉 Bankruptcy declared."
+        ];
+        msg = roasts[Math.floor(Math.random() * roasts.length)];
+    }
 
-    // Avoid weirdness if only one player type exists or names identical
-    if (winner === loser) return; 
-
-    console.log("Best Column: " + winner, "Worst Column: " + loser);
-
-    const roasts = [
-        `Performance Check: ${winner} is carrying, ${loser} is dragging.`,
-        `${loser} needs to study ${winner}'s playbook.`,
-        `Alert: ${loser}'s picks are looking tragic right now.`,
-        `${winner} is cooking! ${loser} is cooked.`,
-        `Can someone wake up ${loser}? ${winner} is doing all the work.`,
-        `Gap between ${winner} and ${loser} is getting embarrassing.`
-    ];
-
-    const msg = roasts[Math.floor(Math.random() * roasts.length)];
     const el = document.getElementById("trollBar");
-    el.innerText = "🔥 TRASH TALK: " + msg;
+    el.innerText = "🔥 VIBE CHECK: " + msg;
     el.style.display = "block";
     
-    // Auto hide after 8 seconds
     setTimeout(() => el.style.display = "none", 8000);
 }
 

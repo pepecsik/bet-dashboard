@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.8</title>
+<title>Bet Dashboard v2.9</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -809,7 +809,6 @@ function loadData(){
 
         const matchCount = data.matches.length;
         let anyGameLive = false;
-        let highestRatPlayer = { name: "", rating: 0 };
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
@@ -826,15 +825,7 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-          if(live) {
-              anyGameLive = true;
-              if(m.stats && m.stats.players) {
-                  // Find MVP across all live games
-                  [... (m.stats.players.h||[]), ... (m.stats.players.a||[])].forEach(pl => {
-                      if(pl.rating > highestRatPlayer.rating) highestRatPlayer = {name: pl.name, rating: pl.rating};
-                  });
-              }
-          }
+          if(live) anyGameLive = true;
 
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
@@ -846,6 +837,7 @@ function loadData(){
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
 
+          // CURRENT SCORE PARSING
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           const minutes = parseInt(m.status) || 0;
           const isLate = (minutes >= 85 || m.status === "ET");
@@ -906,6 +898,8 @@ function loadData(){
 
               } else {
                   el.style.setProperty('--bet-bg', 'transparent');
+                  el.style.border = 'none'; // REMOVES BORDER FROM EMPTY
+                  el.style.boxShadow = 'none'; // REMOVES SHADOW FROM EMPTY
               }
               rr.appendChild(el);
           });
@@ -940,6 +934,7 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
+        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
@@ -963,55 +958,107 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // UPDATE LIVE TICKER
-        updateNewsTicker(data.ranking, anyGameLive, highestRatPlayer, data.totals);
+        // SMART COMMENTARY TRIGGER
+        if(anyGameLive) {
+            generateSmartCommentary(data.matches, data.headers);
+        } else {
+            // Default "Waiting" message
+            document.getElementById("newsTicker").style.display = "block";
+            document.getElementById("newsTicker").innerHTML = "📅 Waiting for Kick-Off • Good luck!";
+        }
 
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
 }
 
-function updateNewsTicker(ranking, isLive, mvp, weeklyTotals) {
+// SMART COMMENTATOR LOGIC
+function generateSmartCommentary(matches, headers) {
     const el = document.getElementById("newsTicker");
     if(!el) return;
 
-    // Get Weekly Leader from Totals (Highest Positive GBP)
-    let weeklyLeader = {name: "None", val: 0};
-    if(weeklyTotals) {
-        // Need to parse from totals because we don't have per-person totals directly in data.ranking (that's all-time)
-        // Usually, the "WIN" row in betSummary is best, but let's use data.ranking[0] as All-Time leader
-    }
-    
-    // BUILD MESSAGES
-    const messages = [];
-    
-    // 1. All-Time Leader
-    if(ranking && ranking.length > 0) {
-        messages.push(`🏆 All-Time Leader: <span class="ticker-highlight">${ranking[0].name}</span> (${formatGBP(ranking[0].money)})`);
-    }
+    let commentary = [];
 
-    // 2. Live Games
-    if(isLive) {
-        messages.push(`⚽ <span class="ticker-highlight">LIVE ACTION</span> • Follow matches for real-time updates`);
-        if(mvp.rating > 0) {
-            messages.push(`🔥 Pitch MVP: <span class="ticker-highlight">${formatName(mvp.name)}</span> (${mvp.rating.toFixed(1)})`);
+    // Filter ALIVE players (Indices where status is NOT red)
+    const aliveIndices = headers.map((h, i) => (h.status !== 'red' && h.status !== '#ff4d4d') ? i : -1).filter(i => i !== -1);
+    
+    // 1. ANALYZE LIVE MATCHES
+    matches.forEach(m => {
+        const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
+        if(!live) return;
+
+        const [hName, aName] = m.match.split("-");
+        const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
+        let outcome = hScore > aScore ? "H" : (aScore > hScore ? "A" : "D");
+
+        // Collect Bets for this match from ALIVE players only
+        let bets = [];
+        aliveIndices.forEach(idx => {
+            let val = m.cells[idx]?.value;
+            if(val) bets.push({ name: headers[idx].name, pick: String(val).toUpperCase() });
+        });
+
+        if(bets.length === 0) return;
+
+        // SCENARIO A: UNANIMOUS (All alive players have SAME pick)
+        const allSame = bets.every(b => b.pick === bets[0].pick);
+        if(allSame) {
+            let team = bets[0].pick === "1" ? hName : (bets[0].pick === "2" ? aName : "Draw");
+            if(bets[0].pick.length > 2) team = bets[0].pick; // Use explicit name if available
+            commentary.push(`🤝 The group is ALL IN on ${team}! No safety net.`);
         }
-    } else {
-        messages.push(`📅 Updates every 30s • Good luck with your bets!`);
+
+        // SCENARIO B: TOTAL BLACKOUT (No one is winning)
+        const anyWinning = bets.some(b => {
+            if(b.pick.includes("-")) return b.pick === `${hScore}-${aScore}`; // Exact
+            if((b.pick==="1"||b.pick==="H") && outcome==="H") return true;
+            if((b.pick==="2"||b.pick==="A") && outcome==="A") return true;
+            if((b.pick==="X"||b.pick==="D") && outcome==="D") return true;
+            return false;
+        });
+
+        if(!anyWinning) {
+            commentary.push(`🚨 Crisis at ${hName}-${aName}! No one has this score.`);
+        }
+
+        // SCENARIO C: LONE WOLF (Only 1 person winning)
+        const winners = bets.filter(b => {
+            if(b.pick.includes("-")) return b.pick === `${hScore}-${aScore}`;
+            if((b.pick==="1"||b.pick==="H") && outcome==="H") return true;
+            if((b.pick==="2"||b.pick==="A") && outcome==="A") return true;
+            if((b.pick==="X"||b.pick==="D") && outcome==="D") return true;
+            return false;
+        });
+
+        if(winners.length === 1) {
+            commentary.push(`💎 Only <span class="ticker-highlight">${winners[0].name}</span> is smiling at ${hName} right now!`);
+        }
+
+        // SCENARIO D: NAILBITER (Late game, draw, people need a winner)
+        const minutes = parseInt(m.status) || 0;
+        if(minutes > 80 && outcome === "D") {
+             const needWinner = bets.some(b => b.pick !== "X" && b.pick !== "D");
+             if(needWinner) {
+                 commentary.push(`😬 Squeaky bum time at ${hName}... We need a goal!`);
+             }
+        }
+    });
+
+    // If no specific insights, generic fallback
+    if(commentary.length === 0) {
+        commentary.push("⚽ Matches in progress... Tracking bets.");
     }
 
-    // Rotate Messages every 4 seconds
+    // Cycle through commentary
     if(window.tickerInterval) clearInterval(window.tickerInterval);
     let msgIdx = 0;
-    
     const showMsg = () => {
-        el.innerHTML = messages[msgIdx];
+        el.innerHTML = "🎙️ " + commentary[msgIdx];
         el.style.display = "block";
-        msgIdx = (msgIdx + 1) % messages.length;
+        msgIdx = (msgIdx + 1) % commentary.length;
     };
-    
     showMsg();
-    window.tickerInterval = setInterval(showMsg, 4000);
+    window.tickerInterval = setInterval(showMsg, 5000);
 }
 
 function drawHistoryChart(t){

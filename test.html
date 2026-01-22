@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.0</title>
+<title>Bet Dashboard v3.1</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -105,7 +105,6 @@ body{
 
 /* === DARK SKELETON (FIXED VISIBILITY) === */
 .skeleton {
-  /* Using a lighter grey gradient so it stands out against dark bg */
   background: linear-gradient(90deg, #3a3f45 25%, #4a4f55 50%, #3a3f45 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -119,7 +118,7 @@ body{
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows: auto 1fr auto; /* Auto for Ticker, 1fr content, Auto footer */
+  grid-template-rows: auto 1fr auto; /* Ticker at Top */
 }
 
 @media (max-width: 768px){
@@ -876,7 +875,7 @@ function loadData(){
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
                   
-                  // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
+                  // --- BET PULSE LOGIC ---
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
@@ -900,9 +899,8 @@ function loadData(){
                   }
 
               } else {
-                  // EMPTY BET PILL FIX
                   el.style.setProperty('--bet-bg', 'transparent');
-                  el.classList.add('empty'); // Removes border/shadow via CSS
+                  el.classList.add('empty');
               }
               rr.appendChild(el);
           });
@@ -964,7 +962,6 @@ function loadData(){
         if(anyGameLive) {
             generateSmartCommentary(data.matches, data.headers);
         } else {
-            // Default "Waiting" message
             document.getElementById("newsTicker").style.display = "block";
             document.getElementById("newsTicker").innerHTML = "📅 Waiting for Kick-Off • Good luck!";
         }
@@ -974,7 +971,7 @@ function loadData(){
   });
 }
 
-// SMART COMMENTATOR LOGIC (UPDATED)
+// SMART COMMENTATOR LOGIC (CONTEXT AWARE)
 function generateSmartCommentary(matches, headers) {
     const el = document.getElementById("newsTicker");
     if(!el) return;
@@ -1004,7 +1001,6 @@ function generateSmartCommentary(matches, headers) {
         let votes = { H:0, D:0, A:0, Total:0 };
         bets.forEach(b => {
             votes.Total++;
-            // Normalize bet types (1X2 vs Exact) to generic outcome for "Winning" check
             let type = "";
             if(b.pick.includes("-")) {
                 let [p1, p2] = b.pick.split("-").map(Number);
@@ -1029,10 +1025,10 @@ function generateSmartCommentary(matches, headers) {
             commentary.push(`✅ ${team} is doing the job for the group!`);
         } 
         
-        // SCENARIO: CRISIS (Group Pick is Losing)
+        // SCENARIO: CRISIS (Group Pick is LOSING)
         else {
-            // Only trigger crisis if > 50% of people picked the losing side
             if(votes[groupPick] > (votes.Total / 2)) {
+                // If group backed Home, but Away is winning -> Crisis
                 commentary.push(`🚨 Crisis at ${hName}! We need a turnaround.`);
             }
         }
@@ -1049,12 +1045,10 @@ function generateSmartCommentary(matches, headers) {
         });
     });
 
-    // Fallback
     if(commentary.length === 0) {
         commentary.push("⚽ Matches in progress... Tracking the action.");
     }
 
-    // Cycle through messages
     if(window.tickerInterval) clearInterval(window.tickerInterval);
     let msgIdx = 0;
     const showMsg = () => {

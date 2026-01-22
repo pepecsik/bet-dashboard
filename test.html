@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.1</title>
+<title>Bet Dashboard v3.2</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -105,13 +105,17 @@ body{
 
 /* === DARK SKELETON (FIXED VISIBILITY) === */
 .skeleton {
-  background: linear-gradient(90deg, #3a3f45 25%, #4a4f55 50%, #3a3f45 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  /* Dark grey pulse - subtle and classy */
+  background-color: #343a40;
+  animation: darkBreathing 1.5s infinite ease-in-out;
   color: transparent !important; 
   border-radius: 10px;
 }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes darkBreathing { 
+  0% { background-color: #343a40; } 
+  50% { background-color: #495057; } 
+  100% { background-color: #343a40; } 
+}
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
@@ -875,7 +879,7 @@ function loadData(){
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
                   
-                  // --- BET PULSE LOGIC ---
+                  // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
@@ -1669,31 +1673,7 @@ renderSkeletons();
 loadData(); 
 setInterval(loadData,REFRESH_MS);
 
-// GOD MODE EASTER EGG
-let godModeClicks = 0;
-let godModeTimer;
-setTimeout(() => {
-    const brandBtn = document.querySelector('.brand-btn');
-    if(brandBtn) {
-        brandBtn.onclick = (e) => {
-            e.stopPropagation(); godModeClicks++; vibe();
-            clearTimeout(godModeTimer);
-            godModeTimer = setTimeout(() => { godModeClicks = 0; }, 1000);
-            if(godModeClicks === 5) {
-                document.body.style.animation = "nervousShiver 0.2s infinite";
-                var end = Date.now() + 3000;
-                (function frame() {
-                    confetti({particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#7CFF5B', '#ff9f43', '#ffffff']});
-                    confetti({particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#7CFF5B', '#ff9f43', '#ffffff']});
-                    if (Date.now() < end) requestAnimationFrame(frame);
-                    else document.body.style.animation = "none";
-                }());
-                showBigWin("GOD MODE ACTIVATED");
-                godModeClicks = 0;
-            }
-        };
-    }
-}, 1000);
+// REMOVED GOD MODE ENTIRELY AS REQUESTED
 
 document.getElementById("rankingCard").onclick=()=>{vibe();const h=document.getElementById("historyCard"),o=h.style.display!=="block";h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};

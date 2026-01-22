@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v2.9</title>
+<title>Bet Dashboard v3.0</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -89,7 +89,6 @@ body{
 }
 
 /* NEW: SWEAT-O-METER PULSE */
-/* Applies to BET PILLS. Does NOT change color, just pulses size/brightness */
 @keyframes nervousPulse {
   0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
   50% { transform: scale(1.06); filter: brightness(1.3); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -99,30 +98,28 @@ body{
     animation: nervousPulse 0.8s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.4) !important; /* Stronger border for emphasis */
+    border: 1px solid rgba(255,255,255,0.4) !important;
 }
 
 .score-pill, .bet { transition: all 0.3s; }
 
-/* === DARK SKELETON === */
+/* === DARK SKELETON (FIXED VISIBILITY) === */
 .skeleton {
-  background-color: #2a2e33;
-  animation: darkPulse 1.5s infinite ease-in-out;
+  /* Using a lighter grey gradient so it stands out against dark bg */
+  background: linear-gradient(90deg, #3a3f45 25%, #4a4f55 50%, #3a3f45 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
   color: transparent !important; 
   border-radius: 10px;
 }
-@keyframes darkPulse { 
-  0% { opacity: 0.6; } 
-  50% { opacity: 1; } 
-  100% { opacity: 0.6; } 
-}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows:1fr auto;
+  grid-template-rows: auto 1fr auto; /* Auto for Ticker, 1fr content, Auto footer */
 }
 
 @media (max-width: 768px){
@@ -164,8 +161,8 @@ body{
 /* GLASSMORPHISM HEADERS */
 .left-header {
   height:var(--header-h);
-  background: rgba(47, 52, 58, 0.85); /* Semi transparent */
-  backdrop-filter: blur(12px); /* Blur effect */
+  background: rgba(47, 52, 58, 0.85);
+  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255,255,255,0.05);
   border-radius:10px;
@@ -241,7 +238,7 @@ body{
 
 .header-row-sticky {
   position: sticky; top: 0; z-index: 20; 
-  background: rgba(38, 42, 48, 0.1); /* Transparent to let pills handle blur */
+  background: rgba(38, 42, 48, 0.1); 
 }
 
 .header-pill-wrapper {
@@ -267,7 +264,6 @@ body{
 }
 
 /* BIGGER AVATARS MODIFICATION */
-/* NOTE: Removed "background: transparent" so the color board shows */
 .header-pill.has-avatar { 
     padding: 0; 
     overflow: visible; /* Allow slight pop-out */
@@ -284,22 +280,29 @@ body{
 
 .right-divider{height:8px}
 
-/* --- ROUNDED BET PILLS (REVERTED FROM TICKET STUB) --- */
+/* --- ROUNDED BET PILLS --- */
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius: 12px; /* Smooth rounded corners, matching left card */
+  border-radius: 12px; /* Smooth rounded corners */
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
   position: relative;
   background: var(--bet-bg); /* CSS Variable from JS */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Subtle shadow */
-  border: 1px solid rgba(255,255,255,0.05); /* Slight border for definition */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+  border: 1px solid rgba(255,255,255,0.05); 
 }
 
-/* === LIVE TICKER (FORMERLY TROLL BAR) === */
+/* EMPTY BET PILL (No Border/Shadow) */
+.bet.empty {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* === LIVE TICKER === */
 .news-ticker {
-  margin: 0 10px 10px;
+  margin: 10px 10px 0 10px; /* Moved to Top */
   padding: 10px 15px;
   background: linear-gradient(90deg, #262a30, #2f343a);
   color: var(--text-muted);
@@ -565,12 +568,12 @@ body{
 <body>
 
 <div class="app">
+  <div id="newsTicker" class="news-ticker">Loading insights...</div>
+
   <div class="main">
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
-
-  <div id="newsTicker" class="news-ticker">Loading insights...</div>
 
   <footer class="summary">
     <div class="summary-toggle open" id="summaryToggle"></div>
@@ -897,9 +900,9 @@ function loadData(){
                   }
 
               } else {
+                  // EMPTY BET PILL FIX
                   el.style.setProperty('--bet-bg', 'transparent');
-                  el.style.border = 'none'; // REMOVES BORDER FROM EMPTY
-                  el.style.boxShadow = 'none'; // REMOVES SHADOW FROM EMPTY
+                  el.classList.add('empty'); // Removes border/shadow via CSS
               }
               rr.appendChild(el);
           });
@@ -934,7 +937,6 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
         
-        // SHAME AND FIRE RANKING LOGIC (UPDATED)
         data.ranking.forEach((r,i)=>{
           let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
           let rowClass = "rank-row";
@@ -972,17 +974,16 @@ function loadData(){
   });
 }
 
-// SMART COMMENTATOR LOGIC
+// SMART COMMENTATOR LOGIC (UPDATED)
 function generateSmartCommentary(matches, headers) {
     const el = document.getElementById("newsTicker");
     if(!el) return;
 
     let commentary = [];
 
-    // Filter ALIVE players (Indices where status is NOT red)
+    // Filter ALIVE players
     const aliveIndices = headers.map((h, i) => (h.status !== 'red' && h.status !== '#ff4d4d') ? i : -1).filter(i => i !== -1);
     
-    // 1. ANALYZE LIVE MATCHES
     matches.forEach(m => {
         const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
         if(!live) return;
@@ -991,7 +992,6 @@ function generateSmartCommentary(matches, headers) {
         const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
         let outcome = hScore > aScore ? "H" : (aScore > hScore ? "A" : "D");
 
-        // Collect Bets for this match from ALIVE players only
         let bets = [];
         aliveIndices.forEach(idx => {
             let val = m.cells[idx]?.value;
@@ -1000,56 +1000,61 @@ function generateSmartCommentary(matches, headers) {
 
         if(bets.length === 0) return;
 
-        // SCENARIO A: UNANIMOUS (All alive players have SAME pick)
-        const allSame = bets.every(b => b.pick === bets[0].pick);
-        if(allSame) {
-            let team = bets[0].pick === "1" ? hName : (bets[0].pick === "2" ? aName : "Draw");
-            if(bets[0].pick.length > 2) team = bets[0].pick; // Use explicit name if available
-            commentary.push(`🤝 The group is ALL IN on ${team}! No safety net.`);
-        }
-
-        // SCENARIO B: TOTAL BLACKOUT (No one is winning)
-        const anyWinning = bets.some(b => {
-            if(b.pick.includes("-")) return b.pick === `${hScore}-${aScore}`; // Exact
-            if((b.pick==="1"||b.pick==="H") && outcome==="H") return true;
-            if((b.pick==="2"||b.pick==="A") && outcome==="A") return true;
-            if((b.pick==="X"||b.pick==="D") && outcome==="D") return true;
-            return false;
+        // --- 1. DETERMINE GROUP CONSENSUS (What do most people want?) ---
+        let votes = { H:0, D:0, A:0, Total:0 };
+        bets.forEach(b => {
+            votes.Total++;
+            // Normalize bet types (1X2 vs Exact) to generic outcome for "Winning" check
+            let type = "";
+            if(b.pick.includes("-")) {
+                let [p1, p2] = b.pick.split("-").map(Number);
+                type = p1 > p2 ? "H" : (p2 > p1 ? "A" : "D");
+            } else {
+                if(b.pick === "1" || b.pick === "H" || b.pick.includes(hName.toUpperCase())) type = "H";
+                else if(b.pick === "2" || b.pick === "A" || b.pick.includes(aName.toUpperCase())) type = "A";
+                else type = "D";
+            }
+            if(type) votes[type]++;
         });
 
-        if(!anyWinning) {
-            commentary.push(`🚨 Crisis at ${hName}-${aName}! No one has this score.`);
+        let groupPick = "H";
+        if(votes.D > votes.H && votes.D > votes.A) groupPick = "D";
+        if(votes.A > votes.H && votes.A > votes.D) groupPick = "A";
+
+        // --- 2. GENERATE MESSAGES ---
+
+        // SCENARIO: GROUP IS WINNING (General Outcome)
+        if(groupPick === outcome) {
+            let team = groupPick === "H" ? hName : (groupPick === "A" ? aName : "The Draw");
+            commentary.push(`✅ ${team} is doing the job for the group!`);
+        } 
+        
+        // SCENARIO: CRISIS (Group Pick is Losing)
+        else {
+            // Only trigger crisis if > 50% of people picked the losing side
+            if(votes[groupPick] > (votes.Total / 2)) {
+                commentary.push(`🚨 Crisis at ${hName}! We need a turnaround.`);
+            }
         }
 
-        // SCENARIO C: LONE WOLF (Only 1 person winning)
-        const winners = bets.filter(b => {
-            if(b.pick.includes("-")) return b.pick === `${hScore}-${aScore}`;
-            if((b.pick==="1"||b.pick==="H") && outcome==="H") return true;
-            if((b.pick==="2"||b.pick==="A") && outcome==="A") return true;
-            if((b.pick==="X"||b.pick==="D") && outcome==="D") return true;
-            return false;
+        // SCENARIO: EXACT SCORE "ONE GOAL AWAY"
+        bets.forEach(b => {
+            if(b.pick.includes("-")) {
+                let [p1, p2] = b.pick.split("-").map(Number);
+                let diff = Math.abs(p1 - hScore) + Math.abs(p2 - aScore);
+                if(diff === 1) {
+                    commentary.push(`👀 So close! 1 goal needed for ${b.name}'s ${b.pick} bet.`);
+                }
+            }
         });
-
-        if(winners.length === 1) {
-            commentary.push(`💎 Only <span class="ticker-highlight">${winners[0].name}</span> is smiling at ${hName} right now!`);
-        }
-
-        // SCENARIO D: NAILBITER (Late game, draw, people need a winner)
-        const minutes = parseInt(m.status) || 0;
-        if(minutes > 80 && outcome === "D") {
-             const needWinner = bets.some(b => b.pick !== "X" && b.pick !== "D");
-             if(needWinner) {
-                 commentary.push(`😬 Squeaky bum time at ${hName}... We need a goal!`);
-             }
-        }
     });
 
-    // If no specific insights, generic fallback
+    // Fallback
     if(commentary.length === 0) {
-        commentary.push("⚽ Matches in progress... Tracking bets.");
+        commentary.push("⚽ Matches in progress... Tracking the action.");
     }
 
-    // Cycle through commentary
+    // Cycle through messages
     if(window.tickerInterval) clearInterval(window.tickerInterval);
     let msgIdx = 0;
     const showMsg = () => {

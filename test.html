@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v5.1</title>
+<title>Bet Dashboard v5.2</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -42,7 +42,7 @@
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
-  --filter-h: 40px; /* Fixed height for spacers */
+  --filter-h: 40px; /* Fixed height for filter/spacers */
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -84,7 +84,6 @@ body{
 }
 
 /* --- AVATAR ANIMATIONS --- */
-
 /* ORANGE: ZOOM PULSE (Heartbeat) */
 @keyframes nervousPulse { 
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.6); } 
@@ -110,7 +109,7 @@ body{
 .status-green, .status-green-live {
   background-color: var(--accent-green) !important;
   color: #000 !important;
-  box-shadow: 0 0 20px rgba(124, 255, 91, 0.6); /* Strong Glow */
+  box-shadow: 0 0 20px rgba(124, 255, 91, 0.6); 
   animation: victoryShiver 0.25s infinite linear !important;
   border: none !important;
   z-index: 12;
@@ -220,7 +219,7 @@ body{
   border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   position: sticky; top: 0; z-index: 20;
-  /* Removed margin-bottom here, controlled by spacer now */
+  /* Removed margin-bottom here */
 }
 
 .header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; }
@@ -249,13 +248,12 @@ body{
 /* ZOOMED LOGO */
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* ALIGNED SPACER/FILTER BAR */
-/* Key: Fixed height and margin to match Right Spacer exactly */
+/* ALIGNED SPACER/FILTER BAR - CRITICAL FOR ALIGNMENT */
 .spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
     height: var(--filter-h); 
     padding: 0 4px;
-    margin: 5px 0 8px 0; /* 5px top, 8px bottom */
+    margin: 8px 0; /* Identical top/bottom margins */
     box-sizing: border-box;
 }
 
@@ -331,7 +329,7 @@ body{
   background: var(--bg-card); 
   height: var(--header-h); 
   display: flex; align-items: center;
-  /* Margin handled by spacer now */
+  /* Margin handled by spacer logic now */
 }
 
 .header-pill-wrapper {
@@ -454,7 +452,7 @@ body{
 .history-card-inner {
   width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
   padding:12px; 
-  height: auto; min-height: 250px; 
+  height: auto; min-height: 180px; 
 }
 .history-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -489,7 +487,7 @@ body{
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction:column; align-items: center; justify-content: center;
-  pointer-events: none; z-index: 2200; opacity: 0; gap: 20px;
+  pointer-events: none; z-index: 2200; opacity: 0; gap: 5px;
 }
 .big-win-text {
   font-size: 35vw; font-weight: 900; color: #7CFF5B;
@@ -498,11 +496,16 @@ body{
   transform: scale(0.5); white-space: nowrap; line-height: 1;
 }
 .big-win-avatar {
-    width: 20vw; height: 20vw; border-radius: 50%; border: 5px solid #7CFF5B;
-    box-shadow: 0 0 50px rgba(124, 255, 91, 0.5); object-fit: cover;
+    width: 140px; height: 140px; border-radius: 50%; border: 4px solid #7CFF5B;
+    box-shadow: 0 0 50px rgba(124, 255, 91, 0.6); object-fit: cover;
     animation: bounce 1s infinite;
 }
-@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+@media (max-width: 768px) {
+    .big-win-avatar { width: 180px; height: 180px; }
+    .big-win-text { font-size: 20vw; }
+}
+
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
 
 @keyframes bigWinAnim {
   0% { opacity: 0; transform: scale(0.5); }
@@ -743,7 +746,7 @@ body{
               <button id="btnMoney" class="toggle-btn">Money</button>
              </div>
          </div>
-         <div style="position: relative; height: 250px; width: 100%;">
+         <div style="position: relative; height: 180px; width: 100%;">
             <canvas id="historyChart"></canvas>
          </div>
       </div>
@@ -868,7 +871,7 @@ function renderSkeletons() {
   fb.innerHTML = `
       <div class="filter-title">Filters</div>
       <div class="filter-actions">
-           <button class="filter-btn">ALL</button>
+           <button class="filter-btn active">ALL</button>
            <button class="filter-btn">ALIVE</button>
            <button class="filter-btn">LIVE</button>
       </div>
@@ -911,11 +914,17 @@ function loadData(){
 
         // 1. LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
+        
+        let statusHtml = "";
+        if(nLive > 0) statusHtml += `<span style="color:#7CFF5B">${nLive} LIVE</span>`;
+        if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
+        if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
+        
         lh.innerHTML=`
             <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
             <div class="header-title-box">
                 <span class="header-main-text">MATCHDAY</span>
-                <span class="header-sub-text">${nLive > 0 ? `<span style="color:#7CFF5B">● ${nLive} LIVE</span>` : ""} ${nUpcoming} UPCOMING</span>
+                <span class="header-sub-text">${statusHtml}</span>
             </div>
             <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
@@ -1098,12 +1107,12 @@ function loadData(){
       // INSERT SPACER IN RIGHT COLUMN TO MAINTAIN ALIGNMENT
       const rightSpacer = document.createElement("div");
       rightSpacer.className = "spacer-bar"; // Same class = Same height
-      rightSpacer.innerHTML = "&nbsp;"; 
+      rightSpacer.innerHTML = "&nbsp;"; 
       right.appendChild(rightSpacer);
       right.appendChild(document.createElement("div")).className="right-divider";
 
       ["BET","WIN","WIN PP"].forEach((l,i)=>{
-          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
+          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
           left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) {
@@ -1154,150 +1163,156 @@ function loadData(){
 }
 
 function getMatchStatusType(m) {
-    if(!m.status) return 'upcoming';
-    const s = m.status.toUpperCase();
-    if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
-    if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
-    return 'upcoming';
+    if(!m.status) return 'upcoming';
+    const s = m.status.toUpperCase();
+    if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
+    if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
+    return 'upcoming';
 }
 
 // MULTI-FILTER TOGGLE LOGIC
 function toggleFilter(type) {
-    if (type === 'all') {
-        activeFilters.live = false;
-        activeFilters.alive = false;
-    } else {
-        activeFilters[type] = !activeFilters[type];
-    }
-    applyFilterLogic();
+    if (type === 'all') {
+        activeFilters.live = false;
+        activeFilters.alive = false;
+    } else {
+        activeFilters[type] = !activeFilters[type];
+    }
+    applyFilterLogic();
 }
 
 function applyFilterLogic() {
-    // 1. Update Button States
-    document.getElementById('btn-alive').classList.toggle('active', activeFilters.alive);
-    document.getElementById('btn-live').classList.toggle('active', activeFilters.live);
-    // If neither is active, "ALL" is implied
-    const isAll = !activeFilters.alive && !activeFilters.live;
+    // 1. Update Button States
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if(!activeFilters.live && !activeFilters.alive) {
+        // Activate "ALL" button if no filters are active
+        const allBtn = document.querySelector('.filter-btn[onclick*="all"]');
+        if(allBtn) allBtn.classList.add('active');
+    } else {
+        if(activeFilters.alive) document.getElementById('btn-alive').classList.add('active');
+        if(activeFilters.live) document.getElementById('btn-live').classList.add('active');
+    }
 
-    // 2. Row Filtering (Live)
-    const leftRows = document.querySelectorAll('.left-row');
-    const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
+    // 2. Row Filtering (Live)
+    const leftRows = document.querySelectorAll('.left-row');
+    const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
 
-    leftRows.forEach((row, i) => {
-        const status = row.getAttribute('data-status');
-        let show = true;
-        if(activeFilters.live && status !== 'live') show = false;
-        
-        row.style.display = show ? 'grid' : 'none';
-        if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
-    });
+    leftRows.forEach((row, i) => {
+        const status = row.getAttribute('data-status');
+        let show = true;
+        if(activeFilters.live && status !== 'live') show = false;
+        
+        row.style.display = show ? 'grid' : 'none';
+        if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
+    });
 
-    // 3. Column Filtering (Alive)
-    // Get indexes of dead columns
-    const deadIndices = [];
-    if(window.globalHeaders) {
-        window.globalHeaders.forEach((h, i) => {
-            if(h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red') {
-                deadIndices.push(i);
-            }
-        });
-    }
+    // 3. Column Filtering (Alive)
+    // Get indexes of dead columns
+    const deadIndices = [];
+    if(window.globalHeaders) {
+        window.globalHeaders.forEach((h, i) => {
+            if(h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red') {
+                deadIndices.push(i);
+            }
+        });
+    }
 
-    // Toggle Columns in Header
-    document.querySelectorAll('.header-pill-wrapper').forEach(el => {
-        const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
-        else el.classList.remove('col-hidden');
-    });
+    // Toggle Columns in Header
+    document.querySelectorAll('.header-pill-wrapper').forEach(el => {
+        const idx = parseInt(el.getAttribute('data-col-idx'));
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        else el.classList.remove('col-hidden');
+    });
 
-    // Toggle Columns in Bet Rows
-    document.querySelectorAll('.bet').forEach(el => {
-        const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
-        else el.classList.remove('col-hidden');
-    });
+    // Toggle Columns in Bet Rows
+    document.querySelectorAll('.bet').forEach(el => {
+        const idx = parseInt(el.getAttribute('data-col-idx'));
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        else el.classList.remove('col-hidden');
+    });
 }
 
 function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; 
-  const ctx=document.getElementById("historyChart").getContext("2d");
-  if(historyChart){historyChart.destroy();historyChart=null}
-  
-  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
-  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
-  const ps=["Snackbar","Timbo","Pepe"];
-  const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+  if(historyChart&&historyChart._type===t)return; 
+  const ctx=document.getElementById("historyChart").getContext("2d");
+  if(historyChart){historyChart.destroy();historyChart=null}
+  
+  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
+  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
+  const ps=["Snackbar","Timbo","Pepe"];
+  const cols={Snackbar:"#7CFF5B",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
 
-  historyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:labs,
-      datasets:ps.map((p, idx)=>{
-        const c=cols[p]||"#fff"; 
-        const grad=ctx.createLinearGradient(0,0,0,300); 
-        grad.addColorStop(0,hexToRgba(c,0.3)); 
-        grad.addColorStop(1,hexToRgba(c,0));
-        const labelAlign = idx === 1 ? 'left' : 'right'; 
-        return {
-            label:p,
-            data: d.map(r=>r[p]), 
-            borderColor:c,
-            backgroundColor:grad,
-            fill:true,
-            tension:0.3,
-            pointRadius: 6, 
-            pointHoverRadius: 8,
-            pointBackgroundColor: "#1c1f23",
-            pointBorderColor: c,
-            pointBorderWidth: 2,
-            borderWidth: 2,
-            _customAlign: labelAlign
-        }
-      })
-    },
-    options:{
-        responsive:true, 
-        maintainAspectRatio:false,
-        layout:{padding:{top:15,right:30,left:0,bottom:30}}, 
-        scales:{
-            x:{ display:false },
-            y:{
-                display:true, 
-                position:'left',
-                beginAtZero: true, 
-                grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
-                ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
-                grace:'5%' 
-            }
-        },
-        animation: { y: { duration: 2000, easing: 'easeOutQuart' }, x: { duration: 0 } },
-        plugins:{
-            legend:{display:false},
-            tooltip: {
-                enabled: true, mode: 'index', intersect: false, backgroundColor: 'rgba(28, 31, 35, 0.9)', titleColor: '#fff', bodyFont: { family: "Inter" }
-            },
-            datalabels:{
-                formatter:(v,c)=>{
-                    const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
-                    const prevVal = d[i-1];
-                    const cleanDf = Math.round((v-prevVal) * 100) / 100;
-                    if(cleanDf<=0) return null;
-                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
-                },
-                backgroundColor: (c) => c.dataset.borderColor,
-                borderRadius: 4,
-                color: '#000000',
-                font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
-                padding: { top: 2, bottom: 2, left: 4, right: 4 },
-                align: (c) => c.dataset._customAlign,
-                anchor: 'center',
-                offset: 8,
-                display: 'auto'
-            }
-        }
-    }
-  });
-  historyChart._type=t;
+  historyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labs,
+      datasets:ps.map((p, idx)=>{
+        const c=cols[p]||"#fff"; 
+        const grad=ctx.createLinearGradient(0,0,0,300); 
+        grad.addColorStop(0,hexToRgba(c,0.3)); 
+        grad.addColorStop(1,hexToRgba(c,0));
+        const labelAlign = idx === 1 ? 'left' : 'right'; 
+        return {
+            label:p,
+            data: d.map(r=>r[p]), 
+            borderColor:c,
+            backgroundColor:grad,
+            fill:true,
+            tension:0.3,
+            pointRadius: 6, 
+            pointHoverRadius: 8,
+            pointBackgroundColor: "#1c1f23",
+            pointBorderColor: c,
+            pointBorderWidth: 2,
+            borderWidth: 2,
+            _customAlign: labelAlign
+        }
+      })
+    },
+    options:{
+        responsive:true, 
+        maintainAspectRatio:false,
+        layout:{padding:{top:15,right:30,left:0,bottom:30}}, 
+        scales:{
+            x:{ display:false },
+            y:{
+                display:true, 
+                position:'left',
+                beginAtZero: true, 
+                grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
+                grace:'5%' 
+            }
+        },
+        animation: { y: { duration: 2000, easing: 'easeOutQuart' }, x: { duration: 0 } },
+        plugins:{
+            legend:{display:false},
+            tooltip: {
+                enabled: true, mode: 'index', intersect: false, backgroundColor: 'rgba(28, 31, 35, 0.9)', titleColor: '#fff', bodyFont: { family: "Inter" }
+            },
+            datalabels:{
+                formatter:(v,c)=>{
+                    const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
+                    const prevVal = d[i-1];
+                    const cleanDf = Math.round((v-prevVal) * 100) / 100;
+                    if(cleanDf<=0) return null;
+                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
+                },
+                backgroundColor: (c) => c.dataset.borderColor,
+                borderRadius: 4,
+                color: '#000000',
+                font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
+                padding: { top: 2, bottom: 2, left: 4, right: 4 },
+                align: (c) => c.dataset._customAlign,
+                anchor: 'center',
+                offset: 8,
+                display: 'auto'
+            }
+        }
+    }
+  });
+  historyChart._type=t;
 }
 
 // UI & HELPERS
@@ -1319,309 +1334,309 @@ function showBigWin(txt, avatarUrl){
 
 function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}else{setTimeout(()=>el.dataset.fired="",3000)}}())}
 function normalizeName(str) {
-  if(!str) return "";
-  let s = str.toLowerCase();
-  const map = {
-    'ø': 'o', 'ß': 'ss', 'ı': 'i', 'ş': 's', 'ğ': 'g', 'ç': 'c', 
-    'ü': 'u', 'ö': 'o', 'ä': 'a', 'ñ': 'n', 'é': 'e', 'è': 'e', 
-    'ê': 'e', 'á': 'a', 'à': 'a', 'â': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u'
-  };
-  for(let k in map) s = s.replace(new RegExp(k, 'g'), map[k]);
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if(!str) return "";
+  let s = str.toLowerCase();
+  const map = {
+    'ø': 'o', 'ß': 'ss', 'ı': 'i', 'ş': 's', 'ğ': 'g', 'ç': 'c', 
+    'ü': 'u', 'ö': 'o', 'ä': 'a', 'ñ': 'n', 'é': 'e', 'è': 'e', 
+    'ê': 'e', 'á': 'a', 'à': 'a', 'â': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u'
+  };
+  for(let k in map) s = s.replace(new RegExp(k, 'g'), map[k]);
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 function formatName(n){return n||""}
 function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
 
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
-    const el = document.getElementById("aiSummaryWrapper");
-    if(status === "NS") {
-        let matchDate = date ? new Date(date) : null;
-        let today = new Date();
-        let isToday = matchDate && matchDate.getDate() === today.getDate();
-        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+    const el = document.getElementById("aiSummaryWrapper");
+    if(status === "NS") {
+        let matchDate = date ? new Date(date) : null;
+        let today = new Date();
+        let isToday = matchDate && matchDate.getDate() === today.getDate();
+        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
 
-        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
-        if(isToday) {
-             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
-             else story += `Lineups are expected roughly an hour before kick-off.`;
-        } else {
-             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
-             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
-        }
-        story += `</div>`;
-        el.innerHTML = story;
-        return;
-    }
+        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
+        if(isToday) {
+             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
+             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
+             else story += `Lineups are expected roughly an hour before kick-off.`;
+        } else {
+             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
+             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
+        }
+        story += `</div>`;
+        el.innerHTML = story;
+        return;
+    }
 
-    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
-    const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
+    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
+    const time = parseInt(status) || (status==="FT"?90:0);
+    const hPoss = stats.h_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
 
-    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
+    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
 
-    if(status === "FT") {
-       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
-    } else if (status === "HT") {
-       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
-    } else {
-       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
-       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-       else story += `It remains all square at ${hG}-${hG}. `;
-    }
-    story += "<br><br>";
+    if(status === "FT") {
+       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
+       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
+       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
+    } else if (status === "HT") {
+       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+    } else {
+       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
+       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
+       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+       else story += `It remains all square at ${hG}-${hG}. `;
+    }
+    story += "<br><br>";
 
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
-    else story += `Possession is even `;
+    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
+    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
+    else story += `Possession is even `;
 
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
-    else story += `in a tight game. `;
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
+    else story += `in a tight game. `;
 
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
+    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
 
-    let bestPlayer = null, highestRat = 0;
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
-        });
-    }
+    let bestPlayer = null, highestRat = 0;
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
+        });
+    }
 
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
-    }
+    if(bestPlayer && highestRat > 0) {
+        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
+    }
 
-    story += `</div>`;
-    el.innerHTML = story;
+    story += `</div>`;
+    el.innerHTML = story;
 }
 
 function findPlayerStats(name, list) {
-    if(!list) return null;
-    let normName = normalizeName(name);
-    let parts = normName.split(" ");
-      
-    let found = list.find(x => normalizeName(x.name) === normName);
-    if(found) return found;
+    if(!list) return null;
+    let normName = normalizeName(name);
+    let parts = normName.split(" ");
+      
+    let found = list.find(x => normalizeName(x.name) === normName);
+    if(found) return found;
 
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return xn.includes(normName) || normName.includes(xn);
-    });
-    if(found) return found;
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return xn.includes(normName) || normName.includes(xn);
+    });
+    if(found) return found;
 
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return parts.some(p => p.length > 2 && xn.includes(p));
-    });
-    return found;
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return parts.some(p => p.length > 2 && xn.includes(p));
+    });
+    return found;
 }
 
 function showPlayerStats(name, stats, events) {
-    const pop = document.getElementById("playerPopup");
-    if(!stats) return; 
-    document.getElementById("ppName").textContent = stats.name || name; 
-    document.getElementById("ppImg").src = stats.photo || "";
-    let goals = stats.goals;
-    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
-    let assists = stats.assists;
-    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
-    const grid = document.getElementById("ppStats");
-    grid.innerHTML = `
-      <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
-      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
-      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
-      <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
-    `;
-    pop.style.display = "block";
+    const pop = document.getElementById("playerPopup");
+    if(!stats) return; 
+    document.getElementById("ppName").textContent = stats.name || name; 
+    document.getElementById("ppImg").src = stats.photo || "";
+    let goals = stats.goals;
+    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
+    let assists = stats.assists;
+    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    const grid = document.getElementById("ppStats");
+    grid.innerHTML = `
+      <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
+      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
+      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
+    `;
+    pop.style.display = "block";
 }
 
 function openModal(m){
-  try {
-      vibe(); 
-      document.getElementById('playerPopup').style.display='none';
-      const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
-      const s=m.stats||{};
-      switchTab('stats'); 
-      
-      // SHOW MODAL FIRST (CRITICAL FIX)
-      document.getElementById("matchModal").classList.add("active");
+  try {
+      vibe(); 
+      document.getElementById('playerPopup').style.display='none';
+      const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
+      const s=m.stats||{};
+      switchTab('stats'); 
+      
+      // SHOW MODAL FIRST (CRITICAL FIX)
+      document.getElementById("matchModal").classList.add("active");
 
-      document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
-      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
-      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
+      document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
+      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
-      try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+      try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
-      // PITCH PRESSURE GRADIENT
-      const pitch = document.getElementById("pitch");
-      if (s.h_xg !== undefined && s.a_xg !== undefined) {
-        if (s.h_xg > s.a_xg) {
-           pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
-        } else if (s.a_xg > s.h_xg) {
-           pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
-        } else {
-            pitch.style.background = "#2e5a2e"; // Reset
-        }
-      }
+      // PITCH PRESSURE GRADIENT
+      const pitch = document.getElementById("pitch");
+      if (s.h_xg !== undefined && s.a_xg !== undefined) {
+        if (s.h_xg > s.a_xg) {
+           pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
+        } else if (s.a_xg > s.h_xg) {
+           pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
+        } else {
+            pitch.style.background = "#2e5a2e"; // Reset
+        }
+      }
 
-      // 1. GENERATE GROUP PREDICTIONS
-      let consensusHTML = "";
-      if(m && m.cells) {
-          let votes = { H: 0, D: 0, A: 0, Total: 0 };
-          const hName = String(hCode).toUpperCase().trim();
-          const aName = String(aCode).toUpperCase().trim();
+      // 1. GENERATE GROUP PREDICTIONS
+      let consensusHTML = "";
+      if(m && m.cells) {
+          let votes = { H: 0, D: 0, A: 0, Total: 0 };
+          const hName = String(hCode).toUpperCase().trim();
+          const aName = String(aCode).toUpperCase().trim();
 
-          m.cells.forEach(c => {
-               if(!c.value) return; 
-               let val = String(c.value).toUpperCase().trim();
-               if(val.includes("-")) {
-                   votes.Total++;
-                   const [hS, aS] = val.split("-").map(Number);
-                   if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
-               } else {
-                   if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
-                   else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
-                   else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
-               }
-          });
-          
-          if(votes.Total > 0) {
-              const hPct = (votes.H / votes.Total) * 100;
-              const dPct = (votes.D / votes.Total) * 100;
-              const aPct = (votes.A / votes.Total) * 100;
-              
-              const sortArr = [
-                  {type:'H', val:hPct, label:hCode},
-                  {type:'D', val:dPct, label:'Draw'},
-                  {type:'A', val:aPct, label:aCode}
-              ].sort((a,b)=>b.val - a.val);
+          m.cells.forEach(c => {
+               if(!c.value) return; 
+               let val = String(c.value).toUpperCase().trim();
+               if(val.includes("-")) {
+                   votes.Total++;
+                   const [hS, aS] = val.split("-").map(Number);
+                   if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
+               } else {
+                   if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
+                   else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
+                   else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
+               }
+          });
+          
+          if(votes.Total > 0) {
+              const hPct = (votes.H / votes.Total) * 100;
+              const dPct = (votes.D / votes.Total) * 100;
+              const aPct = (votes.A / votes.Total) * 100;
+              
+              const sortArr = [
+                  {type:'H', val:hPct, label:hCode},
+                  {type:'D', val:dPct, label:'Draw'},
+                  {type:'A', val:aPct, label:aCode}
+              ].sort((a,b)=>b.val - a.val);
 
-              let colors = { H:'#555', D:'#555', A:'#555' };
-              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
-              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
-              else { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
+              let colors = { H:'#555', D:'#555', A:'#555' };
+              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
+              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
+              else { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
 
-              consensusHTML = `
-              <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                  <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
-                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
-                      <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
-                      <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
-                      <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
-                  </div>
-                  <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
-                      <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
-                      <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
-                      <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
-                  </div>
-              </div>`;
-          }
-      }
-      document.getElementById("consensusArea").innerHTML = consensusHTML;
-      
-      let hG=[], aG=[];
-      let goalsMap = {}; 
-      if(s.events){
-          s.events.forEach(e => {
-             if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
-                 let cleanP = normalizeName(e.player.trim());
-                 let isH = null;
-                 let parts = cleanP.split(' ');
-                 if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                     if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
-                     else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
-                 }
-                 if(isH === null) isH = true; 
-                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
-                 goalsMap[cleanP].times.push(e.time + "'");
-             }
-          });
-      }
-      Object.keys(goalsMap).forEach(key => {
-          let g = goalsMap[key];
-          let timesStr = g.times.join(", ");
-          let name = formatName(g.rawName);
-          let html = "";
-          let icon = "⚽";
-          if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
-          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
-          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
-          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
-      });
-      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+              consensusHTML = `
+              <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                  <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
+                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+                      <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
+                      <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
+                      <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
+                      <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
+                  </div>
+              </div>`;
+          }
+      }
+      document.getElementById("consensusArea").innerHTML = consensusHTML;
+      
+      let hG=[], aG=[];
+      let goalsMap = {}; 
+      if(s.events){
+          s.events.forEach(e => {
+             if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
+                 let cleanP = normalizeName(e.player.trim());
+                 let isH = null;
+                 let parts = cleanP.split(' ');
+                 if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                     if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
+                     else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
+                 }
+                 if(isH === null) isH = true; 
+                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
+                 goalsMap[cleanP].times.push(e.time + "'");
+             }
+          });
+      }
+      Object.keys(goalsMap).forEach(key => {
+          let g = goalsMap[key];
+          let timesStr = g.times.join(", ");
+          let name = formatName(g.rawName);
+          let html = "";
+          let icon = "⚽";
+          if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
+          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
+          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
+          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
+      });
+      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-      // STATS
-      const sb = document.getElementById("statsArea"); 
-      sb.innerHTML = "";
-      if (m.status === "NS" || m.status === "PST") {
-          sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
-      } else {
-          let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
-          let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
-          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
-          let allStatsHTML = ""; 
-          sl.forEach(st => {
-            if (!st.h && !st.a && !st.pct && !st.dec) return; 
-            let t = (st.h || 0) + (st.a || 0);
-            let hp = 0, ap = 0;
-            if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } } 
-            else if (st.pct) { hp = 50; ap = 50; }
-            let ht = st.h || 0, at = st.a || 0;
-            if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
-            allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
-          });
-          sb.innerHTML = allStatsHTML;
-          setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
-      }
-      
-      // LINEUPS RENDER CALL
-      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
-      const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
-      renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
-      renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
+      // STATS
+      const sb = document.getElementById("statsArea"); 
+      sb.innerHTML = "";
+      if (m.status === "NS" || m.status === "PST") {
+          sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
+      } else {
+          let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
+          let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
+          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
+          let allStatsHTML = ""; 
+          sl.forEach(st => {
+            if (!st.h && !st.a && !st.pct && !st.dec) return; 
+            let t = (st.h || 0) + (st.a || 0);
+            let hp = 0, ap = 0;
+            if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } } 
+            else if (st.pct) { hp = 50; ap = 50; }
+            let ht = st.h || 0, at = st.a || 0;
+            if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
+            allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
+          });
+          sb.innerHTML = allStatsHTML;
+          setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
+      }
+      
+      // LINEUPS RENDER CALL
+      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+      const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
+      renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
+      renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
 
-  } catch(err) {
-      console.error("Modal Error:", err);
-  }
+  } catch(err) {
+      console.error("Modal Error:", err);
+  }
 }
 
 function openTable(){
-    const b=document.getElementById("tableBody");
-    b.innerHTML="";
-    if(!tableCache) b.innerHTML="Loading...";
-    else tableCache.forEach(t=>{
-        let formHtml = "";
-        if(t.form) {
-            t.form.split('').forEach(char => {
-                let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
-                formHtml += `<div class="form-dot ${colorClass}"></div>`;
-            });
-        }
-        b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap">${formHtml}</div></div>`
-    });
-    document.getElementById("tableModal").classList.add("active");
+    const b=document.getElementById("tableBody");
+    b.innerHTML="";
+    if(!tableCache) b.innerHTML="Loading...";
+    else tableCache.forEach(t=>{
+        let formHtml = "";
+        if(t.form) {
+            t.form.split('').forEach(char => {
+                let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
+                formHtml += `<div class="form-dot ${colorClass}"></div>`;
+            });
+        }
+        b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap">${formHtml}</div></div>`
+    });
+    document.getElementById("tableModal").classList.add("active");
 }
 function closeModal(id){document.getElementById(id).classList.remove("active")}
 
-renderSkeletons(); 
-loadData(); 
+renderSkeletons(); 
+loadData(); 
 setInterval(loadData,REFRESH_MS);
 
 document.getElementById("rankingCard").onclick=()=>{
-    // NEW: Open Modal instead of toggle
-    vibe();
-    drawHistoryChart("matches");
-    document.getElementById("historyModal").classList.add("active");
+    // NEW: Open Modal instead of toggle
+    vibe();
+    drawHistoryChart("matches");
+    document.getElementById("historyModal").classList.add("active");
 };
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");};
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");

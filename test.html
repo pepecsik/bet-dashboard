@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.4</title>
+<title>Bet Dashboard v3.5</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -99,6 +99,20 @@ body{
     z-index: 10;
     position: relative;
     border: 1px solid rgba(255,255,255,0.5) !important;
+}
+
+/* GOLDEN SCORE ANIMATION */
+@keyframes goldPulse {
+    0% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
+    50% { box-shadow: 0 0 15px #ffd700; border-color: #fff; transform: scale(1.02); }
+    100% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
+}
+.gold-active {
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
+    color: #000 !important;
+    font-weight: 900 !important;
+    animation: goldPulse 2s infinite !important;
+    border: 1px solid #fff !important;
 }
 
 .score-pill, .bet { transition: all 0.3s; }
@@ -218,7 +232,7 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
-/* NEW: Team Rank Badge */
+/* Team Rank Badge */
 .team-rank-badge {
     position: absolute; top: -4px; left: -6px;
     font-size: 8px; font-weight: 800; color: #9aa0a6;
@@ -307,14 +321,6 @@ body{
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-}
-
-/* GOLDEN TICKET (Exact Score) */
-.bet.exact-score {
-    color: var(--accent-gold) !important;
-    border: 1px solid rgba(255, 215, 0, 0.3) !important;
-    text-shadow: 0 0 2px rgba(0,0,0,0.5);
-    background-image: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 100%);
 }
 
 /* === SUMMARY & FOOTER === */
@@ -716,11 +722,41 @@ const TEAM_LOGOS={
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
 };
 
-// HELPER: GET TEAM RANK FROM TABLE CACHE
+// HELPER: GET TEAM RANK
 function getTeamRank(teamName) {
     if(!tableCache || !teamName) return "";
+    
+    // MAPPING DICTIONARY FOR WEIRD SHORT CODES
+    const mappings = {
+        "WHA": "West Ham",
+        "CTY": "Manchester City",
+        "MAN": "Manchester United",
+        "NWC": "Newcastle",
+        "NOT": "Nottm Forest",
+        "AVI": "Aston Villa",
+        "CPA": "Crystal Palace",
+        "CHE": "Chelsea",
+        "ARS": "Arsenal",
+        "LIV": "Liverpool",
+        "TOT": "Tottenham",
+        "BOU": "Bournemouth",
+        "BRE": "Brentford",
+        "BRI": "Brighton",
+        "BUR": "Burnley",
+        "EVE": "Everton",
+        "FUL": "Fulham",
+        "WOL": "Wolves",
+        "SUN": "Sunderland",
+        "LEE": "Leeds"
+    };
+
     const clean = normalizeName(teamName);
-    const row = tableCache.find(r => normalizeName(r.team) === clean || normalizeName(r.team).includes(clean) || clean.includes(normalizeName(r.team)));
+    const mapped = mappings[teamName] ? normalizeName(mappings[teamName]) : clean;
+
+    const row = tableCache.find(r => {
+        const t = normalizeName(r.team);
+        return t === mapped || t.includes(mapped) || mapped.includes(t);
+    });
     return row ? `#${row.rank}` : "";
 }
 
@@ -728,9 +764,8 @@ function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
-  const rank = getTeamRank(code); // NEW: Get Rank
+  const rank = getTeamRank(code);
   
-  // LOGO HTML
   let imgHtml = "";
   if(!logo) imgHtml = `<span class="team-fallback">${code}</span>`;
   else {
@@ -738,7 +773,6 @@ function renderTeam(raw){
       imgHtml = `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
   }
   
-  // RANK BADGE (If available)
   let badgeHtml = rank ? `<div class="team-rank-badge">${rank}</div>` : "";
   
   return `<div style="position:relative;">${imgHtml}${badgeHtml}</div>`;
@@ -855,6 +889,17 @@ function loadData(){
           const minutes = parseInt(m.status) || 0;
           const isLate = (minutes >= 85 || m.status === "ET");
 
+          // CHECK FOR GOLDEN SCORE (Does current score match ANY bet?)
+          let isGoldenScore = false;
+          m.cells.forEach(c => {
+             if(c.value && String(c.value).includes("-")) {
+                 if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
+             }
+          });
+
+          // GOLDEN PILL CLASS
+          const goldenClass = isGoldenScore ? "gold-active" : "";
+
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
                     <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
@@ -863,7 +908,7 @@ function loadData(){
                 </div>
           </div>
           <div class="left-cell">
-             <div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
+             <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
                 <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
              </div>
@@ -885,11 +930,6 @@ function loadData(){
                   el.textContent=c.value;
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
-
-                  // --- EXACT SCORE GOLDEN LOGIC ---
-                  if(String(c.value).includes("-")) {
-                      el.classList.add("exact-score");
-                  }
                   
                   // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
                   const headerInfo = data.headers[cellIndex];
@@ -971,7 +1011,11 @@ function loadData(){
              rowClass += " shame-row";
           }
 
-          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+          // ADD HOT STREAK FLAME
+          let nameHtml = r.name;
+          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
+
+          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
         isFirstLoad = false;

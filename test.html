@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v5.3</title>
+<title>Bet Dashboard v5.4</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -42,7 +42,7 @@
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
-  --filter-h: 40px; 
+  --filter-h: 34px; /* Tightened from 40px */
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -97,18 +97,17 @@ body{
   z-index: 10;
 }
 
-@keyframes victoryShiver { 
-  0% { transform: translate(0, 0) rotate(0deg); } 
-  25% { transform: translate(-1px, 1px) rotate(-1deg); } 
-  50% { transform: translate(1px, -1px) rotate(1deg); } 
-  75% { transform: translate(-1px, -1px) rotate(-1deg); } 
-  100% { transform: translate(0, 0) rotate(0deg); } 
+/* NEW: TOXIC ZOOM PULSE (Green) */
+@keyframes toxicPulse { 
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.4); } 
+  50% { transform: scale(1.15); box-shadow: 0 0 25px 5px rgba(124, 255, 91, 0.5); } 
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.4); } 
 }
+
 .status-green, .status-green-live {
   background-color: var(--accent-green) !important;
   color: #000 !important;
-  box-shadow: 0 0 20px rgba(124, 255, 91, 0.6); 
-  animation: victoryShiver 0.25s infinite linear !important;
+  animation: toxicPulse 1.2s infinite ease-in-out !important; /* Slower, bigger pulse */
   border: none !important;
   z-index: 12;
 }
@@ -240,12 +239,12 @@ body{
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* ALIGNED SPACER/FILTER BAR */
+/* ALIGNED SPACER/FILTER BAR - TIGHTER */
 .spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
     height: var(--filter-h); 
     padding: 0 4px;
-    margin: 8px 0;
+    margin: 2px 0; /* Tightened from 8px */
     box-sizing: border-box;
     flex-shrink: 0;
 }
@@ -262,9 +261,16 @@ body{
     background: #fff; color: #000; border-color: #fff; box-shadow: 0 2px 8px rgba(255,255,255,0.15);
 }
 
-/* FIX 1: FIXED DIVIDER HEIGHTS */
+/* DIVIDERS */
 .left-divider, .right-divider {
-    height: 6px;
+    height: 2px; /* Tightened from 6px */
+    width: 100%;
+    flex-shrink: 0;
+}
+
+/* NEW: SECTION BREAK FOR GAP BEFORE BETS */
+.section-break {
+    height: 20px;
     width: 100%;
     flex-shrink: 0;
 }
@@ -474,7 +480,6 @@ body{
   box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* FIX 3: BIG WIN SCALING */
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction:column; align-items: center; justify-content: center;
@@ -512,7 +517,6 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
-/* FIX 2: REMOVED MIN-WIDTH TO FIX GLITCH */
 .animate-bar { 
     transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); 
     width: 0%; 
@@ -1060,6 +1064,10 @@ function loadData(){
           });
           right.appendChild(rr);
       });
+
+      // SECTION BREAK (Gap before bets)
+      left.appendChild(document.createElement("div")).className="section-break";
+      right.appendChild(document.createElement("div")).className="section-break";
 
       // 5. SUMMARY ROWS
       ["BET","WIN","WIN PP"].forEach((l,i)=>{

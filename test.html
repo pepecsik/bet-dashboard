@@ -1460,110 +1460,6 @@ function showPlayerStats(name, stats, events) {
     pop.style.display = "block";
 }
 
-/* === MISSING LINEUP FUNCTION === */
-function renderPitchTeam(lineup, isHome, statsList) {
-    const pitch = document.getElementById("pitchPlayers");
-    const subsCont = document.getElementById("subsArea");
-    
-    // Helper to find player stats for ratings
-    const getStat = (id, name) => {
-        if(!statsList) return null;
-        return statsList.find(p => p.id === id) || statsList.find(p => normalizeName(p.name) === normalizeName(name));
-    };
-
-    // 1. RENDER STARTING XI
-    if (lineup && lineup.start) {
-        // Calculate grid positions
-        // API Sports grid is usually "Row:Col" (e.g. 1:1 is Goalkeeper)
-        lineup.start.forEach(entry => {
-            const p = entry.player;
-            const grid = p.grid ? p.grid.split(":") : [1,1];
-            const row = parseInt(grid[0]) || 1;
-            const col = parseInt(grid[1]) || 1;
-            
-            // basic positioning logic
-            // Max rows usually ~5. 
-            let topPct, leftPct;
-            
-            if(isHome) {
-                // HOME (Playing Bottom to Top)
-                // GK (Row 1) at bottom (90%), Strikers (Row 5) at top
-                if(row === 1) topPct = 88;
-                else topPct = 90 - (row * 16); 
-            } else {
-                // AWAY (Playing Top to Bottom)
-                // GK (Row 1) at top (12%), Strikers at bottom
-                if(row === 1) topPct = 12;
-                else topPct = 10 + (row * 16);
-            }
-
-            // Columns (Spread them out horizontally)
-            // We need to know how many players are in this specific row to center them
-            const playersInRow = lineup.start.filter(x => x.player.grid && x.player.grid.startsWith(row+":")).length;
-            
-            // Simple spread logic based on column index
-            // If API provides specific col index (1, 2, 3...)
-            leftPct = (col / (playersInRow + 1)) * 100;
-
-            const stat = getStat(p.id, p.name);
-            const rating = stat ? parseFloat(stat.rating).toFixed(1) : "";
-            
-            // Rating Color
-            let ratClass = "rat-low";
-            if(rating >= 7.5) ratClass = "rat-high";
-            else if(rating >= 6.8) ratClass = "rat-mid";
-
-            // HTML Construction
-            const el = document.createElement("div");
-            el.className = "pitch-player";
-            el.style.top = topPct + "%";
-            el.style.left = leftPct + "%";
-            el.onclick = () => showPlayerStats(p.name, stat, null); // Hook up the popup
-
-            let imgHtml = `<div class="p-dot ${isHome?'home':'away'}">${p.number}`;
-            // If we have a photo, show it
-            if(stat && stat.photo) imgHtml += `<img src="${stat.photo}" class="p-img-dot">`;
-            imgHtml += `</div>`;
-
-            let badges = "";
-            if(rating && rating > 0) badges += `<div class="p-rat ${ratClass}">${rating}</div>`;
-            if(p.pos === "G") badges += `<div style="position:absolute;bottom:-3px;right:-3px;font-size:8px;">🧤</div>`;
-
-            el.innerHTML = `
-                ${imgHtml}
-                ${badges}
-                <div class="p-name">${formatName(p.name)}</div>
-            `;
-            pitch.appendChild(el);
-        });
-    }
-
-    // 2. RENDER SUBSTITUTES
-    if (lineup && lineup.sub) {
-        if(subsCont.innerHTML === "") {
-            subsCont.innerHTML = `<div class="subs-header">Substitutes</div>`;
-        }
-        
-        lineup.sub.forEach(entry => {
-            const p = entry.player;
-            const stat = getStat(p.id, p.name);
-            const rating = stat && stat.rating > 0 ? `<span style="color:var(--accent-orange);margin-left:auto;font-weight:700;">${stat.rating.toFixed(1)}</span>` : "";
-            
-            const row = document.createElement("div");
-            row.className = "sub-row";
-            row.style.cursor = "pointer";
-            row.onclick = () => showPlayerStats(p.name, stat, null);
-
-            row.innerHTML = `
-                <div class="sub-icon" style="background:${isHome?'#fff':'#333'};color:${isHome?'#000':'#fff'}">${p.number}</div>
-                <span>${p.name}</span>
-                ${rating}
-            `;
-            subsCont.appendChild(row);
-        });
-    }
-} 
- 
 function openModal(m){
   try {
       vibe(); 
@@ -1703,9 +1599,94 @@ function openModal(m){
           setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
       }
       
-      // LINEUPS RENDER CALL
+      // 2. LINEUPS
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
+      
+      // LOGIC RESTORED FROM OLD FILE
+      const renderPitchTeam = (team, isHome, playersFull) => {
+          if(!team.start) return;
+          const rows = { "G":0, "D":1, "M":2, "F":3 };
+          let lines = [[],[],[],[]];
+          team.start.forEach(p => {
+             let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
+             lines[r].push(p);
+          });
+
+          lines.forEach((line, rIdx) => {
+             let yPct = 0;
+             // EXACT POSITIONING FROM OLD HTML
+             if(isHome) { 
+                 if(rIdx===0) yPct=5;        
+                 else if(rIdx===1) yPct=17.3; 
+                 else if(rIdx===2) yPct=29.6; 
+                 else yPct=42; 
+             } else { 
+                 if(rIdx===0) yPct=95;       
+                 else if(rIdx===1) yPct=82.7; 
+                 else if(rIdx===2) yPct=70.4; 
+                 else yPct=58; 
+             }
+             
+             line.forEach((p, i) => {
+                 let count = line.length;
+                 let segment = 100 / count;
+                 let xPct = (segment * i) + (segment / 2); 
+                 
+                 let pStats = findPlayerStats(p.name, playersFull);
+                 let rat = pStats ? pStats.rating.toFixed(1) : "-";
+                 let photoUrl = pStats ? pStats.photo : "";
+                 let rClass = "rat-mid";
+                 if(rat >= 7.0) rClass = "rat-high";
+                 if(rat < 6.0 && rat !== "-") rClass = "rat-low";
+                 
+                 // CHECK EVENTS FOR SUBS/CARDS USING 's.events'
+                 let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
+                 let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
+                 
+                 let lastName = normalizeName(p.name.split(" ").pop());
+                 let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && normalizeName(e.player).includes(lastName));
+                 let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
+
+                 let el = document.createElement("div");
+                 el.className = "pitch-player";
+                 el.style.top = yPct + "%";
+                 el.style.left = xPct + "%";
+                 el.onclick = () => showPlayerStats(p.name, pStats, s.events);
+                 
+                 let content = `<div class="p-dot ${isHome?'home':'away'}">
+                     <span class="p-num-fallback">${p.number || p.num || ''}</span>`;
+                 if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
+                 content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
+                 
+                 el.innerHTML = content;
+                 pp.appendChild(el);
+             });
+          });
+
+          // RENDER SUBSTITUTES
+          if(team.sub && team.sub.length > 0) {
+              let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
+              team.sub.forEach(sPlayer => {
+                 if(s.events) {
+                    let cameOn = s.events.find(e => e.type === "subst" && e.assist === sPlayer.name);
+                    if(cameOn) {
+                       subHTML += `<div class="sub-row"><div class="sub-icon">▲</div> <span>${formatName(sPlayer.name)}</span></div>`;
+                    } else {
+                       subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
+                    }
+                 } else {
+                    subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
+                 }
+              });
+              let col = document.createElement("div");
+              col.style.flex = "1";
+              col.innerHTML = subHTML;
+              subsCont.appendChild(col);
+          }
+      };
+      
+      subsCont.style.display = "flex"; subsCont.style.gap = "10px";
       renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
       renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
 

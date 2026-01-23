@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v6.0</title>
+<title>Bet Dashboard v5.3</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -35,16 +35,14 @@
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  --header-h:60px; /* Main Header Height */
-  --filter-h:40px; /* Filter Bar Height */
-  --header-total-h: 110px; /* Total Sticky Height (60+40+10gap) */
-  
+  --header-h:50px;
   --header-pill-w:70px;
   --gap:8px;
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
+  --filter-h: 40px; 
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -86,32 +84,33 @@ body{
 }
 
 /* --- AVATAR ANIMATIONS --- */
-@keyframes nervousShiver { 
+@keyframes nervousPulse { 
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.6); } 
+  50% { transform: scale(1.08); box-shadow: 0 0 15px 5px rgba(255, 159, 67, 0.2); } 
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } 
+}
+.status-orange {
+  background-color: var(--accent-orange) !important;
+  color: #000 !important;
+  animation: nervousPulse 1.5s infinite ease-in-out !important;
+  border: none !important;
+  z-index: 10;
+}
+
+@keyframes victoryShiver { 
   0% { transform: translate(0, 0) rotate(0deg); } 
   25% { transform: translate(-1px, 1px) rotate(-1deg); } 
   50% { transform: translate(1px, -1px) rotate(1deg); } 
   75% { transform: translate(-1px, -1px) rotate(-1deg); } 
   100% { transform: translate(0, 0) rotate(0deg); } 
 }
-.status-orange {
-  background-color: var(--accent-orange) !important;
-  color: #000 !important;
-  box-shadow: 0 0 15px rgba(255, 159, 67, 0.4);
-  animation: nervousShiver 0.25s infinite linear;
-  border: none !important; 
-}
-
-@keyframes victoryPulse { 
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.6); } 
-  50% { transform: scale(1.1); box-shadow: 0 0 20px 5px rgba(124, 255, 91, 0.1); } 
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } 
-}
 .status-green, .status-green-live {
   background-color: var(--accent-green) !important;
   color: #000 !important;
-  animation: victoryPulse 1.5s infinite ease-in-out !important;
-  z-index: 10;
-  border: none !important; 
+  box-shadow: 0 0 20px rgba(124, 255, 91, 0.6); 
+  animation: victoryShiver 0.25s infinite linear !important;
+  border: none !important;
+  z-index: 12;
 }
 
 .status-red {
@@ -122,7 +121,6 @@ body{
   border: none !important;
 }
 
-/* SWEAT PULSE (Bets) */
 @keyframes sweatPulse {
   0% { transform: scale(1); filter: brightness(1); }
   50% { transform: scale(1.05); filter: brightness(1.3); }
@@ -136,7 +134,6 @@ body{
     box-shadow: 0 0 10px rgba(255,255,255,0.1);
 }
 
-/* GOLDEN SCORE PILL */
 @keyframes goldPulse {
     0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
     50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); transform: scale(1.02); }
@@ -191,7 +188,6 @@ body{
     border: 1px solid rgba(255, 255, 255, 0.08);
     position: relative; z-index: 10; 
   }
-  @media (max-width: 360px) { .history-title-text { display: none; } }
 }
 
 .main{
@@ -208,14 +204,7 @@ body{
 }
 .left-card::-webkit-scrollbar { display: none; }
 
-/* LEFT HEADER CONTAINER - CRITICAL FOR ALIGNMENT */
-.left-header-container {
-  position: sticky; top: 0; z-index: 20;
-  display: flex; flex-direction: column; gap: 0; /* No Gap here, handled by padding */
-  background: var(--bg-card); /* Match card bg */
-  margin-bottom: 10px; /* Spacer to first match */
-}
-
+/* LEFT HEADER */
 .left-header {
   height:var(--header-h);
   background: rgba(47, 52, 58, 0.95);
@@ -223,7 +212,8 @@ body{
   border-bottom: 1px solid rgba(255,255,255,0.05);
   border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center;
-  position: relative;
+  position: sticky; top: 0; z-index: 20;
+  flex-shrink: 0;
 }
 
 .header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; }
@@ -248,15 +238,16 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
-.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); }
+.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* SEPARATOR FILTER BAR (Inside Layout) */
-.filter-separator {
+/* ALIGNED SPACER/FILTER BAR */
+.spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
     height: var(--filter-h); 
     padding: 0 4px;
-    margin-top: 8px; /* Spacing from header */
+    margin: 8px 0;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .filter-title { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-right:auto; padding-left:4px; }
@@ -264,14 +255,19 @@ body{
 .filter-btn {
     background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
     color: var(--text-muted); font-size: 10px; font-weight: 700;
-    padding: 5px 10px; border-radius: var(--rad-sm);
+    padding: 4px 10px; border-radius: var(--rad-sm);
     cursor: pointer; transition: all 0.2s;
 }
 .filter-btn.active {
     background: #fff; color: #000; border-color: #fff; box-shadow: 0 2px 8px rgba(255,255,255,0.15);
 }
 
-.left-divider{height:4px}
+/* FIX 1: FIXED DIVIDER HEIGHTS */
+.left-divider, .right-divider {
+    height: 6px;
+    width: 100%;
+    flex-shrink: 0;
+}
 
 .left-row{
   height:var(--row-h);
@@ -325,18 +321,13 @@ body{
 .rows{ display:flex; flex-direction:column; gap:var(--gap); min-width:max-content; }
 .row{ display:flex; gap:var(--gap); }
 
-/* Sticky Header Container for Right Side - Matches Left Side Height */
-.right-header-container {
-  position: sticky; top: 0; z-index: 20; 
-  display: flex; flex-direction: column; gap: 0;
-  background: var(--bg-card); 
-  margin-bottom: 10px; /* Spacer match */
-}
-
-/* Actual Avatars Row */
+/* Header for Right Card */
 .header-row-sticky {
+  position: sticky; top: 0; z-index: 20; 
+  background: var(--bg-card); 
   height: var(--header-h); 
-  display: flex; align-items: center; gap: var(--gap);
+  display: flex; align-items: center;
+  flex-shrink: 0;
 }
 
 .header-pill-wrapper {
@@ -367,15 +358,6 @@ body{
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
-/* RIGHT SPACER (Matches Filter Bar Height Exactly) */
-.right-spacer {
-    height: var(--filter-h); 
-    margin-top: 8px; /* Matches Filter Bar Margin */
-    width: 100%;
-}
-
-.right-divider{height:8px}
-
 /* --- ROUNDED BET PILLS --- */
 .bet{
   width:var(--bet-w); 
@@ -394,10 +376,7 @@ body{
     box-shadow: none !important;
 }
 
-/* HIDDEN COLUMN (For Alive Filter) */
-.col-hidden {
-    display: none !important;
-}
+.col-hidden { display: none !important; }
 
 /* === SUMMARY & FOOTER === */
 .summary { 
@@ -455,14 +434,12 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
-/* SHAME & FIRE RANKING */
 .shame-row { background: linear-gradient(90deg, #3e2723 0%, var(--bg-row) 100%) !important; border: 1px solid #5d4037; opacity: 0.8; }
 .shame-row .rank-pos { font-size: 1.4em; filter: grayscale(0); }
 @keyframes firePulse { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); } 70% { box-shadow: 0 0 10px 10px rgba(255, 159, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } }
 .on-fire { border: 1px solid var(--accent-orange) !important; animation: firePulse 2s infinite; position: relative; overflow: visible; }
 .on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
 
-/* === HISTORY CARD (NOW IN MODAL) === */
 .history-card-inner {
   width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
   padding:12px; 
@@ -497,29 +474,34 @@ body{
   box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* === OVERLAYS & MODALS === */
+/* FIX 3: BIG WIN SCALING */
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction:column; align-items: center; justify-content: center;
   pointer-events: none; z-index: 2200; opacity: 0; gap: 20px;
 }
+
 .big-win-text {
-  font-size: 20vw; font-weight: 900; color: #7CFF5B;
+  font-size: 10vw; /* Desktop size */
+  font-weight: 900; color: #7CFF5B;
   text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px #7CFF5B;
   text-align: center; font-family: 'Inter', sans-serif;
   transform: scale(0.5); white-space: nowrap; line-height: 1;
 }
+
 .big-win-avatar {
-    width: 250px; height: 250px; border-radius: 50%; border: 6px solid #7CFF5B;
-    box-shadow: 0 0 60px rgba(124, 255, 91, 0.7); object-fit: cover;
+    width: 200px; height: 200px; /* Desktop size */
+    border-radius: 50%; border: 6px solid #7CFF5B;
+    box-shadow: 0 0 60px rgba(124, 255, 91, 0.6); object-fit: cover;
     animation: bounce 1s infinite;
 }
+
 @media (max-width: 768px) {
-    .big-win-avatar { width: 60vw; height: 60vw; }
-    .big-win-text { font-size: 30vw; }
+    .big-win-avatar { width: 140px; height: 140px; } 
+    .big-win-text { font-size: 22vw; } /* Phone size - Much Bigger */
 }
 
-@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
 
 @keyframes bigWinAnim {
   0% { opacity: 0; transform: scale(0.5); }
@@ -530,11 +512,10 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
-/* === ANIMATIONS & EXTRA TIME === */
+/* FIX 2: REMOVED MIN-WIDTH TO FIX GLITCH */
 .animate-bar { 
     transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); 
     width: 0%; 
-    min-width: 4px; 
 }
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
@@ -813,37 +794,19 @@ const TEAM_LOGOS={
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
 };
 
-// HELPER: GET TEAM RANK FROM TABLE CACHE
 function getTeamRank(teamName) {
     if(!tableCache || !teamName) return "";
-    
-    // MAPPING DICTIONARY FOR WEIRD SHORT CODES
     const mappings = {
-        "WHA": "West Ham",
-        "CTY": "Manchester City",
-        "MAN": "Manchester United",
-        "NWC": "Newcastle",
-        "NOT": "Nottm Forest",
-        "AVI": "Aston Villa",
-        "CPA": "Crystal Palace",
-        "CHE": "Chelsea",
-        "ARS": "Arsenal",
-        "LIV": "Liverpool",
-        "TOT": "Tottenham",
-        "BOU": "Bournemouth",
-        "BRE": "Brentford",
-        "BRI": "Brighton",
-        "BUR": "Burnley",
-        "EVE": "Everton",
-        "FUL": "Fulham",
-        "WOL": "Wolves",
-        "SUN": "Sunderland",
-        "LEE": "Leeds"
+        "WHA": "West Ham", "CTY": "Manchester City", "MAN": "Manchester United",
+        "NWC": "Newcastle", "NOT": "Nottm Forest", "AVI": "Aston Villa",
+        "CPA": "Crystal Palace", "CHE": "Chelsea", "ARS": "Arsenal",
+        "LIV": "Liverpool", "TOT": "Tottenham", "BOU": "Bournemouth",
+        "BRE": "Brentford", "BRI": "Brighton", "BUR": "Burnley",
+        "EVE": "Everton", "FUL": "Fulham", "WOL": "Wolves",
+        "SUN": "Sunderland", "LEE": "Leeds"
     };
-
     const clean = normalizeName(teamName);
     const mapped = mappings[teamName] ? normalizeName(mappings[teamName]) : clean;
-
     const row = tableCache.find(r => {
         const t = normalizeName(r.team);
         return t === mapped || t.includes(mapped) || mapped.includes(t);
@@ -855,19 +818,14 @@ function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
-  const rank = getTeamRank(code); // NEW: Get Rank
-  
-  // LOGO HTML
+  const rank = getTeamRank(code);
   let imgHtml = "";
   if(!logo) imgHtml = `<span class="team-fallback">${code}</span>`;
   else {
       let style=""; if(code==="TOT")style="background:white;border-radius:50%;padding:3px;"; if(code==="SUN")style="transform:scale(1.35);"; if(code==="AVI")style="transform:scale(1.65);";
       imgHtml = `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
   }
-  
-  // RANK BADGE (If available)
   let badgeHtml = rank ? `<div class="team-rank-badge">${rank}</div>` : "";
-  
   return `<div style="position:relative;">${imgHtml}${badgeHtml}</div>`;
 }
 
@@ -875,34 +833,32 @@ function renderSkeletons() {
   const left=document.getElementById("left"), right=document.getElementById("right");
   left.innerHTML=""; right.innerHTML="";
   
-  // NEW LAYOUT: Header Container + Separate Filter Bar
+  // LEFT HEADER CONTAINER
   const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
-  
   const lh=document.createElement("div"); lh.className="left-header"; 
   lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
-  
-  const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
-  fb.innerHTML = `
-      <div class="filter-title">Filters</div>
-      <div class="filter-actions">
-           <button class="filter-btn">ALL</button>
-           <button class="filter-btn">ALIVE</button>
-           <button class="filter-btn">LIVE</button>
-      </div>
-  `;
-
   lhContainer.appendChild(lh);
-  // NOT APPENDING FILTER BAR HERE - IT IS NOW APPENDED IN LOAD DATA AFTER MATCHES
   left.appendChild(lhContainer);
-  
+
+  // LEFT FILTER PLACEHOLDER
+  const fb = document.createElement("div"); fb.className="spacer-bar"; 
+  left.appendChild(fb);
   left.appendChild(document.createElement("div")).className="left-divider";
   
+  // RIGHT HEADER
   const rh=document.createElement("div"); rh.className="row header-row-sticky";
   for(let i=0;i<5;i++){
     const w=document.createElement("div"); w.className="header-pill-wrapper";
     const p=document.createElement("div");p.className="header-pill skeleton"; w.appendChild(p); rh.appendChild(w);
   }
-  right.appendChild(rh); right.appendChild(document.createElement("div")).className="right-divider";
+  right.appendChild(rh);
+
+  // RIGHT SPACER (Match Left Filter)
+  const rightSpacer = document.createElement("div"); rightSpacer.className="spacer-bar";
+  right.appendChild(rightSpacer);
+  right.appendChild(document.createElement("div")).className="right-divider";
+
+  // ROWS
   for(let i=0;i<10;i++){
     const lr=document.createElement("div"); lr.className="left-row sk-row"; lr.innerHTML=`<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`; left.appendChild(lr);
     const rr=document.createElement("div"); rr.className="row sk-row"; for(let j=0;j<5;j++){const b=document.createElement("div");b.className="bet skeleton";rr.appendChild(b)} right.appendChild(rr);
@@ -917,7 +873,7 @@ function loadData(){
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        // COUNT MATCHES FOR HEADER
+        // COUNT MATCHES
         let nLive = 0, nUpcoming = 0, nFinished = 0;
         data.matches.forEach(m => {
              const st = m.status;
@@ -926,12 +882,8 @@ function loadData(){
              else nUpcoming++;
         });
 
-        // 1. LEFT HEADER CONTAINER
-        const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
-
+        // 1. LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
-        
-        // CONTEXT LABEL
         let statusHtml = "";
         if(nLive > 0) statusHtml += `<span style="color:#7CFF5B">${nLive} LIVE</span>`;
         if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
@@ -945,51 +897,12 @@ function loadData(){
             </div>
             <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
+        left.appendChild(lh); 
 
-        const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
-        fb.innerHTML = `
-            <div class="filter-title">Filters</div>
-            <div class="filter-actions">
-                <button class="filter-btn active" onclick="toggleFilter('all')">ALL</button>
-                <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
-                <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
-            </div>
-        `;
-
-        lhContainer.appendChild(lh);
-        lhContainer.appendChild(fb);
-        left.appendChild(lhContainer);
-        left.appendChild(document.createElement("div")).className="left-divider";
-        
-        // --- RIGHT CARD HEADER (STICKY) ---
-        const rightHeaderRow = document.createElement("div"); 
-        rightHeaderRow.className = "row header-row-sticky";
-        
-        // ADD SPACER TO RIGHT HEADER TO MATCH LEFT HEADER HEIGHT EXACTLY
-        // Left header has: Header (60px) + Filter (40px) + Gap (10px) = 110px
-        // Right header needs to match.
-        // We will make the Right Header container Flex-Column.
-        
-        // Actually, cleaner approach:
-        // Left Side: [Header (60px)] [Filter (40px)]
-        // Right Side: [Avatars (60px)] [Spacer (40px)]
-        
-        // So right.appendChild(headerRow) is the avatars.
-        // Then append a spacer div.
-        
+        // 2. RIGHT HEADER
+        const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
-
-        // === AVATAR CONFIGURATION ===
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-        
-        // Create Header Container for Right
-        const rhContainer = document.createElement("div");
-        rhContainer.className = "right-header-container"; // We will add CSS for this
-
-        const avatarRow = document.createElement("div");
-        avatarRow.className = "row";
-        avatarRow.style.height = "60px"; // Match --header-h
-        avatarRow.style.alignItems = "center";
 
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
@@ -1008,7 +921,6 @@ function loadData(){
 
            const p=document.createElement("div"); 
            p.className="header-pill";
-           
            if(AVATARS[h.name]) {
                p.classList.add("has-avatar");
                p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
@@ -1018,7 +930,6 @@ function loadData(){
 
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
-               // BIG WIN TRIGGER (MANUAL REFRESH FIX)
                if(isFirstLoad) {
                    setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500);
                } else {
@@ -1030,27 +941,32 @@ function loadData(){
            else if(h.status==='red') p.classList.add("status-red");
            
            wrapper.appendChild(p);
-           avatarRow.appendChild(wrapper);
+           headerRow.appendChild(wrapper);
         });
+        right.appendChild(headerRow); 
 
-        // SPACER FOR ALIGNMENT
-        const rightSpacer = document.createElement("div");
-        rightSpacer.className = "spacer-bar"; // 40px height
-        rightSpacer.innerHTML = "&nbsp;"; 
-
-        // Append to Right Card
-        // Note: Sticky logic is tricky with container. 
-        // Best approach: Put both in a sticky container.
-        const stickyRight = document.createElement("div");
-        stickyRight.className = "left-header-container"; // Re-use class for sticky behavior
-        stickyRight.appendChild(avatarRow);
-        stickyRight.appendChild(rightSpacer);
+        // 3. FILTERS (LEFT) & SPACER (RIGHT) - ALIGNMENT FIX
+        const filterSection = document.createElement("div");
+        filterSection.className = "filter-separator spacer-bar";
+        filterSection.innerHTML = `
+            <div class="filter-title">Filters</div>
+            <div class="filter-actions">
+                 <button class="filter-btn" onclick="toggleFilter('all')">ALL</button>
+                 <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
+                 <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
+            </div>
+        `;
+        left.appendChild(filterSection);
+        left.appendChild(document.createElement("div")).className="left-divider";
         
-        right.appendChild(stickyRight);
-        right.appendChild(document.createElement("div")).className="right-divider"; 
+        const rightSpacer = document.createElement("div");
+        rightSpacer.className = "spacer-bar"; 
+        rightSpacer.innerHTML = "&nbsp;"; 
+        right.appendChild(rightSpacer);
+        right.appendChild(document.createElement("div")).className="right-divider";
 
+        // 4. MATCH ROWS
         const matchCount = data.matches.length;
-
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
@@ -1058,10 +974,8 @@ function loadData(){
           const lr=document.createElement("div");
           lr.className="left-row"; 
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; 
-          // FIX MODAL CLICK
           lr.onclick = function() { openModal(m); };
-          
-          lr.setAttribute('data-status', getMatchStatusType(m)); // For filtering
+          lr.setAttribute('data-status', getMatchStatusType(m));
 
           if(isFirstLoad) {
             lr.classList.add("animate-enter");
@@ -1070,7 +984,6 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
@@ -1080,17 +993,15 @@ function loadData(){
 
           const hRed = (m.stats && m.stats.h_red) || 0;
           const aRed = (m.stats && m.stats.a_red) || 0;
-
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           const minutes = parseInt(m.status) || 0;
           const isLate = (minutes >= 85 || m.status === "ET");
 
-          // GOLDEN SCORE CHECK
           let isGoldenScore = false;
           m.cells.forEach(c => {
-             if(c.value && String(c.value).includes("-")) {
-                 if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
-             }
+              if(c.value && String(c.value).includes("-")) {
+                  if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
+              }
           });
           const goldenClass = isGoldenScore ? "gold-active" : "";
           const liveDot = live ? '<div class="live-dot"></div>' : '';
@@ -1111,7 +1022,6 @@ function loadData(){
           left.appendChild(lr);
 
           const rr=document.createElement("div"); rr.className="row";
-          
           if(isFirstLoad) {
             rr.classList.add("animate-enter");
             rr.style.animationDelay = (idx * 0.05) + "s";
@@ -1120,9 +1030,7 @@ function loadData(){
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
-              // ADD COL INDEX FOR FILTERING
               el.setAttribute('data-col-idx', cellIndex);
-
               if(c.value){
                   el.textContent=c.value;
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
@@ -1131,7 +1039,6 @@ function loadData(){
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
-                  // PULSE ONLY IF ALIVE
                   if(live && isLate && !isColumnDead) {
                       let bet = String(c.value).toUpperCase();
                       let isWinning = false;
@@ -1154,8 +1061,7 @@ function loadData(){
           right.appendChild(rr);
       });
 
-      left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
-
+      // 5. SUMMARY ROWS
       ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
           left.appendChild(lab);
@@ -1167,7 +1073,7 @@ function loadData(){
           data.betSummary[i].cells.forEach((c, cellIndex)=>{
              const el=document.createElement("div");
              el.className="bet";
-             el.setAttribute('data-col-idx', cellIndex); // For filtering
+             el.setAttribute('data-col-idx', cellIndex); 
              el.textContent=formatGBP(c.value);
              el.style.setProperty('--bet-bg', c.color || '#2f343a');
              el.style.backgroundColor = c.color;
@@ -1176,10 +1082,7 @@ function loadData(){
           right.appendChild(rr);
         });
 
-        // Store headers globally for filter logic
         window.globalHeaders = data.headers;
-
-        // RE-APPLY CURRENT FILTER
         applyFilterLogic();
 
         data.totals.forEach(t=>{
@@ -1215,7 +1118,6 @@ function getMatchStatusType(m) {
     return 'upcoming';
 }
 
-// MULTI-FILTER TOGGLE LOGIC
 function toggleFilter(type) {
     if (type === 'all') {
         activeFilters.live = false;
@@ -1227,11 +1129,9 @@ function toggleFilter(type) {
 }
 
 function applyFilterLogic() {
-    // 1. Update Button States
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     
     if(!activeFilters.live && !activeFilters.alive) {
-        // Activate "ALL" button if no filters are active
         const allBtn = document.querySelector('.filter-btn[onclick*="all"]');
         if(allBtn) allBtn.classList.add('active');
     } else {
@@ -1239,7 +1139,6 @@ function applyFilterLogic() {
         if(activeFilters.live) document.getElementById('btn-live').classList.add('active');
     }
 
-    // 2. Row Filtering (Live)
     const leftRows = document.querySelectorAll('.left-row');
     const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
 
@@ -1252,8 +1151,6 @@ function applyFilterLogic() {
         if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
     });
 
-    // 3. Column Filtering (Alive)
-    // Get indexes of dead columns
     const deadIndices = [];
     if(window.globalHeaders) {
         window.globalHeaders.forEach((h, i) => {
@@ -1263,14 +1160,12 @@ function applyFilterLogic() {
         });
     }
 
-    // Toggle Columns in Header
     document.querySelectorAll('.header-pill-wrapper').forEach(el => {
         const idx = parseInt(el.getAttribute('data-col-idx'));
         if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
         else el.classList.remove('col-hidden');
     });
 
-    // Toggle Columns in Bet Rows
     document.querySelectorAll('.bet').forEach(el => {
         const idx = parseInt(el.getAttribute('data-col-idx'));
         if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
@@ -1360,7 +1255,6 @@ function drawHistoryChart(t){
   historyChart._type=t;
 }
 
-// UI & HELPERS
 function showBigWin(txt, avatarUrl){
   const o=document.getElementById("bigWinOverlay"), t=document.getElementById("bigWinText"), a=document.getElementById("bigWinAvatar");
   if(!o||!t||o.classList.contains('big-win-active')) return;
@@ -1463,27 +1357,6 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
     el.innerHTML = story;
 }
 
-function findPlayerStats(name, list) {
-    if(!list) return null;
-    let normName = normalizeName(name);
-    let parts = normName.split(" ");
-      
-    let found = list.find(x => normalizeName(x.name) === normName);
-    if(found) return found;
-
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return xn.includes(normName) || normName.includes(xn);
-    });
-    if(found) return found;
-
-    found = list.find(x => {
-        let xn = normalizeName(x.name);
-        return parts.some(p => p.length > 2 && xn.includes(p));
-    });
-    return found;
-}
-
 function showPlayerStats(name, stats, events) {
     const pop = document.getElementById("playerPopup");
     if(!stats) return; 
@@ -1513,7 +1386,6 @@ function openModal(m){
       const s=m.stats||{};
       switchTab('stats'); 
       
-      // SHOW MODAL FIRST (CRITICAL FIX)
       document.getElementById("matchModal").classList.add("active");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
@@ -1522,7 +1394,6 @@ function openModal(m){
 
       try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
-      // PITCH PRESSURE GRADIENT
       const pitch = document.getElementById("pitch");
       if (s.h_xg !== undefined && s.a_xg !== undefined) {
         if (s.h_xg > s.a_xg) {
@@ -1530,11 +1401,10 @@ function openModal(m){
         } else if (s.a_xg > s.h_xg) {
            pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
         } else {
-            pitch.style.background = "#2e5a2e"; // Reset
+            pitch.style.background = "#2e5a2e"; 
         }
       }
 
-      // 1. GENERATE GROUP PREDICTIONS
       let consensusHTML = "";
       if(m && m.cells) {
           let votes = { H: 0, D: 0, A: 0, Total: 0 };
@@ -1574,7 +1444,7 @@ function openModal(m){
               consensusHTML = `
               <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
                   <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
-                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px; gap:0;">
+                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
                       <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
                       <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
                       <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
@@ -1620,7 +1490,6 @@ function openModal(m){
       });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-      // STATS
       const sb = document.getElementById("statsArea"); 
       sb.innerHTML = "";
       if (m.status === "NS" || m.status === "PST") {
@@ -1644,7 +1513,6 @@ function openModal(m){
           setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
       }
       
-      // LINEUPS RENDER CALL
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
       renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
@@ -1653,6 +1521,95 @@ function openModal(m){
   } catch(err) {
       console.error("Modal Error:", err);
   }
+}
+
+function renderPitchTeam(lineup, isHome, players) {
+    if(!lineup.start) return;
+    const pp = document.getElementById("pitchPlayers");
+    const yMult = isHome ? 1 : -1;
+    
+    lineup.start.forEach(p => {
+        const [gx, gy] = (p.grid || "1:1").split(":").map(Number);
+        const x = (gy / 6) * 100; // rough mapping
+        const y = isHome ? (gx / 6) * 45 : 100 - ((gx / 6) * 45);
+        
+        const el = document.createElement("div");
+        el.className = "pitch-player";
+        el.style.left = x + "%";
+        el.style.top = y + "%";
+        
+        // Find stats
+        const stats = findPlayerStats(p.name, players);
+        let ratingClass = "";
+        let ratingHtml = "";
+        if(stats && stats.rating) {
+            if(stats.rating >= 7.5) ratingClass = "rat-high";
+            else if(stats.rating >= 6.5) ratingClass = "rat-mid";
+            else ratingClass = "rat-low";
+            ratingHtml = `<div class="p-rat ${ratingClass}">${stats.rating.toFixed(1)}</div>`;
+        }
+        
+        let subBadge = "";
+        // Check if subbed out
+        if(lineup.sub && lineup.sub.some(s => s.replace === p.name)) {
+             subBadge = `<div class="sub-badge" style="background:#ff4d4d;transform:rotate(180deg)"></div>`;
+        }
+
+        let cardHtml = "";
+        
+        el.innerHTML = `
+            <div class="p-dot ${isHome?'home':'away'}">
+                ${p.number||""}
+                <div class="p-num-fallback">${p.number||""}</div>
+                ${ratingHtml}
+                ${subBadge}
+                ${cardHtml}
+            </div>
+            <div class="p-name">${formatName(p.name).split(" ").pop()}</div>
+        `;
+        el.onclick = () => showPlayerStats(p.name, stats, null);
+        pp.appendChild(el);
+    });
+
+    // Subs list
+    if(lineup.sub && lineup.sub.length > 0) {
+        const sc = document.getElementById("subsArea");
+        if(isHome) sc.innerHTML += `<div class="subs-header">Home Subs</div>`;
+        else sc.innerHTML += `<div class="subs-header">Away Subs</div>`;
+        
+        lineup.sub.forEach(s => {
+             const stats = findPlayerStats(s.name, players);
+             let rVal = stats ? stats.rating.toFixed(1) : "-";
+             sc.innerHTML += `
+               <div class="sub-row" onclick="${stats ? `showPlayerStats('${s.name}', {rating:${stats.rating}, goals:${stats.goals||0}, assists:${stats.assists||0}, shots:${stats.shots||0}, key_passes:${stats.key_passes||0}}, null)` : ''}">
+                  <div class="sub-icon">${s.time}'</div>
+                  <span style="flex:1">${s.name}</span>
+                  <span style="color:${stats && stats.rating>=7?'#7CFF5B':'#999'}">${rVal}</span>
+               </div>
+             `;
+        });
+    }
+}
+
+function findPlayerStats(name, list) {
+    if(!list) return null;
+    let normName = normalizeName(name);
+    let parts = normName.split(" ");
+      
+    let found = list.find(x => normalizeName(x.name) === normName);
+    if(found) return found;
+
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return xn.includes(normName) || normName.includes(xn);
+    });
+    if(found) return found;
+
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return parts.some(p => p.length > 2 && xn.includes(p));
+    });
+    return found;
 }
 
 function openTable(){
@@ -1677,10 +1634,7 @@ renderSkeletons();
 loadData(); 
 setInterval(loadData,REFRESH_MS);
 
-// REMOVED GOD MODE ENTIRELY AS REQUESTED
-
 document.getElementById("rankingCard").onclick=()=>{
-    // NEW: Open Modal instead of toggle
     vibe();
     drawHistoryChart("matches");
     document.getElementById("historyModal").classList.add("active");

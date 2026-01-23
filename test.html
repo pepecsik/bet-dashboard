@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.5</title>
+<title>Bet Dashboard v3.6</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -101,18 +101,30 @@ body{
     border: 1px solid rgba(255,255,255,0.5) !important;
 }
 
-/* GOLDEN SCORE ANIMATION */
+/* GOLDEN SCORE ANIMATION - FIXED TEXT CONTRAST */
 @keyframes goldPulse {
     0% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
     50% { box-shadow: 0 0 15px #ffd700; border-color: #fff; transform: scale(1.02); }
     100% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
 }
+
 .gold-active {
     background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
-    color: #000 !important;
-    font-weight: 900 !important;
-    animation: goldPulse 2s infinite !important;
     border: 1px solid #fff !important;
+    animation: goldPulse 2s infinite !important;
+}
+
+/* FORCE BLACK TEXT ON GOLD PILL */
+.gold-active span {
+    color: #000 !important;
+    text-shadow: none !important;
+}
+
+/* FORCE WHITE BG FOR TIME ON GOLD PILL */
+.gold-active span:first-child {
+    background: rgba(255,255,255,0.9) !important;
+    color: #000 !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
 }
 
 .score-pill, .bet { transition: all 0.3s; }
@@ -722,7 +734,7 @@ const TEAM_LOGOS={
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
 };
 
-// HELPER: GET TEAM RANK
+// HELPER: GET TEAM RANK FROM TABLE CACHE
 function getTeamRank(teamName) {
     if(!tableCache || !teamName) return "";
     
@@ -764,8 +776,9 @@ function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
-  const rank = getTeamRank(code);
+  const rank = getTeamRank(code); // NEW: Get Rank
   
+  // LOGO HTML
   let imgHtml = "";
   if(!logo) imgHtml = `<span class="team-fallback">${code}</span>`;
   else {
@@ -773,6 +786,7 @@ function renderTeam(raw){
       imgHtml = `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
   }
   
+  // RANK BADGE (If available)
   let badgeHtml = rank ? `<div class="team-rank-badge">${rank}</div>` : "";
   
   return `<div style="position:relative;">${imgHtml}${badgeHtml}</div>`;

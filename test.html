@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v5.4</title>
+<title>Bet Dashboard v5.5</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -33,16 +33,21 @@
   --accent-gold: #ffd700;
   --accent-green: #7CFF5B;
   
-  /* --- DIMENSIONS --- */
+  /* --- TIGHTER DIMENSIONS --- */
   --row-h:50px; 
   --header-h:50px;
   --header-pill-w:70px;
-  --gap:8px;
+  
+  /* Reduced gap between rows */
+  --gap: 4px; 
+  
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
-  --filter-h: 34px; /* Tightened from 40px */
+  
+  /* Ultra-slim filter bar */
+  --filter-h: 28px; 
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -97,17 +102,17 @@ body{
   z-index: 10;
 }
 
-/* NEW: TOXIC ZOOM PULSE (Green) */
+/* SIGNIFICANT TOXIC ZOOM PULSE */
 @keyframes toxicPulse { 
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.4); } 
-  50% { transform: scale(1.15); box-shadow: 0 0 25px 5px rgba(124, 255, 91, 0.5); } 
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.4); } 
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.0); } 
+  50% { transform: scale(1.25); box-shadow: 0 0 30px 10px rgba(124, 255, 91, 0.6); z-index: 100;} 
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.0); } 
 }
 
 .status-green, .status-green-live {
   background-color: var(--accent-green) !important;
   color: #000 !important;
-  animation: toxicPulse 1.2s infinite ease-in-out !important; /* Slower, bigger pulse */
+  animation: toxicPulse 1.5s infinite ease-in-out !important; 
   border: none !important;
   z-index: 12;
 }
@@ -197,7 +202,8 @@ body{
 /* === LEFT CARD (MATCHES) === */
 .left-card{
   width:var(--left-w); background:var(--bg-card); border-radius:var(--rad-lg);
-  padding:8px; display:flex; flex-direction:column; gap:var(--gap);
+  padding:6px; /* Tightened from 8px */
+  display:flex; flex-direction:column; gap:var(--gap);
   overflow-y:auto; max-height:100%; scrollbar-width:none;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -239,12 +245,12 @@ body{
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* ALIGNED SPACER/FILTER BAR - TIGHTER */
+/* ALIGNED SPACER/FILTER BAR - ULTRA TIGHT */
 .spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
     height: var(--filter-h); 
     padding: 0 4px;
-    margin: 2px 0; /* Tightened from 8px */
+    margin: 0; /* Zero margin for tightness */
     box-sizing: border-box;
     flex-shrink: 0;
 }
@@ -253,8 +259,8 @@ body{
 .filter-actions { display: flex; gap: 6px; }
 .filter-btn {
     background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
-    color: var(--text-muted); font-size: 10px; font-weight: 700;
-    padding: 4px 10px; border-radius: var(--rad-sm);
+    color: var(--text-muted); font-size: 9px; font-weight: 700;
+    padding: 2px 10px; border-radius: var(--rad-sm);
     cursor: pointer; transition: all 0.2s;
 }
 .filter-btn.active {
@@ -263,12 +269,14 @@ body{
 
 /* DIVIDERS */
 .left-divider, .right-divider {
-    height: 2px; /* Tightened from 6px */
+    height: 1px; /* Thinner */
     width: 100%;
     flex-shrink: 0;
+    margin-bottom: 2px; /* Tiny gap */
+    background: rgba(255,255,255,0.05);
 }
 
-/* NEW: SECTION BREAK FOR GAP BEFORE BETS */
+/* SECTION BREAK FOR GAP BEFORE BETS */
 .section-break {
     height: 20px;
     width: 100%;
@@ -319,7 +327,7 @@ body{
 /* === RIGHT CARD (BETS) === */
 .right-card{
   flex:1; background:var(--bg-card); border-radius:var(--rad-lg);
-  overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
+  overflow-x:auto; overflow-y:auto; padding:6px; /* Tightened from 8px */ scrollbar-width:none;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .right-card::-webkit-scrollbar { display: none; }

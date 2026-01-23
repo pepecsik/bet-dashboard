@@ -29,12 +29,13 @@
 /* 1. CARBON (Default - The "Pro" Look) */
 :root {
   --font-main: 'Inter', system-ui, sans-serif;
+  --base-size: 12px;
   
   --bg-main: #141619;
   --bg-card: rgba(33, 37, 43, 0.95);
   --bg-soft: #2b3038;
   --bg-row:  #1f2329;
-  --bg-modal: #1e293b; /* Dark Modal Background */
+  --bg-modal: #1e293b; 
   
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
@@ -58,6 +59,7 @@
 /* 2. CANDY (Vibrant, Glossy, Pop) */
 [data-theme="candy"] {
   --font-main: 'Quicksand', sans-serif;
+  --base-size: 13px; /* Slightly larger for round font */
   
   /* Vibrant Mesh Gradient Background */
   --bg-grad: 
@@ -71,7 +73,7 @@
   --bg-card: rgba(255, 255, 255, 0.65); 
   --bg-soft: rgba(255, 255, 255, 0.85);
   --bg-row:  rgba(255, 255, 255, 0.5);
-  --bg-modal: #fff0f5; /* Light Pinkish White for Modal Internal */
+  --bg-modal: #fff0f5; 
   
   /* High Contrast Deep Berry Text */
   --text-main: #590d22; 
@@ -79,23 +81,23 @@
   
   --accent-orange: #ff9e00; 
   --accent-gold: #ffcc00;
-  --accent-green: #00b4d8; /* Sky Blue Pop */
+  --accent-green: #00b4d8; 
   
   --border-light: 1px solid rgba(255, 255, 255, 0.9);
   --shadow-card: 
     0 10px 30px -5px rgba(255, 20, 147, 0.15), 
     0 5px 15px -5px rgba(255, 20, 147, 0.1),
-    inset 0 0 20px rgba(255,255,255,0.5); /* Inner Glow */
+    inset 0 0 20px rgba(255,255,255,0.5); 
   
   --rad-sm: 12px;
   --rad-md: 18px;
   --rad-lg: 26px;
   
   --logo-filter: drop-shadow(0 4px 6px rgba(255, 105, 180, 0.3));
-  --modal-overlay: rgba(90, 10, 40, 0.4); /* Pink tinted overlay */
+  --modal-overlay: rgba(90, 10, 40, 0.4); 
 }
 
-/* Candy Overrides to fix Grayness */
+/* Candy Overrides */
 [data-theme="candy"] .modal-header, 
 [data-theme="candy"] .modal-scroll-area,
 [data-theme="candy"] .history-card-inner { 
@@ -124,13 +126,38 @@
     background: #fff; color: #590d22; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 [data-theme="candy"] .pitch-container {
-    background: #4ade80 !important; /* Brighter grass */
+    background: #4ade80 !important; 
     border: 4px solid #fff;
+}
+/* Candy Fix 1: Filter Button Highlight */
+[data-theme="candy"] .filter-btn.active {
+    background: #a4133c; /* Deep Berry Background */
+    color: #ffffff;      /* White Text */
+    border-color: #a4133c;
+    box-shadow: 0 4px 12px rgba(164, 19, 60, 0.3);
+}
+/* Candy Fix 2: Shame Row / Rank 3 Readability */
+[data-theme="candy"] .shame-row {
+    background: linear-gradient(90deg, #5c2b29 0%, rgba(255,255,255,0.3) 100%) !important;
+}
+[data-theme="candy"] .shame-row .rank-name,
+[data-theme="candy"] .shame-row .rank-bets,
+[data-theme="candy"] .shame-row .rank-pos {
+    color: #ffffff !important; /* Force white text on poop row */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+/* Candy Fix 3: Subs Readability */
+[data-theme="candy"] .sub-row {
+    color: #590d22 !important; /* Dark Berry */
+    font-weight: 700;
+    opacity: 1;
 }
 
 /* 3. RETRO (8-Bit Atari Mode) */
 [data-theme="retro"] {
   --font-main: 'VT323', monospace; 
+  --base-size: 15px; /* Bumped up font size */
+  
   --bg-main: #000000;
   --bg-card: #000000;
   --bg-soft: #111111;
@@ -157,12 +184,18 @@
 
 /* Retro Overrides */
 [data-theme="retro"] .bet, [data-theme="retro"] .header-pill {
-    text-transform: uppercase; letter-spacing: 1px; font-size: 18px; 
+    text-transform: uppercase; letter-spacing: 1px; font-size: 20px; /* Bigger pills */
 }
 [data-theme="retro"] .status-green { 
     animation: blink 0.5s infinite steps(1); 
     box-shadow: none; border: 2px solid #00ff00 !important; 
     background: #000 !important; color: #00ff00 !important; 
+}
+/* Retro Readability Bumps */
+[data-theme="retro"] .left-cell, 
+[data-theme="retro"] .rank-name,
+[data-theme="retro"] .week-label {
+    font-size: 1.2em; /* Increase text size */
 }
 
 /* =========================================
@@ -192,6 +225,7 @@
 body{
   margin:0;
   font-family: var(--font-main);
+  font-size: var(--base-size);
   background: var(--bg-grad);
   color:var(--text-main);
   height: 100vh;
@@ -375,7 +409,7 @@ body{
   cursor: pointer; /* Change cursor to indicate toggle */
 }
 .brand-btn:active { transform: translateY(-50%) scale(0.9); }
-.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); filter: var(--logo-filter); transition: filter 0.3s; }
+.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.35); filter: var(--logo-filter); transition: filter 0.3s; }
 
 /* ALIGNED SPACER/FILTER BAR */
 .spacer-bar {

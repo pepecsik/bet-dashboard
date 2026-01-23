@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.6</title>
+<title>Bet Dashboard v4.0</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -32,15 +32,20 @@
   --accent-orange: #ff9f43;
   --accent-gold: #ffd700;
   
-  /* --- DIMENSIONS --- */
+  /* --- STANDARDIZED DIMENSIONS --- */
   --row-h:50px; 
   --header-h:70px; 
   --header-pill-w:70px;
-  --gap:6px;
+  --gap:10px; /* INCREASED GAP FOR BREATHING ROOM */
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
+
+  /* --- BORDER RADIUS SYSTEM --- */
+  --rad-sm: 6px;
+  --rad-md: 10px;
+  --rad-lg: 14px;
 }
 
 *{
@@ -66,88 +71,72 @@ body{
   font-feature-settings: "tnum";
 }
 
-/* === ANIMATIONS === */
+/* === ANIMATIONS (SIMPLIFIED) === */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-enter {
-  animation: rollIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: rollIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   opacity: 0; 
 }
 
-@keyframes breathingGlow {
-  0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
-  50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
-  100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
-}
-.flash-active {
-  animation: breathingGlow 3s ease-in-out infinite; 
-  z-index: 100 !important;
-  background-clip: padding-box;
-  position: relative;
+/* LIVE DOT BLINK */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.live-dot {
+    width: 6px; height: 6px; 
+    background: #7CFF5B; 
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    animation: blink 1.5s infinite ease-in-out;
 }
 
-/* SWEAT PULSE (Winning Bets Late Game) */
+/* SWEAT PULSE (DANGER ONLY) */
 @keyframes nervousPulse {
-  0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
-  50% { transform: scale(1.06); filter: brightness(1.3); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-  100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.04); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
 }
 .sweat-active {
-    animation: nervousPulse 0.8s ease-in-out infinite !important;
+    animation: nervousPulse 1s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.5) !important;
+    border: 1px solid rgba(255,255,255,0.4) !important;
 }
 
-/* GOLDEN SCORE ANIMATION - FIXED TEXT CONTRAST */
-@keyframes goldPulse {
-    0% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
-    50% { box-shadow: 0 0 15px #ffd700; border-color: #fff; transform: scale(1.02); }
-    100% { box-shadow: 0 0 5px #ffd700; border-color: #ffd700; }
-}
-
+/* GOLD STATE (STATIC, PREMIUM) */
 .gold-active {
-    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
-    border: 1px solid #fff !important;
-    animation: goldPulse 2s infinite !important;
+    background: linear-gradient(135deg, #ffd700 0%, #e6a800 100%) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
-
-/* FORCE BLACK TEXT ON GOLD PILL */
-.gold-active span {
-    color: #000 !important;
-    text-shadow: none !important;
-}
-
-/* FORCE WHITE BG FOR TIME ON GOLD PILL */
+.gold-active span { color: #000 !important; text-shadow: none !important; }
 .gold-active span:first-child {
-    background: rgba(255,255,255,0.9) !important;
+    background: rgba(255,255,255,0.8) !important;
     color: #000 !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
 }
 
-.score-pill, .bet { transition: all 0.3s; }
+/* SOFT TRANSITIONS */
+.score-pill, .bet { 
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+}
 
 /* === DARK SKELETON === */
 .skeleton {
   background-color: #343a40;
-  animation: darkBreathing 1.5s infinite ease-in-out;
+  animation: darkBreathing 2s infinite ease-in-out;
   color: transparent !important; 
-  border-radius: 10px;
+  border-radius: var(--rad-md);
 }
-@keyframes darkBreathing { 
-  0% { background-color: #343a40; } 
-  50% { background-color: #495057; } 
-  100% { background-color: #343a40; } 
-}
+@keyframes darkBreathing { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows:1fr auto;
+  grid-template-rows: auto 1fr auto; 
 }
 
 @media (max-width: 768px){
@@ -179,7 +168,7 @@ body{
 
 /* === LEFT CARD (MATCHES) === */
 .left-card{
-  width:var(--left-w); background:var(--bg-card); border-radius:14px;
+  width:var(--left-w); background:var(--bg-card); border-radius:var(--rad-lg);
   padding:8px; display:flex; flex-direction:column; gap:var(--gap);
   overflow-y:auto; max-height:100%; scrollbar-width:none;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
@@ -190,14 +179,15 @@ body{
 .left-header {
   height:var(--header-h);
   background: rgba(47, 52, 58, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  border-radius:10px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:11px; 
-  font-weight:800; position: sticky; top: 0; z-index: 20; 
+  border-radius:var(--rad-md);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position: sticky; top: 0; z-index: 20; 
+  gap: 2px;
 }
+.header-main-text { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+.header-sub-text { font-size: 9px; font-weight: 600; color: var(--accent-orange); text-transform: uppercase; }
 
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
@@ -217,6 +207,21 @@ body{
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
+/* FILTERS */
+.filter-bar {
+    display: flex; gap: 6px; padding: 0 4px; margin-bottom: 4px;
+    overflow-x: auto; scrollbar-width: none;
+}
+.filter-btn {
+    background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-muted); font-size: 10px; font-weight: 700;
+    padding: 6px 12px; border-radius: var(--rad-sm);
+    cursor: pointer; white-space: nowrap; transition: all 0.2s;
+}
+.filter-btn.active {
+    background: #fff; color: #000; border-color: #fff;
+}
+
 .left-divider{height:8px}
 
 .left-row{
@@ -229,14 +234,14 @@ body{
 .left-row:active { background-color: rgba(255, 255, 255, 0.15); transform: scale(0.96); }
 
 .left-cell{
-  background:var(--bg-soft); border-radius:10px; display:flex;
+  background:var(--bg-soft); border-radius:var(--rad-md); display:flex;
   align-items:center; justify-content:center; font-size:12px; font-weight:600;
   pointer-events: none; flex-direction: column;
 }
 .left-cell.match{text-align:center; flex-direction:row;}
 
 .left-label{
-  height:var(--row-h); background:var(--bg-soft); border-radius:10px;
+  height:var(--row-h); background:var(--bg-soft); border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
 }
 
@@ -244,13 +249,11 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
-/* Team Rank Badge */
 .team-rank-badge {
     position: absolute; top: -4px; left: -6px;
     font-size: 8px; font-weight: 800; color: #9aa0a6;
     background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.1);
-    z-index: 12;
+    border: 1px solid rgba(255,255,255,0.1); z-index: 12;
 }
 
 .team-wrap-rel { position: relative; display: flex; align-items: center; justify-content: center; }
@@ -264,7 +267,7 @@ body{
 
 /* === RIGHT CARD (BETS) === */
 .right-card{
-  flex:1; background:var(--bg-card); border-radius:14px;
+  flex:1; background:var(--bg-card); border-radius:var(--rad-lg);
   overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -285,9 +288,8 @@ body{
     align-items: center;
     justify-content: center;
     background: rgba(47, 52, 58, 0.85); 
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 10px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: var(--rad-md);
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
@@ -295,23 +297,15 @@ body{
   width:var(--header-pill-w); 
   height:50px; 
   background:var(--bg-soft);
-  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 
-/* AVATARS */
-.header-pill.has-avatar { 
-    padding: 0; 
-    overflow: visible; 
-    position: relative; 
-}
+.header-pill.has-avatar { padding: 0; overflow: visible; position: relative; }
 .avatar-img { 
-    width: 100%; height: 100%; 
-    object-fit: contain; 
-    display: block; 
-    transform: scale(1.35); 
-    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4));
-    z-index: 5;
+    width: 100%; height: 100%; object-fit: contain; 
+    display: block; transform: scale(1.35); 
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
 .right-divider{height:8px}
@@ -320,7 +314,7 @@ body{
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius: 12px; 
+  border-radius: var(--rad-md); /* Consistent rounding */
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
   position: relative;
@@ -328,7 +322,6 @@ body{
   box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
   border: 1px solid rgba(255,255,255,0.05); 
 }
-/* EMPTY STATE */
 .bet.empty {
     background: transparent !important;
     border: none !important;
@@ -337,7 +330,7 @@ body{
 
 /* === SUMMARY & FOOTER === */
 .summary { 
-  background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: 14px;        
+  background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: var(--rad-lg);        
   overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   border: 1px solid rgba(255, 255, 255, 0.08); position: relative; z-index: 10;
 }
@@ -358,11 +351,11 @@ body{
 .summary-top-row { display: flex; gap: 12px; width: 100%; overflow-x: auto; scrollbar-width: none; align-items: stretch; }
 .summary-top-row::-webkit-scrollbar { display: none; }
 
-.weekly-card { flex: 1.4; min-width:var(--summary-w); background:var(--bg-soft); border-radius:14px; padding:12px; }
+.weekly-card { flex: 1.4; min-width:var(--summary-w); background:var(--bg-soft); border-radius:var(--rad-lg); padding:12px; }
 
 .ranking-card{
   flex: 1; min-width:var(--summary-w); background:var(--bg-soft);
-  border-radius:14px; padding:12px; cursor:pointer;
+  border-radius:var(--rad-lg); padding:12px; cursor:pointer;
   display: flex; flex-direction: column; transition: transform 0.1s;
 }
 .ranking-card:active { transform: scale(0.96); background: rgba(255,255,255,0.1); }
@@ -372,7 +365,7 @@ body{
 
 .week-row{
   height:var(--week-row-h); display:grid; grid-template-columns: 90px 1fr 65px;
-  align-items:center; background:var(--bg-row); border-radius:8px;
+  align-items:center; background:var(--bg-row); border-radius:var(--rad-sm);
   padding:0 4px; margin-bottom:4px; font-size:11px; font-weight:700;
 }
 .week-label{ color:#fff; white-space: nowrap; overflow: hidden; }
@@ -383,7 +376,7 @@ body{
 
 .rank-row{
   display:grid; grid-template-columns:18px 1fr auto; grid-template-rows:auto auto;
-  gap:2px 4px; background:var(--bg-row); border-radius:10px;
+  gap:2px 4px; background:var(--bg-row); border-radius:var(--rad-md);
   padding:6px 8px; margin-bottom:6px;
 }
 .rank-pos{grid-row:span 2;font-weight:800; font-size: 1.1em;}
@@ -400,7 +393,7 @@ body{
 
 /* === HISTORY CARD === */
 .history-card{
-  width: 100%; background:var(--bg-soft); border-radius:14px;
+  width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
   padding:12px 14px 4px 14px; 
   display:none; 
   height: auto; min-height: 200px; 
@@ -464,27 +457,6 @@ body{
     width: 0%; 
     min-width: 4px; 
 }
-
-@keyframes tickerPulse {
-  0%{opacity:.4}
-  50%{opacity:1}
-  100%{opacity:.4}
-}
-
-.ticker-alert{
-  animation: tickerPulse 1.5s infinite;
-  color:#ff4d4d !important;
-}
-
-.ticker-positive{
-  color:#7CFF5B !important;
-}
-
-.ticker-neutral{
-  color:#4DA3FF !important;
-}
-
- 
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
@@ -604,47 +576,6 @@ body{
 <body>
 
 <div class="app">
-
-   <!-- BET INTELLIGENCE TICKER -->
-   <div id="betTicker" style="
-   width:100%;
-   height:44px;
-   background:rgba(20,20,20,0.92);
-   backdrop-filter: blur(10px);
-   border-bottom:1px solid rgba(255,255,255,0.08);
-   display:flex;
-   align-items:center;
-   padding:0 16px;
-   z-index:50;
-   box-shadow:0 4px 20px rgba(0,0,0,0.5);
-   font-family:Inter,sans-serif;
-   overflow:hidden;
-   position:sticky;
-   top:0;
-   ">
-
-   <div style="
-     font-size:11px;
-     font-weight:800;
-     color:#ff9f43;
-     margin-right:10px;
-     white-space:nowrap;
-     text-transform:uppercase;
-     letter-spacing:1px;
-   ">LIVE BET INTEL</div>
-
-   <div id="tickerText" style="
-     flex:1;
-     font-size:12px;
-     font-weight:600;
-     white-space:nowrap;
-     overflow:hidden;
-     text-overflow:ellipsis;
-     color:#fff;
-   ">Initializing bet intelligence...</div>
-
-  </div> 
- 
   <div class="main">
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
@@ -773,42 +704,6 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function generateAIInsights(m, data) {
-  if(!m || !m.cells) return "";
-
-  let risk = 0;
-  let lateRisk = 0;
-  let drawBias = 0;
-  let homeBias = 0;
-  let awayBias = 0;
-
-  m.cells.forEach(c=>{
-    if(!c.value) return;
-    const v = String(c.value).toUpperCase();
-    if(v.includes("-")) risk += 1;              // exact score = risky
-    if(v === "X" || v === "D" || v === "DRAW") drawBias++;
-    if(v === "1" || v === "H") homeBias++;
-    if(v === "2" || v === "A") awayBias++;
-  });
-
-  let insights = [];
-
-  if(risk >= 2) insights.push("🎯 High-risk predictions detected (exact scores in play)");
-  if(drawBias >= 2) insights.push("⚖️ Group leaning towards a draw scenario");
-  if(homeBias > awayBias) insights.push("🏠 Group confidence favors home side");
-  if(awayBias > homeBias) insights.push("✈️ Group confidence favors away side");
-
-  if(insights.length === 0) insights.push("🧠 No strong group bias detected");
-
-  return `
-    <div class="ai-story-box">
-      <div class="ai-title">🤖 AI Insight</div>
-      ${insights.map(i=>`<div>${i}</div>`).join("")}
-    </div>
-  `;
-}
-
- 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -911,18 +806,36 @@ function renderSkeletons() {
 // MAIN LOAD FUNCTION
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
-       // UPDATE BET TICKER
-    try{
-        updateBetTicker(data);
-    }catch(e){}
-
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
+        // COUNT MATCHES FOR HEADER
+        let nLive = 0, nUpcoming = 0, nFinished = 0;
+        data.matches.forEach(m => {
+             const st = m.status;
+             if(st.includes("'") || ["HT","1H","2H","LIVE"].includes(st)) nLive++;
+             else if(st === "FT" || st === "AET" || st === "PEN") nFinished++;
+             else nUpcoming++;
+        });
+
         const lh=document.createElement("div"); lh.className="left-header"; 
-        lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;"><span>MATCHES</span><span style="font-size:10px;font-weight:400;color:var(--accent-orange);text-transform:uppercase;margin-top:4px;">${data.date||"Live"}</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        // NEW HEADER WITH COUNTS
+        lh.innerHTML=`
+            <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;">
+                <span class="header-main-text">MATCHDAY</span>
+                <span class="header-sub-text">${nLive > 0 ? `<span style="color:#7CFF5B">● ${nLive} LIVE</span>` : ""} ${nUpcoming} UPCOMING</span>
+            </div>
+            <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="applyFilter('all')">All</button>
+                <button class="filter-btn" onclick="applyFilter('live')">Live</button>
+                <button class="filter-btn" onclick="applyFilter('winning')">Winning</button>
+                <button class="filter-btn" onclick="applyFilter('finished')">Finished</button>
+            </div>
+        `;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
         // HEADER ROW STICKY
@@ -983,6 +896,7 @@ function loadData(){
           const lr=document.createElement("div");
           lr.className="left-row"; 
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
+          lr.setAttribute('data-status', getMatchStatusType(m)); // For filtering
 
           if(isFirstLoad) {
             lr.classList.add("animate-enter");
@@ -1016,6 +930,8 @@ function loadData(){
 
           // GOLDEN PILL CLASS
           const goldenClass = isGoldenScore ? "gold-active" : "";
+          // LIVE DOT
+          const liveDot = live ? '<div class="live-dot"></div>' : '';
 
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
@@ -1026,7 +942,7 @@ function loadData(){
           </div>
           <div class="left-cell">
              <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
-                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${displayStatus}</span>
+                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span>
                 <span style="color:#fff;font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
              </div>
           </div>`;
@@ -1128,16 +1044,48 @@ function loadData(){
              rowClass += " shame-row";
           }
 
-          // ADD HOT STREAK FLAME
-          let nameHtml = r.name;
-          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
-
-          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
+}
+
+function getMatchStatusType(m) {
+    if(!m.status) return 'upcoming';
+    const s = m.status.toUpperCase();
+    if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
+    if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
+    return 'upcoming';
+}
+
+function applyFilter(type) {
+    // 1. Update Buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if(btn.innerText.toLowerCase() === type) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    // 2. Hide/Show Rows
+    const leftRows = document.querySelectorAll('.left-row');
+    const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); // Exclude header
+
+    leftRows.forEach((row, i) => {
+        const status = row.getAttribute('data-status');
+        let show = false;
+        if(type === 'all') show = true;
+        else if(type === 'live' && status === 'live') show = true;
+        else if(type === 'finished' && status === 'finished') show = true;
+        else if(type === 'winning') {
+            // Winning Logic? Maybe simplistic: Live + Winning bets?
+            // For now, let's just show Live/Upcoming as "Active" interest
+            if(status === 'live') show = true;
+        }
+
+        row.style.display = show ? 'grid' : 'none';
+        if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
+    });
 }
 
 function drawHistoryChart(t){
@@ -1352,385 +1300,6 @@ function showPlayerStats(name, stats, events) {
     pop.style.display = "block";
 }
 
-function openModal(m){
-  vibe(); document.getElementById('playerPopup').style.display='none';
-  const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
-  const s=m.stats||{};
-  switchTab('stats'); 
-
-  document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
-  const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
-  document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
-
-  try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
- // AI INSIGHTS (frontend intelligence)
-  const aiBox = generateAIInsights(m);
-  document.getElementById("aiSummaryWrapper").innerHTML += aiBox;
-
-
-  // PITCH PRESSURE GRADIENT
-  const pitch = document.getElementById("pitch");
-  if (s.h_xg !== undefined && s.a_xg !== undefined) {
-    if (s.h_xg > s.a_xg) {
-       // Green tint on the AWAY (top) half to show Home pressure
-       pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
-    } else if (s.a_xg > s.h_xg) {
-       // Red/Orange tint on HOME (bottom) half to show Away pressure
-       pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
-    } else {
-        pitch.style.background = "#2e5a2e"; // Reset
-    }
-  }
-
-  // 1. GENERATE GROUP PREDICTIONS
-  let consensusHTML = "";
-  if(m && m.cells) {
-      let votes = { H: 0, D: 0, A: 0, Total: 0 };
-      const hName = String(hCode).toUpperCase().trim();
-      const aName = String(aCode).toUpperCase().trim();
-
-      m.cells.forEach(c => {
-           if(!c.value) return; 
-           let val = String(c.value).toUpperCase().trim();
-           if(val.includes("-")) {
-               votes.Total++;
-               const [hS, aS] = val.split("-").map(Number);
-               if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
-           } else {
-               if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
-               else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
-               else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
-           }
-      });
-      
-      if(votes.Total > 0) {
-          const hPct = (votes.H / votes.Total) * 100;
-          const dPct = (votes.D / votes.Total) * 100;
-          const aPct = (votes.A / votes.Total) * 100;
-          
-          const sortArr = [
-              {type:'H', val:hPct, label:hCode},
-              {type:'D', val:dPct, label:'Draw'},
-              {type:'A', val:aPct, label:aCode}
-          ].sort((a,b)=>b.val - a.val);
-
-          let colors = { H:'#555', D:'#555', A:'#555' };
-
-          if(sortArr[0].val === sortArr[1].val) {
-              colors[sortArr[0].type] = '#7CFF5B'; 
-              colors[sortArr[1].type] = '#4BAA35'; 
-              colors[sortArr[2].type] = '#ff4d4d'; 
-          } 
-          else if(sortArr[1].val === sortArr[2].val) {
-              colors[sortArr[0].type] = '#7CFF5B'; 
-              colors[sortArr[1].type] = '#ff9f43'; 
-              colors[sortArr[2].type] = '#d67d26'; 
-          } 
-          else {
-              colors[sortArr[0].type] = '#7CFF5B'; 
-              colors[sortArr[1].type] = '#ff9f43'; 
-              colors[sortArr[2].type] = '#ff4d4d'; 
-          }
-
-          consensusHTML = `
-          <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
-              <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
-                  <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
-                  <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
-                  <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
-                  <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
-                  <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
-                  <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
-              </div>
-          </div>`;
-      }
-  }
-  document.getElementById("consensusArea").innerHTML = consensusHTML;
-
-  // 2. STATS - GROUPED GOALS
-  let hG=[], aG=[];
-  let goalsMap = {}; 
-  if(s.events){
-      s.events.forEach(e => {
-         if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
-             let cleanP = normalizeName(e.player.trim());
-             let isH = null;
-             let parts = cleanP.split(' ');
-             
-             if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
-                 else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
-             }
-             if(isH === null && s.players && s.players.h) {
-                 if(parts.some(pt => pt.length>2 && s.players.h.some(p => normalizeName(p.name).includes(pt)))) isH = true;
-                 else if(parts.some(pt => pt.length>2 && s.players.a.some(p => normalizeName(p.name).includes(pt)))) isH = false;
-             }
-             if(isH === null) isH = true; 
-             
-             if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
-             goalsMap[cleanP].times.push(e.time + "'");
-         }
-      });
-  }
-  
-  Object.keys(goalsMap).forEach(key => {
-      let g = goalsMap[key];
-      let timesStr = g.times.join(", ");
-      let name = formatName(g.rawName);
-      let html = "";
-      let icon = "⚽";
-      if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
-      let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
-      
-      if(g.isHome) {
-         html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`;
-         hG.push(html);
-      } else {
-         html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; 
-         aG.push(html);
-      }
-  });
-
-  if(Object.keys(goalsMap).length === 0 && s.scorers) {
-       s.scorers.split(",").forEach(i=>{
-          let raw = i.trim(); if(!raw) return;
-          let isHome = raw.includes("(H)");
-          let name = formatName(raw.replace("(H)","").replace("(A)","").replace(/\(.*\)/g,"").trim());
-          let html = "";
-          if(isHome) html = `<div class="el-item"><span>${name}</span> <span class="el-icon">⚽</span></div>`;
-          else html = `<div class="el-item"><span class="el-icon">⚽</span> <span>${name}</span></div>`;
-          if(isHome) hG.push(html); else aG.push(html);
-      });
-  }
-
-  document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
-
-  // 3. STATS AREA (FIXED ANIMATION)
-  const sb = document.getElementById("statsArea"); 
-  sb.innerHTML = "";
-
-  if (m.status === "NS" || m.status === "PST") {
-      sb.innerHTML = `
-        <div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;">
-           <div style="font-size:24px; margin-bottom:10px;">⏳</div>
-           <div style="font-size:12px; font-weight:700;">Waiting for kick-off</div>
-           <div style="font-size:10px; margin-top:4px;">Stats will appear live</div>
-        </div>`;
-  } 
-  else {
-      let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
-      let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
-
-      const sl = [
-        {l:"Expected Goals", h:xgH, a:xgA, dec:true}, 
-        {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true},
-        {l:"Shots Total", h:s.h_shots_tot, a:s.a_shots_tot},
-        {l:"Shots Target", h:s.h_shots, a:s.a_shots},
-        {l:"Saves", h:s.h_saves, a:s.a_saves},
-        {l:"Fouls", h:s.h_fouls, a:s.a_fouls},
-        {l:"Corners", h:s.h_corners, a:s.a_corners}
-      ];
-      
-      let allStatsHTML = ""; 
-      sl.forEach(st => {
-        if (!st.h && !st.a && !st.pct && !st.dec) return; 
-
-        let t = (st.h || 0) + (st.a || 0);
-        let hp = 0, ap = 0;
-        
-        if(t > 0){
-           hp = (st.h / t) * 100;
-           ap = (st.a / t) * 100;
-           if(st.pct){ hp = st.h; ap = st.a; } 
-           if(st.dec){ 
-               let totalXG = st.h + st.a + 0.001; 
-               hp = (st.h / totalXG) * 100;
-               ap = 100 - hp; 
-           }
-        } else if (st.pct) {
-            hp = 50; ap = 50; 
-        }
-
-        let ht = st.h || 0, at = st.a || 0;
-        if(st.pct){ ht += "%"; at += "%"; }
-        if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
-
-        allStatsHTML += `
-        <div class="stat-row">
-           <div class="stat-label">
-              <span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span>
-              <span class="stat-name">${st.l}</span>
-              <span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span>
-           </div>
-           <div class="stat-bar-container">
-              <div class="sb-half home">
-                 <div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div>
-              </div>
-              <div class="sb-half away">
-                 <div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div>
-              </div>
-           </div>
-        </div>`;
-      });
-      sb.innerHTML = allStatsHTML;
-  }
-  
-  setTimeout(() => {
-      document.querySelectorAll('.animate-bar').forEach(bar => {
-          if(bar.getAttribute('data-width')) {
-              bar.style.width = bar.getAttribute('data-width');
-          }
-      });
-  }, 50);
-
-  // 4. LINEUPS
-  const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
-  const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
-  
-  const renderPitchTeam = (team, isHome, playersFull) => {
-      if(!team.start) return;
-      const rows = { "G":0, "D":1, "M":2, "F":3 };
-      let lines = [[],[],[],[]];
-      team.start.forEach(p => {
-         let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
-         lines[r].push(p);
-      });
-
-      lines.forEach((line, rIdx) => {
-         let yPct = 0;
-         if(isHome) { 
-             if(rIdx===0) yPct=5;        
-             else if(rIdx===1) yPct=17.3; 
-             else if(rIdx===2) yPct=29.6; 
-             else yPct=42; 
-         } else { 
-             if(rIdx===0) yPct=95;       
-             else if(rIdx===1) yPct=82.7; 
-             else if(rIdx===2) yPct=70.4; 
-             else yPct=58; 
-         }
-         
-         line.forEach((p, i) => {
-             let count = line.length;
-             let segment = 100 / count;
-             let xPct = (segment * i) + (segment / 2); 
-             
-             let pStats = findPlayerStats(p.name, playersFull);
-             let rat = pStats ? pStats.rating.toFixed(1) : "-";
-             let photoUrl = pStats ? pStats.photo : "";
-             let rClass = "rat-mid";
-             if(rat >= 7.0) rClass = "rat-high";
-             if(rat < 6.0 && rat !== "-") rClass = "rat-low";
-             
-             let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
-             let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
-             
-             let lastName = normalizeName(p.name.split(" ").pop());
-             let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && normalizeName(e.player).includes(lastName));
-             let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
-
-             let el = document.createElement("div");
-             el.className = "pitch-player";
-             el.style.top = yPct + "%";
-             el.style.left = xPct + "%";
-             el.onclick = () => showPlayerStats(p.name, pStats, s.events);
-             
-             let content = `<div class="p-dot ${isHome?'home':'away'}">
-                 <span class="p-num-fallback">${p.num}</span>`;
-             if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
-             content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
-             
-             el.innerHTML = content;
-             pp.appendChild(el);
-         });
-      });
-
-      if(team.sub && team.sub.length > 0) {
-          let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
-          team.sub.forEach(sPlayer => {
-             if(s.events) {
-                let cameOn = s.events.find(e => e.type === "subst" && e.assist === sPlayer.name);
-                if(cameOn) {
-                   subHTML += `<div class="sub-row"><div class="sub-icon">▲</div> <span>${formatName(sPlayer.name)}</span></div>`;
-                } else {
-                   subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
-                }
-             } else {
-                 subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
-             }
-          });
-          let col = document.createElement("div");
-          col.style.flex = "1";
-          col.innerHTML = subHTML;
-          subsCont.appendChild(col);
-      }
-  };
-  
-  subsCont.style.display = "flex"; subsCont.style.gap = "10px";
-  renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
-  renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
-
-  // 5. SUMMARY TIMELINE
-  const sv=document.getElementById("summaryTimeline"); sv.innerHTML = "";
-  if(!s.events||s.events.length===0){
-    sv.innerHTML = "<div style='text-align:center;padding:20px;opacity:0.5'>No events yet.</div>";
-  } else {
-    [...s.events].reverse().forEach(e => {
-        let cleanP = normalizeName(e.player.trim());
-        let isH = null;
-        let parts = cleanP.split(' ');
-        
-        if(s.lineups && s.lineups.h && s.lineups.h.start) {
-             if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
-             else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
-        }
-        if(isH === null && s.players && s.players.h) {
-             if(parts.some(pt => pt.length>2 && s.players.h.some(p => normalizeName(p.name).includes(pt)))) isH = true;
-             else if(parts.some(pt => pt.length>2 && s.players.a.some(p => normalizeName(p.name).includes(pt)))) isH = false;
-        }
-        if(isH === null && e.assist) {
-             let assistParts = normalizeName(e.assist).split(' ');
-             if(s.lineups && s.lineups.h && s.lineups.h.start) {
-                 if(assistParts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
-                 else if(assistParts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
-             }
-        }
-
-        if(isH === null) isH = true; 
-
-        let icon="•";
-        let detail = e.detail || "";
-        let cssClass = "sum-icon";
-        
-        if(e.type==="Goal") {
-             if(detail === "Missed Penalty") { icon="❌"; cssClass="sum-icon red"; }
-             else if(detail === "Own Goal") { icon="⚽"; cssClass="sum-icon red"; }
-             else { icon="⚽"; cssClass="sum-icon"; }
-        }
-        else if(e.type==="Card" && detail==="Yellow Card") { icon="🟨"; }
-        else if(e.type==="Card" && detail==="Red Card") { icon="🟥"; }
-        else if(e.type==="subst") { icon="🔄"; }
-
-        let row = document.createElement("div");
-        row.className = "sum-row";
-        
-        let pName = formatName(e.player);
-        let dText = detail === "Own Goal" ? "Own Goal (OG)" : detail;
-
-        let homeHTML = isH ? `<div class="sum-text"><span class="sum-player">${pName}</span><span class="sum-detail">${dText}</span></div> <span class="${cssClass}">${icon}</span>` : "";
-        let awayHTML = !isH ? `<span class="${cssClass}">${icon}</span> <div class="sum-text"><span class="sum-player">${pName}</span><span class="sum-detail">${dText}</span></div>` : "";
-        
-        row.innerHTML = `<div class="sum-side home">${homeHTML}</div> <div class="sum-time">${e.time}'</div> <div class="sum-side away">${awayHTML}</div>`;
-        sv.appendChild(row);
-    });
-  }
-
-  document.getElementById("matchModal").classList.add("active");
-}
-
 function openTable(){
     const b=document.getElementById("tableBody");
     b.innerHTML="";
@@ -1761,156 +1330,6 @@ const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnM
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
 Chart.register(ChartDataLabels);
-
-/* ============================
-   BET INTELLIGENCE ENGINE
-============================ */
-
-let tickerQueue = [];
-let lastTickerMsg = "";
-let tickerIndex = 0;
-
-function updateTicker(text, type="neutral"){
-    const el = document.getElementById("tickerText");
-    if(!el) return;
-
-    el.className = ""; // reset
-    if(type==="alert") el.classList.add("ticker-alert");
-    if(type==="positive") el.classList.add("ticker-positive");
-    if(type==="neutral") el.classList.add("ticker-neutral");
-
-    el.textContent = text;
-}
-
-/* ---------- ANALYSIS ENGINE ---------- */
-
-function analyzeBets(data){
-    if(!data || !data.matches || !data.headers) return;
-
-    let individuals = {};
-    let group = {
-        alive:0,
-        dead:0,
-        winning:0,
-        fragile:0,
-        golden:false,
-        lateGame:false,
-        split:false,
-        consensus:true
-    };
-
-    // init
-    data.headers.forEach(h=>{
-        individuals[h.name] = {
-            alive:false,
-            dead:false,
-            winning:false,
-            fragile:false,
-            locked:false,
-            golden:false
-        };
-    });
-
-    data.matches.forEach(m=>{
-        const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
-        const minutes = parseInt(m.status) || 0;
-        if(minutes>=85) group.lateGame = true;
-
-        const [hScore,aScore] = (m.score||"0-0").split("-").map(n=>parseInt(n)||0);
-
-        let aliveCount = 0;
-
-        m.cells.forEach((c,i)=>{
-            const person = data.headers[i].name;
-            if(!c.value) return;
-
-            individuals[person].alive = true;
-            aliveCount++;
-
-            let bet = String(c.value).toUpperCase();
-            let winning = false;
-
-            if(bet.includes("-")){
-                const [bH,bA]=bet.split("-").map(Number);
-                if(bH===hScore && bA===aScore) winning=true;
-                if(bH===hScore && bA===aScore) individuals[person].golden=true;
-            }else{
-                if((bet==="X"||bet==="D"||bet==="DRAW") && hScore===aScore) winning=true;
-                if((bet==="1"||bet==="H") && hScore>aScore) winning=true;
-                if((bet==="2"||bet==="A") && aScore>hScore) winning=true;
-            }
-
-            if(winning){
-                individuals[person].winning = true;
-            }else{
-                individuals[person].fragile = true;
-            }
-        });
-
-        if(aliveCount>1) group.split=true;
-        if(aliveCount===1) group.consensus=false;
-    });
-
-    // count group
-    Object.values(individuals).forEach(p=>{
-        if(p.alive) group.alive++;
-        if(p.dead) group.dead++;
-        if(p.winning) group.winning++;
-        if(p.fragile) group.fragile++;
-        if(p.golden) group.golden=true;
-    });
-
-    return {individuals, group};
-}
-
-/* ---------- MESSAGE GENERATOR ---------- */
-
-function generateTickerMessages(state){
-    if(!state) return [];
-
-    const {individuals, group} = state;
-    let msgs = [];
-
-    // group logic
-    if(group.golden) msgs.push({t:"👑 Golden score active", type:"positive"});
-    if(group.lateGame && group.fragile>0) msgs.push({t:"⏳ Late-game pressure active", type:"alert"});
-    if(group.split) msgs.push({t:"⚡ Split prediction scenario", type:"neutral"});
-    if(group.consensus) msgs.push({t:"🧠 Group consensus active", type:"positive"});
-    if(group.alive===1) msgs.push({t:"🩸 Solo survivor scenario", type:"alert"});
-    if(group.winning===group.alive && group.alive>0) msgs.push({t:"🟢 All active bets winning", type:"positive"});
-    if(group.winning===0 && group.alive>0) msgs.push({t:"🔴 All active bets losing", type:"alert"});
-
-    // individuals
-    Object.entries(individuals).forEach(([name,p])=>{
-        if(p.golden) msgs.push({t:`👑 ${name} hit golden score`, type:"positive"});
-        else if(p.winning && p.alive) msgs.push({t:`🟢 ${name} bet winning`, type:"positive"});
-        else if(p.fragile && p.alive) msgs.push({t:`⚠️ ${name} bet fragile`, type:"alert"});
-    });
-
-    return msgs;
-}
-
-/* ---------- TICKER LOOP ---------- */
-
-function updateBetTicker(data){
-    const state = analyzeBets(data);
-    const messages = generateTickerMessages(state);
-
-    if(messages.length===0) return;
-
-    tickerQueue = messages;
-}
-
-setInterval(()=>{
-    if(!tickerQueue.length) return;
-    const msg = tickerQueue[tickerIndex % tickerQueue.length];
-    if(msg.t !== lastTickerMsg){
-        updateTicker(msg.t, msg.type);
-        lastTickerMsg = msg.t;
-    }
-    tickerIndex++;
-}, 4000);
- 
 </script>
 </body>
 </html>

@@ -464,6 +464,27 @@ body{
     width: 0%; 
     min-width: 4px; 
 }
+
+@keyframes tickerPulse {
+  0%{opacity:.4}
+  50%{opacity:1}
+  100%{opacity:.4}
+}
+
+.ticker-alert{
+  animation: tickerPulse 1.5s infinite;
+  color:#ff4d4d !important;
+}
+
+.ticker-positive{
+  color:#7CFF5B !important;
+}
+
+.ticker-neutral{
+  color:#4DA3FF !important;
+}
+
+ 
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
 .status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
@@ -711,6 +732,42 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+function generateAIInsights(m, data) {
+  if(!m || !m.cells) return "";
+
+  let risk = 0;
+  let lateRisk = 0;
+  let drawBias = 0;
+  let homeBias = 0;
+  let awayBias = 0;
+
+  m.cells.forEach(c=>{
+    if(!c.value) return;
+    const v = String(c.value).toUpperCase();
+    if(v.includes("-")) risk += 1;              // exact score = risky
+    if(v === "X" || v === "D" || v === "DRAW") drawBias++;
+    if(v === "1" || v === "H") homeBias++;
+    if(v === "2" || v === "A") awayBias++;
+  });
+
+  let insights = [];
+
+  if(risk >= 2) insights.push("🎯 High-risk predictions detected (exact scores in play)");
+  if(drawBias >= 2) insights.push("⚖️ Group leaning towards a draw scenario");
+  if(homeBias > awayBias) insights.push("🏠 Group confidence favors home side");
+  if(awayBias > homeBias) insights.push("✈️ Group confidence favors away side");
+
+  if(insights.length === 0) insights.push("🧠 No strong group bias detected");
+
+  return `
+    <div class="ai-story-box">
+      <div class="ai-title">🤖 AI Insight</div>
+      ${insights.map(i=>`<div>${i}</div>`).join("")}
+    </div>
+  `;
+}
+
+ 
 const TEAM_LOGOS={
  ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
  AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
@@ -1260,6 +1317,10 @@ function openModal(m){
   document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
   try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+ // AI INSIGHTS (frontend intelligence)
+  const aiBox = generateAIInsights(m);
+  document.getElementById("aiSummaryWrapper").innerHTML += aiBox;
+
 
   // PITCH PRESSURE GRADIENT
   const pitch = document.getElementById("pitch");
@@ -1654,6 +1715,214 @@ const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnM
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
 Chart.register(ChartDataLabels);
+
+/* ============================
+   BET INTELLIGENCE ENGINE
+============================ */
+
+let tickerQueue = [];
+let lastTickerMsg = "";
+let tickerIndex = 0;
+
+function updateTicker(text, type="neutral"){
+    const el = document.getElementById("tickerText");
+    if(!el) return;
+
+    el.className = ""; // reset
+    if(type==="alert") el.classList.add("ticker-alert");
+    if(type==="positive") el.classList.add("ticker-positive");
+    if(type==="neutral") el.classList.add("ticker-neutral");
+
+    el.textContent = text;
+}
+
+/* ---------- ANALYSIS ENGINE ---------- */
+
+function analyzeBets(data){
+    if(!data || !data.matches || !data.headers) return;
+
+    let individuals = {};
+    let group = {
+        alive:0,
+        dead:0,
+        winning:0,
+        fragile:0,
+        golden:false,
+        lateGame:false,
+        split:false,
+        consensus:true
+    };
+
+    // init
+    data.headers.forEach(h=>{
+        individuals[h.name] = {
+            alive:false,
+            dead:false,
+            winning:false,
+            fragile:false,
+            locked:false,
+            golden:false
+        };
+    });
+
+    data.matches.forEach(m=>{
+        const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
+        const minutes = parseInt(m.status) || 0;
+        if(minutes>=85) group.lateGame = true;
+
+        const [hScore,aScore] = (m.score||"0-0").split("-").map(n=>parseInt(n)||0);
+
+        let aliveCount = 0;
+
+        m.cells.forEach((c,i)=>{
+            const person = data.headers[i].name;
+            if(!c.value) return;
+
+            individuals[person].alive = true;
+            aliveCount++;
+
+            let bet = String(c.value).toUpperCase();
+            let winning = false;
+
+            if(bet.includes("-")){
+                const [bH,bA]=bet.split("-").map(Number);
+                if(bH===hScore && bA===aScore) winning=true;
+                if(bH===hScore && bA===aScore) individuals[person].golden=true;
+            }else{
+                if((bet==="X"||bet==="D"||bet==="DRAW") && hScore===aScore) winning=true;
+                if((bet==="1"||bet==="H") && hScore>aScore) winning=true;
+                if((bet==="2"||bet==="A") && aScore>hScore) winning=true;
+            }
+
+            if(winning){
+                individuals[person].winning = true;
+            }else{
+                individuals[person].fragile = true;
+            }
+        });
+
+        if(aliveCount>1) group.split=true;
+        if(aliveCount===1) group.consensus=false;
+    });
+
+    // count group
+    Object.values(individuals).forEach(p=>{
+        if(p.alive) group.alive++;
+        if(p.dead) group.dead++;
+        if(p.winning) group.winning++;
+        if(p.fragile) group.fragile++;
+        if(p.golden) group.golden=true;
+    });
+
+    return {individuals, group};
+}
+
+/* ---------- MESSAGE GENERATOR ---------- */
+
+function generateTickerMessages(state){
+    if(!state) return [];
+
+    const {individuals, group} = state;
+    let msgs = [];
+
+    // group logic
+    if(group.golden) msgs.push({t:"👑 Golden score active", type:"positive"});
+    if(group.lateGame && group.fragile>0) msgs.push({t:"⏳ Late-game pressure active", type:"alert"});
+    if(group.split) msgs.push({t:"⚡ Split prediction scenario", type:"neutral"});
+    if(group.consensus) msgs.push({t:"🧠 Group consensus active", type:"positive"});
+    if(group.alive===1) msgs.push({t:"🩸 Solo survivor scenario", type:"alert"});
+    if(group.winning===group.alive && group.alive>0) msgs.push({t:"🟢 All active bets winning", type:"positive"});
+    if(group.winning===0 && group.alive>0) msgs.push({t:"🔴 All active bets losing", type:"alert"});
+
+    // individuals
+    Object.entries(individuals).forEach(([name,p])=>{
+        if(p.golden) msgs.push({t:`👑 ${name} hit golden score`, type:"positive"});
+        else if(p.winning && p.alive) msgs.push({t:`🟢 ${name} bet winning`, type:"positive"});
+        else if(p.fragile && p.alive) msgs.push({t:`⚠️ ${name} bet fragile`, type:"alert"});
+    });
+
+    return msgs;
+}
+
+/* ---------- TICKER LOOP ---------- */
+
+function updateBetTicker(data){
+    const state = analyzeBets(data);
+    const messages = generateTickerMessages(state);
+
+    if(messages.length===0) return;
+
+    tickerQueue = messages;
+}
+
+setInterval(()=>{
+    if(!tickerQueue.length) return;
+    const msg = tickerQueue[tickerIndex % tickerQueue.length];
+    if(msg.t !== lastTickerMsg){
+        updateTicker(msg.t, msg.type);
+        lastTickerMsg = msg.t;
+    }
+    tickerIndex++;
+}, 4000);
+
+/* ---------- HOOK INTO EXISTING LOAD ---------- */
+
+const _originalLoadData = loadData;
+loadData = function(){
+    fetch(API_URL).then(r=>r.json()).then(data=>{
+        try{
+            updateBetTicker(data);
+        }catch(e){}
+        // run original
+        _originalLoadData();
+    });
+};
+
+ 
 </script>
+
+ <!-- BET INTELLIGENCE TICKER -->
+<div id="betTicker" style="
+position:fixed;
+bottom:10px;
+left:50%;
+transform:translateX(-50%);
+width:92%;
+max-width:1100px;
+height:42px;
+background:rgba(20,20,20,0.85);
+backdrop-filter: blur(10px);
+border:1px solid rgba(255,255,255,0.08);
+border-radius:14px;
+display:flex;
+align-items:center;
+padding:0 14px;
+z-index:3000;
+box-shadow:0 10px 40px rgba(0,0,0,0.6);
+font-family:Inter,sans-serif;
+overflow:hidden;
+">
+
+  <div style="
+    font-size:11px;
+    font-weight:800;
+    color:#ff9f43;
+    margin-right:10px;
+    white-space:nowrap;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  ">LIVE BET INTEL</div>
+
+  <div id="tickerText" style="
+    flex:1;
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#fff;
+  ">Initializing bet intelligence...</div>
+
+</div>
 </body>
 </html>

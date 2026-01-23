@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v3.2</title>
+<title>Bet Dashboard v3.4</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -30,6 +30,7 @@
   --text-main:#ffffff;
   --text-muted:#9aa0a6;
   --accent-orange: #ff9f43;
+  --accent-gold: #ffd700;
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
@@ -75,7 +76,6 @@ body{
   opacity: 0; 
 }
 
-/* ORIGINAL FLASH (White) for updates */
 @keyframes breathingGlow {
   0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); transform: scale(1); }
   50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
@@ -88,7 +88,7 @@ body{
   position: relative;
 }
 
-/* NEW: SWEAT-O-METER PULSE */
+/* SWEAT PULSE (Winning Bets Late Game) */
 @keyframes nervousPulse {
   0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
   50% { transform: scale(1.06); filter: brightness(1.3); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -98,14 +98,13 @@ body{
     animation: nervousPulse 0.8s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.4) !important;
+    border: 1px solid rgba(255,255,255,0.5) !important;
 }
 
 .score-pill, .bet { transition: all 0.3s; }
 
-/* === DARK SKELETON (FIXED VISIBILITY) === */
+/* === DARK SKELETON === */
 .skeleton {
-  /* Dark grey pulse - subtle and classy */
   background-color: #343a40;
   animation: darkBreathing 1.5s infinite ease-in-out;
   color: transparent !important; 
@@ -122,7 +121,7 @@ body{
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows: auto 1fr auto; /* Ticker at Top */
+  grid-template-rows:1fr auto;
 }
 
 @media (max-width: 768px){
@@ -219,6 +218,15 @@ body{
 .team-fallback{ font-size:12px; font-weight:700; }
 .match-teams{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
+/* NEW: Team Rank Badge */
+.team-rank-badge {
+    position: absolute; top: -4px; left: -6px;
+    font-size: 8px; font-weight: 800; color: #9aa0a6;
+    background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+    z-index: 12;
+}
+
 .team-wrap-rel { position: relative; display: flex; align-items: center; justify-content: center; }
 .rc-badge {
     position: absolute; bottom: -2px; right: -4px;
@@ -250,7 +258,6 @@ body{
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Glassmorphism for pills container */
     background: rgba(47, 52, 58, 0.85); 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -266,17 +273,17 @@ body{
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 
-/* BIGGER AVATARS MODIFICATION */
+/* AVATARS */
 .header-pill.has-avatar { 
     padding: 0; 
-    overflow: visible; /* Allow slight pop-out */
+    overflow: visible; 
     position: relative; 
 }
 .avatar-img { 
     width: 100%; height: 100%; 
     object-fit: contain; 
     display: block; 
-    transform: scale(1.35); /* MAKE AVATAR BIGGER */
+    transform: scale(1.35); 
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4));
     z-index: 5;
 }
@@ -287,41 +294,28 @@ body{
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius: 12px; /* Smooth rounded corners */
+  border-radius: 12px; 
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
   position: relative;
-  background: var(--bet-bg); /* CSS Variable from JS */
+  background: var(--bet-bg); 
   box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
   border: 1px solid rgba(255,255,255,0.05); 
 }
-
-/* EMPTY BET PILL (No Border/Shadow) */
+/* EMPTY STATE */
 .bet.empty {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-/* === LIVE TICKER === */
-.news-ticker {
-  margin: 10px 10px 0 10px; /* Moved to Top */
-  padding: 10px 15px;
-  background: linear-gradient(90deg, #262a30, #2f343a);
-  color: var(--text-muted);
-  font-weight: 700; font-size: 11px;
-  text-align: center; border-radius: 10px;
-  display: none; /* Hidden by default */
-  animation: rollIn 0.5s ease;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: 1px solid rgba(255,255,255,0.08);
-  position: relative; z-index: 15;
+/* GOLDEN TICKET (Exact Score) */
+.bet.exact-score {
+    color: var(--accent-gold) !important;
+    border: 1px solid rgba(255, 215, 0, 0.3) !important;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    background-image: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 100%);
 }
-.ticker-highlight { color: #fff; font-weight: 800; margin-left: 4px; }
-.ticker-val-pos { color: #7CFF5B; }
-.ticker-val-neg { color: #ff4d4d; }
 
 /* === SUMMARY & FOOTER === */
 .summary { 
@@ -571,8 +565,6 @@ body{
 <body>
 
 <div class="app">
-  <div id="newsTicker" class="news-ticker">Loading insights...</div>
-
   <div class="main">
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
@@ -688,7 +680,6 @@ const REFRESH_MS=30000;
 let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
-let tickerInterval = null;
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
@@ -725,13 +716,32 @@ const TEAM_LOGOS={
  WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
 };
 
+// HELPER: GET TEAM RANK FROM TABLE CACHE
+function getTeamRank(teamName) {
+    if(!tableCache || !teamName) return "";
+    const clean = normalizeName(teamName);
+    const row = tableCache.find(r => normalizeName(r.team) === clean || normalizeName(r.team).includes(clean) || clean.includes(normalizeName(r.team)));
+    return row ? `#${row.rank}` : "";
+}
+
 function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
   const logo = TEAM_LOGOS[code];
-  if(!logo) return `<span class="team-fallback">${code}</span>`;
-  let style=""; if(code==="TOT")style="background:white;border-radius:50%;padding:3px;"; if(code==="SUN")style="transform:scale(1.35);"; if(code==="AVI")style="transform:scale(1.65);";
-  return `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
+  const rank = getTeamRank(code); // NEW: Get Rank
+  
+  // LOGO HTML
+  let imgHtml = "";
+  if(!logo) imgHtml = `<span class="team-fallback">${code}</span>`;
+  else {
+      let style=""; if(code==="TOT")style="background:white;border-radius:50%;padding:3px;"; if(code==="SUN")style="transform:scale(1.35);"; if(code==="AVI")style="transform:scale(1.65);";
+      imgHtml = `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
+  }
+  
+  // RANK BADGE (If available)
+  let badgeHtml = rank ? `<div class="team-rank-badge">${rank}</div>` : "";
+  
+  return `<div style="position:relative;">${imgHtml}${badgeHtml}</div>`;
 }
 
 function renderSkeletons() {
@@ -814,7 +824,6 @@ function loadData(){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
 
         const matchCount = data.matches.length;
-        let anyGameLive = false;
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
@@ -831,8 +840,6 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-          if(live) anyGameLive = true;
-
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
@@ -878,6 +885,11 @@ function loadData(){
                   el.textContent=c.value;
                   el.style.setProperty('--bet-bg', c.color || '#262a30');
                   el.style.backgroundColor = c.color; 
+
+                  // --- EXACT SCORE GOLDEN LOGIC ---
+                  if(String(c.value).includes("-")) {
+                      el.classList.add("exact-score");
+                  }
                   
                   // --- BET PULSE LOGIC (85+ MINS ONLY & STRICTLY WINNING) ---
                   const headerInfo = data.headers[cellIndex];
@@ -962,106 +974,9 @@ function loadData(){
           ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
-        // SMART COMMENTARY TRIGGER
-        if(anyGameLive) {
-            generateSmartCommentary(data.matches, data.headers);
-        } else {
-            document.getElementById("newsTicker").style.display = "block";
-            document.getElementById("newsTicker").innerHTML = "📅 Waiting for Kick-Off • Good luck!";
-        }
-
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
-}
-
-// SMART COMMENTATOR LOGIC (CONTEXT AWARE)
-function generateSmartCommentary(matches, headers) {
-    const el = document.getElementById("newsTicker");
-    if(!el) return;
-
-    let commentary = [];
-
-    // Filter ALIVE players
-    const aliveIndices = headers.map((h, i) => (h.status !== 'red' && h.status !== '#ff4d4d') ? i : -1).filter(i => i !== -1);
-    
-    matches.forEach(m => {
-        const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
-        if(!live) return;
-
-        const [hName, aName] = m.match.split("-");
-        const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-        let outcome = hScore > aScore ? "H" : (aScore > hScore ? "A" : "D");
-
-        let bets = [];
-        aliveIndices.forEach(idx => {
-            let val = m.cells[idx]?.value;
-            if(val) bets.push({ name: headers[idx].name, pick: String(val).toUpperCase() });
-        });
-
-        if(bets.length === 0) return;
-
-        // --- 1. DETERMINE GROUP CONSENSUS (What do most people want?) ---
-        let votes = { H:0, D:0, A:0, Total:0 };
-        bets.forEach(b => {
-            votes.Total++;
-            let type = "";
-            if(b.pick.includes("-")) {
-                let [p1, p2] = b.pick.split("-").map(Number);
-                type = p1 > p2 ? "H" : (p2 > p1 ? "A" : "D");
-            } else {
-                if(b.pick === "1" || b.pick === "H" || b.pick.includes(hName.toUpperCase())) type = "H";
-                else if(b.pick === "2" || b.pick === "A" || b.pick.includes(aName.toUpperCase())) type = "A";
-                else type = "D";
-            }
-            if(type) votes[type]++;
-        });
-
-        let groupPick = "H";
-        if(votes.D > votes.H && votes.D > votes.A) groupPick = "D";
-        if(votes.A > votes.H && votes.A > votes.D) groupPick = "A";
-
-        // --- 2. GENERATE MESSAGES ---
-
-        // SCENARIO: GROUP IS WINNING (General Outcome)
-        if(groupPick === outcome) {
-            let team = groupPick === "H" ? hName : (groupPick === "A" ? aName : "The Draw");
-            commentary.push(`✅ ${team} is doing the job for the group!`);
-        } 
-        
-        // SCENARIO: CRISIS (Group Pick is LOSING)
-        else {
-            if(votes[groupPick] > (votes.Total / 2)) {
-                // If group backed Home, but Away is winning -> Crisis
-                commentary.push(`🚨 Crisis at ${hName}! We need a turnaround.`);
-            }
-        }
-
-        // SCENARIO: EXACT SCORE "ONE GOAL AWAY"
-        bets.forEach(b => {
-            if(b.pick.includes("-")) {
-                let [p1, p2] = b.pick.split("-").map(Number);
-                let diff = Math.abs(p1 - hScore) + Math.abs(p2 - aScore);
-                if(diff === 1) {
-                    commentary.push(`👀 So close! 1 goal needed for ${b.name}'s ${b.pick} bet.`);
-                }
-            }
-        });
-    });
-
-    if(commentary.length === 0) {
-        commentary.push("⚽ Matches in progress... Tracking the action.");
-    }
-
-    if(window.tickerInterval) clearInterval(window.tickerInterval);
-    let msgIdx = 0;
-    const showMsg = () => {
-        el.innerHTML = "🎙️ " + commentary[msgIdx];
-        el.style.display = "block";
-        msgIdx = (msgIdx + 1) % commentary.length;
-    };
-    showMsg();
-    window.tickerInterval = setInterval(showMsg, 5000);
 }
 
 function drawHistoryChart(t){

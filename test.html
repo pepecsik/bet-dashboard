@@ -604,6 +604,47 @@ body{
 <body>
 
 <div class="app">
+
+   <!-- BET INTELLIGENCE TICKER -->
+   <div id="betTicker" style="
+   width:100%;
+   height:44px;
+   background:rgba(20,20,20,0.92);
+   backdrop-filter: blur(10px);
+   border-bottom:1px solid rgba(255,255,255,0.08);
+   display:flex;
+   align-items:center;
+   padding:0 16px;
+   z-index:50;
+   box-shadow:0 4px 20px rgba(0,0,0,0.5);
+   font-family:Inter,sans-serif;
+   overflow:hidden;
+   position:sticky;
+   top:0;
+   ">
+
+   <div style="
+     font-size:11px;
+     font-weight:800;
+     color:#ff9f43;
+     margin-right:10px;
+     white-space:nowrap;
+     text-transform:uppercase;
+     letter-spacing:1px;
+   ">LIVE BET INTEL</div>
+
+   <div id="tickerText" style="
+     flex:1;
+     font-size:12px;
+     font-weight:600;
+     white-space:nowrap;
+     overflow:hidden;
+     text-overflow:ellipsis;
+     color:#fff;
+   ">Initializing bet intelligence...</div>
+
+  </div> 
+ 
   <div class="main">
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
@@ -870,6 +911,11 @@ function renderSkeletons() {
 // MAIN LOAD FUNCTION
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
+       // UPDATE BET TICKER
+    try{
+        updateBetTicker(data);
+    }catch(e){}
+
     try {
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1864,65 +1910,7 @@ setInterval(()=>{
     }
     tickerIndex++;
 }, 4000);
-
-/* ---------- HOOK INTO EXISTING LOAD ---------- */
-
-const _originalLoadData = loadData;
-loadData = function(){
-    fetch(API_URL).then(r=>r.json()).then(data=>{
-        try{
-            updateBetTicker(data);
-        }catch(e){}
-        // run original
-        _originalLoadData();
-    });
-};
-
  
 </script>
-
- <!-- BET INTELLIGENCE TICKER -->
-<div id="betTicker" style="
-position:fixed;
-bottom:10px;
-left:50%;
-transform:translateX(-50%);
-width:92%;
-max-width:1100px;
-height:42px;
-background:rgba(20,20,20,0.85);
-backdrop-filter: blur(10px);
-border:1px solid rgba(255,255,255,0.08);
-border-radius:14px;
-display:flex;
-align-items:center;
-padding:0 14px;
-z-index:3000;
-box-shadow:0 10px 40px rgba(0,0,0,0.6);
-font-family:Inter,sans-serif;
-overflow:hidden;
-">
-
-  <div style="
-    font-size:11px;
-    font-weight:800;
-    color:#ff9f43;
-    margin-right:10px;
-    white-space:nowrap;
-    text-transform:uppercase;
-    letter-spacing:1px;
-  ">LIVE BET INTEL</div>
-
-  <div id="tickerText" style="
-    flex:1;
-    font-size:12px;
-    font-weight:600;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    color:#fff;
-  ">Initializing bet intelligence...</div>
-
-</div>
 </body>
 </html>

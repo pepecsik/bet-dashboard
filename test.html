@@ -59,7 +59,7 @@
 /* 2. CANDY (Vibrant, Glossy, Pop) */
 [data-theme="candy"] {
   --font-main: 'Quicksand', sans-serif;
-  --base-size: 13px; /* Slightly larger for round font */
+  --base-size: 13px;
   
   /* Vibrant Mesh Gradient Background */
   --bg-grad: 
@@ -114,12 +114,13 @@
     color: #590d22;
 }
 [data-theme="candy"] .week-gbp.green, [data-theme="candy"] .rank-money, [data-theme="candy"] .stat-value-high { 
-    color: #0077b6; font-weight:900; 
+    color: #0096c7; font-weight:900; 
 } 
+/* CANDY GREEN FIX: Minty/Lime Gradient instead of Blue */
 [data-theme="candy"] .status-green { 
-    background: linear-gradient(135deg, #48cae4 0%, #0096c7 100%) !important; 
-    color: #fff !important; 
-    box-shadow: 0 5px 15px rgba(0, 150, 199, 0.3); 
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important; 
+    color: #064e3b !important; 
+    box-shadow: 0 5px 15px rgba(56, 249, 215, 0.4); 
     border-radius: 20px;
 }
 [data-theme="candy"] .score-pill {
@@ -129,12 +130,16 @@
     background: #4ade80 !important; 
     border: 4px solid #fff;
 }
-/* Candy Fix 1: Filter Button Highlight */
-[data-theme="candy"] .filter-btn.active {
+/* Candy Fix 1: Filter/Toggle Button Highlight */
+[data-theme="candy"] .filter-btn.active, [data-theme="candy"] .toggle-btn.active {
     background: #a4133c; /* Deep Berry Background */
     color: #ffffff;      /* White Text */
     border-color: #a4133c;
     box-shadow: 0 4px 12px rgba(164, 19, 60, 0.3);
+}
+[data-theme="candy"] .toggle-btn {
+    border: 1px solid rgba(164, 19, 60, 0.2);
+    color: #a4133c;
 }
 /* Candy Fix 2: Shame Row / Rank 3 Readability */
 [data-theme="candy"] .shame-row {
@@ -156,7 +161,7 @@
 /* 3. RETRO (8-Bit Atari Mode) */
 [data-theme="retro"] {
   --font-main: 'VT323', monospace; 
-  --base-size: 15px; /* Bumped up font size */
+  --base-size: 16px; /* Bumped up base font size */
   
   --bg-main: #000000;
   --bg-card: #000000;
@@ -191,11 +196,18 @@
     box-shadow: none; border: 2px solid #00ff00 !important; 
     background: #000 !important; color: #00ff00 !important; 
 }
-/* Retro Readability Bumps */
+/* Retro Readability Bumps - Specially targeting small text */
 [data-theme="retro"] .left-cell, 
 [data-theme="retro"] .rank-name,
 [data-theme="retro"] .week-label {
-    font-size: 1.2em; /* Increase text size */
+    font-size: 1.25em; /* Significant bump */
+}
+[data-theme="retro"] .score-pill span {
+    font-size: 1.3em !important; /* Bigger Score */
+}
+[data-theme="retro"] .week-gbp, 
+[data-theme="retro"] .rank-money {
+    font-size: 1.3em; /* Bigger Money */
 }
 
 /* =========================================
@@ -936,8 +948,26 @@ function setTheme(themeName) {
     if(historyChart) { historyChart.destroy(); historyChart = null; }
 }
 
+let tapCount = 0;
+let tapTimer = null;
+
+function handleSecretTap() {
+    vibe();
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 500); // Reset count if too slow
+    
+    if(tapCount >= 3) {
+        toggleTheme();
+        tapCount = 0;
+    }
+}
+
 function toggleTheme() {
     vibe();
+    // Vibrate longer on success switch
+    if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    
     let current = document.documentElement.getAttribute('data-theme') || 'carbon';
     let idx = themes.indexOf(current);
     let next = themes[(idx + 1) % themes.length];
@@ -1049,7 +1079,7 @@ function renderSkeletons() {
   const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
   
   const lh=document.createElement("div"); lh.className="left-header"; 
-  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="toggleTheme()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
   
   const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
   fb.innerHTML = `
@@ -1110,7 +1140,7 @@ function loadData(){
                 <span class="header-main-text">MATCHDAY</span>
                 <span class="header-sub-text">${statusHtml}</span>
             </div>
-            <div class="brand-btn" onclick="toggleTheme()"><img src="apple-touch-icon.png" class="brand-logo"></div>
+            <div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
 
         left.appendChild(lh); 
@@ -1710,9 +1740,9 @@ function openModal(m){
               ].sort((a,b)=>b.val - a.val);
 
               let colors = { H:'#555', D:'#555', A:'#555' };
-              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
-              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
-              else { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
+              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
+              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
+              else { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
 
               consensusHTML = `
               <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">

@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v4.3</title>
+<title>Bet Dashboard v4.4</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -35,13 +35,14 @@
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  --header-h:50px;
+  --header-h:64px; /* Fixed height for both headers */
   --header-pill-w:70px;
   --gap:8px;
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
+  --filter-h: 40px; /* Height for filter bar & spacer */
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -82,9 +83,7 @@ body{
   opacity: 0; 
 }
 
-/* --- AVATAR ANIMATIONS (NO WHITE BORDERS) --- */
-
-/* ORANGE: NERVOUS SHIVER */
+/* AVATAR ANIMATIONS (NO BORDERS) */
 @keyframes nervousShiver { 
   0% { transform: translate(0, 0) rotate(0deg); } 
   25% { transform: translate(-1px, 1px) rotate(-1deg); } 
@@ -97,10 +96,9 @@ body{
   color: #000 !important;
   box-shadow: 0 0 15px rgba(255, 159, 67, 0.4);
   animation: nervousShiver 0.25s infinite linear;
-  border: none !important; /* Clean Look */
+  border: none !important; 
 }
 
-/* GREEN: VICTORY HEARTBEAT */
 @keyframes victoryPulse { 
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.6); } 
   50% { transform: scale(1.1); box-shadow: 0 0 20px 5px rgba(124, 255, 91, 0.1); } 
@@ -111,16 +109,15 @@ body{
   color: #000 !important;
   animation: victoryPulse 1.5s infinite ease-in-out !important;
   z-index: 10;
-  border: none !important; /* Clean Look */
+  border: none !important; 
 }
 
-/* DEAD (RED) */
 .status-red {
   background-color: #ff4d4d !important;
   color: #fff !important;
   filter: grayscale(0.2);
   opacity: 0.9;
-  border: none !important; /* Clean Look */
+  border: none !important;
 }
 
 /* SWEAT PULSE (Bets) */
@@ -146,7 +143,7 @@ body{
 .gold-active {
     background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
     animation: goldPulse 2s infinite !important;
-    border: none !important; /* Clean Look */
+    border: none !important;
 }
 .gold-active span { color: #000 !important; text-shadow: none !important; }
 .gold-active span:first-child {
@@ -218,9 +215,10 @@ body{
   border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   position: sticky; top: 0; z-index: 20;
+  margin-bottom: 12px; /* RESTORED SPACING */
 }
 
-.header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; /* INCREASED SPACING */ }
+.header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; }
 .header-main-text { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
 .header-sub-text { font-size: 9px; font-weight: 600; color: var(--accent-orange); text-transform: uppercase; }
 
@@ -233,7 +231,6 @@ body{
   cursor: pointer;
 }
 .pl-btn:active { transform: translateY(-50%) scale(0.9); }
-/* SMALLER LOGO INSIDE */
 .pl-logo { width: 90%; height: 90%; object-fit: contain; transform: scale(0.8); }
 
 .brand-btn {
@@ -243,23 +240,21 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
-/* SMALLER LOGO INSIDE */
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.1); }
 
-/* SEPARATOR FILTER BAR (Inside Layout) */
+/* SEPARATOR FILTER BAR (Between Match & Bet) */
 .filter-separator {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    padding: 15px 0;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+    height: var(--filter-h); /* Fixed Height */
+    padding: 0 4px;
     margin: 5px 0;
 }
-.filter-title { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
-.filter-actions { display: flex; gap: 8px; }
+.filter-title { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-right:auto; padding-left:4px; }
+.filter-actions { display: flex; gap: 6px; }
 .filter-btn {
     background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
     color: var(--text-muted); font-size: 10px; font-weight: 700;
-    padding: 5px 12px; border-radius: var(--rad-sm);
+    padding: 5px 10px; border-radius: var(--rad-sm);
     cursor: pointer; transition: all 0.2s;
 }
 .filter-btn.active {
@@ -324,9 +319,9 @@ body{
 .header-row-sticky {
   position: sticky; top: 0; z-index: 20; 
   background: var(--bg-card); 
-  margin-bottom: 2px;
   height: var(--header-h); 
   display: flex; align-items: center;
+  margin-bottom: 12px; /* ALIGN WITH LEFT CARD */
 }
 
 .header-pill-wrapper {
@@ -357,7 +352,8 @@ body{
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
-.right-divider{height:36px} /* Push bets down to align with matches because of filters */
+.right-divider{height:8px}
+.right-filter-spacer{ height: var(--filter-h); margin: 5px 0; } /* Spacer for alignment */
 
 /* --- ROUNDED BET PILLS --- */
 .bet{
@@ -744,6 +740,7 @@ const REFRESH_MS=30000;
 let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
+let currentFilter = 'all'; // Default Filter Persisted
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
@@ -859,7 +856,7 @@ function renderSkeletons() {
   `;
 
   lhContainer.appendChild(lh);
-  lhContainer.appendChild(fb);
+  // NOT APPENDING FILTER BAR HERE - IT IS NOW APPENDED IN LOAD DATA AFTER MATCHES
   left.appendChild(lhContainer);
   
   left.appendChild(document.createElement("div")).className="left-divider";
@@ -893,9 +890,7 @@ function loadData(){
              else nUpcoming++;
         });
 
-        // 1. LEFT HEADER CONTAINER
-        const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
-
+        // 1. LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
         lh.innerHTML=`
             <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
@@ -906,19 +901,7 @@ function loadData(){
             <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
 
-        const fb = document.createElement("div"); fb.className="filter-separator";
-        fb.innerHTML = `
-            <div class="filter-title">Filters</div>
-            <div class="filter-actions">
-                <button class="filter-btn active" onclick="applyFilter('all', this)">ALL</button>
-                <button class="filter-btn" onclick="applyFilter('alive', this)">ALIVE</button>
-                <button class="filter-btn" onclick="applyFilter('live', this)">LIVE</button>
-            </div>
-        `;
-
-        lhContainer.appendChild(lh);
-        lhContainer.appendChild(fb);
-        left.appendChild(lhContainer);
+        left.appendChild(lh); 
         left.appendChild(document.createElement("div")).className="left-divider";
 
         // HEADER ROW STICKY
@@ -967,6 +950,7 @@ function loadData(){
         });
 
         right.appendChild(headerRow); 
+        right.appendChild(document.createElement("div")).className="right-divider"; // Initial divider
 
         const matchCount = data.matches.length;
 
@@ -1073,7 +1057,26 @@ function loadData(){
           right.appendChild(rr);
       });
 
-      left.appendChild(document.createElement("div")).className="left-divider"; right.appendChild(document.createElement("div")).className="right-divider";
+      // --- FILTER SECTION INSERTION ---
+      const filterSection = document.createElement("div");
+      filterSection.className = "filter-separator";
+      filterSection.innerHTML = `
+          <div class="filter-title">Filters</div>
+          <div class="filter-actions">
+               <button class="filter-btn ${currentFilter === 'all' ? 'active' : ''}" onclick="updateFilter('all', this)">ALL</button>
+               <button class="filter-btn ${currentFilter === 'alive' ? 'active' : ''}" onclick="updateFilter('alive', this)">ALIVE</button>
+               <button class="filter-btn ${currentFilter === 'live' ? 'active' : ''}" onclick="updateFilter('live', this)">LIVE</button>
+          </div>
+      `;
+      left.appendChild(filterSection);
+      left.appendChild(document.createElement("div")).className="left-divider";
+      
+      // INSERT SPACER IN RIGHT COLUMN TO MAINTAIN ALIGNMENT
+      const rightSpacer = document.createElement("div");
+      rightSpacer.className = "right-filter-spacer";
+      rightSpacer.innerHTML = "&nbsp;"; // Empty space
+      right.appendChild(rightSpacer);
+      right.appendChild(document.createElement("div")).className="right-divider";
 
       ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
@@ -1097,6 +1100,9 @@ function loadData(){
 
         // Store headers globally for filter logic
         window.globalHeaders = data.headers;
+
+        // RE-APPLY CURRENT FILTER
+        applyFilterLogic();
 
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
@@ -1131,12 +1137,17 @@ function getMatchStatusType(m) {
     return 'upcoming';
 }
 
-function applyFilter(type, btnElement) {
-    // 1. Buttons
+function updateFilter(type, btnElement) {
+    currentFilter = type; // Update Global State
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     btnElement.classList.add('active');
+    applyFilterLogic();
+}
 
-    // 2. Row Filtering (Live/All)
+function applyFilterLogic() {
+    const type = currentFilter;
+
+    // 1. Row Filtering (Live/All)
     const leftRows = document.querySelectorAll('.left-row');
     const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
 
@@ -1144,13 +1155,12 @@ function applyFilter(type, btnElement) {
         const status = row.getAttribute('data-status');
         let show = true;
         if(type === 'live' && status !== 'live') show = false;
-        // Alive/All show all rows, they just filter columns
         
         row.style.display = show ? 'grid' : 'none';
         if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
     });
 
-    // 3. Column Filtering (Alive)
+    // 2. Column Filtering (Alive)
     const isAliveFilter = type === 'alive';
     
     // Get indexes of dead columns

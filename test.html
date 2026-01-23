@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v4.0</title>
+<title>Bet Dashboard v4.1</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -31,18 +31,19 @@
   --text-muted:#9aa0a6;
   --accent-orange: #ff9f43;
   --accent-gold: #ffd700;
+  --accent-green: #7CFF5B;
   
-  /* --- STANDARDIZED DIMENSIONS --- */
+  /* --- DIMENSIONS --- */
   --row-h:50px; 
-  --header-h:70px; 
+  --header-h:60px; /* Reduced slightly for better fit */
   --header-pill-w:70px;
-  --gap:10px; /* INCREASED GAP FOR BREATHING ROOM */
+  --gap:8px; /* THE GOLDILOCKS GAP (Between 6px and 10px) */
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
 
-  /* --- BORDER RADIUS SYSTEM --- */
+  /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
   --rad-md: 10px;
   --rad-lg: 14px;
@@ -71,45 +72,69 @@ body{
   font-feature-settings: "tnum";
 }
 
-/* === ANIMATIONS (SIMPLIFIED) === */
+/* === ANIMATIONS === */
 @keyframes rollIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-enter {
-  animation: rollIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: rollIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   opacity: 0; 
 }
 
-/* LIVE DOT BLINK */
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-.live-dot {
-    width: 6px; height: 6px; 
-    background: #7CFF5B; 
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 6px;
-    animation: blink 1.5s infinite ease-in-out;
+/* --- AVATAR ANIMATIONS --- */
+
+/* ORANGE: NERVOUS SHIVER (Anxious) */
+@keyframes nervousShiver { 
+  0% { transform: translate(0, 0) rotate(0deg); } 
+  25% { transform: translate(-1px, 1px) rotate(-1deg); } 
+  50% { transform: translate(1px, -1px) rotate(1deg); } 
+  75% { transform: translate(-1px, -1px) rotate(-1deg); } 
+  100% { transform: translate(0, 0) rotate(0deg); } 
+}
+.status-orange {
+  border: 2px solid var(--accent-orange) !important;
+  box-shadow: 0 0 15px rgba(255, 159, 67, 0.4);
+  animation: nervousShiver 0.25s infinite linear;
 }
 
-/* SWEAT PULSE (DANGER ONLY) */
-@keyframes nervousPulse {
+/* GREEN: VICTORY HEARTBEAT (Exciting/Dominant) */
+@keyframes victoryPulse { 
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.8); border-color: #7CFF5B; } 
+  50% { transform: scale(1.12); box-shadow: 0 0 25px 5px rgba(124, 255, 91, 0.2); border-color: #fff; } 
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); border-color: #7CFF5B; } 
+}
+.status-green, .status-green-live {
+  border: 2px solid var(--accent-green) !important;
+  animation: victoryPulse 1.2s infinite ease-in-out !important;
+  z-index: 10;
+}
+
+/* DEAD (RED) - Static/Dark */
+.status-red {
+  filter: grayscale(0.8) brightness(0.7);
+  border: 1px solid #555 !important;
+  opacity: 0.6;
+}
+
+/* SWEAT PULSE (Bets) */
+@keyframes sweatPulse {
   0% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.04); filter: brightness(1.2); }
+  50% { transform: scale(1.05); filter: brightness(1.3); }
   100% { transform: scale(1); filter: brightness(1); }
 }
 .sweat-active {
-    animation: nervousPulse 1s ease-in-out infinite !important;
+    animation: sweatPulse 1s ease-in-out infinite !important;
     z-index: 10;
     position: relative;
     border: 1px solid rgba(255,255,255,0.4) !important;
 }
 
-/* GOLD STATE (STATIC, PREMIUM) */
+/* GOLDEN SCORE PILL (Static Premium) */
 .gold-active {
     background: linear-gradient(135deg, #ffd700 0%, #e6a800 100%) !important;
-    border: 1px solid rgba(255,255,255,0.2) !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    border: 1px solid #fff !important;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 .gold-active span { color: #000 !important; text-shadow: none !important; }
 .gold-active span:first-child {
@@ -117,26 +142,23 @@ body{
     color: #000 !important;
 }
 
-/* SOFT TRANSITIONS */
-.score-pill, .bet { 
-    transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
-}
+.score-pill, .bet { transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease; }
 
 /* === DARK SKELETON === */
 .skeleton {
   background-color: #343a40;
-  animation: darkBreathing 2s infinite ease-in-out;
+  animation: darkBreathing 1.5s infinite ease-in-out;
   color: transparent !important; 
   border-radius: var(--rad-md);
 }
-@keyframes darkBreathing { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes darkBreathing { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
 .app{
   height:100vh;
   display:grid;
-  grid-template-rows: auto 1fr auto; 
+  grid-template-rows: 1fr auto; 
 }
 
 @media (max-width: 768px){
@@ -175,26 +197,37 @@ body{
 }
 .left-card::-webkit-scrollbar { display: none; }
 
-/* GLASSMORPHISM HEADERS */
+/* FIXED LEFT HEADER LAYOUT */
+.left-header-container {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--bg-card); /* Match card bg to cover scrolling content */
+  padding-bottom: 4px;
+}
+
 .left-header {
   height:var(--header-h);
-  background: rgba(47, 52, 58, 0.85);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(47, 52, 58, 0.95);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255,255,255,0.05);
   border-radius:var(--rad-md);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  position: sticky; top: 0; z-index: 20; 
-  gap: 2px;
+  display:flex; align-items:center; justify-content:center;
+  position: relative;
+}
+
+.header-title-box {
+  display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2;
 }
 .header-main-text { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
 .header-sub-text { font-size: 9px; font-weight: 600; color: var(--accent-orange); text-transform: uppercase; }
 
 .pl-btn {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; transition: transform 0.1s; width: 40px; height: 40px;
-  border-radius: 50%; overflow: hidden; background: #ffffff; 
+  width: 40px; height: 40px;
+  border-radius: 50%; background: #ffffff; 
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 20;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  cursor: pointer;
 }
 .pl-btn:active { transform: translateY(-50%) scale(0.9); }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; }
@@ -203,26 +236,28 @@ body{
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
   background: transparent; border-radius: 8px; overflow: hidden; 
-  box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 20;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* FILTERS */
+/* SEPARATE FILTER BAR (Below Header) */
 .filter-bar {
-    display: flex; gap: 6px; padding: 0 4px; margin-bottom: 4px;
+    display: flex; gap: 6px; padding: 0 2px;
     overflow-x: auto; scrollbar-width: none;
+    height: 32px; align-items: center;
 }
 .filter-btn {
     background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
     color: var(--text-muted); font-size: 10px; font-weight: 700;
-    padding: 6px 12px; border-radius: var(--rad-sm);
+    padding: 4px 10px; border-radius: var(--rad-sm);
     cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    height: 26px;
 }
 .filter-btn.active {
-    background: #fff; color: #000; border-color: #fff;
+    background: #fff; color: #000; border-color: #fff; box-shadow: 0 2px 5px rgba(255,255,255,0.2);
 }
 
-.left-divider{height:8px}
+.left-divider{height:4px} /* Smaller divider since we have spacing */
 
 .left-row{
   height:var(--row-h);
@@ -276,9 +311,14 @@ body{
 .rows{ display:flex; flex-direction:column; gap:var(--gap); min-width:max-content; }
 .row{ display:flex; gap:var(--gap); }
 
+/* Sticky Header Wrapper for Right Side */
 .header-row-sticky {
   position: sticky; top: 0; z-index: 20; 
-  background: rgba(38, 42, 48, 0.1); 
+  /* Using a solid background to cover bets scrolling under */
+  background: var(--bg-card);
+  padding-bottom: 4px; /* Space for shadow */
+  margin-top: -8px; /* Correct spacing offset */
+  padding-top: 8px;
 }
 
 .header-pill-wrapper {
@@ -301,20 +341,25 @@ body{
   font-size:16px; font-weight:800; transition: all 0.5s ease;
 }
 
-.header-pill.has-avatar { padding: 0; overflow: visible; position: relative; }
+/* AVATARS */
+.header-pill.has-avatar { 
+    padding: 0; 
+    overflow: visible; 
+    position: relative; 
+}
 .avatar-img { 
     width: 100%; height: 100%; object-fit: contain; 
     display: block; transform: scale(1.35); 
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
-.right-divider{height:8px}
+.right-divider{height:36px} /* Push bets down to align with matches because of filters */
 
 /* --- ROUNDED BET PILLS --- */
 .bet{
   width:var(--bet-w); 
   height:var(--row-h);
-  border-radius: var(--rad-md); /* Consistent rounding */
+  border-radius: var(--rad-md); 
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; color:#111;
   position: relative;
@@ -459,12 +504,12 @@ body{
 }
 .extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(255, 159, 67, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(255, 159, 67, 0.3); }
 
-.status-green { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; box-shadow: 0 0 25px rgba(124, 255, 91, 0.8); animation: none; }
-@keyframes nervousShiver { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-1px, 1px) rotate(-1deg); } 50% { transform: translate(1px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
-.status-orange { background: var(--accent-orange) !important; color: #1c1f23 !important; animation: nervousShiver 0.3s infinite linear; box-shadow: 0 0 15px rgba(255, 159, 67, 0.6); }
-.status-red { background: #ff4d4d !important; color: #fff !important; opacity: 0.8; border: 1px solid #992222; }
-@keyframes greenHeartbeat { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(124, 255, 91, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } }
-.status-green-live { background: #7CFF5B !important; color: #1c1f23 !important; border: 1px solid #7CFF5B; animation: greenHeartbeat 1.5s infinite; }
+/* LIVE DOT */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.live-dot {
+    width: 6px; height: 6px; background: #7CFF5B; border-radius: 50%;
+    display: inline-block; margin-right: 6px; animation: blink 1.5s infinite ease-in-out;
+}
 
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2100; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-overlay.active { opacity: 1; pointer-events: all; }
@@ -788,9 +833,22 @@ function renderTeam(raw){
 function renderSkeletons() {
   const left=document.getElementById("left"), right=document.getElementById("right");
   left.innerHTML=""; right.innerHTML="";
+  
+  // NEW LAYOUT: Header Container + Separate Filter Bar
+  const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
+  
   const lh=document.createElement("div"); lh.className="left-header"; 
-  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><span>MATCHES</span><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
-  left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  
+  const fb = document.createElement("div"); fb.className="filter-bar";
+  fb.innerHTML = `<button class="filter-btn active">All</button><button class="filter-btn">Live</button>`;
+
+  lhContainer.appendChild(lh);
+  lhContainer.appendChild(fb);
+  left.appendChild(lhContainer);
+  
+  left.appendChild(document.createElement("div")).className="left-divider";
+  
   const rh=document.createElement("div"); rh.className="row header-row-sticky";
   for(let i=0;i<5;i++){
     const w=document.createElement("div"); w.className="header-pill-wrapper";
@@ -820,23 +878,31 @@ function loadData(){
              else nUpcoming++;
         });
 
+        // 1. LEFT HEADER CONTAINER
+        const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
+
         const lh=document.createElement("div"); lh.className="left-header"; 
-        // NEW HEADER WITH COUNTS
         lh.innerHTML=`
             <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;">
+            <div class="header-title-box">
                 <span class="header-main-text">MATCHDAY</span>
                 <span class="header-sub-text">${nLive > 0 ? `<span style="color:#7CFF5B">● ${nLive} LIVE</span>` : ""} ${nUpcoming} UPCOMING</span>
             </div>
             <div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>
-            <div class="filter-bar">
-                <button class="filter-btn active" onclick="applyFilter('all')">All</button>
-                <button class="filter-btn" onclick="applyFilter('live')">Live</button>
-                <button class="filter-btn" onclick="applyFilter('winning')">Winning</button>
-                <button class="filter-btn" onclick="applyFilter('finished')">Finished</button>
-            </div>
         `;
-        left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+
+        const fb = document.createElement("div"); fb.className="filter-bar";
+        fb.innerHTML = `
+            <button class="filter-btn active" onclick="applyFilter('all', this)">All</button>
+            <button class="filter-btn" onclick="applyFilter('live', this)">Live</button>
+            <button class="filter-btn" onclick="applyFilter('winning', this)">Winning</button>
+            <button class="filter-btn" onclick="applyFilter('finished', this)">Finished</button>
+        `;
+
+        lhContainer.appendChild(lh);
+        lhContainer.appendChild(fb);
+        left.appendChild(lhContainer);
+        left.appendChild(document.createElement("div")).className="left-divider";
 
         // HEADER ROW STICKY
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
@@ -895,7 +961,10 @@ function loadData(){
 
           const lr=document.createElement("div");
           lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick=()=>openModal(m);
+          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; 
+          // FIX MODAL CLICK HERE
+          lr.onclick = function() { openModal(m); };
+          
           lr.setAttribute('data-status', getMatchStatusType(m)); // For filtering
 
           if(isFirstLoad) {
@@ -905,6 +974,7 @@ function loadData(){
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
+
           const bc=live?"#7CFF5B":"#9aa0a6", bg=live?"rgba(124,255,91,0.15)":"transparent", bb=live?"1px solid #7CFF5B":"1px solid transparent";
           
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
@@ -1044,7 +1114,11 @@ function loadData(){
              rowClass += " shame-row";
           }
 
-          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+          // ADD HOT STREAK FLAME
+          let nameHtml = r.name;
+          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
+
+          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
         });
 
         isFirstLoad = false;
@@ -1060,12 +1134,10 @@ function getMatchStatusType(m) {
     return 'upcoming';
 }
 
-function applyFilter(type) {
+function applyFilter(type, btnElement) {
     // 1. Update Buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        if(btn.innerText.toLowerCase() === type) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
 
     // 2. Hide/Show Rows
     const leftRows = document.querySelectorAll('.left-row');
@@ -1078,8 +1150,6 @@ function applyFilter(type) {
         else if(type === 'live' && status === 'live') show = true;
         else if(type === 'finished' && status === 'finished') show = true;
         else if(type === 'winning') {
-            // Winning Logic? Maybe simplistic: Live + Winning bets?
-            // For now, let's just show Live/Upcoming as "Active" interest
             if(status === 'live') show = true;
         }
 
@@ -1298,6 +1368,162 @@ function showPlayerStats(name, stats, events) {
       <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
     `;
     pop.style.display = "block";
+}
+
+function openModal(m){
+  try {
+      vibe(); 
+      document.getElementById('playerPopup').style.display='none';
+      const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
+      const s=m.stats||{};
+      switchTab('stats'); 
+
+      document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
+      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
+
+      try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+
+      // PITCH PRESSURE GRADIENT
+      const pitch = document.getElementById("pitch");
+      if (s.h_xg !== undefined && s.a_xg !== undefined) {
+        if (s.h_xg > s.a_xg) {
+           pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
+        } else if (s.a_xg > s.h_xg) {
+           pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
+        } else {
+            pitch.style.background = "#2e5a2e"; // Reset
+        }
+      }
+
+      // ... Rest of modal logic (Goals, Stats, Lineups) ...
+      // I am simplifying the rest for brevity as the main fix was the try-catch and onclick binding
+      
+      // 1. GENERATE GROUP PREDICTIONS
+      let consensusHTML = "";
+      if(m && m.cells) {
+          let votes = { H: 0, D: 0, A: 0, Total: 0 };
+          const hName = String(hCode).toUpperCase().trim();
+          const aName = String(aCode).toUpperCase().trim();
+
+          m.cells.forEach(c => {
+               if(!c.value) return; 
+               let val = String(c.value).toUpperCase().trim();
+               if(val.includes("-")) {
+                   votes.Total++;
+                   const [hS, aS] = val.split("-").map(Number);
+                   if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
+               } else {
+                   if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
+                   else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
+                   else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
+               }
+          });
+          
+          if(votes.Total > 0) {
+              const hPct = (votes.H / votes.Total) * 100;
+              const dPct = (votes.D / votes.Total) * 100;
+              const aPct = (votes.A / votes.Total) * 100;
+              
+              const sortArr = [
+                  {type:'H', val:hPct, label:hCode},
+                  {type:'D', val:dPct, label:'Draw'},
+                  {type:'A', val:aPct, label:aCode}
+              ].sort((a,b)=>b.val - a.val);
+
+              let colors = { H:'#555', D:'#555', A:'#555' };
+              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
+              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
+              else { colors[sortArr[0].type] = '#7CFF5B'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
+
+              consensusHTML = `
+              <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                  <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
+                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+                      <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
+                      <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
+                      <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
+                      <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
+                  </div>
+              </div>`;
+          }
+      }
+      document.getElementById("consensusArea").innerHTML = consensusHTML;
+      
+      // ... (Rest of Modal Code: Goals, Stats, Lineups - Same as before)
+      // Re-injecting the Goals/Stats logic to ensure it works
+      let hG=[], aG=[];
+      let goalsMap = {}; 
+      if(s.events){
+          s.events.forEach(e => {
+             if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
+                 let cleanP = normalizeName(e.player.trim());
+                 let isH = null;
+                 let parts = cleanP.split(' ');
+                 if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                     if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
+                     else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
+                 }
+                 if(isH === null) isH = true; 
+                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
+                 goalsMap[cleanP].times.push(e.time + "'");
+             }
+          });
+      }
+      Object.keys(goalsMap).forEach(key => {
+          let g = goalsMap[key];
+          let timesStr = g.times.join(", ");
+          let name = formatName(g.rawName);
+          let html = "";
+          let icon = "⚽";
+          if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
+          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
+          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
+          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
+      });
+      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+
+      // STATS
+      const sb = document.getElementById("statsArea"); 
+      sb.innerHTML = "";
+      if (m.status === "NS" || m.status === "PST") {
+          sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
+      } else {
+          let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
+          let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
+          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
+          let allStatsHTML = ""; 
+          sl.forEach(st => {
+            if (!st.h && !st.a && !st.pct && !st.dec) return; 
+            let t = (st.h || 0) + (st.a || 0);
+            let hp = 0, ap = 0;
+            if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } } 
+            else if (st.pct) { hp = 50; ap = 50; }
+            let ht = st.h || 0, at = st.a || 0;
+            if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
+            allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
+          });
+          sb.innerHTML = allStatsHTML;
+          setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
+      }
+      
+      // LINEUPS RENDER CALL
+      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+      const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
+      renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
+      renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
+
+      document.getElementById("matchModal").classList.add("active");
+
+  } catch(err) {
+      console.error("Modal Error:", err);
+      // Fallback if detailed logic fails, at least show the modal
+      document.getElementById("matchModal").classList.add("active");
+  }
 }
 
 function openTable(){

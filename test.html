@@ -1546,8 +1546,19 @@ function renderPitchTeam(lineup, isHome, players) {
     
     lineup.start.forEach(p => {
         const [gx, gy] = (p.grid || "1:1").split(":").map(Number);
-        const x = (gy / 6) * 100; // rough mapping
-        const y = isHome ? (gx / 6) * 45 : 100 - ((gx / 6) * 45);
+        // Corrected Horizontal Logic (5-lane assumption, centered)
+        // gy usually 1-5. (1/6)*100 = 16% (left), (5/6)*100 = 83% (right)
+        const x = (gy / 6) * 100; 
+        
+        // Corrected Vertical Logic
+        // Home (Top): Row 1 (GK) = 10%, Row 4 (Fwd) = 40%
+        // Away (Bottom): Row 1 (GK) = 90%, Row 4 (Fwd) = 60%
+        let y;
+        if(isHome) {
+             y = 5 + (gx * 10); // 1->15%, 2->25%, 3->35%, 4->45%
+        } else {
+             y = 95 - (gx * 10); // 1->85%, 2->75%, 3->65%, 4->55%
+        }
         
         const el = document.createElement("div");
         el.className = "pitch-player";

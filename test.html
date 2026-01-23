@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v4.4</title>
+<title>Bet Dashboard v5.0</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -35,14 +35,13 @@
   
   /* --- DIMENSIONS --- */
   --row-h:50px; 
-  --header-h:64px; /* Fixed height for both headers */
+  --header-h:50px;
   --header-pill-w:70px;
   --gap:8px;
   --left-w:230px; 
   --bet-w:80px; 
   --summary-w:200px; 
   --week-row-h:30px;
-  --filter-h: 40px; /* Height for filter bar & spacer */
 
   /* --- BORDER RADIUS --- */
   --rad-sm: 6px;
@@ -83,35 +82,40 @@ body{
   opacity: 0; 
 }
 
-/* AVATAR ANIMATIONS (NO BORDERS) */
-@keyframes nervousShiver { 
+/* --- AVATAR ANIMATIONS (SWAPPED) --- */
+
+/* ORANGE: ZOOM PULSE (Heartbeat) */
+@keyframes nervousPulse { 
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.6); } 
+  50% { transform: scale(1.08); box-shadow: 0 0 15px 5px rgba(255, 159, 67, 0.2); } 
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } 
+}
+.status-orange {
+  background-color: var(--accent-orange) !important;
+  color: #000 !important;
+  animation: nervousPulse 1.5s infinite ease-in-out !important;
+  border: none !important;
+  z-index: 10;
+}
+
+/* GREEN: SHIVER (High Energy) */
+@keyframes victoryShiver { 
   0% { transform: translate(0, 0) rotate(0deg); } 
   25% { transform: translate(-1px, 1px) rotate(-1deg); } 
   50% { transform: translate(1px, -1px) rotate(1deg); } 
   75% { transform: translate(-1px, -1px) rotate(-1deg); } 
   100% { transform: translate(0, 0) rotate(0deg); } 
 }
-.status-orange {
-  background-color: var(--accent-orange) !important;
-  color: #000 !important;
-  box-shadow: 0 0 15px rgba(255, 159, 67, 0.4);
-  animation: nervousShiver 0.25s infinite linear;
-  border: none !important; 
-}
-
-@keyframes victoryPulse { 
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.6); } 
-  50% { transform: scale(1.1); box-shadow: 0 0 20px 5px rgba(124, 255, 91, 0.1); } 
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 255, 91, 0); } 
-}
 .status-green, .status-green-live {
   background-color: var(--accent-green) !important;
   color: #000 !important;
-  animation: victoryPulse 1.5s infinite ease-in-out !important;
-  z-index: 10;
-  border: none !important; 
+  box-shadow: 0 0 20px rgba(124, 255, 91, 0.6); /* Strong Glow */
+  animation: victoryShiver 0.25s infinite linear !important;
+  border: none !important;
+  z-index: 12;
 }
 
+/* DEAD (RED) */
 .status-red {
   background-color: #ff4d4d !important;
   color: #fff !important;
@@ -215,7 +219,7 @@ body{
   border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   position: sticky; top: 0; z-index: 20;
-  margin-bottom: 12px; /* RESTORED SPACING */
+  margin-bottom: 12px;
 }
 
 .header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; }
@@ -240,21 +244,24 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
-.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.1); }
+/* ZOOMED IN LOGO TO HIDE BORDERS */
+.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); }
 
-/* SEPARATOR FILTER BAR (Between Match & Bet) */
-.filter-separator {
+/* ALIGNED SPACER/FILTER BAR */
+.spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
-    height: var(--filter-h); /* Fixed Height */
+    height: 38px; /* Fixed Height for exact sync */
     padding: 0 4px;
-    margin: 5px 0;
+    margin: 8px 0; /* Vertical spacing */
+    box-sizing: border-box;
 }
+
 .filter-title { font-size: 9px; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-right:auto; padding-left:4px; }
 .filter-actions { display: flex; gap: 6px; }
 .filter-btn {
     background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05);
     color: var(--text-muted); font-size: 10px; font-weight: 700;
-    padding: 5px 10px; border-radius: var(--rad-sm);
+    padding: 4px 10px; border-radius: var(--rad-sm);
     cursor: pointer; transition: all 0.2s;
 }
 .filter-btn.active {
@@ -353,7 +360,6 @@ body{
 }
 
 .right-divider{height:8px}
-.right-filter-spacer{ height: var(--filter-h); margin: 5px 0; } /* Spacer for alignment */
 
 /* --- ROUNDED BET PILLS --- */
 .bet{
@@ -441,20 +447,16 @@ body{
 .on-fire { border: 1px solid var(--accent-orange) !important; animation: firePulse 2s infinite; position: relative; overflow: visible; }
 .on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
 
-/* === HISTORY CARD === */
-.history-card{
+/* === HISTORY CARD (NOW IN MODAL) === */
+.history-card-inner {
   width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
-  padding:12px 14px 4px 14px; 
-  display:none; 
-  height: auto; min-height: 200px; 
-  overflow: visible;
+  padding:12px; 
+  height: auto; min-height: 250px; 
 }
-
 .history-header {
   display: flex; align-items: center; justify-content: space-between;
-  width: 100%; margin-bottom: 0px;
+  width: 100%; margin-bottom: 15px;
 }
-
 .legend-row {
   display: flex; justify-content: center; align-items: center; gap: 10px;
   font-size: 10px; font-weight: 700; margin: 0; 
@@ -474,7 +476,7 @@ body{
   border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
   font-family: Inter, sans-serif;
 }
-.toggle-btn.active { transform: scale(0.95); }
+.toggle-btn:active { transform: scale(0.95); }
 .toggle-btn.active {
   background: var(--bg-soft); color: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
@@ -641,27 +643,7 @@ body{
           <div id="rankingBody"></div>
         </div>
       </div>
-      <div class="history-card" id="historyCard">
-       <div class="history-header">
-         <span class="history-title-text" style="font-weight:700; font-size:13px;">📈 History</span>
-         
-         <div class="legend-row">
-            <div class="legend-item" style="color:#7CFF5B"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
-            <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
-            <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
-         </div>
-
-         <div class="toggle-group">
-          <button id="btnMatches" class="toggle-btn active">Matches</button>
-          <button id="btnMoney" class="toggle-btn">Money</button>
-         </div>
-       </div>
-       
-       <div style="position: relative; height: 180px; width: 100%;">
-          <canvas id="historyChart"></canvas>
-       </div>
       </div>
-    </div>
   </footer>
 </div>
 
@@ -731,6 +713,32 @@ body{
   </div>
 </div>
 
+<div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <button class="modal-back-btn" onclick="closeModal('historyModal')">Back</button>
+        <div class="modal-title">Performance History</div>
+        <div class="modal-sub">Season 2025/2026</div>
+      </div>
+      <div class="history-card-inner">
+         <div class="history-header">
+             <div class="legend-row">
+                <div class="legend-item" style="color:#7CFF5B"><div class="legend-dot" style="background:#7CFF5B"></div>Snackbar</div>
+                <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
+                <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
+             </div>
+             <div class="toggle-group">
+              <button id="btnMatches" class="toggle-btn active">Matches</button>
+              <button id="btnMoney" class="toggle-btn">Money</button>
+             </div>
+         </div>
+         <div style="position: relative; height: 250px; width: 100%;">
+            <canvas id="historyChart"></canvas>
+         </div>
+      </div>
+    </div>
+</div>
+
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
@@ -740,7 +748,7 @@ const REFRESH_MS=30000;
 let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
-let currentFilter = 'all'; // Default Filter Persisted
+let activeFilters = { live: false, alive: false }; // MULTI-FILTER STATE
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
@@ -845,11 +853,11 @@ function renderSkeletons() {
   const lh=document.createElement("div"); lh.className="left-header"; 
   lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
   
-  const fb = document.createElement("div"); fb.className="filter-separator";
+  const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
   fb.innerHTML = `
       <div class="filter-title">Filters</div>
       <div class="filter-actions">
-           <button class="filter-btn active">ALL</button>
+           <button class="filter-btn">ALL</button>
            <button class="filter-btn">ALIVE</button>
            <button class="filter-btn">LIVE</button>
       </div>
@@ -1059,13 +1067,13 @@ function loadData(){
 
       // --- FILTER SECTION INSERTION ---
       const filterSection = document.createElement("div");
-      filterSection.className = "filter-separator";
+      filterSection.className = "filter-separator spacer-bar";
       filterSection.innerHTML = `
           <div class="filter-title">Filters</div>
           <div class="filter-actions">
-               <button class="filter-btn ${currentFilter === 'all' ? 'active' : ''}" onclick="updateFilter('all', this)">ALL</button>
-               <button class="filter-btn ${currentFilter === 'alive' ? 'active' : ''}" onclick="updateFilter('alive', this)">ALIVE</button>
-               <button class="filter-btn ${currentFilter === 'live' ? 'active' : ''}" onclick="updateFilter('live', this)">LIVE</button>
+               <button class="filter-btn" onclick="toggleFilter('all')">ALL</button>
+               <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
+               <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
           </div>
       `;
       left.appendChild(filterSection);
@@ -1073,8 +1081,8 @@ function loadData(){
       
       // INSERT SPACER IN RIGHT COLUMN TO MAINTAIN ALIGNMENT
       const rightSpacer = document.createElement("div");
-      rightSpacer.className = "right-filter-spacer";
-      rightSpacer.innerHTML = "&nbsp;"; // Empty space
+      rightSpacer.className = "spacer-bar"; // Same class = Same height
+      rightSpacer.innerHTML = "&nbsp;"; 
       right.appendChild(rightSpacer);
       right.appendChild(document.createElement("div")).className="right-divider";
 
@@ -1137,32 +1145,38 @@ function getMatchStatusType(m) {
     return 'upcoming';
 }
 
-function updateFilter(type, btnElement) {
-    currentFilter = type; // Update Global State
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    btnElement.classList.add('active');
+// MULTI-FILTER TOGGLE LOGIC
+function toggleFilter(type) {
+    if (type === 'all') {
+        activeFilters.live = false;
+        activeFilters.alive = false;
+    } else {
+        activeFilters[type] = !activeFilters[type];
+    }
     applyFilterLogic();
 }
 
 function applyFilterLogic() {
-    const type = currentFilter;
+    // 1. Update Button States
+    document.getElementById('btn-alive').classList.toggle('active', activeFilters.alive);
+    document.getElementById('btn-live').classList.toggle('active', activeFilters.live);
+    // If neither is active, "ALL" is implied
+    const isAll = !activeFilters.alive && !activeFilters.live;
 
-    // 1. Row Filtering (Live/All)
+    // 2. Row Filtering (Live)
     const leftRows = document.querySelectorAll('.left-row');
     const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
 
     leftRows.forEach((row, i) => {
         const status = row.getAttribute('data-status');
         let show = true;
-        if(type === 'live' && status !== 'live') show = false;
+        if(activeFilters.live && status !== 'live') show = false;
         
         row.style.display = show ? 'grid' : 'none';
         if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
     });
 
-    // 2. Column Filtering (Alive)
-    const isAliveFilter = type === 'alive';
-    
+    // 3. Column Filtering (Alive)
     // Get indexes of dead columns
     const deadIndices = [];
     if(window.globalHeaders) {
@@ -1176,14 +1190,14 @@ function applyFilterLogic() {
     // Toggle Columns in Header
     document.querySelectorAll('.header-pill-wrapper').forEach(el => {
         const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(isAliveFilter && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
         else el.classList.remove('col-hidden');
     });
 
     // Toggle Columns in Bet Rows
     document.querySelectorAll('.bet').forEach(el => {
         const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(isAliveFilter && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
         else el.classList.remove('col-hidden');
     });
 }
@@ -1234,7 +1248,7 @@ function drawHistoryChart(t){
             y:{
                 display:true, 
                 position:'left',
-                beginAtZero: true, // FORCE 0 START
+                beginAtZero: true, 
                 grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
                 ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
                 grace:'5%' 
@@ -1572,10 +1586,13 @@ renderSkeletons();
 loadData(); 
 setInterval(loadData,REFRESH_MS);
 
-// REMOVED GOD MODE ENTIRELY AS REQUESTED
-
-document.getElementById("rankingCard").onclick=()=>{vibe();const h=document.getElementById("historyCard"),o=h.style.display!=="block";h.style.display=o?"block":"none";if(o)drawHistoryChart("matches")};
-document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");document.getElementById("historyCard").style.display="none"};
+document.getElementById("rankingCard").onclick=()=>{
+    // NEW: Open Modal instead of toggle
+    vibe();
+    drawHistoryChart("matches");
+    document.getElementById("historyModal").classList.add("active");
+};
+document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");};
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 

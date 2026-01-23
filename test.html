@@ -17,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<title>Bet Dashboard v5.2</title>
+<title>Bet Dashboard v5.3</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -84,7 +84,6 @@ body{
 }
 
 /* --- AVATAR ANIMATIONS --- */
-/* ORANGE: ZOOM PULSE (Heartbeat) */
 @keyframes nervousPulse { 
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.6); } 
   50% { transform: scale(1.08); box-shadow: 0 0 15px 5px rgba(255, 159, 67, 0.2); } 
@@ -98,7 +97,6 @@ body{
   z-index: 10;
 }
 
-/* GREEN: SHIVER (High Energy) */
 @keyframes victoryShiver { 
   0% { transform: translate(0, 0) rotate(0deg); } 
   25% { transform: translate(-1px, 1px) rotate(-1deg); } 
@@ -115,7 +113,6 @@ body{
   z-index: 12;
 }
 
-/* DEAD (RED) */
 .status-red {
   background-color: #ff4d4d !important;
   color: #fff !important;
@@ -124,35 +121,33 @@ body{
   border: none !important;
 }
 
-/* SWEAT PULSE (Bets) */
 @keyframes sweatPulse {
   0% { transform: scale(1); filter: brightness(1); }
   50% { transform: scale(1.05); filter: brightness(1.3); }
   100% { transform: scale(1); filter: brightness(1); }
 }
 .sweat-active {
-    animation: sweatPulse 1s ease-in-out infinite !important;
-    z-index: 10;
-    position: relative;
-    border: 1px solid rgba(255,255,255,0.4) !important;
-    box-shadow: 0 0 10px rgba(255,255,255,0.1);
+   animation: sweatPulse 1s ease-in-out infinite !important;
+   z-index: 10;
+   position: relative;
+   border: 1px solid rgba(255,255,255,0.4) !important;
+   box-shadow: 0 0 10px rgba(255,255,255,0.1);
 }
 
-/* GOLDEN SCORE PILL (NO BORDER) */
 @keyframes goldPulse {
-    0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
-    50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); transform: scale(1.02); }
-    100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+   0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+   50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); transform: scale(1.02); }
+   100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
 }
 .gold-active {
-    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
-    animation: goldPulse 2s infinite !important;
-    border: none !important;
+   background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
+   animation: goldPulse 2s infinite !important;
+   border: none !important;
 }
 .gold-active span { color: #000 !important; text-shadow: none !important; }
 .gold-active span:first-child {
-    background: rgba(255,255,255,0.8) !important;
-    color: #000 !important;
+   background: rgba(255,255,255,0.8) !important;
+   color: #000 !important;
 }
 
 .score-pill, .bet { transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease; }
@@ -219,7 +214,6 @@ body{
   border-radius:var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   position: sticky; top: 0; z-index: 20;
-  /* Removed margin-bottom here */
 }
 
 .header-title-box { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2; gap: 6px; }
@@ -245,15 +239,14 @@ body{
   background: transparent; border-radius: 8px; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
-/* ZOOMED LOGO */
 .brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
 
-/* ALIGNED SPACER/FILTER BAR - CRITICAL FOR ALIGNMENT */
+/* ALIGNED SPACER/FILTER BAR */
 .spacer-bar {
     display: flex; flex-direction: row; align-items: center; justify-content: space-between;
     height: var(--filter-h); 
     padding: 0 4px;
-    margin: 8px 0; /* Identical top/bottom margins */
+    margin: 8px 0; 
     box-sizing: border-box;
 }
 
@@ -269,7 +262,8 @@ body{
     background: #fff; color: #000; border-color: #fff; box-shadow: 0 2px 8px rgba(255,255,255,0.15);
 }
 
-.left-divider{height:4px}
+/* === ALIGNMENT FIX: UNIFIED DIVIDER HEIGHT === */
+.left-divider, .right-divider { height: 6px; flex-shrink: 0; }
 
 .left-row{
   height:var(--row-h);
@@ -329,7 +323,6 @@ body{
   background: var(--bg-card); 
   height: var(--header-h); 
   display: flex; align-items: center;
-  /* Margin handled by spacer logic now */
 }
 
 .header-pill-wrapper {
@@ -360,8 +353,6 @@ body{
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
-.right-divider{height:8px}
-
 /* --- ROUNDED BET PILLS --- */
 .bet{
   width:var(--bet-w); 
@@ -380,10 +371,7 @@ body{
     box-shadow: none !important;
 }
 
-/* HIDDEN COLUMN (For Alive Filter) */
-.col-hidden {
-    display: none !important;
-}
+.col-hidden { display: none !important; }
 
 /* === SUMMARY & FOOTER === */
 .summary { 
@@ -441,14 +429,12 @@ body{
 .rank-money{font-weight:800;color:#7CFF5B; text-align:right;}
 .rank-bets{grid-column:2/4;font-size:10px;opacity:.65; white-space:nowrap;}
 
-/* SHAME & FIRE RANKING */
 .shame-row { background: linear-gradient(90deg, #3e2723 0%, var(--bg-row) 100%) !important; border: 1px solid #5d4037; opacity: 0.8; }
 .shame-row .rank-pos { font-size: 1.4em; filter: grayscale(0); }
 @keyframes firePulse { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); } 70% { box-shadow: 0 0 10px 10px rgba(255, 159, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); } }
 .on-fire { border: 1px solid var(--accent-orange) !important; animation: firePulse 2s infinite; position: relative; overflow: visible; }
 .on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
 
-/* === HISTORY CARD (NOW IN MODAL) === */
 .history-card-inner {
   width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
   padding:12px; 
@@ -483,7 +469,6 @@ body{
   box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* === OVERLAYS & MODALS === */
 .big-win-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction:column; align-items: center; justify-content: center;
@@ -516,7 +501,6 @@ body{
 }
 .big-win-active { animation: bigWinAnim 5s ease-out forwards; }
 
-/* === ANIMATIONS & EXTRA TIME === */
 .animate-bar { 
     transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); 
     width: 0%; 
@@ -546,7 +530,6 @@ body{
 .tab-btn.active { color: #fff; border-bottom: 2px solid var(--accent-orange); background: rgba(255,255,255,0.02); }
 .modal-scroll-area { padding: 15px; overflow-y: auto; flex: 1; position:relative; }
 
-/* TABLE SCROLL FIX */
 .scroll-fix { overflow-y: auto; flex: 1; width: 100%; }
 
 .ai-story-box { background: linear-gradient(135deg, #2f343a 0%, #262a30 100%); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid var(--accent-orange); border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; line-height: 1.5; color: #e0e0e0; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
@@ -1596,14 +1579,21 @@ function openModal(m){
             allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
           });
           sb.innerHTML = allStatsHTML;
-          setTimeout(() => { document.querySelectorAll('.animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
+          // TRIGGER ANIMATION FOR STAT BARS HERE TOO
+          setTimeout(() => { document.querySelectorAll('#statsArea .animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
       }
+      
+      // TRIGGER ANIMATION FOR PREDICTION BARS (MOVED OUTSIDE 'ELSE')
+      setTimeout(() => { 
+          document.querySelectorAll('#consensusArea .animate-bar').forEach(bar => { 
+              if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } 
+          }); 
+      }, 50);
       
       // 2. LINEUPS
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
       
-      // LOGIC RESTORED FROM OLD FILE
       const renderPitchTeam = (team, isHome, playersFull) => {
           if(!team.start) return;
           const rows = { "G":0, "D":1, "M":2, "F":3 };
@@ -1615,7 +1605,6 @@ function openModal(m){
 
           lines.forEach((line, rIdx) => {
              let yPct = 0;
-             // EXACT POSITIONING FROM OLD HTML
              if(isHome) { 
                  if(rIdx===0) yPct=5;        
                  else if(rIdx===1) yPct=17.3; 
@@ -1640,7 +1629,6 @@ function openModal(m){
                  if(rat >= 7.0) rClass = "rat-high";
                  if(rat < 6.0 && rat !== "-") rClass = "rat-low";
                  
-                 // CHECK EVENTS FOR SUBS/CARDS USING 's.events'
                  let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
                  let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
                  
@@ -1664,7 +1652,6 @@ function openModal(m){
              });
           });
 
-          // RENDER SUBSTITUTES
           if(team.sub && team.sub.length > 0) {
               let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
               team.sub.forEach(sPlayer => {

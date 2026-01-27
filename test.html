@@ -812,9 +812,13 @@ function loadData(){
                   el.style.backgroundColor = color; 
                   
                   if (isMyColumn) {
+                      // FIND RELATIVE INDEX (0 or 1) for Backend
+                      const myCols = data.headers.filter(h => h.name.includes(currentUser));
+                      const relativeSubColIdx = myCols.findIndex(h => h.name === headerName);
+
                       if (!isColumnLocked) {
                           el.style.cursor = "pointer";
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, cellIndex, m.match); };
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeSubColIdx, m.match); };
                       } else {
                           // LOCKED VALUE
                           el.style.border = "1.5px solid rgba(255,255,255,0.2)";
@@ -840,10 +844,14 @@ function loadData(){
                   el.style.setProperty('--bet-bg', 'transparent');
                   
                   if (isMyColumn) {
+                      // FIND RELATIVE INDEX (0 or 1) for Backend
+                      const myCols = data.headers.filter(h => h.name.includes(currentUser));
+                      const relativeSubColIdx = myCols.findIndex(h => h.name === headerName);
+
                       if(!isColumnLocked) {
                           // EDITABLE EMPTY (Orange Dashes)
                           el.classList.add('my-empty');
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, cellIndex, m.match); };
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeSubColIdx, m.match); };
                       } else {
                           // LOCKED EMPTY (Solid Border)
                           el.classList.add('my-locked');
@@ -986,9 +994,9 @@ function switchBetTab(tab) {
     });
 }
 
-function openBetPicker(matchIdx, globalColIdx, matchName) {
+function openBetPicker(matchIdx, subColIdx, matchName) {
     vibe();
-    currentBetContext = { matchIdx, subCol: globalColIdx };
+    currentBetContext = { matchIdx, subCol: subColIdx };
     const teams = matchName.split('-').map(t => t.trim());
     const homeTeam = teams[0], awayTeam = teams[1];
     document.getElementById('bpMatchTitle').textContent = matchName;

@@ -950,26 +950,6 @@ body{
   </div>
 </div>
 
-<div id="betPickerModal" class="modal-overlay" onclick="closeModal('betPickerModal')">
-  <div class="modal-card" onclick="event.stopPropagation()" style="max-height: 90vh;">
-    <div class="modal-header">
-      <button class="modal-back-btn" onclick="closeModal('betPickerModal')">Cancel</button>
-      <div class="modal-title" id="bpMatchTitle">Place Bet</div>
-      <div class="modal-sub" id="bpUserSub">Selection</div>
-    </div>
-    <div class="modal-tabs">
-      <button class="tab-btn active" id="tabWin" onclick="switchBetTab('win')">WINNER</button>
-      <button class="tab-btn" id="tabScore" onclick="switchBetTab('score')">SCORE</button>
-      <button class="tab-btn" id="tabGoals" onclick="switchBetTab('goals')">GOALS+</button>
-    </div>
-    <div class="modal-scroll-area">
-        <div id="gridWin" class="bet-grid"></div>
-        <div id="gridScore" class="bet-grid" style="display:none;"></div>
-        <div id="gridGoals" class="bet-grid" style="display:none;"></div>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="tableModal" onclick="closeModal('tableModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">

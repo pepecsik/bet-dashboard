@@ -574,22 +574,9 @@ body{
 
 .col-hidden { display: none !important; }
 
-/* === NEW LOGIN & PICKER STYLES === */
-.bet-grid { display: grid; gap: 10px; padding: 10px; }
-.bet-opt-btn { 
-    background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); 
-    color: white; padding: 12px 5px; border-radius: 10px; font-weight: 800;
-    cursor: pointer; transition: transform 0.1s; font-family: var(--font-main);
-}
-.bet-opt-btn:active { transform: scale(0.9); background: var(--accent-orange); }
-
-.avatar-btn { cursor:pointer; text-align:center; transition: transform 0.2s; }
-.avatar-btn:active { transform: scale(0.95); }
-.avatar-img-login { width:90px; height:90px; border-radius:12px; object-fit:cover; margin-bottom:8px; }
-
 /* === SUMMARY & FOOTER === */
 .summary { 
-  background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: var(--rad-lg);          
+  background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: var(--rad-lg);         
   overflow: hidden; box-shadow: var(--shadow-card);
   border: var(--border-light); position: relative; z-index: 10;
 }
@@ -864,24 +851,29 @@ body{
   </footer>
 </div>
 
+<div id="bigWinOverlay" class="big-win-overlay">
+  <img id="bigWinAvatar" class="big-win-avatar" style="display:none;">
+  <div id="bigWinText" class="big-win-text"></div>
+</div>
+
 <div id="loginOverlay" class="modal-overlay active" style="z-index: 5000;">
   <div class="modal-card" style="padding: 25px; text-align: center; max-width: 400px;">
-    <div class="modal-title" style="font-size: 22px; margin-bottom: 25px; font-weight:800;">IDENTIFY YOURSELF</div>
+    <div class="modal-title" style="font-size: 22px; margin-bottom: 25px; font-weight:800;">WHO ARE YOU?</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-        <div onclick="loginUser('Snackbar')" class="avatar-btn">
-            <img src="./snackbar.png" class="avatar-img-login" style="border: 4px solid #4ade80;">
+        <div onclick="loginUser('Snackbar')" style="cursor:pointer; text-align:center;">
+            <img src="./snackbar.png" style="width:85px; height:85px; border-radius:12px; border:4px solid #4ade80; object-fit:cover; margin-bottom:8px;">
             <div style="font-size:10px; font-weight:900;">SNACKBAR</div>
         </div>
-        <div onclick="loginUser('Timbo')" class="avatar-btn">
-            <img src="./timbo.png" class="avatar-img-login" style="border: 4px solid #4DA3FF;">
+        <div onclick="loginUser('Timbo')" style="cursor:pointer; text-align:center;">
+            <img src="./timbo.png" style="width:85px; height:85px; border-radius:12px; border:4px solid #4DA3FF; object-fit:cover; margin-bottom:8px;">
             <div style="font-size:10px; font-weight:900;">TIMBO</div>
         </div>
-        <div onclick="loginUser('Pepe')" class="avatar-btn">
-            <img src="./pepe.png" class="avatar-img-login" style="border: 4px solid #FF5BC4;">
+        <div onclick="loginUser('Pepe')" style="cursor:pointer; text-align:center;">
+            <img src="./pepe.png" style="width:85px; height:85px; border-radius:12px; border:4px solid #FF5BC4; object-fit:cover; margin-bottom:8px;">
             <div style="font-size:10px; font-weight:900;">PEPE</div>
         </div>
     </div>
-    <button onclick="loginUser(null)" class="filter-btn" style="width:100%; height:45px; background:rgba(255,255,255,0.1); border-radius:10px;">VIEWER MODE</button>
+    <button onclick="loginUser(null)" class="filter-btn" style="width:100%; height:45px; background:rgba(255,255,255,0.1); border-radius:10px; font-weight:700;">CONTINUE AS VIEWER</button>
   </div>
 </div>
 
@@ -904,12 +896,7 @@ body{
     </div>
   </div>
 </div>
-
-<div id="bigWinOverlay" class="big-win-overlay">
-  <img id="bigWinAvatar" class="big-win-avatar" style="display:none;">
-  <div id="bigWinText" class="big-win-text"></div>
-</div>
-
+ 
 <div class="modal-overlay" id="matchModal" onclick="closeModal('matchModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -1008,31 +995,6 @@ let prevMatches = {};
 let isFirstLoad = true; 
 let chartDataCache=null, historyChart=null, tableCache=null;
 let activeFilters = { live: false, alive: false }; // MULTI-FILTER STATE
-
-let currentUser = localStorage.getItem('jb_user') || null;
-let currentBetContext = { matchIdx: null, subColIdx: null };
-
-// AUTO-HIDE LOGIN IF SAVED
-if(currentUser) document.getElementById('loginOverlay').classList.remove('active');
-
-function loginUser(name) {
-    vibe();
-    if (name) {
-        currentUser = name;
-        localStorage.setItem('jb_user', name);
-    } else {
-        currentUser = null;
-        localStorage.removeItem('jb_user');
-    }
-    document.getElementById('loginOverlay').classList.remove('active');
-    loadData();
-}
-
-function logout() {
-    vibe();
-    localStorage.removeItem('jb_user');
-    location.reload();
-}
 
 // --- THEME LOGIC (SECRET TOGGLE) ---
 const themes = ['carbon', 'candy', 'retro'];
@@ -1227,7 +1189,6 @@ function loadData(){
              else nUpcoming++;
         });
 
-        // 1. LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
         lh.innerHTML=`
             <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
@@ -1238,50 +1199,36 @@ function loadData(){
             ${currentUser ? `<div class="filter-btn" style="position:absolute; right:60px; font-size:8px; padding:2px 5px;" onclick="logout()">LOGOUT</div>` : ''}
             <div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
-
         left.appendChild(lh); 
         left.appendChild(document.createElement("div")).className="left-divider";
 
-        // HEADER ROW STICKY
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
-
-        // === AVATAR CONFIGURATION ===
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
 
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{
-              const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
-              if(!c||!c.value)return; hasB=true;
+              const c=m.cells[i]; if(!c||!c.value)return; hasB=true;
               if(!isWinningGreen(c.color))allG=false;
               if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
-              if(st!=="FT")pen++;
+              if(m.status!=="FT")pen++;
            });
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           if(hasB&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            
            const wrapper = document.createElement("div");
            wrapper.className = "header-pill-wrapper";
-           // ADD INDEX FOR FILTERING
            wrapper.setAttribute('data-col-idx', i);
-
-           const p=document.createElement("div"); 
-           p.className="header-pill";
+           const p=document.createElement("div"); p.className="header-pill";
            
            if(AVATARS[h.name]) {
                p.classList.add("has-avatar");
                p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
-           } else {
-               p.textContent=h.name;
-           }
+           } else { p.textContent=h.name; }
 
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
-               if(isFirstLoad) {
-                   setTimeout(()=>{ showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500);
-               } else {
-                   showBigWin(formatGBP(tot), AVATARS[h.name]);
-               }
+               if(isFirstLoad) setTimeout(()=>showBigWin(formatGBP(tot), AVATARS[h.name]), 1500);
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
@@ -1290,61 +1237,41 @@ function loadData(){
            wrapper.appendChild(p);
            headerRow.appendChild(wrapper);
         });
-
         right.appendChild(headerRow); 
-        right.appendChild(document.createElement("div")).className="right-divider"; // Initial divider
-
-        const matchCount = data.matches.length;
+        right.appendChild(document.createElement("div")).className="right-divider";
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-
+          
           const lr=document.createElement("div");
           lr.className="left-row"; 
           lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; 
-          // FIX MODAL CLICK
           lr.onclick = function() { openModal(m); };
+          lr.setAttribute('data-status', getMatchStatusType(m));
           
-          lr.setAttribute('data-status', getMatchStatusType(m)); // For filtering
-
           if(isFirstLoad) {
             lr.classList.add("animate-enter");
             lr.style.animationDelay = (idx * 0.05) + "s";
           }
 
-          const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
+          const [hTeam,aTeam]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
-          
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
-          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
-              displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
-          }
-
-          const hRed = (m.stats && m.stats.h_red) || 0;
-          const aRed = (m.stats && m.stats.a_red) || 0;
-
+          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
+          const hRed = (m.stats && m.stats.h_red) || 0, aRed = (m.stats && m.stats.a_red) || 0;
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          const minutes = parseInt(m.status) || 0;
-          const isLate = (minutes >= 85 || m.status === "ET");
-
-          // GOLDEN SCORE CHECK
+          const minutes = parseInt(m.status) || 0, isLate = (minutes >= 85 || m.status === "ET");
           let isGoldenScore = false;
-          m.cells.forEach(c => {
-              if(c.value && String(c.value).includes("-")) {
-                  if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
-              }
-          });
-          const goldenClass = isGoldenScore ? "gold-active" : "";
-          const liveDot = live ? '<div class="live-dot"></div>' : '';
+          m.cells.forEach(c => { if(c.value && String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; });
+          const goldenClass = isGoldenScore ? "gold-active" : "", liveDot = live ? '<div class="live-dot"></div>' : '';
 
           lr.innerHTML=`<div class="left-cell match">
                 <div class="match-teams">
-                    <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
+                    <div class="team-wrap-rel">${renderTeam(hTeam)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
                     <span>-</span>
-                    <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
+                    <div class="team-wrap-rel">${renderTeam(aTeam)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
                 </div>
           </div>
           <div class="left-cell">
@@ -1356,7 +1283,6 @@ function loadData(){
           left.appendChild(lr);
 
           const rr=document.createElement("div"); rr.className="row";
-          
           if(isFirstLoad) {
             rr.classList.add("animate-enter");
             rr.style.animationDelay = (idx * 0.05) + "s";
@@ -1367,9 +1293,8 @@ function loadData(){
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               el.setAttribute('data-col-idx', cellIndex);
 
-              // EDITABLE LAYER
-              const hName = data.headers[cellIndex].name;
-              const isMine = currentUser && hName.includes(currentUser);
+              const headerName = data.headers[cellIndex].name;
+              const isMine = currentUser && headerName.includes(currentUser);
               const isLocked = lockedColumns[cellIndex];
 
               if (isMine && !isLocked) {
@@ -1378,12 +1303,12 @@ function loadData(){
                   el.style.background = "rgba(251, 146, 60, 0.05)";
                   el.style.cursor = "pointer";
                   
-                  const myIndices = data.headers.map((h, hIdx) => h.name.includes(currentUser) ? hIdx : -1).filter(idx => idx !== -1);
-                  const subIdx = myIndices.indexOf(cellIndex);
+                  const myUserColumns = data.headers.map((h, hIdx) => h.name.includes(currentUser) ? hIdx : -1).filter(hIdx => hIdx !== -1);
+                  const subColIdx = myUserColumns.indexOf(cellIndex);
                   
                   el.onclick = (e) => {
                       e.stopPropagation();
-                      openBetPicker(idx, subIdx, m.match);
+                      openBetPicker(idx, subColIdx, m.match);
                   };
               }
 
@@ -1391,13 +1316,10 @@ function loadData(){
                   el.textContent=c.value;
                   let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color; 
-                  
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-
                   if(live && isLate && !isColumnDead) {
                       let bet = String(c.value).toUpperCase();
                       let isWinning = false;
@@ -1405,8 +1327,8 @@ function loadData(){
                           let [bH, bA] = bet.split("-").map(Number);
                           if(bH === hScore && bA === aScore) isWinning = true;
                       } else {
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                          if((bet === "1" || bet === "H" || bet === "HOME" || hTeam.includes(bet)) && hScore > aScore) isWinning = true;
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || aTeam.includes(bet)) && aScore > hScore) isWinning = true;
                           else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
                       }
                       if(isWinning) el.classList.add("sweat-active");
@@ -1420,7 +1342,62 @@ function loadData(){
           right.appendChild(rr);
       });
 
-      // --- FILTER SECTION ---
+      // Filter Section Insertion
+      const filterSection = document.createElement("div");
+      filterSection.className = "filter-separator spacer-bar";
+      filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
+      left.appendChild(filterSection);
+      left.appendChild(document.createElement("div")).className="left-divider";
+      const rightSpacer = document.createElement("div");
+      rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; 
+      right.appendChild(rightSpacer);
+      right.appendChild(document.createElement("div")).className="right-divider";
+
+      ["BET","WIN","WIN PP"].forEach((l,i)=>{
+          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
+          left.appendChild(lab);
+          const rr=document.createElement("div"); rr.className="row";
+          if(isFirstLoad) {
+            rr.classList.add("animate-enter");
+            rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
+          }
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{
+             const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex);
+             el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a');
+             el.style.backgroundColor = c.color; rr.appendChild(el);
+          });
+          right.appendChild(rr);
+      });
+
+      window.globalHeaders = data.headers;
+      applyFilterLogic();
+
+      data.totals.forEach(t=>{
+          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+      });
+        
+      data.ranking.forEach((r,i)=>{
+          let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
+          let rowClass = "rank-row";
+          if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
+              const hist = data.chartData.money;
+              if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire";
+          }
+          if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; }
+          let nameHtml = r.name;
+          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
+          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+        });
+
+      isFirstLoad = false;
+    } catch(e){ console.error(e); }
+  });
+}
+
+      // --- FILTER SECTION INSERTION ---
       const filterSection = document.createElement("div");
       filterSection.className = "filter-separator spacer-bar";
       filterSection.innerHTML = `
@@ -1434,8 +1411,9 @@ function loadData(){
       left.appendChild(filterSection);
       left.appendChild(document.createElement("div")).className="left-divider";
       
+      // INSERT SPACER IN RIGHT COLUMN TO MAINTAIN ALIGNMENT
       const rightSpacer = document.createElement("div");
-      rightSpacer.className = "spacer-bar";
+      rightSpacer.className = "spacer-bar"; // Same class = Same height
       rightSpacer.innerHTML = "&nbsp;"; 
       right.appendChild(rightSpacer);
       right.appendChild(document.createElement("div")).className="right-divider";
@@ -1460,7 +1438,10 @@ function loadData(){
           right.appendChild(rr);
         });
 
+        // Store headers globally for filter logic
         window.globalHeaders = data.headers;
+
+        // RE-APPLY CURRENT FILTER
         applyFilterLogic();
 
         data.totals.forEach(t=>{
@@ -1488,6 +1469,304 @@ function loadData(){
   });
 }
 
+function getMatchStatusType(m) {
+    if(!m.status) return 'upcoming';
+    const s = m.status.toUpperCase();
+    if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
+    if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
+    return 'upcoming';
+}
+
+// MULTI-FILTER TOGGLE LOGIC
+function toggleFilter(type) {
+    if (type === 'all') {
+        activeFilters.live = false;
+        activeFilters.alive = false;
+    } else {
+        activeFilters[type] = !activeFilters[type];
+    }
+    applyFilterLogic();
+}
+
+function applyFilterLogic() {
+    // 1. Update Button States
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if(!activeFilters.live && !activeFilters.alive) {
+        // Activate "ALL" button if no filters are active
+        const allBtn = document.querySelector('.filter-btn[onclick*="all"]');
+        if(allBtn) allBtn.classList.add('active');
+    } else {
+        if(activeFilters.alive) document.getElementById('btn-alive').classList.add('active');
+        if(activeFilters.live) document.getElementById('btn-live').classList.add('active');
+    }
+
+    // 2. Row Filtering (Live)
+    const leftRows = document.querySelectorAll('.left-row');
+    const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
+
+    leftRows.forEach((row, i) => {
+        const status = row.getAttribute('data-status');
+        let show = true;
+        if(activeFilters.live && status !== 'live') show = false;
+        
+        row.style.display = show ? 'grid' : 'none';
+        if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
+    });
+
+    // 3. Column Filtering (Alive)
+    // Get indexes of dead columns
+    const deadIndices = [];
+    if(window.globalHeaders) {
+        window.globalHeaders.forEach((h, i) => {
+            if(h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red') {
+                deadIndices.push(i);
+            }
+        });
+    }
+
+    // Toggle Columns in Header
+    document.querySelectorAll('.header-pill-wrapper').forEach(el => {
+        const idx = parseInt(el.getAttribute('data-col-idx'));
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        else el.classList.remove('col-hidden');
+    });
+
+    // Toggle Columns in Bet Rows
+    document.querySelectorAll('.bet').forEach(el => {
+        const idx = parseInt(el.getAttribute('data-col-idx'));
+        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
+        else el.classList.remove('col-hidden');
+    });
+}
+
+function drawHistoryChart(t){
+  if(historyChart&&historyChart._type===t)return; 
+  const ctx=document.getElementById("historyChart").getContext("2d");
+  if(historyChart){historyChart.destroy();historyChart=null}
+  
+  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
+  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
+  const ps=["Snackbar","Timbo","Pepe"];
+  const cols={Snackbar:"#4ade80",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+
+  historyChart=new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labs,
+      datasets:ps.map((p, idx)=>{
+        const c=cols[p]||"#fff"; 
+        const grad=ctx.createLinearGradient(0,0,0,300); 
+        grad.addColorStop(0,hexToRgba(c,0.3)); 
+        grad.addColorStop(1,hexToRgba(c,0));
+        const labelAlign = idx === 1 ? 'left' : 'right'; 
+        return {
+            label:p,
+            data: d.map(r=>r[p]), 
+            borderColor:c,
+            backgroundColor:grad,
+            fill:true,
+            tension:0.3,
+            pointRadius: 6, 
+            pointHoverRadius: 8,
+            pointBackgroundColor: "#1c1f23",
+            pointBorderColor: c,
+            pointBorderWidth: 2,
+            borderWidth: 2,
+            _customAlign: labelAlign
+        }
+      })
+    },
+    options:{
+        responsive:true, 
+        maintainAspectRatio:false,
+        layout:{padding:{top:15,right:30,left:0,bottom:30}}, 
+        scales:{
+            x:{ display:false },
+            y:{
+                display:true, 
+                position:'left',
+                beginAtZero: true, 
+                grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
+                grace:'5%' 
+            }
+        },
+        animation: { y: { duration: 2000, easing: 'easeOutQuart' }, x: { duration: 0 } },
+        plugins:{
+            legend:{display:false},
+            tooltip: {
+                enabled: true, mode: 'index', intersect: false, backgroundColor: 'rgba(28, 31, 35, 0.9)', titleColor: '#fff', bodyFont: { family: "Inter" }
+            },
+            datalabels:{
+                formatter:(v,c)=>{
+                    const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
+                    const prevVal = d[i-1];
+                    const cleanDf = Math.round((v-prevVal) * 100) / 100;
+                    if(cleanDf<=0) return null;
+                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
+                },
+                backgroundColor: (c) => c.dataset.borderColor,
+                borderRadius: 4,
+                color: '#000000',
+                font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
+                padding: { top: 2, bottom: 2, left: 4, right: 4 },
+                align: (c) => c.dataset._customAlign,
+                anchor: 'center',
+                offset: 8,
+                display: 'auto'
+            }
+        }
+    }
+  });
+  historyChart._type=t;
+}
+
+// UI & HELPERS
+function showBigWin(txt, avatarUrl){
+  const o=document.getElementById("bigWinOverlay"), t=document.getElementById("bigWinText"), a=document.getElementById("bigWinAvatar");
+  if(!o||!t||o.classList.contains('big-win-active')) return;
+  
+  if(avatarUrl) {
+      a.src = avatarUrl;
+      a.style.display = "block";
+  } else {
+      a.style.display = "none";
+  }
+  
+  t.textContent=txt;
+  o.classList.add("big-win-active");
+  setTimeout(()=>o.classList.remove("big-win-active"),5000);
+}
+
+function fireScreenBlaster(el){if(el.dataset.fired)return;el.dataset.fired="true";var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}else{setTimeout(()=>el.dataset.fired="",3000)}}())}
+function normalizeName(str) {
+  if(!str) return "";
+  let s = str.toLowerCase();
+  const map = {
+    'ø': 'o', 'ß': 'ss', 'ı': 'i', 'ş': 's', 'ğ': 'g', 'ç': 'c', 
+    'ü': 'u', 'ö': 'o', 'ä': 'a', 'ñ': 'n', 'é': 'e', 'è': 'e', 
+    'ê': 'e', 'á': 'a', 'à': 'a', 'â': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u'
+  };
+  for(let k in map) s = s.replace(new RegExp(k, 'g'), map[k]);
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function formatName(n){return n||""}
+function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
+
+function generateStory(home, away, stats, score, status, startTime, date, matchData) {
+    const el = document.getElementById("aiSummaryWrapper");
+    if(status === "NS") {
+        let matchDate = date ? new Date(date) : null;
+        let today = new Date();
+        let isToday = matchDate && matchDate.getDate() === today.getDate();
+        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
+
+        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
+        if(isToday) {
+             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
+             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
+             else story += `Lineups are expected roughly an hour before kick-off.`;
+        } else {
+             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
+             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
+        }
+        story += `</div>`;
+        el.innerHTML = story;
+        return;
+    }
+
+    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
+    const time = parseInt(status) || (status==="FT"?90:0);
+    const hPoss = stats.h_poss || 50;
+    const hXG = stats.h_xg || 0;
+    const aXG = stats.a_xg || 0;
+
+    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
+
+    if(status === "FT") {
+       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
+       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
+       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
+    } else if (status === "HT") {
+       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
+    } else {
+       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
+       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
+       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
+       else story += `It remains all square at ${hG}-${hG}. `;
+    }
+    story += "<br><br>";
+
+    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
+    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
+    else story += `Possession is even `;
+
+    let xgDiff = (hXG - aXG);
+    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
+    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
+    else story += `in a tight game. `;
+
+    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
+    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
+
+    let bestPlayer = null, highestRat = 0;
+    if(stats.players && stats.players.h) {
+        [...stats.players.h, ...stats.players.a].forEach(p => {
+            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
+        });
+    }
+
+    if(bestPlayer && highestRat > 0) {
+        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
+    }
+
+    story += `</div>`;
+    el.innerHTML = story;
+}
+
+function findPlayerStats(name, list) {
+    if(!list) return null;
+    let normName = normalizeName(name);
+    let parts = normName.split(" ");
+      
+    let found = list.find(x => normalizeName(x.name) === normName);
+    if(found) return found;
+
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return xn.includes(normName) || normName.includes(xn);
+    });
+    if(found) return found;
+
+    found = list.find(x => {
+        let xn = normalizeName(x.name);
+        return parts.some(p => p.length > 2 && xn.includes(p));
+    });
+    return found;
+}
+
+function showPlayerStats(name, stats, events) {
+    const pop = document.getElementById("playerPopup");
+    if(!stats) return; 
+    document.getElementById("ppName").textContent = stats.name || name; 
+    document.getElementById("ppImg").src = stats.photo || "";
+    let goals = stats.goals;
+    if(goals === undefined) goals = events ? events.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.player === name).length : 0;
+    let assists = stats.assists;
+    if(assists === undefined) assists = events ? events.filter(e => e.type === "Goal" && e.assist === name).length : 0;
+    const grid = document.getElementById("ppStats");
+    grid.innerHTML = `
+      <div class="pp-stat"><div class="pp-val">${stats.rating.toFixed(1)}</div><div class="pp-lbl">Rat</div></div>
+      <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
+      <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
+    `;
+    pop.style.display = "block";
+}
+
 function openBetPicker(matchIdx, subColIdx, matchName) {
     vibe();
     currentBetContext = { matchIdx, subColIdx };
@@ -1502,20 +1781,22 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
         btn.textContent = opt; btn.onclick = () => submitBet(opt); winGrid.appendChild(btn);
     });
 
-    // TAB: SCORE
+    // TAB: SCORE (3-Column Layout: Home | Draw | Away)
     const scoreGrid = document.getElementById('gridScore');
     scoreGrid.innerHTML = `<div style="font-size:9px;font-weight:900;text-align:center;">${h}</div><div style="font-size:9px;font-weight:900;text-align:center;">DRAW</div><div style="font-size:9px;font-weight:900;text-align:center;">${a}</div>`;
-    const hs = ['1-0','2-0','2-1','3-0','3-1','3-2','4-0','4-1','4-2','5-0','5-1','6-0'], ds = ['0-0','1-1','2-2','3-3','4-4'], as = ['0-1','0-2','1-2','0-3','1-3','2-3','0-4','1-4','2-4','3-4','0-5','1-5','0-6'];
-    for(let i=0; i<Math.max(hs.length, ds.length, as.length); i++) {
-        [hs[i], ds[i], as[i]].forEach(opt => {
+    const hScores = ['1-0','2-0','2-1','3-0','3-1','3-2','4-0','4-1','4-2','5-0','5-1','6-0'];
+    const dScores = ['0-0','1-1','2-2','3-3','4-4'];
+    const aScores = ['0-1','0-2','1-2','0-3','1-3','2-3','0-4','1-4','2-4','3-4','0-5','1-5','0-6'];
+    for(let i=0; i < 12; i++) {
+        [hScores[i], dScores[i], aScores[i]].forEach(opt => {
             if(opt) {
                 const btn = document.createElement('button'); btn.className = 'bet-opt-btn'; btn.style.padding = "10px 2px";
                 btn.textContent = opt; btn.onclick = () => submitBet(opt); scoreGrid.appendChild(btn);
-            } else scoreGrid.appendChild(document.createElement('div'));
+            } else { scoreGrid.appendChild(document.createElement('div')); }
         });
     }
 
-    // TAB: GOALS
+    // TAB: GOALS+ (Goals X format)
     const goalsGrid = document.getElementById('gridGoals'); goalsGrid.innerHTML = '';
     ['Goals 0.5','Goals 1.5','Goals 2.5','Goals 3.5','Goals 4.5','BTTS','No BTTS'].forEach(opt => {
         const btn = document.createElement('button'); btn.className = 'bet-opt-btn';
@@ -1529,91 +1810,287 @@ async function submitBet(val) {
     const payload = { user: currentUser, row: currentBetContext.matchIdx, subCol: currentBetContext.subColIdx, value: val };
     try {
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const result = await res.json();
-        if(result.status === 'success') {
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 9999 });
-            loadData(); 
-        }
-    } catch(e) { alert("Error saving bet."); }
+        if(res.ok) { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 9999 }); loadData(); }
+    } catch(e) { alert("Save failed!"); }
 }
 
-function switchBetTab(t) {
-    vibe();
-    ['win', 'score', 'goals'].forEach(x => {
-        document.getElementById('grid' + x.charAt(0).toUpperCase() + x.slice(1)).style.display = (x === t) ? 'grid' : 'none';
-        document.getElementById('tab' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('active', x === t);
-    });
-}
-
+function switchBetTab(t) { vibe(); ['win', 'score', 'goals'].forEach(x => { document.getElementById('grid' + x.charAt(0).toUpperCase() + x.slice(1)).style.display = (x === t) ? 'grid' : 'none'; document.getElementById('tab' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('active', x === t); }); }
 function cleanNumber(v) { if(!v) return 0; let s = String(v).replace(/[^0-9.]/g, ""); return parseFloat(s) || 0; }
-function getMatchStatusType(m) { if(!m.status) return 'upcoming'; const s = m.status.toUpperCase(); if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live'; if(s === "FT" || s === "AET" || s === "PEN") return 'finished'; return 'upcoming'; }
+ 
+function openModal(m){
+  try {
+      vibe(); 
+      document.getElementById('playerPopup').style.display='none';
+      const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
+      const s=m.stats||{};
+      switchTab('stats'); 
+      
+      // SHOW MODAL FIRST (CRITICAL FIX)
+      document.getElementById("matchModal").classList.add("active");
 
-// MULTI-FILTER TOGGLE LOGIC
-function toggleFilter(type) { if (type === 'all') { activeFilters.live = false; activeFilters.alive = false; } else { activeFilters[type] = !activeFilters[type]; } applyFilterLogic(); }
+      document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
+      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
-function applyFilterLogic() {
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    if(!activeFilters.live && !activeFilters.alive) {
-        const allBtn = document.querySelector('.filter-btn[onclick*="all"]');
-        if(allBtn) allBtn.classList.add('active');
-    } else {
-        if(activeFilters.alive) document.getElementById('btn-alive').classList.add('active');
-        if(activeFilters.live) document.getElementById('btn-live').classList.add('active');
-    }
-    const leftRows = document.querySelectorAll('.left-row');
-    const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
-    leftRows.forEach((row, i) => {
-        const status = row.getAttribute('data-status');
-        let show = true;
-        if(activeFilters.live && status !== 'live') show = false;
-        row.style.display = show ? 'grid' : 'none';
-        if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
-    });
-    const deadIndices = [];
-    if(window.globalHeaders) {
-        window.globalHeaders.forEach((h, i) => { if(h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red') deadIndices.push(i); });
-    }
-    document.querySelectorAll('.header-pill-wrapper').forEach(el => {
-        const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
-        else el.classList.remove('col-hidden');
-    });
-    document.querySelectorAll('.bet').forEach(el => {
-        const idx = parseInt(el.getAttribute('data-col-idx'));
-        if(activeFilters.alive && deadIndices.includes(idx)) el.classList.add('col-hidden');
-        else el.classList.remove('col-hidden');
-    });
+      try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
+
+      // PITCH PRESSURE GRADIENT
+      const pitch = document.getElementById("pitch");
+      if (s.h_xg !== undefined && s.a_xg !== undefined) {
+        if (s.h_xg > s.a_xg) {
+           pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
+        } else if (s.a_xg > s.h_xg) {
+           pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
+        } else {
+            pitch.style.background = "#2e5a2e"; // Reset
+        }
+      }
+
+      // 1. GENERATE GROUP PREDICTIONS
+      let consensusHTML = "";
+      if(m && m.cells) {
+          let votes = { H: 0, D: 0, A: 0, Total: 0 };
+          const hName = String(hCode).toUpperCase().trim();
+          const aName = String(aCode).toUpperCase().trim();
+
+          m.cells.forEach(c => {
+               if(!c.value) return; 
+               let val = String(c.value).toUpperCase().trim();
+               if(val.includes("-")) {
+                   votes.Total++;
+                   const [hS, aS] = val.split("-").map(Number);
+                   if(hS > aS) votes.H++; else if(aS > hS) votes.A++; else votes.D++;
+               } else {
+                   if(val === "1" || val === "H" || val === "HOME" || val === hName || hName.includes(val)) { votes.Total++; votes.H++; }
+                   else if(val === "2" || val === "A" || val === "AWAY" || val === aName || aName.includes(val)) { votes.Total++; votes.A++; }
+                   else if(val === "X" || val === "D" || val === "DRAW") { votes.Total++; votes.D++; }
+               }
+          });
+          
+          if(votes.Total > 0) {
+              const hPct = (votes.H / votes.Total) * 100;
+              const dPct = (votes.D / votes.Total) * 100;
+              const aPct = (votes.A / votes.Total) * 100;
+              
+              const sortArr = [
+                  {type:'H', val:hPct, label:hCode},
+                  {type:'D', val:dPct, label:'Draw'},
+                  {type:'A', val:aPct, label:aCode}
+              ].sort((a,b)=>b.val - a.val);
+
+              let colors = { H:'#555', D:'#555', A:'#555' };
+              if(sortArr[0].val === sortArr[1].val) { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#4BAA35'; colors[sortArr[2].type] = '#ff4d4d'; } 
+              else if(sortArr[1].val === sortArr[2].val) { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#d67d26'; } 
+              else { colors[sortArr[0].type] = 'var(--accent-green)'; colors[sortArr[1].type] = '#ff9f43'; colors[sortArr[2].type] = '#ff4d4d'; }
+
+              consensusHTML = `
+              <div style="margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                  <div style="font-size:9px; font-weight:800; color:#9aa0a6; text-transform:uppercase; margin-bottom:6px; letter-spacing:1px;">Group Predictions</div>
+                  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+                      <div class="animate-bar" style="width:0%; background:${colors.H};" data-width="${hPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.D};" data-width="${dPct}%"></div>
+                      <div class="animate-bar" style="width:0%; background:${colors.A};" data-width="${aPct}%"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.8;">
+                      <span style="color:${colors.H}">${Math.round(hPct)}% ${hCode}</span>
+                      <span style="color:${colors.D}">${Math.round(dPct)}% Draw</span>
+                      <span style="color:${colors.A}">${Math.round(aPct)}% ${aCode}</span>
+                  </div>
+              </div>`;
+          }
+      }
+      document.getElementById("consensusArea").innerHTML = consensusHTML;
+      
+      let hG=[], aG=[];
+      let goalsMap = {}; 
+      if(s.events){
+          s.events.forEach(e => {
+             if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
+                 let cleanP = normalizeName(e.player.trim());
+                 let isH = null;
+                 let parts = cleanP.split(' ');
+                 if(s.lineups && s.lineups.h && s.lineups.h.start) {
+                     if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
+                     else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
+                 }
+                 if(isH === null) isH = true; 
+                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
+                 goalsMap[cleanP].times.push(e.time + "'");
+             }
+          });
+      }
+      Object.keys(goalsMap).forEach(key => {
+          let g = goalsMap[key];
+          let timesStr = g.times.join(", ");
+          let name = formatName(g.rawName);
+          let html = "";
+          let icon = "⚽";
+          if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
+          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
+          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
+          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
+      });
+      document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+
+      // STATS
+      const sb = document.getElementById("statsArea"); 
+      sb.innerHTML = "";
+      if (m.status === "NS" || m.status === "PST") {
+          sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
+      } else {
+          let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
+          let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
+          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
+          let allStatsHTML = ""; 
+          sl.forEach(st => {
+            if (!st.h && !st.a && !st.pct && !st.dec) return; 
+            let t = (st.h || 0) + (st.a || 0);
+            let hp = 0, ap = 0;
+            if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } } 
+            else if (st.pct) { hp = 50; ap = 50; }
+            let ht = st.h || 0, at = st.a || 0;
+            if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
+            allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
+          });
+          sb.innerHTML = allStatsHTML;
+          // TRIGGER ANIMATION FOR STAT BARS HERE TOO
+          setTimeout(() => { document.querySelectorAll('#statsArea .animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
+      }
+      
+      // TRIGGER ANIMATION FOR PREDICTION BARS (MOVED OUTSIDE 'ELSE')
+      setTimeout(() => { 
+          document.querySelectorAll('#consensusArea .animate-bar').forEach(bar => { 
+              if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } 
+          }); 
+      }, 50);
+      
+      // 2. LINEUPS
+      const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
+      const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
+      
+      const renderPitchTeam = (team, isHome, playersFull) => {
+          if(!team.start) return;
+          const rows = { "G":0, "D":1, "M":2, "F":3 };
+          let lines = [[],[],[],[]];
+          team.start.forEach(p => {
+             let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
+             lines[r].push(p);
+          });
+
+          lines.forEach((line, rIdx) => {
+             let yPct = 0;
+             if(isHome) { 
+                 if(rIdx===0) yPct=5;        
+                 else if(rIdx===1) yPct=17.3; 
+                 else if(rIdx===2) yPct=29.6; 
+                 else yPct=42; 
+             } else { 
+                 if(rIdx===0) yPct=95;       
+                 else if(rIdx===1) yPct=82.7; 
+                 else if(rIdx===2) yPct=70.4; 
+                 else yPct=58; 
+             }
+             
+             line.forEach((p, i) => {
+                 let count = line.length;
+                 let segment = 100 / count;
+                 let xPct = (segment * i) + (segment / 2); 
+                 
+                 let pStats = findPlayerStats(p.name, playersFull);
+                 let rat = pStats ? pStats.rating.toFixed(1) : "-";
+                 let photoUrl = pStats ? pStats.photo : "";
+                 let rClass = "rat-mid";
+                 if(rat >= 7.0) rClass = "rat-high";
+                 if(rat < 6.0 && rat !== "-") rClass = "rat-low";
+                 
+                 let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
+                 let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
+                 
+                 let lastName = normalizeName(p.name.split(" ").pop());
+                 let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && normalizeName(e.player).includes(lastName));
+                 let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
+
+                 let el = document.createElement("div");
+                 el.className = "pitch-player";
+                 el.style.top = yPct + "%";
+                 el.style.left = xPct + "%";
+                 el.onclick = () => showPlayerStats(p.name, pStats, s.events);
+                 
+                 let content = `<div class="p-dot ${isHome?'home':'away'}">
+                     <span class="p-num-fallback">${p.number || p.num || ''}</span>`;
+                 if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
+                 content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
+                 
+                 el.innerHTML = content;
+                 pp.appendChild(el);
+             });
+          });
+
+          if(team.sub && team.sub.length > 0) {
+              let subHTML = `<div class="subs-header">${isHome ? hCode : aCode} SUBSTITUTES</div>`;
+              team.sub.forEach(sPlayer => {
+                 if(s.events) {
+                    let cameOn = s.events.find(e => e.type === "subst" && e.assist === sPlayer.name);
+                    if(cameOn) {
+                       subHTML += `<div class="sub-row"><div class="sub-icon">▲</div> <span>${formatName(sPlayer.name)}</span></div>`;
+                    } else {
+                       subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
+                    }
+                 } else {
+                    subHTML += `<div class="sub-row"><span>${formatName(sPlayer.name)}</span></div>`;
+                 }
+              });
+              let col = document.createElement("div");
+              col.style.flex = "1";
+              col.innerHTML = subHTML;
+              subsCont.appendChild(col);
+          }
+      };
+      
+      subsCont.style.display = "flex"; subsCont.style.gap = "10px";
+      renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
+      renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
+
+  } catch(err) {
+      console.error("Modal Error:", err);
+  }
 }
 
-function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; 
-  const ctx=document.getElementById("historyChart").getContext("2d");
-  if(historyChart){historyChart.destroy();historyChart=null}
-  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
-  const labs=d.map(r=>new Date(r.date).toLocaleDateString()), ps=["Snackbar","Timbo","Pepe"], cols={Snackbar:"#4ade80",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
-  historyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:labs,
-      datasets:ps.map((p, idx)=>{
-        const c=cols[p]||"#fff", grad=ctx.createLinearGradient(0,0,0,300); 
-        grad.addColorStop(0,hexToRgba(c,0.3)); grad.addColorStop(1,hexToRgba(c,0));
-        return { label:p, data: d.map(r=>r[p]), borderColor:c, backgroundColor:grad, fill:true, tension:0.3, pointRadius: 6, pointHoverRadius: 8, pointBackgroundColor: "#1c1f23", pointBorderColor: c, pointBorderWidth: 2, borderWidth: 2, _customAlign: idx === 1 ? 'left' : 'right' }
-      })
-    },
-    options:{ responsive:true, maintainAspectRatio:false, layout:{padding:{top:15,right:30,left:0,bottom:30}}, scales:{ x:{ display:false }, y:{ display:true, position:'left', beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false }, ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 }, grace:'5%' } }, animation: { y: { duration: 2000, easing: 'easeOutQuart' }, x: { duration: 0 } }, plugins:{ legend:{display:false}, tooltip: { enabled: true, mode: 'index', intersect: false, backgroundColor: 'rgba(28, 31, 35, 0.9)', titleColor: '#fff', bodyFont: { family: "Inter" } }, datalabels:{ formatter:(v,c)=>{ const d=c.dataset.data, i=c.dataIndex; if(i===0)return null; const cleanDf = Math.round((v-d[i-1]) * 100) / 100; return cleanDf<=0 ? null : `+${cleanDf}`; }, backgroundColor: (c) => c.dataset.borderColor, borderRadius: 4, color: '#000000', font:{ weight:"800", size: 9, family: "Inter, sans-serif" }, padding: { top: 2, bottom: 2, left: 4, right: 4 }, align: (c) => c.dataset._customAlign, anchor: 'center', offset: 8, display: 'auto' } } }
-  });
-  historyChart._type=t;
+function openTable(){
+    const b=document.getElementById("tableBody");
+    b.innerHTML="";
+    if(!tableCache) b.innerHTML="Loading...";
+    else tableCache.forEach(t=>{
+        let formHtml = "";
+        if(t.form) {
+            t.form.split('').forEach(char => {
+                let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
+                formHtml += `<div class="form-dot ${colorClass}"></div>`;
+            });
+        }
+        b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap">${formHtml}</div></div>`
+    });
+    document.getElementById("tableModal").classList.add("active");
 }
+function closeModal(id){document.getElementById(id).classList.remove("active")}
 
-renderSkeletons(); loadData(); setInterval(loadData,REFRESH_MS);
 
-document.getElementById("rankingCard").onclick=()=>{ vibe(); drawHistoryChart("matches"); document.getElementById("historyModal").classList.add("active"); };
+ 
+renderSkeletons(); 
+loadData(); 
+setInterval(loadData,REFRESH_MS);
+
+document.getElementById("rankingCard").onclick=()=>{
+    // NEW: Open Modal instead of toggle
+    vibe();
+    drawHistoryChart("matches");
+    document.getElementById("historyModal").classList.add("active");
+};
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");};
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
+
 Chart.register(ChartDataLabels);
 </script>
-
 </body>
 </html>

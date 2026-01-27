@@ -216,6 +216,7 @@ body{ margin:0; font-family: var(--font-main); font-size: var(--base-size); back
     display: flex !important;
     visibility: visible !important;
     opacity: 0.5;
+    pointer-events: none !important; /* CRITICAL FIX: Disable clicking */
 }
 
 .col-hidden { display: none !important; }
@@ -731,6 +732,8 @@ function loadData(){
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
+           
+           // Locked status just marks border red in styling, doesn't gray out avatar
            else if(h.status==='red' || h.status==='locked') p.classList.add("status-red");
            
            wrapper.appendChild(p);
@@ -741,7 +744,6 @@ function loadData(){
         right.appendChild(document.createElement("div")).className="right-divider";
 
         // ---- CALCULATE GLOBAL INDICES FOR CURRENT USER ----
-        // This fixes the "Row 1 Bug". We find exactly which columns belong to the user.
         let myGlobalIndices = [];
         if (currentUser) {
             data.headers.forEach((h, index) => {
@@ -753,7 +755,23 @@ function loadData(){
 
         const matchCount = data.matches.length;
 
-        data.matches.forEach((m, idx)=>{
+        // ---- SORTING LOGIC TO PREVENT JUMPING ----
+        // If ANY column is unlocked/open, we force chronological sort to prevent jumping while betting.
+        // Only if ALL columns are locked/finished do we allow standard sorting (which might put winners on top).
+        const allLocked = data.headers.every(h => h.status === 'locked' || h.status === 'red' || h.color === 'red');
+        
+        let displayMatches = [...data.matches];
+        if (!allLocked) {
+            // FORCE CHRONOLOGICAL SORT
+            displayMatches.sort((a, b) => {
+                // Assuming ID or array index represents time order
+                // If specific date/time is available, use that. Fallback to existing index order.
+                if (a.date && b.date) return new Date(a.date) - new Date(b.date);
+                return 0; 
+            });
+        }
+
+        displayMatches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           const lr=document.createElement("div");
@@ -806,10 +824,14 @@ function loadData(){
               const headerInfo = data.headers[cellIndex];
               const headerName = headerInfo.name;
               
+              // 1. IS THIS COLUMN LOCKED? (Price filled in row 18)
               const isColumnLocked = headerInfo && (headerInfo.status === 'red' || headerInfo.status === 'locked' || headerInfo.color === 'red');
+              
+              // 2. IS THIS MY COLUMN?
               const isMyColumn = currentUser && headerName.includes(currentUser);
 
               if(c.value){
+                  // HAS VALUE
                   el.textContent=c.value;
                   let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
@@ -823,7 +845,10 @@ function loadData(){
                           const relativeIndex = myGlobalIndices.indexOf(cellIndex);
                           el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
                       } else {
+                          // LOCKED VALUE
                           el.style.border = "1.5px solid rgba(255,255,255,0.2)";
+                          el.style.cursor = "default";
+                          el.onclick = null; // Remove listener
                       }
                   }
 
@@ -852,6 +877,7 @@ function loadData(){
                           el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
                       } else {
                           el.classList.add('my-locked');
+                          el.onclick = null;
                       }
                   } else {
                       el.style.visibility = "hidden";
@@ -1096,7 +1122,9 @@ function showBigWin(txt, avatarUrl){
 }
 
 function fireScreenBlaster(el){
+    // Don't rely on dataset attribute of destroyed element, use header name tracking
     if(!el.textContent) return;
+    // Handled in loadData loop via Set
     var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}}())
 }
 function normalizeName(str) {

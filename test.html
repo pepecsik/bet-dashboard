@@ -861,12 +861,42 @@ body{
 </div>
 
 <div id="loginOverlay" class="modal-overlay active" style="z-index: 5000;">
-  <div class="modal-card" style="padding: 30px; text-align: center; max-width: 320px;">
-    <div class="modal-title" style="font-size: 24px; margin-bottom: 10px;">Who are you?</div>
-    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
-        <button onclick="loginUser('Snackbar')" class="filter-btn" style="padding: 15px; font-size: 14px;">SNACKBAR</button>
-        <button onclick="loginUser('Timbo')" class="filter-btn" style="padding: 15px; font-size: 14px;">TIMBO</button>
-        <button onclick="loginUser('Pepe')" class="filter-btn" style="padding: 15px; font-size: 14px;">PEPE</button>
+  <div class="modal-card" style="padding: 25px; text-align: center; max-width: 350px;">
+    <div class="modal-title" style="font-size: 22px; margin-bottom: 20px;">Who are you?</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div onclick="loginUser('Snackbar')" style="cursor:pointer;">
+            <img src="./snackbar.png" style="width:70px;height:70px;border-radius:50%;border:3px solid #4ade80;margin-bottom:5px;">
+            <div style="font-size:10px;font-weight:800;">SNACKBAR</div>
+        </div>
+        <div onclick="loginUser('Timbo')" style="cursor:pointer;">
+            <img src="./timbo.png" style="width:70px;height:70px;border-radius:50%;border:3px solid #4DA3FF;margin-bottom:5px;">
+            <div style="font-size:10px;font-weight:800;">TIMBO</div>
+        </div>
+        <div onclick="loginUser('Pepe')" style="cursor:pointer;">
+            <img src="./pepe.png" style="width:70px;height:70px;border-radius:50%;border:3px solid #FF5BC4;margin-bottom:5px;">
+            <div style="font-size:10px;font-weight:800;">PEPE</div>
+        </div>
+    </div>
+    <button onclick="loginUser(null)" class="filter-btn" style="width:100%; height:40px; background:rgba(255,255,255,0.1);">CONTINUE AS VIEWER</button>
+  </div>
+</div>
+
+<div id="betPickerModal" class="modal-overlay" onclick="closeModal('betPickerModal')">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-height: 95vh; width: 95%; max-width: 500px;">
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('betPickerModal')">Cancel</button>
+      <div class="modal-title" id="bpMatchTitle">Place Bet</div>
+      <div class="modal-sub" id="bpUserSub">Selection</div>
+    </div>
+    <div class="modal-tabs">
+      <button class="tab-btn active" id="tabWin" onclick="switchBetTab('win')">WINNER</button>
+      <button class="tab-btn" id="tabScore" onclick="switchBetTab('score')">SCORE</button>
+      <button class="tab-btn" id="tabGoals" onclick="switchBetTab('goals')">GOALS+</button>
+    </div>
+    <div class="modal-scroll-area">
+        <div id="gridWin" class="bet-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
+        <div id="gridScore" class="bet-grid" style="display:none; grid-template-columns: 1fr 1fr 1fr; font-size: 11px;"></div>
+        <div id="gridGoals" class="bet-grid" style="display:none; grid-template-columns: 1fr 1fr;"></div>
     </div>
   </div>
 </div>
@@ -1003,8 +1033,13 @@ if(currentUser) document.getElementById('loginOverlay').classList.remove('active
 
 function loginUser(name) {
     vibe();
-    currentUser = name;
-    localStorage.setItem('jb_user', name);
+    if (name) {
+        currentUser = name;
+        localStorage.setItem('jb_user', name);
+    } else {
+        currentUser = null;
+        localStorage.removeItem('jb_user');
+    }
     document.getElementById('loginOverlay').classList.remove('active');
     loadData();
 }
@@ -1153,24 +1188,11 @@ function loadData(){
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        // 1. DETERMINE LOCK STATE (Row 18 in Sheet = index 1 in betSummary)
-        // We create an array of booleans indicating if each column is locked
+        // 1. DETERMINE LOCK STATE (Row 18)
         const lockedColumns = data.betSummary[1].cells.map(c => {
-            const val = parseFloat(c.value);
-            return (val > 0 || (c.value && String(c.value).trim() !== "£ 0.00" && String(c.value).trim() !== "0"));
+            const val = cleanNumber(c.value);
+            return (val > 0);
         });
-
-        // 2. CONDITIONAL SORTING
-        // Check if current user has any columns that are NOT locked
-        const userHeaderIndices = data.headers.map((h, i) => h.name.includes(currentUser) ? i : -1).filter(i => i !== -1);
-        const hasActiveUnlockedCol = userHeaderIndices.some(idx => !lockedColumns[idx]);
-
-        // If we are logged in and have work to do, we DON'T sort (keep sheet order)
-        // If logged out or all our bets are locked/done, we apply the alphabetical/numeric sort
-        if (!currentUser || !hasActiveUnlockedCol) {
-            // Apply sorting logic to headers and matches if desired
-            // (Note: To keep this simple and stable while betting, we mostly focus on the UI below)
-        }
 
         let nLive = 0, nUpcoming = 0, nFinished = 0;
         data.matches.forEach(m => {
@@ -1181,21 +1203,15 @@ function loadData(){
         });
 
         const lh=document.createElement("div"); lh.className="left-header"; 
-        let statusHtml = "";
-        if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
-        if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
-        if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
-        
         lh.innerHTML=`
             <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
             <div class="header-title-box">
                 <span class="header-main-text">MATCHDAY</span>
-                <span class="header-sub-text">${statusHtml}</span>
+                <span class="header-sub-text">${nLive} LIVE | ${nUpcoming} UPCOMING</span>
             </div>
-            <div class="filter-btn" style="position:absolute; right:60px; font-size:8px; padding:2px 5px;" onclick="logout()">LOGOUT ${currentUser || ''}</div>
+            ${currentUser ? `<div class="filter-btn" style="position:absolute; right:60px; font-size:8px; padding:2px 5px;" onclick="logout()">LOGOUT ${currentUser}</div>` : ''}
             <div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>
         `;
-
         left.appendChild(lh); 
         left.appendChild(document.createElement("div")).className="left-divider";
 
@@ -1206,90 +1222,50 @@ function loadData(){
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{
-              const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
-              if(!c||!c.value)return; hasB=true;
+              const c=m.cells[i]; if(!c||!c.value)return; hasB=true;
               if(!isWinningGreen(c.color))allG=false;
               if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
-              if(st!=="FT")pen++;
+              if(m.status!=="FT")pen++;
            });
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           if(hasB&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           
            const wrapper = document.createElement("div");
            wrapper.className = "header-pill-wrapper";
            wrapper.setAttribute('data-col-idx', i);
-           const p=document.createElement("div"); 
-           p.className="header-pill";
+           const p=document.createElement("div"); p.className="header-pill";
+           
            if(AVATARS[h.name]) {
                p.classList.add("has-avatar");
                p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
            } else { p.textContent=h.name; }
-           
-           // Apply status classes
+
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
-               if(isFirstLoad) setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500);
-               else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); }
+               if(isFirstLoad) setTimeout(()=>showBigWin(formatGBP(tot), AVATARS[h.name]), 1500);
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
            
-           // Visual feedback if column is locked
-           if (lockedColumns[i]) { p.style.opacity = "0.5"; }
-
            wrapper.appendChild(p);
            headerRow.appendChild(wrapper);
         });
-
         right.appendChild(headerRow); 
         right.appendChild(document.createElement("div")).className="right-divider";
-
-        const matchCount = data.matches.length;
 
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-          const lr=document.createElement("div");
-          lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; 
-          lr.onclick = function() { openModal(m); };
+          
+          const lr=document.createElement("div"); lr.className="left-row"; lr.onclick = () => openModal(m);
           lr.setAttribute('data-status', getMatchStatusType(m));
-          if(isFirstLoad) {
-            lr.classList.add("animate-enter");
-            lr.style.animationDelay = (idx * 0.05) + "s";
-          }
-          const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
-          const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-          const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
-          let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
-          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
-          const hRed = (m.stats && m.stats.h_red) || 0, aRed = (m.stats && m.stats.a_red) || 0;
+          const [hTeam,aTeam]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          const minutes = parseInt(m.status) || 0, isLate = (minutes >= 85 || m.status === "ET");
-          let isGoldenScore = false;
-          m.cells.forEach(c => { if(c.value && String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; });
-          const goldenClass = isGoldenScore ? "gold-active" : "", liveDot = live ? '<div class="live-dot"></div>' : '';
-
-          lr.innerHTML=`<div class="left-cell match">
-                <div class="match-teams">
-                    <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
-                    <span>-</span>
-                    <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
-                </div>
-          </div>
-          <div class="left-cell">
-             <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
-                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span>
-                <span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
-             </div>
-          </div>`;
+          
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(hTeam)}</div><span>-</span><div class="team-wrap-rel">${renderTeam(aTeam)}</div></div></div><div class="left-cell"><div class="score-pill">${m.score||""}</div></div>`;
           left.appendChild(lr);
 
           const rr=document.createElement("div"); rr.className="row";
-          if(isFirstLoad) {
-            rr.classList.add("animate-enter");
-            rr.style.animationDelay = (idx * 0.05) + "s";
-          }
-
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
@@ -1299,15 +1275,15 @@ function loadData(){
               const isMyColumn = currentUser && headerName.includes(currentUser);
               const isLocked = lockedColumns[cellIndex];
 
-              // EDITABLE LOGIC
               if (isMyColumn && !isLocked) {
-                  el.classList.remove('empty'); // Force visibility
+                  el.classList.remove('empty');
                   el.style.border = "1.5px dashed var(--accent-orange)";
                   el.style.background = "rgba(251, 146, 60, 0.05)";
                   el.style.cursor = "pointer";
                   
-                  const myCols = data.headers.filter(h => h.name.includes(currentUser));
-                  const subColIdx = myCols.findIndex(h => h.name === headerName);
+                  // FIX: Find the correct sub-index for multi-columns (J-O support)
+                  const myUserColumns = data.headers.map((h, hIdx) => h.name.includes(currentUser) ? hIdx : -1).filter(hIdx => hIdx !== -1);
+                  const subColIdx = myUserColumns.indexOf(cellIndex);
                   
                   el.onclick = (e) => {
                       e.stopPropagation();
@@ -1319,26 +1295,8 @@ function loadData(){
                   el.textContent=c.value;
                   let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color; 
-                  const headerInfo = data.headers[cellIndex];
-                  const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-                  if(live && isLate && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase();
-                      let isWinning = false;
-                      if(bet.includes("-")) {
-                          let [bH, bA] = bet.split("-").map(Number);
-                          if(bH === hScore && bA === aScore) isWinning = true;
-                      } else {
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
-                      }
-                      if(isWinning) el.classList.add("sweat-active");
-                  }
               } else if (!isMyColumn) {
-                  // Hide only if it's NOT my column
-                  el.style.setProperty('--bet-bg', 'transparent');
                   el.classList.add('empty');
               }
               rr.appendChild(el);
@@ -1346,17 +1304,10 @@ function loadData(){
           right.appendChild(rr);
       });
 
-      // Filter section insertion...
+      // Filter/Totals/Ranking logic stays the same...
       const filterSection = document.createElement("div");
       filterSection.className = "filter-separator spacer-bar";
-      filterSection.innerHTML = `
-          <div class="filter-title">Filters</div>
-          <div class="filter-actions">
-               <button class="filter-btn" onclick="toggleFilter('all')">ALL</button>
-               <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
-               <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
-          </div>
-      `;
+      filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
       left.appendChild(filterSection);
       left.appendChild(document.createElement("div")).className="left-divider";
       const rightSpacer = document.createElement("div");
@@ -1368,45 +1319,29 @@ function loadData(){
           const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
           left.appendChild(lab);
           const rr=document.createElement("div"); rr.className="row";
-          if(isFirstLoad) {
-            rr.classList.add("animate-enter");
-            rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
-          }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{
-             const el=document.createElement("div");
-             el.className="bet";
-             el.setAttribute('data-col-idx', cellIndex);
-             el.textContent=formatGBP(c.value);
-             el.style.setProperty('--bet-bg', c.color || '#2f343a');
-             el.style.backgroundColor = c.color;
-             rr.appendChild(el);
+          data.betSummary[i].cells.forEach((c, cIdx)=>{
+             const bEl=document.createElement("div"); bEl.className="bet"; bEl.setAttribute('data-col-idx', cIdx);
+             bEl.textContent=formatGBP(c.value); bEl.style.backgroundColor = c.color;
+             rr.appendChild(bEl);
           });
           right.appendChild(rr);
-        });
+      });
 
-        window.globalHeaders = data.headers;
-        applyFilterLogic();
+      window.globalHeaders = data.headers;
+      applyFilterLogic();
 
-        data.totals.forEach(t=>{
+      data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
-          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
-          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
-        });
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(t.cells[1].value)}</div><div class="week-eur">${formatEUR(t.cells[0].value)}</div></div>`;
+      });
         
-        data.ranking.forEach((r,i)=>{
-          let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
-          let rowClass = "rank-row";
-          if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
-              const hist = data.chartData.money;
-              if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire";
-          }
-          if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; }
-          let nameHtml = r.name;
-          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
-          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-        });
-        isFirstLoad = false;
+      data.ranking.forEach((r,i)=>{
+          let icon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
+          let rCls = "rank-row"; if(i===data.ranking.length-1) { icon = "💩"; rCls += " shame-row"; }
+          ranking.innerHTML+=`<div class="${rCls}"><div class="rank-pos" style="font-size:1.2em">${icon}</div><div class="rank-name">${r.name}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
+      });
+
+      isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
 }
@@ -1469,35 +1404,34 @@ function switchBetTab(tab) {
 function openBetPicker(matchIdx, subColIdx, matchName) {
     vibe();
     currentBetContext = { matchIdx, subColIdx };
-    const [homeTeam, awayTeam] = matchName.split('-').map(t => t.trim());
+    const [h, a] = matchName.split('-').map(t => t.trim());
     document.getElementById('bpMatchTitle').textContent = matchName;
+    document.getElementById('bpUserSub').textContent = `${currentUser} Selection`;
     
-    // 1. WINNER GRID
+    // TAB: WINNER
     const winGrid = document.getElementById('gridWin');
     winGrid.innerHTML = '';
-    [homeTeam, 'X', awayTeam].forEach(opt => {
+    [h, 'X', a].forEach(opt => {
         const btn = document.createElement('button');
         btn.className = 'bet-opt-btn';
-        btn.innerHTML = `<span style="display:block;font-size:10px;opacity:0.6;">${opt === 'X' ? 'Draw' : 'Win'}</span>${opt}`;
+        btn.textContent = opt;
         btn.onclick = () => submitBet(opt);
         winGrid.appendChild(btn);
     });
 
-    // 2. SCORE GRID (Left: Home, Mid: Draw, Right: Away)
+    // TAB: SCORE (3-Column Layout)
     const scoreGrid = document.getElementById('gridScore');
     scoreGrid.innerHTML = `
-        <div style="color:var(--accent-orange); text-align:center; font-weight:800; margin-bottom:5px;">${homeTeam}</div>
-        <div style="color:var(--text-muted); text-align:center; font-weight:800; margin-bottom:5px;">DRAW</div>
-        <div style="color:var(--accent-orange); text-align:center; font-weight:800; margin-bottom:5px;">${awayTeam}</div>
+        <div style="font-size:9px;font-weight:900;color:var(--accent-orange);text-align:center;">${h}</div>
+        <div style="font-size:9px;font-weight:900;color:var(--text-muted);text-align:center;">DRAW</div>
+        <div style="font-size:9px;font-weight:900;color:var(--accent-orange);text-align:center;">${a}</div>
     `;
+    const hScores = ['1-0','2-0','2-1','3-0','3-1','3-2','4-0','4-1','4-2','5-0','5-1','6-0'];
+    const dScores = ['0-0','1-1','2-2','3-3','4-4'];
+    const aScores = ['0-1','0-2','1-2','0-3','1-3','2-3','0-4','1-4','2-4','0-5','1-5','0-6'];
     
-    const homeWins = ['1-0','2-0','2-1','3-0','3-1','3-2','4-0','4-1','4-2','4-3','5-0','5-1','6-0'];
-    const draws = ['0-0','1-1','2-2','3-3','4-4'];
-    const awayWins = ['0-1','0-2','1-2','0-3','1-3','2-3','0-4','1-4','2-4','3-4','0-5','1-5','0-6'];
-
-    const maxRows = Math.max(homeWins.length, draws.length, awayWins.length);
-    for(let i=0; i<maxRows; i++) {
-        [homeWins[i], draws[i], awayWins[i]].forEach(opt => {
+    for(let i=0; i < Math.max(hScores.length, dScores.length, aScores.length); i++) {
+        [hScores[i], dScores[i], aScores[i]].forEach(opt => {
             if(opt) {
                 const btn = document.createElement('button');
                 btn.className = 'bet-opt-btn';
@@ -1505,20 +1439,14 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
                 btn.textContent = opt;
                 btn.onclick = () => submitBet(opt);
                 scoreGrid.appendChild(btn);
-            } else {
-                scoreGrid.appendChild(document.createElement('div'));
-            }
+            } else { scoreGrid.appendChild(document.createElement('div')); }
         });
     }
 
-    // 3. GOALS GRID (Over Left, Under/Special Right)
+    // TAB: GOALS+ (Goals X format)
     const goalsGrid = document.getElementById('gridGoals');
     goalsGrid.innerHTML = '';
-    const goalOpts = [
-        'Goals 0.5', 'Goals 1.5', 'Goals 2.5', 'Goals 3.5', 
-        'Goals 4.5', 'Goals 5.5', 'BTTS', 'No BTTS'
-    ];
-    goalOpts.forEach(opt => {
+    ['Goals 0.5','Goals 1.5','Goals 2.5','Goals 3.5','Goals 4.5','BTTS','No BTTS'].forEach(opt => {
         const btn = document.createElement('button');
         btn.className = 'bet-opt-btn';
         btn.textContent = opt;
@@ -1530,15 +1458,31 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
 }
  
 async function submitBet(val) {
-    vibe(); document.getElementById('betPickerModal').classList.remove('active');
-    const payload = { user: currentUser, row: currentBetContext.matchIdx, subCol: currentBetContext.subColIdx, value: val };
-    try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const result = await res.json();
-        if(result.status === 'success') { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); loadData(); }
-    } catch(e) { alert("Save failed!"); }
-}
+    vibe();
+    document.getElementById('betPickerModal').classList.remove('active');
+    
+    const payload = {
+        user: currentUser,
+        row: currentBetContext.matchIdx,
+        subCol: currentBetContext.subColIdx,
+        value: val
+    };
 
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if(result.status === 'success') {
+            // CONFETTI ONLY ON SUCCESSFUL SAVE
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 9999 });
+            loadData(); 
+        }
+    } catch(e) {
+        alert("Save failed! Check connection.");
+    }
+}
 function drawHistoryChart(t){
   if(historyChart&&historyChart._type===t)return; 
   const ctx=document.getElementById("historyChart").getContext("2d");

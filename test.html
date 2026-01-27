@@ -760,23 +760,11 @@ function loadData(){
 
         const matchCount = data.matches.length;
 
-        // ---- SORTING LOGIC TO PREVENT JUMPING ----
-        // If ANY column is unlocked/open, we force chronological sort to prevent jumping while betting.
-        // Only if ALL columns are locked/finished do we allow standard sorting (which might put winners on top).
-        const allLocked = data.headers.every(h => h.status === 'locked' || h.status === 'red' || h.color === 'red');
-        
-        let displayMatches = [...data.matches];
-        if (!allLocked) {
-            // FORCE CHRONOLOGICAL SORT
-            displayMatches.sort((a, b) => {
-                // Assuming ID or array index represents time order
-                // If specific date/time is available, use that. Fallback to existing index order.
-                if (a.date && b.date) return new Date(a.date) - new Date(b.date);
-                return 0; 
-            });
-        }
+        // ---- NO SORTING. PURE SHEET ORDER ----
+        // This ensures rows never jump.
+        data.matches.forEach((m, i) => m.originalIndex = i);
 
-        displayMatches.forEach((m, idx)=>{
+        data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           const lr=document.createElement("div");
@@ -846,9 +834,10 @@ function loadData(){
                   if (isMyColumn) {
                       if (!isColumnLocked) {
                           el.style.cursor = "pointer";
-                          // Calculate relative index based on mapped global indices
+                          // Calculate relative index (0 or 1) based on mapped global indices
                           const relativeIndex = myGlobalIndices.indexOf(cellIndex);
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
+                          // PASS ORIGINAL INDEX TO PREVENT SORTING BUG
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(m.originalIndex, relativeIndex, m.match); };
                       } else {
                           // LOCKED VALUE
                           el.style.border = "1.5px solid rgba(255,255,255,0.2)";
@@ -879,7 +868,8 @@ function loadData(){
                       if(!isColumnLocked) {
                           el.classList.add('my-empty');
                           const relativeIndex = myGlobalIndices.indexOf(cellIndex);
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
+                          // PASS ORIGINAL INDEX TO PREVENT SORTING BUG
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(m.originalIndex, relativeIndex, m.match); };
                       } else {
                           el.classList.add('my-locked');
                           el.onclick = null;

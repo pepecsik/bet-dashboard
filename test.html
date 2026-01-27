@@ -301,6 +301,9 @@ body{ margin:0; font-family: var(--font-main); font-size: var(--base-size); back
 .bet-opt-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px 5px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: transform 0.1s; font-family: var(--font-main); }
 .bet-opt-btn:active { transform: scale(0.9); background: var(--accent-orange); }
 
+.clear-btn { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #ef4444; margin-top: 15px; width: 100%; }
+.clear-btn:active { background: #ef4444; color: white; }
+
 /* Login */
 .login-avatar-btn { width: 80px; height: 80px; border-radius: 12px; background: var(--bg-soft); border: 2px solid var(--border-light); cursor: pointer; transition: transform 0.2s, border-color 0.2s; object-fit: cover; padding: 0; }
 .login-avatar-btn:active { transform: scale(0.9); border-color: var(--accent-orange); }
@@ -479,6 +482,7 @@ body{ margin:0; font-family: var(--font-main); font-size: var(--base-size); back
         <div id="gridWin" class="bet-grid"></div>
         <div id="gridScore" class="bet-grid-scores" style="display:none;"></div>
         <div id="gridGoals" class="bet-grid" style="display:none;"></div>
+        <button class="bet-opt-btn clear-btn" onclick="submitBet('')">Empty / Clear Bet</button>
     </div>
   </div>
 </div>
@@ -743,11 +747,12 @@ function loadData(){
         right.appendChild(headerRow); 
         right.appendChild(document.createElement("div")).className="right-divider";
 
-        // ---- CALCULATE GLOBAL INDICES FOR CURRENT USER ----
+        // ---- CALCULATE GLOBAL INDICES FOR CURRENT USER (INCLUDING EXTRAS) ----
         let myGlobalIndices = [];
         if (currentUser) {
             data.headers.forEach((h, index) => {
-                if (h.name.includes(currentUser)) {
+                // If the header name matches the user (even if it's "Timbo" in column J)
+                if (h.name && h.name.trim().toUpperCase() === currentUser.toUpperCase()) {
                     myGlobalIndices.push(index);
                 }
             });
@@ -841,7 +846,7 @@ function loadData(){
                   if (isMyColumn) {
                       if (!isColumnLocked) {
                           el.style.cursor = "pointer";
-                          // Calculate relative index (0 or 1) based on mapped global indices
+                          // Calculate relative index based on mapped global indices
                           const relativeIndex = myGlobalIndices.indexOf(cellIndex);
                           el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
                       } else {
@@ -1085,10 +1090,12 @@ async function submitBet(val) {
     try {
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await res.json();
-        // SUBTLE POP CONFETTI
-        if(result.status === 'success') { 
+        // SUBTLE POP CONFETTI ONLY IF SAVING (NOT CLEARING) AND SUCCESS
+        if(result.status === 'success' && val !== "") { 
             confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 }, scalar: 0.7, startVelocity: 20 }); 
             loadData(); 
+        } else if (result.status === 'success') {
+            loadData(); // Just reload on clear
         }
     } catch(e) { alert("Save failed!"); }
 }
@@ -1122,9 +1129,7 @@ function showBigWin(txt, avatarUrl){
 }
 
 function fireScreenBlaster(el){
-    // Don't rely on dataset attribute of destroyed element, use header name tracking
     if(!el.textContent) return;
-    // Handled in loadData loop via Set
     var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}}())
 }
 function normalizeName(str) {

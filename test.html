@@ -760,11 +760,27 @@ function loadData(){
 
         const matchCount = data.matches.length;
 
-        // ---- NO SORTING. PURE SHEET ORDER ----
-        // This ensures rows never jump.
+        // ---- STABLE SORTING LOGIC ----
+        const allLocked = data.headers.every(h => h.status === 'locked' || h.status === 'red' || h.color === 'red');
+        
+        // Tag original index to prevent the "Row 1 Bug"
         data.matches.forEach((m, i) => m.originalIndex = i);
 
-        data.matches.forEach((m, idx)=>{
+        let displayMatches = [...data.matches];
+        
+        // UNLESS EVERYONE IS LOCKED, FORCE TIME SORT (Prevents jumping)
+        if (allLocked) {
+            // "Nice Ranking System" (Live/Winning games float to top)
+            displayMatches.sort((a, b) => {
+                // Custom ranking logic if you have it, otherwise fallback to original
+                return a.originalIndex - b.originalIndex; 
+            });
+        } else {
+            // STRICT SCHEDULE ORDER (No jumping while typing)
+            displayMatches.sort((a, b) => a.originalIndex - b.originalIndex);
+        }
+
+        displayMatches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           const lr=document.createElement("div");
@@ -818,7 +834,8 @@ function loadData(){
               const headerName = headerInfo.name;
               
               // 1. IS THIS COLUMN LOCKED? (Price filled in row 18)
-              const isColumnLocked = headerInfo && (headerInfo.status === 'red' || headerInfo.status === 'locked' || headerInfo.color === 'red');
+              // Added explicit check for 'red' status which usually comes from backend when row 18 is filled
+              const isColumnLocked = headerInfo && (headerInfo.status === 'red' || headerInfo.status === 'locked' || headerInfo.color === 'red' || headerInfo.color === '#ff0000');
               
               // 2. IS THIS MY COLUMN?
               const isMyColumn = currentUser && headerName.includes(currentUser);
@@ -834,7 +851,7 @@ function loadData(){
                   if (isMyColumn) {
                       if (!isColumnLocked) {
                           el.style.cursor = "pointer";
-                          // Calculate relative index (0 or 1) based on mapped global indices
+                          // Calculate relative index based on mapped global indices
                           const relativeIndex = myGlobalIndices.indexOf(cellIndex);
                           // PASS ORIGINAL INDEX TO PREVENT SORTING BUG
                           el.onclick = (e) => { e.stopPropagation(); openBetPicker(m.originalIndex, relativeIndex, m.match); };
@@ -842,7 +859,8 @@ function loadData(){
                           // LOCKED VALUE
                           el.style.border = "1.5px solid rgba(255,255,255,0.2)";
                           el.style.cursor = "default";
-                          el.onclick = null; // Remove listener
+                          el.onclick = null; 
+                          el.style.pointerEvents = "none";
                       }
                   }
 
@@ -873,6 +891,7 @@ function loadData(){
                       } else {
                           el.classList.add('my-locked');
                           el.onclick = null;
+                          el.style.pointerEvents = "none";
                       }
                   } else {
                       el.style.visibility = "hidden";

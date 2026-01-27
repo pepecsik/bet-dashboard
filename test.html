@@ -1153,6 +1153,25 @@ function loadData(){
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
+        // 1. DETERMINE LOCK STATE (Row 18 in Sheet = index 1 in betSummary)
+        // We create an array of booleans indicating if each column is locked
+        const lockedColumns = data.betSummary[1].cells.map(c => {
+            const val = parseFloat(c.value);
+            return (val > 0 || (c.value && String(c.value).trim() !== "£ 0.00" && String(c.value).trim() !== "0"));
+        });
+
+        // 2. CONDITIONAL SORTING
+        // Check if current user has any columns that are NOT locked
+        const userHeaderIndices = data.headers.map((h, i) => h.name.includes(currentUser) ? i : -1).filter(i => i !== -1);
+        const hasActiveUnlockedCol = userHeaderIndices.some(idx => !lockedColumns[idx]);
+
+        // If we are logged in and have work to do, we DON'T sort (keep sheet order)
+        // If logged out or all our bets are locked/done, we apply the alphabetical/numeric sort
+        if (!currentUser || !hasActiveUnlockedCol) {
+            // Apply sorting logic to headers and matches if desired
+            // (Note: To keep this simple and stable while betting, we mostly focus on the UI below)
+        }
+
         let nLive = 0, nUpcoming = 0, nFinished = 0;
         data.matches.forEach(m => {
              const st = m.status;
@@ -1203,6 +1222,8 @@ function loadData(){
                p.classList.add("has-avatar");
                p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
            } else { p.textContent=h.name; }
+           
+           // Apply status classes
            if(hasB&&!hasR&&allG&&pen===0){
                p.classList.add("status-green");
                if(isFirstLoad) setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500);
@@ -1211,6 +1232,10 @@ function loadData(){
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
+           
+           // Visual feedback if column is locked
+           if (lockedColumns[i]) { p.style.opacity = "0.5"; }
+
            wrapper.appendChild(p);
            headerRow.appendChild(wrapper);
         });
@@ -1270,14 +1295,20 @@ function loadData(){
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               el.setAttribute('data-col-idx', cellIndex);
 
-              // DYNAMIC PERMISSION CHECK
               const headerName = data.headers[cellIndex].name;
               const isMyColumn = currentUser && headerName.includes(currentUser);
-              if (isMyColumn) {
+              const isLocked = lockedColumns[cellIndex];
+
+              // EDITABLE LOGIC
+              if (isMyColumn && !isLocked) {
+                  el.classList.remove('empty'); // Force visibility
+                  el.style.border = "1.5px dashed var(--accent-orange)";
+                  el.style.background = "rgba(251, 146, 60, 0.05)";
+                  el.style.cursor = "pointer";
+                  
                   const myCols = data.headers.filter(h => h.name.includes(currentUser));
                   const subColIdx = myCols.findIndex(h => h.name === headerName);
-                  el.style.border = "1.5px dashed var(--accent-orange)";
-                  el.style.cursor = "pointer";
+                  
                   el.onclick = (e) => {
                       e.stopPropagation();
                       openBetPicker(idx, subColIdx, m.match);
@@ -1305,7 +1336,8 @@ function loadData(){
                       }
                       if(isWinning) el.classList.add("sweat-active");
                   }
-              } else {
+              } else if (!isMyColumn) {
+                  // Hide only if it's NOT my column
                   el.style.setProperty('--bet-bg', 'transparent');
                   el.classList.add('empty');
               }
@@ -1314,6 +1346,7 @@ function loadData(){
           right.appendChild(rr);
       });
 
+      // Filter section insertion...
       const filterSection = document.createElement("div");
       filterSection.className = "filter-separator spacer-bar";
       filterSection.innerHTML = `
@@ -1436,34 +1469,66 @@ function switchBetTab(tab) {
 function openBetPicker(matchIdx, subColIdx, matchName) {
     vibe();
     currentBetContext = { matchIdx, subColIdx };
-    const teams = matchName.split('-').map(t => t.trim());
-    const homeTeam = teams[0], awayTeam = teams[1];
+    const [homeTeam, awayTeam] = matchName.split('-').map(t => t.trim());
     document.getElementById('bpMatchTitle').textContent = matchName;
-    document.getElementById('bpUserSub').textContent = `${currentUser} Selection`;
     
-    const winGrid = document.getElementById('gridWin'); winGrid.innerHTML = '';
+    // 1. WINNER GRID
+    const winGrid = document.getElementById('gridWin');
+    winGrid.innerHTML = '';
     [homeTeam, 'X', awayTeam].forEach(opt => {
-        const btn = document.createElement('button'); btn.className = 'bet-opt-btn';
+        const btn = document.createElement('button');
+        btn.className = 'bet-opt-btn';
         btn.innerHTML = `<span style="display:block;font-size:10px;opacity:0.6;">${opt === 'X' ? 'Draw' : 'Win'}</span>${opt}`;
-        btn.onclick = () => submitBet(opt); winGrid.appendChild(btn);
+        btn.onclick = () => submitBet(opt);
+        winGrid.appendChild(btn);
     });
 
-    const scoreGrid = document.getElementById('gridScore'); scoreGrid.innerHTML = '';
-    ['1-0','2-0','2-1','3-0','3-1','3-2','0-0','1-1','2-2','0-1','0-2','1-2','0-3','1-3','2-3'].forEach(opt => {
-        const btn = document.createElement('button'); btn.className = 'bet-opt-btn'; btn.textContent = opt;
-        btn.onclick = () => submitBet(opt); scoreGrid.appendChild(btn);
+    // 2. SCORE GRID (Left: Home, Mid: Draw, Right: Away)
+    const scoreGrid = document.getElementById('gridScore');
+    scoreGrid.innerHTML = `
+        <div style="color:var(--accent-orange); text-align:center; font-weight:800; margin-bottom:5px;">${homeTeam}</div>
+        <div style="color:var(--text-muted); text-align:center; font-weight:800; margin-bottom:5px;">DRAW</div>
+        <div style="color:var(--accent-orange); text-align:center; font-weight:800; margin-bottom:5px;">${awayTeam}</div>
+    `;
+    
+    const homeWins = ['1-0','2-0','2-1','3-0','3-1','3-2','4-0','4-1','4-2','4-3','5-0','5-1','6-0'];
+    const draws = ['0-0','1-1','2-2','3-3','4-4'];
+    const awayWins = ['0-1','0-2','1-2','0-3','1-3','2-3','0-4','1-4','2-4','3-4','0-5','1-5','0-6'];
+
+    const maxRows = Math.max(homeWins.length, draws.length, awayWins.length);
+    for(let i=0; i<maxRows; i++) {
+        [homeWins[i], draws[i], awayWins[i]].forEach(opt => {
+            if(opt) {
+                const btn = document.createElement('button');
+                btn.className = 'bet-opt-btn';
+                btn.style.padding = "10px 2px";
+                btn.textContent = opt;
+                btn.onclick = () => submitBet(opt);
+                scoreGrid.appendChild(btn);
+            } else {
+                scoreGrid.appendChild(document.createElement('div'));
+            }
+        });
+    }
+
+    // 3. GOALS GRID (Over Left, Under/Special Right)
+    const goalsGrid = document.getElementById('gridGoals');
+    goalsGrid.innerHTML = '';
+    const goalOpts = [
+        'Goals 0.5', 'Goals 1.5', 'Goals 2.5', 'Goals 3.5', 
+        'Goals 4.5', 'Goals 5.5', 'BTTS', 'No BTTS'
+    ];
+    goalOpts.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'bet-opt-btn';
+        btn.textContent = opt;
+        btn.onclick = () => submitBet(opt);
+        goalsGrid.appendChild(btn);
     });
 
-    const goalsGrid = document.getElementById('gridGoals'); goalsGrid.innerHTML = '';
-    ['O 0.5', 'O 1.5', 'O 2.5', 'O 3.5', 'U 1.5', 'U 2.5', 'BTTS', 'No BTTS'].forEach(opt => {
-        const btn = document.createElement('button'); btn.className = 'bet-opt-btn';
-        if(opt.startsWith('O')) btn.style.color = 'var(--accent-green)';
-        if(opt.startsWith('U')) btn.style.color = '#ff4d4d';
-        btn.textContent = opt; btn.onclick = () => submitBet(opt); goalsGrid.appendChild(btn);
-    });
     document.getElementById('betPickerModal').classList.add('active');
 }
-
+ 
 async function submitBet(val) {
     vibe(); document.getElementById('betPickerModal').classList.remove('active');
     const payload = { user: currentUser, row: currentBetContext.matchIdx, subCol: currentBetContext.subColIdx, value: val };

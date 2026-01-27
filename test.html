@@ -731,8 +731,6 @@ function loadData(){
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
-           
-           // Locked status just marks border red in styling, doesn't gray out avatar
            else if(h.status==='red' || h.status==='locked') p.classList.add("status-red");
            
            wrapper.appendChild(p);
@@ -741,6 +739,17 @@ function loadData(){
 
         right.appendChild(headerRow); 
         right.appendChild(document.createElement("div")).className="right-divider";
+
+        // ---- CALCULATE GLOBAL INDICES FOR CURRENT USER ----
+        // This fixes the "Row 1 Bug". We find exactly which columns belong to the user.
+        let myGlobalIndices = [];
+        if (currentUser) {
+            data.headers.forEach((h, index) => {
+                if (h.name.includes(currentUser)) {
+                    myGlobalIndices.push(index);
+                }
+            });
+        }
 
         const matchCount = data.matches.length;
 
@@ -797,14 +806,10 @@ function loadData(){
               const headerInfo = data.headers[cellIndex];
               const headerName = headerInfo.name;
               
-              // 1. IS THIS COLUMN LOCKED? (Price filled in row 18)
               const isColumnLocked = headerInfo && (headerInfo.status === 'red' || headerInfo.status === 'locked' || headerInfo.color === 'red');
-              
-              // 2. IS THIS MY COLUMN?
               const isMyColumn = currentUser && headerName.includes(currentUser);
 
               if(c.value){
-                  // HAS VALUE
                   el.textContent=c.value;
                   let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
@@ -812,15 +817,12 @@ function loadData(){
                   el.style.backgroundColor = color; 
                   
                   if (isMyColumn) {
-                      // FIND RELATIVE INDEX (0 or 1) for Backend
-                      const myCols = data.headers.filter(h => h.name.includes(currentUser));
-                      const relativeSubColIdx = myCols.findIndex(h => h.name === headerName);
-
                       if (!isColumnLocked) {
                           el.style.cursor = "pointer";
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeSubColIdx, m.match); };
+                          // Calculate relative index (0 or 1) based on mapped global indices
+                          const relativeIndex = myGlobalIndices.indexOf(cellIndex);
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
                       } else {
-                          // LOCKED VALUE
                           el.style.border = "1.5px solid rgba(255,255,255,0.2)";
                       }
                   }
@@ -839,25 +841,19 @@ function loadData(){
                       if(isWinning) el.classList.add("sweat-active");
                   }
               } else {
-                  // EMPTY CELL
+                  // EMPTY
                   el.classList.add('empty');
                   el.style.setProperty('--bet-bg', 'transparent');
                   
                   if (isMyColumn) {
-                      // FIND RELATIVE INDEX (0 or 1) for Backend
-                      const myCols = data.headers.filter(h => h.name.includes(currentUser));
-                      const relativeSubColIdx = myCols.findIndex(h => h.name === headerName);
-
                       if(!isColumnLocked) {
-                          // EDITABLE EMPTY (Orange Dashes)
                           el.classList.add('my-empty');
-                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeSubColIdx, m.match); };
+                          const relativeIndex = myGlobalIndices.indexOf(cellIndex);
+                          el.onclick = (e) => { e.stopPropagation(); openBetPicker(idx, relativeIndex, m.match); };
                       } else {
-                          // LOCKED EMPTY (Solid Border)
                           el.classList.add('my-locked');
                       }
                   } else {
-                      // NOT MY COLUMN -> HIDE
                       el.style.visibility = "hidden";
                       el.style.pointerEvents = "none";
                   }
@@ -1010,12 +1006,12 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
         btn.onclick = () => submitBet(opt); winGrid.appendChild(btn);
     });
 
-    // SCORE TAB (SPLIT LEFT/MID/RIGHT) with logic for up to 6 goals
+    // SCORE TAB
     const scoreGrid = document.getElementById('gridScore'); scoreGrid.innerHTML = '';
     
     const colHome = document.createElement('div'); colHome.className='col-group';
     colHome.innerHTML=`<div style="font-size:9px;color:#aaa;text-align:center">HOME</div>`;
-    // Generate Home Wins (Score > Opponent) up to 6
+    // Generate Home Wins
     for(let h=1; h<=6; h++) {
         for(let a=0; a<h; a++) {
             let s = `${h}-${a}`;
@@ -1025,7 +1021,7 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
 
     const colDraw = document.createElement('div'); colDraw.className='col-group';
     colDraw.innerHTML=`<div style="font-size:9px;color:#aaa;text-align:center">DRAW</div>`;
-    // Generate Draws up to 6-6
+    // Generate Draws
     for(let i=0; i<=6; i++) {
         let s = `${i}-${i}`;
         const b=document.createElement('button'); b.className='bet-opt-btn'; b.style.padding="8px"; b.textContent=s; b.onclick=()=>submitBet(s); colDraw.appendChild(b);
@@ -1033,7 +1029,7 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
 
     const colAway = document.createElement('div'); colAway.className='col-group';
     colAway.innerHTML=`<div style="font-size:9px;color:#aaa;text-align:center">AWAY</div>`;
-    // Generate Away Wins (Score > Opponent) up to 6
+    // Generate Away Wins
     for(let a=1; a<=6; a++) {
         for(let h=0; h<a; h++) {
             let s = `${h}-${a}`;
@@ -1059,13 +1055,15 @@ function openBetPicker(matchIdx, subColIdx, matchName) {
 
 async function submitBet(val) {
     vibe(); document.getElementById('betPickerModal').classList.remove('active');
-    // NOTE: subCol in context is now actually the global cellIndex
     const payload = { user: currentUser, row: currentBetContext.matchIdx, subCol: currentBetContext.subCol, value: val };
     try {
         const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
         const result = await res.json();
-        // Only trigger confetti if successful save
-        if(result.status === 'success') { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); loadData(); }
+        // SUBTLE POP CONFETTI
+        if(result.status === 'success') { 
+            confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 }, scalar: 0.7, startVelocity: 20 }); 
+            loadData(); 
+        }
     } catch(e) { alert("Save failed!"); }
 }
 
@@ -1098,9 +1096,7 @@ function showBigWin(txt, avatarUrl){
 }
 
 function fireScreenBlaster(el){
-    // Don't rely on dataset attribute of destroyed element, use header name tracking
     if(!el.textContent) return;
-    // Handled in loadData loop via Set
     var end=Date.now()+2000;(function frame(){confetti({particleCount:4,angle:60,spread:55,origin:{x:0,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});confetti({particleCount:4,angle:120,spread:55,origin:{x:1,y:0.6},colors:['#7CFF5B','#ffffff','#FFD700'],zIndex:2000,scalar:1.2});if(Date.now()<end){requestAnimationFrame(frame)}}())
 }
 function normalizeName(str) {

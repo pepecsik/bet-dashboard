@@ -1,543 +1,399 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="carbon">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
- 
 <link rel="manifest" href="/bet-dashboard/manifest.json">
-<meta name="theme-color" content="#141619">
-
+<meta name="theme-color" content="#134d2b">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Juice Bets">
-
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-<title>Juice Bets</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+<title>Juice Bets v6.0 Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-/* --- THEME: CARBON --- */
-:root {
-  --font-main: 'Inter', system-ui;
-  --bg-grad: #141619; 
-  --bg-card: #21252b;
-  --bg-soft: #2b3038;
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --accent-orange: #fb923c;
-  --accent-green: #4ade80;
-  --border-light: 1px solid rgba(255,255,255,0.1);
-  --rad: 10px;
+/* --- CORE CSS --- */
+:root{ --bg-main:#1c1f23; --bg-card:#262a30; --bg-soft:#2f343a; --bg-row:#343a40; --text-main:#ffffff; --text-muted:#9aa0a6; --accent-orange: #ff9f43; --accent-green: #7CFF5B; --row-h:50px; --header-h:50px; --header-pill-w:70px; --gap:8px; --left-w:230px; --bet-w:80px; --summary-w:200px; --week-row-h:30px; --filter-h: 40px; --rad-sm: 6px; --rad-md: 10px; --rad-lg: 14px; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+body{ margin:0; font-family:Inter,system-ui,sans-serif; background: radial-gradient(circle at 50% 0%, #2f343a 0%, #1c1f23 80%); color:var(--text-main); height: 100vh; overflow: hidden; letter-spacing: -0.02em; }
+
+/* LAYOUT */
+.app{ height:100vh; display:grid; grid-template-rows: 1fr auto; }
+.main{ display:flex; gap:10px; padding:10px; overflow:hidden; position: relative; z-index: 5; }
+.left-card{ width:var(--left-w); background:var(--bg-card); border-radius:var(--rad-lg); padding:8px; display:flex; flex-direction:column; gap:var(--gap); overflow-y:auto; max-height:100%; scrollbar-width:none; border: 1px solid rgba(255, 255, 255, 0.08); }
+.left-card::-webkit-scrollbar { display: none; }
+.right-card{ flex:1; background:var(--bg-card); border-radius:var(--rad-lg); overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none; border: 1px solid rgba(255, 255, 255, 0.08); }
+.right-card::-webkit-scrollbar { display: none; }
+
+/* HEADER & FILTERS */
+.left-header { height:var(--header-h); background: rgba(47, 52, 58, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05); border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center; position: sticky; top: 0; z-index: 20; }
+.header-title-box { display:flex; flex-direction:column; align-items:center; line-height:1.2; }
+.header-main-text { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+.header-sub-text { font-size: 9px; font-weight: 600; color: var(--accent-orange); text-transform: uppercase; }
+.spacer-bar { display: flex; align-items: center; justify-content: space-between; height: var(--filter-h); margin: 8px 0; }
+.filter-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.05); color: var(--text-muted); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--rad-sm); transition: all 0.2s; }
+.filter-btn.active { background: #fff; color: #000; }
+.left-divider, .right-divider { height: 6px; flex-shrink: 0; }
+
+/* MATCH ROWS */
+.left-row{ height:var(--row-h); display:grid; grid-template-columns:1fr 90px; gap:var(--gap); cursor: pointer; position: relative; z-index: 5; border-radius: 12px; transition: transform 0.1s; }
+.left-row:active { transform: scale(0.96); background: rgba(255,255,255,0.1); }
+.left-cell{ background:var(--bg-soft); border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; }
+.match-teams { display: flex; align-items: center; gap: 6px; }
+.team-logo { width: 30px; height: 30px; object-fit: contain; }
+
+/* BET PILLS */
+.rows{ display:flex; flex-direction:column; gap:var(--gap); min-width:max-content; }
+.row{ display:flex; gap:var(--gap); }
+.header-row-sticky { position: sticky; top: 0; z-index: 20; background: var(--bg-card); height: var(--header-h); display: flex; align-items: center; }
+.header-pill-wrapper { width: var(--bet-w); height: 100%; display: flex; align-items: center; justify-content: center; }
+.header-pill{ width:var(--header-pill-w); height:50px; background:var(--bg-soft); border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; position:relative; overflow: visible; }
+.avatar-img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.35); filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5; }
+
+.bet{ width:var(--bet-w); height:var(--row-h); border-radius: var(--rad-md); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#111; background: var(--bet-bg); box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; }
+.bet.empty { background: transparent !important; border: none !important; box-shadow: none !important; }
+
+/* --- EDITABLE MODE STYLES --- */
+.editable-col .header-pill { box-shadow: 0 0 0 2px var(--accent-orange); }
+.editable-col .bet:not(.empty) { cursor: pointer; }
+.editable-col .bet.editable-active { 
+  border: 2px dashed var(--accent-orange) !important; 
+  background-color: rgba(255, 159, 67, 0.1) !important;
+  color: #fff !important;
 }
+.editable-col .bet.editable-active:active { transform: scale(0.9); background: var(--accent-orange) !important; color: #000 !important; }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
-body { margin: 0; font-family: var(--font-main); font-size: 12px; background: var(--bg-grad); color: var(--text-main); height: 100vh; overflow: hidden; }
+/* --- LOGIN SCREEN --- */
+.login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1c1f23; z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+.login-title { font-size: 24px; font-weight: 800; margin-bottom: 40px; color: #fff; letter-spacing: -1px; }
+.login-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 400px; }
+.login-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: transform 0.2s; }
+.login-item:active { transform: scale(0.9); }
+.login-avatar { width: 90px; height: 90px; border-radius: 50%; background: #2f343a; border: 4px solid transparent; padding: 5px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s; object-fit: contain; }
+.login-item:hover .login-avatar { border-color: var(--accent-orange); transform: translateY(-5px); }
+.login-name { font-weight: 700; font-size: 14px; color: var(--text-muted); }
+.viewer-btn { margin-top: 50px; background: transparent; border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 30px; color: #fff; font-weight: 600; cursor: pointer; }
 
-/* --- LAYOUT --- */
-.app { height: 100vh; display: grid; grid-template-rows: 1fr auto; }
-.main { display: flex; gap: 8px; padding: 8px; overflow: hidden; position: relative; }
+/* --- BET INPUT MODAL --- */
+.bet-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2500; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+.bet-card { background: var(--bg-card); padding: 25px; border-radius: 20px; width: 300px; display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s; }
+.bet-modal.active .bet-card { transform: translateY(0); }
+.bet-match-title { text-align: center; font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.bet-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.opt-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 15px 0; border-radius: 12px; font-weight: 800; font-size: 18px; cursor: pointer; transition: background 0.2s; }
+.opt-btn:active { background: var(--accent-orange); color: #000; }
+.score-input-wrap { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 5px; }
+.score-in { background: #111; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 8px; width: 100%; text-align: center; font-size: 16px; font-weight: 700; }
+.submit-bet-btn { background: var(--accent-green); color: #000; border: none; padding: 15px; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer; margin-top: 10px; width: 100%; }
+.close-bet { position: absolute; top: 15px; right: 15px; color: #fff; cursor: pointer; font-size: 20px; opacity: 0.5; }
 
-/* --- LEFT COLUMN (MATCHES) --- */
-.left-card { 
-    width: 220px; flex-shrink: 0; 
-    background: var(--bg-card); border-radius: var(--rad); 
-    display: flex; flex-direction: column; gap: 5px; 
-    overflow-y: hidden; /* Scroll linked via JS */
-    border: var(--border-light);
-}
+/* --- SUMMARY FOOTER --- */
+.summary { background: var(--bg-card); margin: 0 10px 10px 10px; border-radius: var(--rad-lg); overflow: hidden; position: relative; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.08); }
+.summary-toggle{ background:var(--bg-soft); padding:8px 12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.summary-toggle::before{ content:"▼"; font-size:14px; transition:transform .25s ease; }
+.summary-toggle.open::before{ transform:rotate(180deg); }
+.summary-content{ padding:10px; display:none; }
+.summary-content.show{ display:block; }
+.logout-btn { background: #ff4d4d; border: none; padding: 4px 12px; border-radius: 12px; color: #fff; font-size: 10px; font-weight: 700; margin-left: 10px; cursor: pointer; }
 
-/* --- RIGHT COLUMN (BETS) --- */
-.right-card { 
-    flex: 1; 
-    background: var(--bg-card); border-radius: var(--rad); 
-    display: flex; flex-direction: column; 
-    overflow: hidden; 
-    border: var(--border-light);
-}
-.headers-area { 
-    display: flex; gap: 5px; padding: 8px; 
-    border-bottom: var(--border-light); 
-    background: var(--bg-soft); 
-    overflow-x: hidden; /* Linked scroll */
-    min-height: 66px;
-}
-.scroll-area { overflow: auto; padding: 8px; flex: 1; scroll-behavior: smooth; }
+/* ANIMATIONS & OTHER UI */
+@keyframes nervousPulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); box-shadow: 0 0 15px var(--accent-orange); } 100% { transform: scale(1); } }
+.status-orange { background-color: var(--accent-orange) !important; color: #000 !important; animation: nervousPulse 1.5s infinite ease-in-out !important; }
+.status-green { background-color: var(--accent-green) !important; color: #000 !important; }
+.status-red { background-color: #ff4d4d !important; color: #fff !important; opacity: 0.9; }
+.gold-active { background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important; animation: goldPulse 2s infinite !important; }
 
-/* --- ROW STYLES --- */
-.match-row { 
-    height: 50px; margin-bottom: 6px; 
-    background: var(--bg-soft); border-radius: 8px; 
-    display: flex; align-items: center; padding: 0 8px;
-    border: 1px solid transparent;
-    flex-shrink: 0;
-}
-.match-row.live { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.05); }
-
-.team-box { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; }
-.vs-tag { opacity: 0.4; font-size: 9px; }
-.score-box { width: 50px; text-align: center; font-weight: 800; font-size: 12px; display:flex; flex-direction:column; justify-content:center; }
-.status-tag { font-size: 9px; padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,0.3); color: var(--text-muted); width:fit-content; margin: 0 auto; }
-.team-logo { width: 28px; height: 28px; object-fit: contain; }
-
-/* --- BET CELLS --- */
-.bet-row { display: flex; gap: 5px; margin-bottom: 6px; height: 50px; flex-shrink: 0; }
-.bet-cell { 
-    width: 80px; flex-shrink: 0; height: 50px; 
-    border-radius: 8px; 
-    display: flex; align-items: center; justify-content: center; 
-    font-weight: 800; font-size: 13px; color: #fff;
-    background: rgba(255,255,255,0.03); 
-    border: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.2s;
-}
-
-/* --- STATES --- */
-/* Your empty cell (Clickable) */
-.bet-cell.my-empty { 
-    border: 1.5px dashed var(--accent-orange) !important; 
-    background: rgba(251, 146, 60, 0.05) !important;
-    cursor: pointer;
-}
-/* Locked cell (Solid) */
-.bet-cell.locked {
-    border: 1.5px solid rgba(255,255,255,0.15) !important;
-    opacity: 0.8;
-    pointer-events: none;
-}
-/* Filled cell */
-.bet-cell.filled {
-    background: #2b3038; 
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-/* --- HEADERS --- */
-.header-cell { 
-    width: 80px; flex-shrink: 0; height: 50px; 
-    border-radius: 8px; background: var(--bg-card); 
-    display: flex; align-items: center; justify-content: center; 
-    position: relative; border: 1px solid rgba(255,255,255,0.1);
-}
-.avatar { width: 100%; height: 100%; object-fit: contain; transform: scale(1.35); filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
-.header-name { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; text-align:center; }
-
-/* --- MODALS --- */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-.modal-overlay.active { display: flex; }
-.modal-card { width: 90%; max-width: 350px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; text-align: center; }
-
-.login-grid { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap:wrap; }
-.login-btn { 
-    display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; 
-    padding: 10px; border-radius: 10px; background: var(--bg-soft); border: 1px solid transparent; width: 90px;
-}
-.login-btn:active { border-color: var(--accent-orange); transform: scale(0.95); }
-.login-img { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; background: #000; }
-.login-name { font-weight: 700; font-size: 11px; }
-
-/* --- BET PICKER --- */
-.picker-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
-.picker-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 5px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.picker-btn:active { background: var(--accent-orange); }
-.clear-btn { grid-column: span 3; background: rgba(255,0,0,0.15); color: #ff6b6b; border-color: rgba(255,0,0,0.3); }
-
-/* --- SUMMARY --- */
-.summary { background: var(--bg-card); margin: 0 8px 8px; padding: 10px; border-radius: 12px; border: var(--border-light); height: 120px; overflow: hidden; }
-
-/* LOADING */
-#loading { position: fixed; top:0; left:0; width:100%; height:100%; background:#141619; z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:800; letter-spacing:2px; gap:10px; }
-
-/* Logo Fallback */
-.logo-fallback { width: 28px; height: 28px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+/* MOBILE ADJUSTMENTS */
+@media (max-width: 768px){ .app { display: flex; flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; } .main { flex-direction: row; overflow: visible; } .left-card, .right-card { max-height: none; overflow: visible; } }
 </style>
 </head>
 <body>
 
-<div id="loading">
-    <div>LOADING DATA...</div>
-    <div style="font-size:10px; opacity:0.5; font-weight:400;">Please wait...</div>
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-title">Who are you?</div>
+  <div class="login-grid">
+    <div class="login-item" onclick="loginUser('Snackbar')">
+      <img src="./snackbar.png" class="login-avatar">
+      <div class="login-name">Snackbar</div>
+    </div>
+    <div class="login-item" onclick="loginUser('Timbo')">
+      <img src="./timbo.png" class="login-avatar">
+      <div class="login-name">Timbo</div>
+    </div>
+    <div class="login-item" onclick="loginUser('Pepe')">
+      <img src="./pepe.png" class="login-avatar">
+      <div class="login-name">Pepe</div>
+    </div>
+  </div>
+  <button class="viewer-btn" onclick="loginUser('Viewer')">Just Watching</button>
+</div>
+
+<div id="betModal" class="bet-modal">
+  <div class="bet-card">
+    <div class="close-bet" onclick="closeBetModal()">×</div>
+    <div class="bet-match-title" id="bmTitle">ARS vs MAN</div>
+    <div class="bet-options">
+      <button class="opt-btn" onclick="setBetValue('1')">1</button>
+      <button class="opt-btn" onclick="setBetValue('X')">X</button>
+      <button class="opt-btn" onclick="setBetValue('2')">2</button>
+    </div>
+    <div class="score-input-wrap">
+      <input type="text" id="customBetInput" class="score-in" placeholder="Score (e.g. 2-1) or O1.5">
+    </div>
+    <button class="submit-bet-btn" onclick="submitCustomBet()">PLACE BET</button>
+  </div>
 </div>
 
 <div class="app">
   <div class="main">
-    <div class="left-card" id="matchList"></div>
-
-    <div class="right-card">
-        <div class="headers-area" id="headersList"></div>
-        <div class="scroll-area" id="betsList"></div>
-    </div>
+    <div class="left-card" id="left"></div>
+    <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
-  
-  <footer class="summary" id="footerStats">
-      <div style="font-size:10px; font-weight:700; color:#666; margin-bottom:5px;">WEEKLY LEADERBOARD</div>
-      <div id="rankingList" style="display:flex; flex-direction:column; gap:4px;"></div>
+
+  <footer class="summary">
+    <div class="summary-toggle" id="summaryToggle"></div>
+    <div class="summary-content" id="summaryContentWrap">
+       <div id="weeklyCard"></div>
+       <button class="logout-btn" onclick="logout()">LOGOUT</button>
+    </div>
   </footer>
 </div>
 
-<div id="loginModal" class="modal-overlay">
-  <div class="modal-card">
-    <h2 style="margin-top:0;">Who are you?</h2>
-    <div class="login-grid" id="loginButtons"></div>
-    <button class="picker-btn" style="width:100%; margin-top:10px; opacity:0.5;" onclick="login('Viewer')">Just Watching</button>
-  </div>
-</div>
-
-<div id="pickerModal" class="modal-overlay">
-  <div class="modal-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 id="pickerTitle" style="margin:0;">Place Bet</h3>
-        <button class="picker-btn" style="padding:5px 10px; width:auto;" onclick="document.getElementById('pickerModal').classList.remove('active')">✕</button>
-    </div>
-    
-    <div style="display:flex; gap:5px; margin-bottom:10px;">
-        <button class="picker-btn" onclick="renderPicker('win')">1X2</button>
-        <button class="picker-btn" onclick="renderPicker('score')">Score</button>
-        <button class="picker-btn" onclick="renderPicker('goals')">Goals</button>
-    </div>
-
-    <div id="pickerGrid" class="picker-grid"></div>
-  </div>
-</div>
-
 <script>
-// --- CONFIGURATION ---
-const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
-const REFRESH_MS = 30000;
-
-// AVATAR MAPPING: Matches Sheet Name -> Image File
-const AVATAR_MAP = {
-    "SNACKBAR": "./snackbar.png",
-    "TJALL": "./timbo.png",
-    "TIMBO": "./timbo.png",
-    "PEPITO": "./pepe.png",
-    "PEPE": "./pepe.png"
-};
-
-// TEAM LOGO MAPPING (The massive list)
-const TEAM_LOGOS = {
- "ARS":"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
- "AVI":"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
- "BOU":"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/AFC_Bournemouth_%282013%29.svg/200px-AFC_Bournemouth_%282013%29.svg.png",
- "BRE":"https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/200px-Brentford_FC_crest.svg.png",
- "BRI":"https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/200px-Brighton_%26_Hove_Albion_logo.svg.png",
- "BUR":"https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/200px-Burnley_FC_Logo.svg.png",
- "CHE":"https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/200px-Chelsea_FC.svg.png",
- "CPA":"https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/Crystal_Palace_FC_logo_%282022%29.svg/200px-Crystal_Palace_FC_logo_%282022%29.svg.png",
- "EVE":"https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/200px-Everton_FC_logo.svg.png",
- "FUL":"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/200px-Fulham_FC_%28shield%29.svg.png",
- "LEE":"https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Leeds_United_F.C._logo.svg/200px-Leeds_United_F.C._logo.svg.png",
- "LIV":"https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/200px-Liverpool_FC.svg.png",
- "CTY":"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/200px-Manchester_City_FC_badge.svg.png",
- "MAN":"https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/200px-Manchester_United_FC_crest.svg.png",
- "NWC":"https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/200px-Newcastle_United_Logo.svg.png",
- "NOT":"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/Nottingham_Forest_F.C._logo.svg/960px-Nottingham_Forest_F.C._logo.svg.png",
- "SUN":"https://1000logos.net/wp-content/uploads/2020/09/Sunderland-logo.png",
- "TOT":"https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/200px-Tottenham_Hotspur.svg.png",
- "WHA":"https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/200px-West_Ham_United_FC_logo.svg.png",
- "WOL":"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
-};
-
-// --- STATE ---
-let rawData = null;
-let currentUser = localStorage.getItem('jb_user');
-let currentCtx = { row: null, col: null }; // Exact coordinates
-
-// --- INITIALIZATION ---
-window.onload = () => {
-    fetchData();
-    setInterval(fetchData, REFRESH_MS);
-    
-    // Sync Scroll: Left panel follows Right panel
-    const left = document.getElementById('matchList');
-    const right = document.getElementById('betsList');
-    const headers = document.getElementById('headersList');
-    
-    // Header follows horizontal scroll of bets
-    right.addEventListener('scroll', () => { 
-        left.scrollTop = right.scrollTop; 
-        headers.scrollLeft = right.scrollLeft;
-    });
-};
-
-// --- DATA FETCHING ---
-async function fetchData() {
-    try {
-        const res = await fetch(API_URL);
-        rawData = await res.json();
-        
-        document.getElementById('loading').style.display = 'none';
-        
-        if (!currentUser) {
-            showLogin();
-        } else {
-            renderApp();
-        }
-    } catch (e) {
-        document.getElementById('loading').innerHTML = `<div style="color:red">ERROR LOADING DATA</div><div style="font-size:10px">${e.message}</div>`;
-        console.error("Data Load Error:", e);
-    }
-}
+// --- CONFIG ---
+const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
+const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+let currentUser = localStorage.getItem("jb_user");
+let currentBetData = { row: null, colHeader: null, match: null };
 
 // --- LOGIN LOGIC ---
-function showLogin() {
-    const container = document.getElementById('loginButtons');
-    container.innerHTML = '';
-    
-    // Get unique names from headers
-    const uniqueNames = [...new Set(rawData.headers.map(h => h.name.trim().toUpperCase()))];
-    
-    uniqueNames.forEach(name => {
-        if(name === "INFO") return;
-        const div = document.createElement('div');
-        div.className = 'login-btn';
-        div.onclick = () => login(name);
-        
-        // Find avatar or use fallback
-        const imgUrl = AVATAR_MAP[name] || `https://ui-avatars.com/api/?name=${name}&background=random`;
-        
-        div.innerHTML = `<img src="${imgUrl}" class="login-img"><span class="login-name">${name}</span>`;
-        container.appendChild(div);
+function checkLogin() {
+  if(!currentUser) {
+    document.getElementById("loginOverlay").style.display = "flex";
+  } else {
+    document.getElementById("loginOverlay").style.display = "none";
+    loadData();
+  }
+}
+
+function loginUser(name) {
+  currentUser = name;
+  localStorage.setItem("jb_user", name);
+  document.getElementById("loginOverlay").style.opacity = "0";
+  setTimeout(() => {
+    document.getElementById("loginOverlay").style.display = "none";
+    loadData();
+  }, 500);
+}
+
+function logout() {
+  localStorage.removeItem("jb_user");
+  location.reload();
+}
+
+// --- DATA LOADING ---
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    renderApp(data);
+  }).catch(e => console.error(e));
+}
+
+function renderApp(data) {
+  const left=document.getElementById("left"), right=document.getElementById("right");
+  left.innerHTML=""; right.innerHTML=""; 
+
+  // CHECK IF BETS ARE LOCKED (Any price in summary row 18 > 0)
+  // We check the first column of each person. 
+  // For simplicity: If ANY column has a price in the summary, we consider the "Game ON" mode
+  // But strictly per user: Locking is usually per column.
+  
+  // SORTING LOGIC:
+  // Requirement: Fixed order (Snackbar, Timbo, Pepe) UNTIL confirmed.
+  // We will re-order the `data.headers` and `matches.cells` arrays before rendering.
+  
+  // 1. Detect if locking phase is active (Check Summary Row 18 aka index 1 in betSummary)
+  let isGlobalLock = false;
+  if(data.betSummary && data.betSummary[1]) {
+     // If any cell in row 18 has a value, we assume the game has started/bets locked
+     isGlobalLock = data.betSummary[1].cells.some(c => c.value && c.value > 0);
+  }
+
+  // 2. Sort Indices
+  let sortedIndices = data.headers.map((h, i) => ({ ...h, originalIndex: i }));
+  
+  if (!isGlobalLock) {
+    // FORCE FIXED ORDER: Snackbar, Timbo, Pepe
+    const order = ["Snackbar", "Timbo", "Pepe"];
+    sortedIndices.sort((a, b) => {
+       let idxA = order.indexOf(a.name);
+       let idxB = order.indexOf(b.name);
+       if(idxA === -1) idxA = 99; // Extra columns go to end
+       if(idxB === -1) idxB = 99;
+       return idxA - idxB;
     });
-    
-    document.getElementById('loginModal').classList.add('active');
-}
+  } 
+  // If isGlobalLock is true, we use the order sent by API (which follows the sheet order or ranking)
 
-function login(name) {
-    if(navigator.vibrate) navigator.vibrate(20);
-    currentUser = name;
-    localStorage.setItem('jb_user', name);
-    document.getElementById('loginModal').classList.remove('active');
-    renderApp();
-}
+  // RENDER HEADER
+  const lh=document.createElement("div"); lh.className="left-header"; 
+  lh.innerHTML=`<div class="header-title-box"><span class="header-main-text">JUICE BETS</span><span class="header-sub-text">${currentUser || 'Guest'}</span></div>`;
+  left.appendChild(lh);
+  
+  const headerRow = document.createElement("div"); headerRow.className="row header-row-sticky";
+  
+  sortedIndices.forEach(h => {
+    const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper";
+    const p = document.createElement("div"); p.className="header-pill";
+    
+    // Avatar Logic
+    if(AVATARS[h.name]) p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img">`;
+    else p.textContent = h.name;
 
-// --- MAIN RENDER ---
-function renderApp() {
-    const leftPanel = document.getElementById('matchList');
-    const headersList = document.getElementById('headersList');
-    const betsList = document.getElementById('betsList');
-    const rankingList = document.getElementById('rankingList');
-    
-    // Clear previous
-    leftPanel.innerHTML = '';
-    headersList.innerHTML = '';
-    betsList.innerHTML = '';
-    
-    // 1. RENDER HEADERS
-    // NO SORTING - Display in Sheet Order
-    rawData.headers.forEach(h => {
-        const div = document.createElement('div');
-        div.className = 'header-cell';
-        const name = h.name.trim().toUpperCase();
+    // Status Colors
+    if(h.status === 'orange') p.classList.add('status-orange');
+    if(h.status === 'red') p.classList.add('status-red');
+    if(h.name === currentUser) wrapper.classList.add('editable-col'); // Marker for CSS
+
+    wrapper.appendChild(p);
+    headerRow.appendChild(wrapper);
+  });
+  right.appendChild(headerRow);
+
+  // RENDER MATCHES
+  data.matches.forEach((m, rowIdx) => {
+     // LEFT SIDE (Match Info)
+     const lr = document.createElement("div"); lr.className="left-row";
+     const [hTeam, aTeam] = m.match.split("-");
+     const isLive = m.status.includes("'") || m.status === "HT";
+     lr.innerHTML = `<div class="left-cell"><div class="match-teams"><span>${hTeam}</span><span style="font-size:10px;opacity:0.6">vs</span><span>${aTeam}</span></div></div><div class="left-cell" style="width:90px;color:${isLive?'#7CFF5B':'#fff'}">${isLive ? m.status + ' ' + m.score : m.startTime || m.status}</div>`;
+     left.appendChild(lr);
+
+     // RIGHT SIDE (Bets)
+     const rr = document.createElement("div"); rr.className="row";
+     
+     sortedIndices.forEach((h) => {
+        const cell = m.cells[h.originalIndex]; // Get data using original index
+        const el = document.createElement("div");
+        el.className = "bet";
+        el.textContent = cell.value;
+        el.style.backgroundColor = cell.color;
         
-        // Header Status Color (Border)
-        // Red = Locked (Price filled in Row 18)
-        if(h.status === 'red' || h.status === 'locked' || h.color === 'red') {
-            div.style.borderColor = '#ef4444';
-        } else if (h.status === 'orange') {
-            div.style.borderColor = 'var(--accent-orange)';
+        if(!cell.value) {
+           el.classList.add("empty");
+           el.style.backgroundColor = "transparent";
         }
 
-        if(AVATAR_MAP[name]) {
-            div.innerHTML = `<img src="${AVATAR_MAP[name]}" class="avatar">`;
-            div.style.overflow = "visible";
-        } else {
-            div.innerHTML = `<span class="header-name">${name}</span>`;
+        // EDITABLE LOGIC
+        // 1. Must be logged in as this user
+        // 2. Column must NOT be locked (status red or row 18 filled)
+        // 3. Game must not be Live/Finished (simple check on m.status)
+        const isMyCol = h.name === currentUser;
+        const isColumnLocked = (h.status === 'red' || cell.color === '#ff4d4d' || cell.color === '#ea9999'); 
+        const isGameStarted = m.status !== 'NS';
+
+        if(isMyCol && !isColumnLocked && !isGameStarted) {
+           el.classList.add("editable-active");
+           el.onclick = () => openBetInput(rowIdx, h.name, m.match, el);
         }
-        headersList.appendChild(div);
-    });
-    
-    // 2. RENDER MATCHES & BETS
-    // NO SORTING - Display in Sheet Order
-    rawData.matches.forEach((m, rowIdx) => {
-        // --- Left Side (Match Info) ---
-        const [home, away] = m.match.split('-').map(t => t.trim());
-        const isLive = m.status.includes("'") || m.status === "HT";
-        
-        const leftRow = document.createElement('div');
-        leftRow.className = `match-row ${isLive ? 'live' : ''}`;
-        leftRow.innerHTML = `
-            <div class="team-box">
-                ${getLogo(home)} 
-                <div style="display:flex; flex-direction:column; line-height:1;">
-                    <span>${home}</span>
-                    <span class="vs-tag">vs</span>
-                    <span>${away}</span>
-                </div>
-            </div>
-            <div class="score-box">
-                <div style="color:${isLive ? 'var(--accent-green)' : 'inherit'}">${m.score || '-'}</div>
-                <div class="status-tag">${m.status}</div>
-            </div>
-            ${getLogo(away)}
-        `;
-        leftPanel.appendChild(leftRow);
-        
-        // --- Right Side (Bets) ---
-        const rightRow = document.createElement('div');
-        rightRow.className = 'bet-row';
-        
-        m.cells.forEach((cell, colIdx) => {
-            const betDiv = document.createElement('div');
-            betDiv.className = 'bet-cell';
-            betDiv.id = `cell-${rowIdx}-${colIdx}`; // For optimistic update
-            
-            const header = rawData.headers[colIdx];
-            const headerName = header.name.trim().toUpperCase();
-            const myName = currentUser ? currentUser.toUpperCase() : "";
-            
-            // Logic: Is this ME?
-            const isMe = (headerName === myName);
-            // Logic: Is this Locked? (Row 18 has price)
-            const isLocked = (header.status === 'red' || header.status === 'locked' || header.color === 'red' || header.color === '#ff0000');
 
-            if(cell.value) {
-                // HAS BET
-                betDiv.textContent = cell.value;
-                betDiv.classList.add('filled');
-                betDiv.style.backgroundColor = cell.color || '#262a30';
-                
-                // If live and winning (simple check logic can be added here)
-                // ...
-                
-                if(isMe && !isLocked) {
-                    betDiv.style.cursor = "pointer";
-                    betDiv.onclick = () => openPicker(rowIdx, colIdx, m.match);
-                } else if (isMe && isLocked) {
-                    betDiv.classList.add('locked');
-                }
-            } else {
-                // EMPTY
-                if(isMe) {
-                    if(!isLocked) {
-                        betDiv.classList.add('my-empty'); // Orange Dash
-                        betDiv.onclick = () => openPicker(rowIdx, colIdx, m.match);
-                    } else {
-                        betDiv.classList.add('locked'); // Solid border, no click
-                    }
-                }
-                // Others' empty cells remain faint placeholders
-            }
-            rightRow.appendChild(betDiv);
-        });
-        betsList.appendChild(rightRow);
-    });
+        rr.appendChild(el);
+     });
+     right.appendChild(rr);
+  });
 
-    // 3. RENDER RANKING (Simple List)
-    if(rawData.ranking) {
-        rankingList.innerHTML = rawData.ranking.map((r, i) => `
-            <div style="display:flex; justify-content:space-between; font-size:11px; padding:2px 5px; background:rgba(255,255,255,0.05); border-radius:4px;">
-                <span>#${i+1} ${r.name}</span>
-                <span style="color:var(--accent-green); font-weight:800;">£${r.money}</span>
-            </div>
-        `).join('');
-    }
+  // SUMMARY SECTION (Simple Render)
+  const weekly = document.getElementById("weeklyCard");
+  weekly.innerHTML = `<div style="padding:10px;font-weight:700">Weekly Summary</div>`;
+  if(data.totals) {
+     data.totals.forEach(t => {
+       weekly.innerHTML += `<div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:12px;"><span>${t.label}</span><span style="color:#7CFF5B">£${t.cells[1].value}</span></div>`;
+     });
+  }
 }
 
-// --- LOGO HELPER ---
-function getLogo(name) {
-    if(!name) return '';
-    const clean = name.trim().toUpperCase();
-    
-    // Try precise match then first 3 letters
-    let logoUrl = TEAM_LOGOS[clean] || TEAM_LOGOS[clean.substring(0,3)];
-    
-    if(logoUrl) return `<img src="${logoUrl}" class="team-logo">`;
-    
-    // Fallback Circle with Initial
-    return `<div class="logo-fallback">${clean.substring(0,1)}</div>`;
+// --- BET INPUT FUNCTIONS ---
+function openBetInput(rowIdx, colHeader, matchName, el) {
+  // Use Vibrate API for feedback
+  if(navigator.vibrate) navigator.vibrate(20);
+  
+  currentBetData = { row: rowIdx, header: colHeader, match: matchName, element: el };
+  document.getElementById("bmTitle").textContent = matchName;
+  document.getElementById("customBetInput").value = "";
+  document.getElementById("betModal").style.display = "flex";
+  setTimeout(()=> document.getElementById("betModal").classList.add("active"), 10);
 }
 
-// --- BETTING LOGIC ---
-function openPicker(r, c, title) {
-    if(navigator.vibrate) navigator.vibrate(10);
-    currentCtx = { row: r, col: c };
-    document.getElementById('pickerTitle').innerText = title;
-    document.getElementById('pickerModal').classList.add('active');
-    renderPicker('win'); // Default tab
+function closeBetModal() {
+  document.getElementById("betModal").classList.remove("active");
+  setTimeout(()=> document.getElementById("betModal").style.display = "none", 300);
 }
 
-function renderPicker(type) {
-    const grid = document.getElementById('pickerGrid');
-    grid.innerHTML = '';
-    
-    let opts = [];
-    if(type === 'win') {
-        const t = document.getElementById('pickerTitle').innerText.split('-');
-        opts = [t[0].trim(), 'Draw', t[1].trim()];
-    } else if (type === 'score') {
-        opts = ['1-0','2-0','2-1','3-0','3-1','3-2','0-0','1-1','2-2','0-1','0-2','1-2','0-3','1-3','2-3'];
+function setBetValue(val) {
+  submitBet(val);
+}
+
+function submitCustomBet() {
+  const val = document.getElementById("customBetInput").value;
+  if(val) submitBet(val);
+}
+
+function submitBet(val) {
+  closeBetModal();
+  
+  // 1. OPTIMISTIC UI UPDATE
+  const el = currentBetData.element;
+  const prevText = el.textContent;
+  const prevBg = el.style.backgroundColor;
+  
+  el.textContent = val;
+  el.classList.remove("empty");
+  el.style.backgroundColor = "#2f343a"; // Temporary 'pending' color
+  el.style.border = "2px solid #fff";
+
+  // 2. SEND TO SERVER
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      user: currentUser,
+      header: currentBetData.header,
+      row: currentBetData.row,
+      value: val
+    })
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if(resp.status === "success") {
+       // Success feedback
+       el.style.borderColor = "var(--accent-orange)";
+       el.style.borderStyle = "dashed";
+       // Trigger confetti if it's a new bet
+       if(!prevText) confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
     } else {
-        opts = ['Goals 0.5', 'Goals 1.5', 'Goals 2.5', 'BTTS', 'No BTTS'];
+       // Revert on error
+       alert("Error saving bet: " + resp.message);
+       el.textContent = prevText;
+       el.style.backgroundColor = prevBg;
     }
-    
-    opts.forEach((val, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'picker-btn';
-        btn.innerText = val;
-        // Logic: if 'Draw' tab, value is X. If Win tab, value is Team Name or X.
-        let saveVal = val;
-        if(type === 'win') {
-            if (i === 1) saveVal = 'X';
-        }
-        
-        btn.onclick = () => saveBet(saveVal);
-        grid.appendChild(btn);
-    });
-
-    // Add Clear Button
-    const clear = document.createElement('button');
-    clear.className = 'picker-btn clear-btn';
-    clear.innerText = 'Clear Cell';
-    clear.onclick = () => saveBet('');
-    grid.appendChild(clear);
+  })
+  .catch(err => {
+     alert("Connection Error");
+     el.textContent = prevText;
+  });
 }
 
-function saveBet(val) {
-    document.getElementById('pickerModal').classList.remove('active');
-    
-    // Optimistic UI
-    const el = document.getElementById(`cell-${currentCtx.row}-${currentCtx.col}`);
-    if(el) {
-        el.innerText = val;
-        if(val) {
-            el.className = 'bet-cell filled';
-            el.style.background = '#262a30';
-            confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 }, scalar: 0.6 });
-        } else {
-            el.className = 'bet-cell my-empty';
-            el.style.background = 'rgba(251, 146, 60, 0.05)';
-        }
-    }
+// TOGGLE FOOTER
+document.getElementById("summaryToggle").onclick = () => {
+  document.getElementById("summaryContentWrap").classList.toggle("show");
+  document.getElementById("summaryToggle").classList.toggle("open");
+};
 
-    // Backend Logic: Calculate Relative Index
-    // We need to tell the sheet: "This is Timbo's 2nd column" (Index 1)
-    // First, find all columns that belong to current User
-    const headerName = rawData.headers[currentCtx.col].name;
-    const userCols = rawData.headers.map((h, i) => ({name: h.name, idx: i}))
-                                    .filter(h => h.name === headerName);
-    
-    // Find where the clicked column ranks among the user's columns
-    const relIdx = userCols.findIndex(item => item.idx === currentCtx.col);
+// INIT
+checkLogin();
+// Auto refresh every 30s
+setInterval(loadData, 30000);
 
-    const payload = {
-        user: currentUser, // e.g. "TJALL"
-        row: currentCtx.row, // 0-based match index
-        subCol: relIdx,      // 0 or 1 usually
-        value: val
-    };
-
-    fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
-    .then(r => r.json())
-    .then(d => {
-         if(d.status !== 'success') alert('Sync Error');
-         else loadData(); // Refresh real data
-    });
-}
 </script>
 </body>
 </html>

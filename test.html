@@ -22,495 +22,472 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
 
 <style>
-/* --- THEMES --- */
-:root { --font-main: 'Inter', system-ui; --bg-grad: radial-gradient(circle at 50% 0%, #2b3038 0%, #141619 80%); --bg-card: rgba(33, 37, 43, 0.95); --bg-soft: #2b3038; --text-main: #f3f4f6; --accent-orange: #fb923c; --accent-green: #4ade80; --border-light: 1px solid rgba(255,255,255,0.08); --rad-lg: 14px; }
-[data-theme="candy"] { --font-main: 'Quicksand'; --bg-grad: linear-gradient(135deg, #ffdde1 0%, #ee9ca7 100%); --bg-card: rgba(255,255,255,0.65); --bg-soft: rgba(255,255,255,0.85); --text-main: #590d22; --accent-orange: #ff9e00; --accent-green: #2dc653; --border-light: 1px solid rgba(255,255,255,0.9); }
-[data-theme="retro"] { --font-main: 'VT323'; --bg-grad: #000; --bg-card: #000; --bg-soft: #111; --text-main: #0f0; --accent-orange: #f0f; --accent-green: #0f0; --border-light: 2px solid #0f0; }
+/* --- THEME: CARBON --- */
+:root {
+  --font-main: 'Inter', system-ui;
+  --bg-grad: #141619; /* Simplified background */
+  --bg-card: #21252b;
+  --bg-soft: #2b3038;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --accent-orange: #fb923c;
+  --accent-green: #4ade80;
+  --border-light: 1px solid rgba(255,255,255,0.1);
+  --rad: 10px;
+}
 
-/* --- CORE LAYOUT --- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
 body { margin: 0; font-family: var(--font-main); font-size: 12px; background: var(--bg-grad); color: var(--text-main); height: 100vh; overflow: hidden; }
+
+/* --- LAYOUT --- */
 .app { height: 100vh; display: grid; grid-template-rows: 1fr auto; }
-.main { display: flex; gap: 10px; padding: 10px; overflow: hidden; position: relative; z-index: 5; }
+.main { display: flex; gap: 8px; padding: 8px; overflow: hidden; position: relative; }
 
-/* --- CARDS --- */
-.left-card { width: 230px; background: var(--bg-card); border-radius: var(--rad-lg); padding: 8px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; border: var(--border-light); scrollbar-width: none; }
-.right-card { flex: 1; background: var(--bg-card); border-radius: var(--rad-lg); overflow: auto; padding: 8px; border: var(--border-light); scrollbar-width: none; }
-.left-card::-webkit-scrollbar, .right-card::-webkit-scrollbar { display: none; }
+/* --- LEFT COLUMN (MATCHES) --- */
+.left-card { 
+    width: 220px; flex-shrink: 0; 
+    background: var(--bg-card); border-radius: var(--rad); 
+    display: flex; flex-direction: column; gap: 5px; 
+    overflow-y: hidden; /* Scroll linked to right via JS */
+    border: var(--border-light);
+}
 
-/* --- ROWS & CELLS --- */
-.row { display: flex; gap: 8px; margin-bottom: 8px; }
-.left-row { display: grid; grid-template-columns: 1fr 90px; gap: 8px; height: 50px; margin-bottom: 8px; border-radius: 12px; cursor: pointer; }
-.left-cell { background: var(--bg-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-.team-logo { width: 38px; height: 38px; object-fit: contain; }
+/* --- RIGHT COLUMN (BETS) --- */
+.right-card { 
+    flex: 1; 
+    background: var(--bg-card); border-radius: var(--rad); 
+    display: flex; flex-direction: column; 
+    overflow: hidden; 
+    border: var(--border-light);
+}
+.headers-area { display: flex; gap: 5px; padding: 8px; border-bottom: var(--border-light); background: var(--bg-soft); overflow-x: hidden; }
+.scroll-area { overflow: auto; padding: 8px; flex: 1; scroll-behavior: smooth; }
 
-/* --- BET PILLS --- */
-.bet { width: 80px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #111; position: relative; background: var(--bet-bg, transparent); transition: all 0.2s; }
-.header-pill-wrapper { width: 80px; display: flex; justify-content: center; }
-.header-pill { width: 70px; height: 50px; background: var(--bg-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: var(--text-main); }
-.avatar-img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.3); filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); }
+/* --- ROW STYLES --- */
+.match-row { 
+    height: 50px; margin-bottom: 6px; 
+    background: var(--bg-soft); border-radius: 8px; 
+    display: flex; align-items: center; padding: 0 8px;
+    border: 1px solid transparent;
+}
+.match-row.live { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.05); }
+
+.team-box { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; }
+.vs-tag { opacity: 0.4; font-size: 9px; }
+.score-box { width: 50px; text-align: center; font-weight: 800; font-size: 12px; }
+.status-tag { font-size: 9px; padding: 2px 4px; border-radius: 4px; background: rgba(0,0,0,0.3); color: var(--text-muted); }
+
+/* --- BET CELLS --- */
+.bet-row { display: flex; gap: 5px; margin-bottom: 6px; height: 50px; }
+.bet-cell { 
+    width: 80px; flex-shrink: 0; height: 50px; 
+    border-radius: 8px; 
+    display: flex; align-items: center; justify-content: center; 
+    font-weight: 800; font-size: 13px; color: #fff;
+    background: rgba(255,255,255,0.03); /* Faint placeholder for everyone */
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.2s;
+}
 
 /* --- STATES --- */
-.bet.empty { background: transparent; color: var(--text-muted); }
-.bet-open { border: 1.5px dashed var(--accent-orange); cursor: pointer; } /* Orange Dash for YOU */
-.bet-locked { border: 1.5px solid rgba(255,255,255,0.1); cursor: default; pointer-events: none; opacity: 0.8; } /* Solid for Locked */
-.bet.hidden { visibility: hidden; pointer-events: none; } /* Hide others' empty cells */
+/* Your empty cell (Clickable) */
+.bet-cell.my-empty { 
+    border: 1.5px dashed var(--accent-orange) !important; 
+    background: rgba(251, 146, 60, 0.05) !important;
+    cursor: pointer;
+}
+/* Locked cell (Solid) */
+.bet-cell.locked {
+    border: 1.5px solid rgba(255,255,255,0.15) !important;
+    opacity: 0.8;
+    pointer-events: none;
+}
+/* Filled cell */
+.bet-cell.filled {
+    background: #2b3038; /* Fallback */
+    border: 1px solid rgba(255,255,255,0.1);
+}
 
-/* --- HEADER --- */
-.header-row-sticky { position: sticky; top: 0; z-index: 20; background: var(--bg-card); height: 50px; display: flex; align-items: center; margin-bottom: 8px; }
-.left-header { height: 50px; background: var(--bg-card); border-bottom: var(--border-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; }
-.header-title-box { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
-.pl-btn { position: absolute; left: 10px; width: 34px; height: 34px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.brand-btn { position: absolute; right: 10px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-
-/* --- SUMMARY --- */
-.summary { background: var(--bg-card); margin: 0 10px 10px; border-radius: var(--rad-lg); border: var(--border-light); overflow: hidden; }
-.summary-toggle { background: var(--bg-soft); padding: 8px; text-align: center; cursor: pointer; }
-.summary-content { display: flex; gap: 10px; padding: 10px; overflow-x: auto; }
-.weekly-card, .ranking-card { min-width: 200px; flex: 1; background: var(--bg-soft); border-radius: 14px; padding: 10px; }
-.week-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
-.rank-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; padding: 4px; background: rgba(0,0,0,0.2); margin-bottom: 4px; border-radius: 6px; }
+/* --- HEADERS --- */
+.header-cell { 
+    width: 80px; flex-shrink: 0; height: 50px; 
+    border-radius: 8px; background: var(--bg-card); 
+    display: flex; align-items: center; justify-content: center; 
+    position: relative; border: 1px solid rgba(255,255,255,0.1);
+}
+.avatar { width: 100%; height: 100%; object-fit: contain; transform: scale(1.2); filter: drop-shadow(0 4px 2px rgba(0,0,0,0.5)); }
+.header-name { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
 
 /* --- MODALS --- */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
 .modal-overlay.active { display: flex; }
-.modal-card { width: 90%; max-width: 380px; background: var(--bg-modal); border-radius: 16px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-height: 85vh; overflow-y: auto; }
-.bet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
-.bet-opt-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.bet-opt-btn:active { background: var(--accent-orange); transform: scale(0.95); }
-.login-avatar { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; border: 2px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.2s; }
-.login-avatar:active { transform: scale(0.9); border-color: var(--accent-orange); }
+.modal-card { width: 90%; max-width: 350px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; text-align: center; }
 
-/* --- UTILS --- */
-.text-green { color: var(--accent-green); }
-.text-red { color: #ef4444; }
-.status-green { background: var(--accent-green) !important; color: #000 !important; box-shadow: 0 0 15px rgba(74,222,128,0.5); }
-.status-red { border: 2px solid #ef4444 !important; opacity: 1 !important; }
-.anim-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-@keyframes pop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+.login-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 20px 0; }
+.login-btn { 
+    display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; 
+    padding: 10px; border-radius: 10px; background: var(--bg-soft); border: 1px solid transparent; 
+}
+.login-btn:active { border-color: var(--accent-orange); transform: scale(0.95); }
+.login-img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; background: #000; }
+.login-name { font-weight: 700; font-size: 11px; }
+
+/* --- BET PICKER --- */
+.picker-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+.picker-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 5px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.picker-btn:active { background: var(--accent-orange); }
+.clear-btn { grid-column: span 3; background: rgba(255,0,0,0.15); color: #ff6b6b; border-color: rgba(255,0,0,0.3); }
+
+/* --- LOGO FALLBACK --- */
+.logo-fallback { width: 30px; height: 30px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+/* --- SUMMARY --- */
+.summary { background: var(--bg-card); margin: 0 8px 8px; padding: 10px; border-radius: 12px; border: var(--border-light); height: 120px; overflow: hidden; }
+
+/* LOADING */
+#loading { position: fixed; top:0; left:0; width:100%; height:100%; background:#141619; z-index:3000; display:flex; align-items:center; justify-content:center; font-weight:800; letter-spacing:2px; }
 </style>
 </head>
 <body>
 
+<div id="loading">LOADING DATA...</div>
+
 <div class="app">
   <div class="main">
-    <div class="left-card" id="leftPanel"></div>
+    <div class="left-card" id="matchList"></div>
+
     <div class="right-card">
-        <div id="headerRow" class="header-row-sticky"></div>
-        <div id="betRows" class="rows"></div>
+        <div class="headers-area" id="headersList"></div>
+        <div class="scroll-area" id="betsList"></div>
     </div>
   </div>
   
-  <footer class="summary">
-    <div class="summary-toggle" onclick="toggleSummary()">▼ Stats</div>
-    <div class="summary-content hidden" id="summaryContent">
-        <div class="weekly-card" id="weeklyCard"></div>
-        <div class="ranking-card" id="rankingCard"></div>
-    </div>
+  <footer class="summary" id="footerStats">
+      <div style="font-size:10px; font-weight:700; color:#666; margin-bottom:5px;">WEEKLY LEADERBOARD</div>
+      <div id="rankingList" style="display:flex; flex-direction:column; gap:4px;"></div>
   </footer>
 </div>
 
-<div id="loginModal" class="modal-overlay active">
-  <div class="modal-card" style="text-align:center;">
-    <h2 style="margin-top:0;">Who are you?</h2>
-    <div style="display:flex; justify-content:center; gap:15px; margin:20px 0;">
-        <img src="./snackbar.png" class="login-avatar" onclick="login('Snackbar')">
-        <img src="./timbo.png" class="login-avatar" onclick="login('Timbo')">
-        <img src="./pepe.png" class="login-avatar" onclick="login('Pepe')">
-    </div>
-    <button class="bet-opt-btn" style="width:100%; opacity:0.6;" onclick="login('Viewer')">I'm just watching</button>
+<div id="loginModal" class="modal-overlay">
+  <div class="modal-card">
+    <h2>Who are you?</h2>
+    <div class="login-grid" id="loginButtons"></div>
+    <button class="picker-btn" style="width:100%; margin-top:10px; opacity:0.5;" onclick="login('Viewer')">Just Watching</button>
   </div>
 </div>
 
-<div id="betPickerModal" class="modal-overlay">
+<div id="pickerModal" class="modal-overlay">
   <div class="modal-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 id="bpTitle" style="margin:0;">Place Bet</h3>
-        <button class="bet-opt-btn" style="padding:5px 10px;" onclick="closeModal('betPickerModal')">✕</button>
-    </div>
+    <h3 id="pickerTitle" style="margin:0 0 15px 0;">Place Bet</h3>
     
     <div style="display:flex; gap:5px; margin-bottom:10px;">
-        <button class="bet-opt-btn" style="flex:1" onclick="renderBetOptions('win')">WIN</button>
-        <button class="bet-opt-btn" style="flex:1" onclick="renderBetOptions('score')">SCORE</button>
-        <button class="bet-opt-btn" style="flex:1" onclick="renderBetOptions('goals')">GOALS</button>
+        <button class="picker-btn" onclick="renderPicker('win')">1X2</button>
+        <button class="picker-btn" onclick="renderPicker('score')">Score</button>
+        <button class="picker-btn" onclick="renderPicker('goals')">Goals</button>
     </div>
 
-    <div id="bpGrid" class="bet-grid"></div>
-    <button class="bet-opt-btn" style="width:100%; margin-top:15px; background:rgba(255,0,0,0.2); color:#ff6b6b;" onclick="saveBet('')">Clear / Empty</button>
+    <div id="pickerGrid" class="picker-grid"></div>
   </div>
 </div>
 
 <script>
-// --- CONFIG ---
+// --- CONFIGURATION ---
 const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
-const REFRESH_MS = 30000;
-const ORDER_PRIORITY = ['Snackbar', 'Timbo', 'Pepe']; // Fixed Order
+const AVATARS = {
+    "SNACKBAR": "./snackbar.png",
+    "TIMBO": "./timbo.png", // Mapped from TJALL if needed
+    "TJALL": "./timbo.png",
+    "PEPE": "./pepe.png",   // Mapped from PEPITO if needed
+    "PEPITO": "./pepe.png"
+};
 
 // --- STATE ---
-let globalData = null;
-let currentUser = localStorage.getItem('jb_user') || null;
-let currentBetContext = {};
+let rawData = null;
+let currentUser = localStorage.getItem('jb_user');
+let currentCtx = { row: null, col: null }; // Exact coordinates
 
-// --- INIT ---
-if(currentUser) document.getElementById('loginModal').classList.remove('active');
-loadData();
-setInterval(loadData, REFRESH_MS);
+// --- INITIALIZATION ---
+window.onload = () => {
+    fetchData();
+    setInterval(fetchData, 30000);
+    
+    // Sync Scroll
+    const left = document.getElementById('matchList');
+    const right = document.getElementById('betsList');
+    right.addEventListener('scroll', () => { left.scrollTop = right.scrollTop; });
+};
 
-// --- FUNCTIONS ---
+// --- DATA FETCHING ---
+async function fetchData() {
+    try {
+        const res = await fetch(API_URL);
+        rawData = await res.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        
+        if (!currentUser) {
+            showLogin();
+        } else {
+            renderApp();
+        }
+    } catch (e) {
+        console.error("Data Load Error:", e);
+    }
+}
+
+// --- LOGIN LOGIC ---
+function showLogin() {
+    const container = document.getElementById('loginButtons');
+    container.innerHTML = '';
+    
+    // Extract Unique Names from Headers
+    const uniqueNames = [...new Set(rawData.headers.map(h => h.name.trim().toUpperCase()))];
+    
+    uniqueNames.forEach(name => {
+        if(name === "INFO") return; // Skip info column if exists
+        
+        const div = document.createElement('div');
+        div.className = 'login-btn';
+        div.onclick = () => login(name);
+        
+        // Try to find avatar or use default
+        const imgUrl = AVATARS[name] || `https://ui-avatars.com/api/?name=${name}&background=random`;
+        
+        div.innerHTML = `
+            <img src="${imgUrl}" class="login-img">
+            <span class="login-name">${name}</span>
+        `;
+        container.appendChild(div);
+    });
+    
+    document.getElementById('loginModal').classList.add('active');
+}
 
 function login(name) {
-    if(navigator.vibrate) navigator.vibrate(20);
     currentUser = name;
     localStorage.setItem('jb_user', name);
     document.getElementById('loginModal').classList.remove('active');
-    render(); // Re-render to show orange lines
+    renderApp();
 }
 
-function logout() {
-    localStorage.removeItem('jb_user');
-    location.reload();
-}
-
-function loadData() {
-    fetch(API_URL).then(r => r.json()).then(data => {
-        globalData = data;
-        render();
-    }).catch(e => console.error(e));
-}
-
-function render() {
-    if(!globalData) return;
-
-    const left = document.getElementById('leftPanel');
-    const headerRow = document.getElementById('headerRow');
-    const betRows = document.getElementById('betRows');
-    const weekly = document.getElementById('weeklyCard');
-    const ranking = document.getElementById('rankingCard');
-
-    // 1. DETERMINE SORTING MODE
-    // If ANY column is unlocked (no price in Row 18), we use FIXED order.
-    // If ALL columns are locked, we use RANKING order (winners first).
-    const allLocked = globalData.headers.every(h => h.status === 'locked' || h.status === 'red' || h.color === 'red');
+// --- MAIN RENDER ---
+function renderApp() {
+    const leftPanel = document.getElementById('matchList');
+    const headersList = document.getElementById('headersList');
+    const betsList = document.getElementById('betsList');
+    const rankingList = document.getElementById('rankingList');
     
-    // Sort Headers
-    if(!allLocked) {
-        // Force Fixed Order: Snackbar -> Timbo -> Pepe
-        globalData.headers.sort((a, b) => {
-            let ia = ORDER_PRIORITY.findIndex(n => a.name.includes(n));
-            let ib = ORDER_PRIORITY.findIndex(n => b.name.includes(n));
-            if(ia === -1) ia = 99; if(ib === -1) ib = 99;
-            return ia - ib;
-        });
-    }
-
-    // Sort Matches
-    // Map original index to matches if not present
-    globalData.matches.forEach((m, i) => { if(m._origIdx === undefined) m._origIdx = i; });
+    leftPanel.innerHTML = '';
+    headersList.innerHTML = '';
+    betsList.innerHTML = '';
     
-    let displayMatches = [...globalData.matches];
-    if(!allLocked) {
-        // Force Schedule Order (Row 1, 2, 3...)
-        displayMatches.sort((a, b) => a._origIdx - b._origIdx);
-    } 
-    // Else (allLocked = true), we leave it as API sent (usually sorted by score/live)
-
-    // 2. RENDER LEFT HEADER
-    let nLive = displayMatches.filter(m => m.status.includes("'") || m.status === 'HT').length;
-    left.innerHTML = `
-        <div class="left-header">
-            <div class="pl-btn"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
-            <div class="header-title-box">
-                <span class="header-main-text">MATCHDAY</span>
-                <span class="header-sub-text" style="color:var(--accent-green)">${nLive > 0 ? nLive + " LIVE" : "UPCOMING"}</span>
-            </div>
-            <div class="brand-btn" onclick="logout()"><img src="apple-touch-icon.png" class="brand-logo"></div>
-        </div>
-    `;
-
-    // 3. RENDER HEADERS (AVATARS)
-    headerRow.innerHTML = '';
-    globalData.headers.forEach((h, i) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'header-pill-wrapper';
+    // 1. Render Headers
+    rawData.headers.forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'header-cell';
+        const name = h.name.trim().toUpperCase();
         
-        let statusClass = '';
-        if(h.status === 'red' || h.status === 'locked') statusClass = 'status-red';
-        else if(h.status === 'orange') statusClass = 'status-orange';
-        
-        // Check for winning column (green)
-        let isWinning = false; // Simplified check
-        
-        const pill = document.createElement('div');
-        pill.className = `header-pill ${statusClass}`;
-        
-        const avatarMap = {"Snackbar":"./snackbar.png", "Timbo":"./timbo.png", "Pepe":"./pepe.png"};
-        if(avatarMap[h.name]) {
-            pill.innerHTML = `<img src="${avatarMap[h.name]}" class="avatar-img">`;
-            pill.style.overflow = "visible";
-        } else {
-            pill.textContent = h.name;
+        // Status indicator (border color)
+        if(h.status === 'red' || h.status === 'locked' || h.color === 'red') {
+            div.style.borderColor = '#ef4444';
+        } else if (h.status === 'orange') {
+            div.style.borderColor = 'var(--accent-orange)';
         }
-        wrap.appendChild(pill);
-        headerRow.appendChild(wrap);
+
+        if(AVATARS[name]) {
+            div.innerHTML = `<img src="${AVATARS[name]}" class="avatar">`;
+            div.style.overflow = "visible";
+        } else {
+            div.innerHTML = `<span class="header-name">${name}</span>`;
+        }
+        headersList.appendChild(div);
     });
-
-    // 4. RENDER MATCH ROWS
-    // Clear containers
-    const existingRows = Array.from(document.querySelectorAll('.left-row'));
-    if(existingRows.length !== displayMatches.length) left.innerHTML += ''; // naive reset
-    // We will rebuild mostly for simplicity given the sync issues
     
-    // Clear non-header elements from Left Panel
-    const children = Array.from(left.children);
-    for(let i=1; i<children.length; i++) left.removeChild(children[i]);
-    betRows.innerHTML = '';
-
-    displayMatches.forEach((m, rowIdx) => {
-        // Left Side (Teams)
+    // 2. Render Matches & Bets
+    rawData.matches.forEach((m, rowIdx) => {
+        // --- Left Side (Match Info) ---
         const [home, away] = m.match.split('-');
-        const lr = document.createElement('div');
-        lr.className = 'left-row anim-pop';
-        lr.style.animationDelay = (rowIdx * 0.03) + 's';
+        const isLive = m.status.includes("'") || m.status === "HT";
         
-        const isLive = m.status.includes("'") || m.status === 'HT';
-        const scoreDisplay = isLive 
-            ? `<span style="color:var(--accent-green)">${m.score}</span>` 
-            : `<span style="opacity:0.7">${m.startTime || m.status}</span>`;
-
-        lr.innerHTML = `
-            <div class="left-cell">
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <img src="${getTeamLogo(home)}" class="team-logo">
-                    <span style="font-size:10px; opacity:0.5;">vs</span>
-                    <img src="${getTeamLogo(away)}" class="team-logo">
+        const leftRow = document.createElement('div');
+        leftRow.className = `match-row ${isLive ? 'live' : ''}`;
+        leftRow.innerHTML = `
+            <div class="team-box">
+                ${getLogo(home)} 
+                <div style="display:flex; flex-direction:column; line-height:1;">
+                    <span>${home}</span>
+                    <span class="vs-tag">vs</span>
+                    <span>${away}</span>
                 </div>
             </div>
-            <div class="left-cell" style="flex-direction:column; line-height:1.2;">
-                ${scoreDisplay}
-                <span style="font-size:9px; opacity:0.5;">${m.status}</span>
+            <div class="score-box">
+                <div style="color:${isLive ? 'var(--accent-green)' : 'inherit'}">${m.score || '-'}</div>
+                <div class="status-tag">${m.status}</div>
             </div>
+            ${getLogo(away)}
         `;
-        left.appendChild(lr);
-
-        // Right Side (Bets)
-        const rr = document.createElement('div');
-        rr.className = 'row anim-pop';
-        rr.style.animationDelay = (rowIdx * 0.03) + 's';
-
-        // Loop through HEADERS to maintain column order
-        globalData.headers.forEach((h) => {
-            // Find the cell in the match object that matches this header's ORIGINAL index
-            // Assuming API sends headers and match.cells in sync before we sorted headers
-            // We need to use h.originalIndex if we sorted, OR we rely on name matching if API structure is different.
-            // Simplified: The previous logic failed because cells weren't sorted with headers.
-            
-            // CORRECT APPROACH: Use the original index of the header to pull data from m.cells
-            const originalColIndex = globalData.originalHeaders ? globalData.originalHeaders.findIndex(oh => oh.name === h.name) : -1;
-            // Fallback if originalHeaders not stored (first load hack):
-            // We can assume m.cells[i] corresponds to the UNSORTED globalData.headers[i].
-            // So we need to know the index of 'h' in the UNSORTED array.
-            
-            // Let's find the cell.
-            // Since we sorted `globalData.headers` in place, we lost the original index.
-            // FIX: We should have stored original index before sort.
-            // I will add a pre-sort step in the logic above.
-            
-            // RE-DOING SORT LOGIC TEMPORARILY HERE FOR CONTEXT:
-            // We need to attach data to the DOM element so click works.
-            
-            // ACTUALLY: Let's use `h.id` or `h.index` if available. 
-            // If not, we rely on the fact that we need the "Global Column Index" for the sheet.
-            // Let's assume `h._rawIndex` was attached before sort.
-        });
+        leftPanel.appendChild(leftRow);
         
-        // RE-IMPLEMENTING LOOP WITH CORRECT INDEXING
-        globalData.headers.forEach(h => {
-             // We need the cell value. 
-             // Note: In `loadData`, I didn't attach `_rawIndex`. 
-             // Let's fix that in `loadData` actually.
-             // For now, let's assume we find the cell by... matching names? No.
-             
-             // HOTFIX: The match.cells array is NOT sorted. It is in sheet order (D, E, F...).
-             // The `globalData.headers` IS sorted.
-             // We need to know which index in `match.cells` corresponds to current header `h`.
-             
-             // Since I can't modify `loadData` from inside `render`, I'll rely on a property I should add.
-             // But wait, I provided the full code. I will modify `loadData` to tag headers with `_rawIndex`.
-             
-             const cell = m.cells[h._rawIndex];
-             const el = document.createElement('div');
-             el.className = 'bet';
-             el.id = `cell-${m._origIdx}-${h._rawIndex}`; // Unique ID for Optimistic UI
-             
-             const isLocked = h.status === 'locked' || h.status === 'red' || h.color === 'red';
-             const isMe = currentUser && h.name.includes(currentUser);
-             
-             if(cell && cell.value) {
-                 el.textContent = cell.value;
-                 el.style.setProperty('--bet-bg', cell.color || '#262a30');
-                 el.style.background = cell.color || '#262a30';
-                 if(isMe && !isLocked) {
-                     el.style.cursor = "pointer";
-                     el.onclick = () => openBetPicker(m._origIdx, h._rawIndex, m.match);
-                 } else if (isMe && isLocked) {
-                     el.classList.add('bet-locked');
-                 }
-             } else {
-                 // Empty
-                 el.classList.add('empty');
-                 if(isMe) {
-                     if(isLocked) el.classList.add('bet-locked');
-                     else {
-                         el.classList.add('bet-open'); // Orange Dash
-                         el.onclick = () => openBetPicker(m._origIdx, h._rawIndex, m.match);
-                     }
-                 } else {
-                     el.classList.add('hidden');
-                 }
-             }
-             rr.appendChild(el);
+        // --- Right Side (Bets) ---
+        const rightRow = document.createElement('div');
+        rightRow.className = 'bet-row';
+        
+        m.cells.forEach((cell, colIdx) => {
+            const betDiv = document.createElement('div');
+            betDiv.className = 'bet-cell';
+            betDiv.id = `cell-${rowIdx}-${colIdx}`; // For optimistic update
+            
+            const header = rawData.headers[colIdx];
+            const headerName = header.name.trim().toUpperCase();
+            const myName = currentUser ? currentUser.toUpperCase() : "";
+            
+            // Logic: Is this ME?
+            const isMe = (headerName === myName);
+            // Logic: Is this Locked? (Row 18 has price)
+            const isLocked = (header.status === 'red' || header.status === 'locked' || header.color === 'red' || header.color === '#ff0000');
+
+            if(cell.value) {
+                // Has Bet
+                betDiv.textContent = cell.value;
+                betDiv.classList.add('filled');
+                betDiv.style.backgroundColor = cell.color || '#262a30';
+                
+                if(isMe && !isLocked) {
+                    betDiv.style.cursor = "pointer";
+                    betDiv.onclick = () => openPicker(rowIdx, colIdx, m.match);
+                } else if (isMe && isLocked) {
+                    betDiv.classList.add('locked');
+                }
+            } else {
+                // Empty
+                if(isMe) {
+                    if(!isLocked) {
+                        betDiv.classList.add('my-empty'); // Orange Dash
+                        betDiv.onclick = () => openPicker(rowIdx, colIdx, m.match);
+                    } else {
+                        betDiv.classList.add('locked'); // Solid border, no click
+                    }
+                }
+                // Else: remains default faint border
+            }
+            
+            rightRow.appendChild(betDiv);
         });
-
-        betRows.appendChild(rr);
+        betsList.appendChild(rightRow);
     });
+
+    // 3. Render Ranking (Simple)
+    if(rawData.ranking) {
+        rankingList.innerHTML = rawData.ranking.map((r, i) => `
+            <div style="display:flex; justify-content:space-between; font-size:11px; padding:2px 5px; background:rgba(255,255,255,0.05); border-radius:4px;">
+                <span>#${i+1} ${r.name}</span>
+                <span style="color:var(--accent-green); font-weight:800;">£${r.money}</span>
+            </div>
+        `).join('');
+    }
+}
+
+// --- HELPERS ---
+function getLogo(name) {
+    if(!name) return '';
+    const n = name.trim().toUpperCase();
+    const map = {
+        "ARS": "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
+        "LIV": "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
+        "CTY": "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
+        // Add more known ones...
+    };
+    // Clean name for mapping
+    const clean = n.substring(0, 3); 
     
-    // 5. UPDATE SUMMARY
-    // (Simplifying for brevity, assumes data.totals and ranking exist)
-    if(globalData.totals && weekly) {
-        weekly.innerHTML = `<div class="weekly-title">📊 Weekly</div>` + globalData.totals.map(t => 
-            `<div class="week-row"><span>${t.label}</span><span class="${t.label.includes('TOTAL')?'text-green':''}">${t.cells[1].value}</span></div>`
-        ).join('');
-    }
-    if(globalData.ranking && ranking) {
-        ranking.innerHTML = `<div class="ranking-title">🏆 Season</div>` + globalData.ranking.map((r,i) => 
-            `<div class="rank-row"><span>${i+1}. ${r.name}</span><span class="text-green">${r.money}</span></div>`
-        ).join('');
-    }
+    if(map[clean]) return `<img src="${map[clean]}" style="width:24px;">`;
+    
+    // Fallback Circle
+    return `<div class="logo-fallback">${clean.substring(0,1)}</div>`;
 }
 
-// --- DATA PREP (CRITICAL FOR SORTING FIX) ---
-const _origFetch = window.fetch;
-window.fetch = async (...args) => {
-    const response = await _origFetch(...args);
-    const data = await response.clone().json(); // Clone to read
-    // Tag Headers with original index BEFORE any sorting happens
-    if(data.headers) data.headers.forEach((h, i) => h._rawIndex = i);
-    return response;
-};
-
-// --- BETTING ---
-function openBetPicker(rowIdx, colIdx, matchTitle) {
+// --- BETTING LOGIC ---
+function openPicker(r, c, title) {
     if(navigator.vibrate) navigator.vibrate(10);
-    currentBetContext = { row: rowIdx, col: colIdx }; // Exact Sheet Coordinates
-    document.getElementById('bpTitle').textContent = matchTitle;
-    document.getElementById('betPickerModal').classList.add('active');
-    renderBetOptions('win'); // Default tab
+    currentCtx = { row: r, col: c };
+    document.getElementById('pickerTitle').innerText = title;
+    document.getElementById('pickerModal').classList.add('active');
+    renderPicker('win'); // Default
 }
 
-function renderBetOptions(type) {
-    const grid = document.getElementById('bpGrid');
+function renderPicker(type) {
+    const grid = document.getElementById('pickerGrid');
     grid.innerHTML = '';
     
+    let opts = [];
     if(type === 'win') {
-        const teams = document.getElementById('bpTitle').textContent.split('-');
-        const opts = [teams[0].trim(), 'Draw', teams[1].trim()];
-        const vals = ['1', 'X', '2']; // Or names
-        opts.forEach((o, i) => {
-             const btn = document.createElement('button');
-             btn.className = 'bet-opt-btn';
-             btn.textContent = o;
-             // Using simple logic: 1, X, 2 or Team Names depending on your preference. 
-             // Assuming Name based on previous code
-             const val = i===1 ? 'X' : o;
-             btn.onclick = () => saveBet(val);
-             grid.appendChild(btn);
-        });
+        const t = document.getElementById('pickerTitle').innerText.split('-');
+        opts = [t[0].trim(), 'Draw', t[1].trim()];
     } else if (type === 'score') {
-        // Split logic: Home / Draw / Away cols
-        const scores = [
-            ['1-0','2-0','2-1','3-0','3-1','3-2'], // Home Wins
-            ['0-0','1-1','2-2','3-3'],             // Draws
-            ['0-1','0-2','1-2','0-3','1-3','2-3']  // Away Wins
-        ];
-        scores.flat().forEach(s => {
-             const btn = document.createElement('button');
-             btn.className = 'bet-opt-btn';
-             btn.textContent = s;
-             btn.onclick = () => saveBet(s);
-             grid.appendChild(btn);
-        });
+        opts = ['1-0','2-0','2-1','3-0','3-1','3-2','0-0','1-1','2-2','0-1','0-2','1-2','0-3','1-3','2-3'];
     } else {
-        ['Goals 0.5', 'Goals 1.5', 'Goals 2.5', 'BTTS', 'No BTTS'].forEach(o => {
-             const btn = document.createElement('button');
-             btn.className = 'bet-opt-btn';
-             btn.textContent = o;
-             btn.onclick = () => saveBet(o);
-             grid.appendChild(btn);
-        });
+        opts = ['Goals 0.5', 'Goals 1.5', 'Goals 2.5', 'BTTS', 'No BTTS'];
     }
+    
+    opts.forEach(val => {
+        const btn = document.createElement('button');
+        btn.className = 'picker-btn';
+        btn.innerText = val;
+        // Logic: if 'Draw', save 'X'. Else save value.
+        let saveVal = val === 'Draw' ? 'X' : val;
+        btn.onclick = () => saveBet(saveVal);
+        grid.appendChild(btn);
+    });
+
+    // Add Clear Button
+    const clear = document.createElement('button');
+    clear.className = 'picker-btn clear-btn';
+    clear.innerText = 'Clear Cell';
+    clear.onclick = () => saveBet('');
+    grid.appendChild(clear);
 }
 
 function saveBet(val) {
-    // 1. Close Modal
-    document.getElementById('betPickerModal').classList.remove('active');
-    if(navigator.vibrate) navigator.vibrate(20);
-
-    // 2. Optimistic UI (Update immediately)
-    const el = document.getElementById(`cell-${currentBetContext.row}-${currentBetContext.col}`);
+    document.getElementById('pickerModal').classList.remove('active');
+    
+    // Optimistic UI
+    const el = document.getElementById(`cell-${currentCtx.row}-${currentCtx.col}`);
     if(el) {
+        el.innerText = val;
         if(val) {
-            el.textContent = val;
-            el.classList.remove('empty', 'bet-open');
-            el.style.background = '#262a30'; // Temp color
-            confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+            el.className = 'bet-cell filled';
+            el.style.background = '#262a30';
+            confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 }, scalar: 0.6 });
         } else {
-            el.textContent = '';
-            el.classList.add('empty', 'bet-open');
-            el.style.background = 'transparent';
+            el.className = 'bet-cell my-empty';
+            el.style.background = 'rgba(251, 146, 60, 0.05)';
         }
     }
 
-    // 3. Send to Sheet
-    // We calculate "subCol" (Relative Index) because your script likely expects 0, 1, 2 for that specific user
-    // Find all columns belonging to this user
-    const myCols = globalData.headers.filter(h => h.name.includes(currentUser));
-    // Find the relative index of the current column ID
-    // We need to match based on the _rawIndex we stored
-    const currentHeader = globalData.headers.find(h => h._rawIndex === currentBetContext.col);
-    const relativeIndex = myCols.indexOf(currentHeader);
+    // Backend Logic: Calculate Relative Index
+    // We need to tell the sheet: "This is Timbo's 2nd column" (Index 1)
+    // First, find all columns that belong to current User
+    const headerName = rawData.headers[currentCtx.col].name;
+    const userCols = rawData.headers.map((h, i) => ({name: h.name, idx: i}))
+                                    .filter(h => h.name === headerName);
+    
+    // Find where the clicked column ranks among the user's columns
+    const relIdx = userCols.findIndex(item => item.idx === currentCtx.col);
 
     const payload = {
-        user: currentUser,
-        row: currentBetContext.row,
-        subCol: relativeIndex, // 0 for 1st column, 1 for 2nd...
+        user: currentUser, // "TJALL"
+        row: currentCtx.row, // 0-based match index
+        subCol: relIdx,      // 0 or 1 usually
         value: val
     };
 
     fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
     .then(r => r.json())
-    .then(res => {
-        if(res.status !== 'success') alert("Error saving bet");
-        else loadData(); // Refresh to get official colors/status
+    .then(d => {
+         if(d.status !== 'success') alert('Sync Error');
+         else fetchData(); // Refresh real data
     });
 }
-
-function getTeamLogo(name) {
-    name = name.trim().toUpperCase().replace(/[^A-Z]/g, '');
-    const map = {
-        ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
-        AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
-        LIV:"https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/200px-Liverpool_FC.svg.png",
-        // Add others as needed, simple fallback
-    };
-    return map[name] || `https://via.placeholder.com/40?text=${name.substring(0,2)}`;
-}
-
-function toggleSummary() {
-    document.getElementById('summaryContent').classList.toggle('hidden');
-}
-
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
 </script>
 </body>
 </html>

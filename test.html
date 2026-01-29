@@ -902,6 +902,28 @@ body{
 .success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
 .success-title { font-size: 24px; font-weight: 800; color: var(--accent-green); text-transform: uppercase; letter-spacing: 1px; }
 .success-sub { font-size: 14px; opacity: 0.6; margin-top: 5px; font-weight: 600; }
+
+/* === LOCKED & DISABLED STATES (Paste at bottom of style) === */
+
+/* Grayed out bet slot (Visible but unclickable) */
+.bet-input-slot.locked {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: default;
+  opacity: 0.6;
+  pointer-events: none; /* Disables clicking */
+}
+
+/* "All Bets Placed" Button Style */
+.place-bets-btn.disabled {
+  background: var(--bg-soft); /* Matches the labels next to it */
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: default;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.place-bets-btn.disabled:active { transform: none; } 
  
 </style>
 </head>
@@ -1289,9 +1311,9 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-
+        // Store Row 18 (Win Price) data globally
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
-     
+
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
@@ -1303,7 +1325,6 @@ function loadData(){
              else if(st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
         });
 
-        // LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
         let statusHtml = "";
         if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
@@ -1313,7 +1334,6 @@ function loadData(){
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text">${statusHtml}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        // HEADER ROW (Right)
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
@@ -1322,7 +1342,6 @@ function loadData(){
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
-           
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
@@ -1335,7 +1354,6 @@ function loadData(){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
 
         const matchCount = data.matches.length;
-
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
@@ -1346,10 +1364,11 @@ function loadData(){
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
-          
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
+          const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
+          let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
+          const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
-
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
           m.cells.forEach((c, cellIndex)=>{
@@ -1358,42 +1377,60 @@ function loadData(){
                   el.textContent=c.value;
                   let color = c.color || '#262a30'; if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
                   el.style.setProperty('--bet-bg', color); el.style.backgroundColor = color; 
+                  const headerInfo = data.headers[cellIndex]; const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+                  if(live && !isColumnDead) {
+                      let bet = String(c.value).toUpperCase(); let isWinning = false;
+                      if(bet.includes("-")) { let [bH, bA] = bet.split("-").map(Number); if(bH === hScore && bA === aScore) isWinning = true; } 
+                      else { if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; }
+                      if(isWinning) el.classList.add("sweat-active");
+                  }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
           right.appendChild(rr);
         });
 
-        // FILTER BAR
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // === NEW BOTTOM LAYOUT (v3 - Aligned) ===
-        const bottomGrid = document.createElement("div"); 
-        bottomGrid.className = "bottom-control-grid";
+        // === SMART BUTTON LOGIC ===
+        // Check if ALL active columns have a price in Row 18
+        let allLocked = true;
+        let activeColsFound = false;
+        if(data.headers && window.winData) {
+            data.headers.forEach((h, i) => {
+                if(h.status !== 'red') { // Only check active players
+                    activeColsFound = true;
+                    // Check if value exists in Row 18
+                    if(!window.winData[i] || !window.winData[i].value) allLocked = false;
+                }
+            });
+        } else { allLocked = false; }
+        if(!activeColsFound) allLocked = false; // Safety check
+
+        const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         
-        // 1. BIG BUTTON (LEFT)
         const btnDiv = document.createElement("button");
-        btnDiv.className = "place-bets-btn";
-        btnDiv.innerHTML = "PLACE<br>BETS";
-        btnDiv.onclick = startBettingProcess;
+        if(allLocked) {
+             // GRAY STATE
+             btnDiv.className = "place-bets-btn disabled";
+             btnDiv.innerHTML = "ALL BETS<br>PLACED";
+             // No onclick event
+        } else {
+             // GREEN STATE
+             btnDiv.className = "place-bets-btn";
+             btnDiv.innerHTML = "PLACE<br>BETS";
+             btnDiv.onclick = startBettingProcess;
+        }
         bottomGrid.appendChild(btnDiv);
 
-        // 2. LABELS STACK (RIGHT) - Auto Generated
-        const labelCol = document.createElement("div");
-        labelCol.className = "stats-column";
-        ["BET","WIN","WIN PP"].forEach(l => { 
-            const lab = document.createElement("div"); 
-            lab.className = "left-label"; // Will now be 50px high
-            lab.textContent = l; 
-            labelCol.appendChild(lab); 
-        });
+        const labelCol = document.createElement("div"); labelCol.className = "stats-column";
+        ["BET","WIN","WIN PP"].forEach(l => { const lab = document.createElement("div"); lab.className = "left-label"; lab.textContent = l; labelCol.appendChild(lab); });
         bottomGrid.appendChild(labelCol);
         left.appendChild(bottomGrid);
 
-        // 3. RIGHT CARD DATA (Rows of 50px)
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
@@ -1402,7 +1439,6 @@ function loadData(){
         });
 
         window.globalHeaders = data.headers; applyFilterLogic();
-
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         data.ranking.forEach((r,i)=>{ let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1); let rowClass = "rank-row"; if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) { const hist = data.chartData.money; if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire"; } if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; } let nameHtml = r.name; if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>'; ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`; });
 
@@ -1410,6 +1446,7 @@ function loadData(){
     } catch(e){ console.error(e); }
   });
 }
+ 
 function getMatchStatusType(m) {
     if(!m.status) return 'upcoming';
     const s = m.status.toUpperCase();
@@ -2028,13 +2065,14 @@ function selectPlayer(name) {
   const savedData = localStorage.getItem('jb_saved_' + name);
   pendingBets = savedData ? JSON.parse(savedData) : {};
 
-  // 2. Identify Player Columns & Locks
+  // 2. Identify Player Columns & Locks (Pro Logic)
   let pIndices = [];
   if(window.globalHeaders) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
   
   // Check locks for specific columns
+  // If window.winData[i].value exists, that column is locked
   let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
   let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
 
@@ -2055,23 +2093,34 @@ function selectPlayer(name) {
     let sheetVal1 = (pIndices[0] !== undefined && m.cells[pIndices[0]]) ? m.cells[pIndices[0]].value : "";
     let sheetVal2 = (pIndices[1] !== undefined && m.cells[pIndices[1]]) ? m.cells[pIndices[1]].value : "";
 
-    // If pending is empty, adopt sheet value
+    // If pending is empty, adopt sheet value (so we don't accidentally clear locks visually)
     if(pendingBets[m.match].col1 === undefined) pendingBets[m.match].col1 = sheetVal1;
     if(pendingBets[m.match].col2 === undefined) pendingBets[m.match].col2 = sheetVal2;
 
     const val1 = pendingBets[m.match].col1;
     const val2 = pendingBets[m.match].col2;
 
-    // --- HTML GENERATION (With Locks) ---
-    // If locked, we render an invisible div to keep grid alignment
+    // --- RENDER BET SLOTS ---
+    // If locked: Render grayed out div with the value.
+    // If open: Render clickable div.
     
-    let htmlBtn1 = isLocked1 
-        ? `<div style="visibility:hidden;"></div>` 
-        : `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>`;
+    let htmlBtn1 = "";
+    if (isLocked1) {
+        // Locked: Show value or "LOCKED" if empty, add locked class
+        let display = sheetVal1 || "-";
+        htmlBtn1 = `<div class="bet-input-slot locked">${display}</div>`;
+    } else {
+        // Unlocked
+        htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>`;
+    }
 
-    let htmlBtn2 = isLocked2 
-        ? `<div style="visibility:hidden;"></div>` 
-        : `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
+    let htmlBtn2 = "";
+    if (isLocked2) {
+        let display = sheetVal2 || "-";
+        htmlBtn2 = `<div class="bet-input-slot locked">${display}</div>`;
+    } else {
+        htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
+    }
 
     const div = document.createElement('div'); 
     div.className = 'bet-row';

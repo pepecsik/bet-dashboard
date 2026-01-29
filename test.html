@@ -976,6 +976,32 @@ body {
 .opacity-50 { opacity: 0.5; }
 .opacity-80 { opacity: 0.8; }
 .txt-green { color: var(--accent-green) !important; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
+
+/* === H2H & FORM STYLES === */
+.h2h-section-title { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 0; }
+
+/* 1. FORM SECTION */
+.form-container { display: flex; justify-content: space-between; gap: 10px; background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.form-team-col { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.form-team-name { font-size: 12px; font-weight: 800; }
+.form-dots-row { display: flex; gap: 3px; }
+.big-dot { width: 8px; height: 8px; border-radius: 2px; } /* Square dots like LiveScore */
+
+/* 2. SUMMARY BAR */
+.h2h-summary-box { background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
+.summary-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+.summary-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #333; width: 100%; }
+.bar-seg { height: 100%; transition: width 0.5s ease; }
+.bar-h { background: var(--accent-green); }
+.bar-d { background: #666; }
+.bar-a { background: #ff4d4d; }
+
+/* 3. MATCH CARD (LiveScore Style) */
+.h2h-card { background: var(--bg-soft); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid transparent; display: flex; flex-direction: column; gap: 4px; }
+.h2h-meta { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.6; font-weight: 700; text-transform: uppercase; }
+.h2h-main { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; }
+.h2h-score-box { background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; color: #fff; font-weight: 800; min-width: 40px; text-align: center; }
+.winner-text { color: var(--accent-green); }
  
 </style>
 </head>
@@ -2299,72 +2325,123 @@ function submitAllBets() {
 
 function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
-    if (!h2hData || h2hData.length === 0) {
-        el.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
-        return;
-    }
     
-    // Filter out the "Next Match" placeholder if it exists (score is usually null)
-    // We only want finished games for history.
-    const historyGames = h2hData.filter(m => m.score && (m.score.home !== null || typeof m.score === 'string'));
+    // 1. GET FORM DATA (From Table Cache)
+    // We try to find the team in the table using the codes (e.g. "ARS")
+    let hForm = [], aForm = [];
+    if (window.tableCache) {
+        // Helper to find form string in table
+        const findForm = (code) => {
+            const mappings = { "NOT": "Nottingham", "WHA": "West Ham", "NWC": "Newcastle", "MAN": "Man Utd", "CTY": "Man City", "TOT": "Tottenham", "WOL": "Wolves", "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", "LEI": "Leicester" };
+            let search = mappings[code] || code;
+            search = normalizeName(search);
+            const found = window.tableCache.find(r => normalizeName(r.team).includes(search) || search.includes(normalizeName(r.team)));
+            return found ? found.form : "?????";
+        };
+        hForm = findForm(currentHome).split('');
+        aForm = findForm(currentAway).split('');
+    }
 
-    if (historyGames.length === 0) {
-        el.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No past meetings found</div>';
-        return;
-    }
-    
-    let html = `<div class="picker-label" style="text-align:center; margin-bottom:12px; letter-spacing:1px;">HEAD TO HEAD HISTORY</div>`;
+    // 2. CALCULATE H2H STATS
+    let hWins = 0, draws = 0, aWins = 0, total = 0;
+    const historyGames = (h2hData || []).filter(m => m.score && (m.score.home !== null || typeof m.score === 'string'));
     
     historyGames.forEach(m => {
-        const d = new Date(m.date);
-        const day = d.getDate();
-        const month = d.toLocaleString('default', { month: 'short' }).toUpperCase();
-        const year = d.getFullYear().toString().substr(-2); // '25 for 2025
+        let hS = 0, aS = 0;
+        if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
+        else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
         
-        // Parse Score
-        let hScore = 0, aScore = 0;
-        if(typeof m.score === 'string' && m.score.includes("-")) {
-             [hScore, aScore] = m.score.split("-").map(Number);
-        } else if (m.score && typeof m.score === 'object') {
-             hScore = m.score.home; aScore = m.score.away;
-        }
-
-        // Determine Winner Color
-        let hClass = "opacity-80", aClass = "opacity-80";
-        let scoreBg = "rgba(255,255,255,0.05)";
+        // We assume the API returns data relative to the match request
+        // But the API actually returns "Home" and "Away" relative to THAT specific match date.
+        // We need to check if 'currentHome' was the home team in history or the away team.
         
-        if(hScore > aScore) { 
-            hClass = "txt-green"; 
-            aClass = "opacity-50"; 
-        } else if(aScore > hScore) { 
-            aClass = "txt-green"; 
-            hClass = "opacity-50"; 
-        }
+        let isHomeTeamActuallyHome = normalizeName(m.home).includes(normalizeName(currentHome)) || (currentHome === "MAN" && m.home.includes("United")) || (currentHome === "CTY" && m.home.includes("City"));
+        
+        // Normalize winner logic to Current Home Team
+        if (hS > aS) { isHomeTeamActuallyHome ? hWins++ : aWins++; }
+        else if (aS > hS) { isHomeTeamActuallyHome ? aWins++ : hWins++; }
+        else { draws++; }
+        total++;
+    });
 
+    // 3. BUILD HTML
+    let html = ``;
+
+    // --- SECTION A: RECENT FORM ---
+    const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':'dot-D')}"></div>`).join('');
+    
+    html += `
+    <div class="h2h-section-title">Recent Form (Last 5)</div>
+    <div class="form-container">
+        <div class="form-team-col">
+            <div style="transform:scale(1.2); margin-bottom:4px;">${renderTeam(currentHome)}</div>
+            <div class="form-dots-row">${renderDots(hForm)}</div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
+        <div class="form-team-col">
+            <div style="transform:scale(1.2); margin-bottom:4px;">${renderTeam(currentAway)}</div>
+            <div class="form-dots-row">${renderDots(aForm)}</div>
+        </div>
+    </div>`;
+
+    // --- SECTION B: H2H SUMMARY BAR ---
+    if(total > 0) {
+        let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
         html += `
-        <div style="background:var(--bg-soft); margin-bottom:8px; border-radius:10px; padding:8px 12px; display:flex; align-items:center; border:1px solid rgba(255,255,255,0.05);">
-            <div style="width:40px; font-size:9px; font-weight:700; opacity:0.6; display:flex; flex-direction:column; align-items:center; line-height:1.3; border-right:1px solid rgba(255,255,255,0.1); margin-right:10px; padding-right:5px;">
-               <span>${day}</span>
-               <span>${month}</span>
-               <span>'${year}</span>
+        <div class="h2h-section-title">Head to Head (Last ${total})</div>
+        <div class="h2h-summary-box">
+            <div class="summary-labels">
+                <span style="color:var(--accent-green)">${hWins} Wins</span>
+                <span style="opacity:0.5">${draws} Draws</span>
+                <span style="color:#ff4d4d">${aWins} Wins</span>
             </div>
-            
-            <div style="flex:1; display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:8px;">
-                
-                <div style="text-align:right;">
-                    <div style="font-weight:700; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${hClass}">${m.home}</div>
-                </div>
-
-                <div style="background:${scoreBg}; padding:4px 8px; border-radius:6px; font-weight:800; font-size:13px; min-width:40px; text-align:center; border:1px solid rgba(255,255,255,0.1);">
-                    ${hScore} - ${aScore}
-                </div>
-
-                <div style="text-align:left;">
-                    <div style="font-weight:700; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${aClass}">${m.away}</div>
-                </div>
+            <div class="summary-bar">
+                <div class="bar-seg bar-h" style="width:${hp}%"></div>
+                <div class="bar-seg bar-d" style="width:${dp}%"></div>
+                <div class="bar-seg bar-a" style="width:${ap}%"></div>
             </div>
         </div>`;
-    });
+    }
+
+    // --- SECTION C: MATCH LIST ---
+    if (historyGames.length === 0) {
+        html += '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
+    } else {
+        html += `<div style="display:flex; flex-direction:column; gap:6px;">`;
+        historyGames.forEach(m => {
+            const d = new Date(m.date);
+            const dateStr = d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'2-digit' });
+            
+            let hS = 0, aS = 0;
+            if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
+            else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
+
+            // Highlight Logic
+            let hStyle = hS > aS ? "color:var(--text-main)" : "opacity:0.6";
+            let aStyle = aS > hS ? "color:var(--text-main)" : "opacity:0.6";
+            let borderStyle = ""; 
+            
+            // Check if Current Home Team won this specific match
+            let isHomeTeam = normalizeName(m.home).includes(normalizeName(currentHome)) || (currentHome === "MAN" && m.home.includes("United"));
+            if ((isHomeTeam && hS > aS) || (!isHomeTeam && aS > hS)) borderStyle = "border-left-color: var(--accent-green);"; // Win
+            else if (hS === aS) borderStyle = "border-left-color: #999;"; // Draw
+            else borderStyle = "border-left-color: #ff4d4d;"; // Loss
+
+            html += `
+            <div class="h2h-card" style="${borderStyle}">
+                <div class="h2h-meta">
+                    <span>${dateStr}</span>
+                    <span>${m.league || "Cup"}</span>
+                </div>
+                <div class="h2h-main">
+                    <div style="flex:1; text-align:right; ${hStyle}">${m.home}</div>
+                    <div style="margin:0 10px;" class="h2h-score-box">${hS} - ${aS}</div>
+                    <div style="flex:1; text-align:left; ${aStyle}">${m.away}</div>
+                </div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
     
     el.innerHTML = html;
 }

@@ -35,7 +35,7 @@
   --bg-card: rgba(33, 37, 43, 0.95);
   --bg-soft: #2b3038;
   --bg-row:  #1f2329;
-  --bg-modal: #1e293b; 
+  --bg-modal: #141619; 
   
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
@@ -2348,36 +2348,63 @@ function submitAllBets() {
 function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     
-    // 1. GET FORM DATA (Improved Matching)
+    // --- 1. SMART LOGO LOOKUP ---
+    // Finds the best logo URL by matching names to your existing TEAM_LOGOS keys
+    const getLogoUrl = (name) => {
+        const norm = normalizeName(name).toUpperCase();
+        // 1. Direct Code Match (if name is "ARS")
+        if (TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
+        
+        // 2. Specific Overrides for API Names
+        const map = {
+            "MANCHESTER UNITED": "MAN", "MAN UTD": "MAN",
+            "MANCHESTER CITY": "CTY", "MAN CITY": "CTY",
+            "NOTTINGHAM FOREST": "NOT", "NOTTM FOREST": "NOT",
+            "NEWCASTLE UNITED": "NWC", "NEWCASTLE": "NWC",
+            "WEST HAM UNITED": "WHA", "WEST HAM": "WHA",
+            "WOLVERHAMPTON": "WOL", "WOLVES": "WOL",
+            "BRIGHTON": "BRI", "HOVE": "BRI",
+            "LEEDS": "LEE", "LEICESTER": "LEI",
+            "TOTTENHAM": "TOT", "SPURS": "TOT",
+            "ASTON VILLA": "AVI", "VILLA": "AVI",
+            "CRYSTAL PALACE": "CPA", "PALACE": "CPA",
+            "SHEFFIELD": "SHE", "LUTON": "LUT", "BURNLEY": "BUR"
+        };
+        
+        // Check map
+        for (const [k, v] of Object.entries(map)) {
+            if (norm.includes(k) || k.includes(norm)) return TEAM_LOGOS[v];
+        }
+        
+        // 3. Fallback: Check if name starts with a known code (e.g. ARS..enal)
+        for (const [code, url] of Object.entries(TEAM_LOGOS)) {
+            if (norm.startsWith(code) || code.includes(norm.substring(0,3))) return url;
+        }
+        return "https://media.api-sports.io/football/leagues/39.png"; // Generic fallback
+    };
+
+    // --- 2. GET FORM DATA ---
     let hForm = [], aForm = [];
     if (window.tableCache) {
-        const findForm = (code) => {
-            // Expanded mapping for better hits
-            const mappings = { 
-                "NOT": "Nottingham", "WHA": "West Ham", "NWC": "Newcastle", 
-                "MAN": "Manchester United", "CTY": "Manchester City", "TOT": "Tottenham", 
-                "WOL": "Wolves", "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", 
-                "LEI": "Leicester", "BOU": "Bournemouth", "BRE": "Brentford", "BRI": "Brighton",
-                "CPA": "Crystal Palace", "FUL": "Fulham", "EVE": "Everton", "LIV": "Liverpool",
-                "ARS": "Arsenal", "CHE": "Chelsea" 
-            };
-            
-            let search = mappings[code] || code;
-            // Clean both strings to standard "simple" alphabet
-            let searchClean = normalizeName(search).toLowerCase();
-            
+        // We use the same logo-finder logic to normalize names for table matching
+        const findFormInTable = (code) => {
+            // Map code (ARS) to Table Name (Arsenal) is hard, so we search the table loosely
+            const cleanCode = normalizeName(code).substring(0,3).toLowerCase();
             const found = window.tableCache.find(r => {
-                let teamClean = normalizeName(r.team).toLowerCase();
-                return teamClean.includes(searchClean) || searchClean.includes(teamClean);
+                const t = normalizeName(r.team).toLowerCase();
+                // Special checks for the confusing teams
+                if(code === "MAN" && t.includes("united")) return true;
+                if(code === "CTY" && t.includes("city")) return true;
+                if(code === "NOT" && t.includes("forest")) return true;
+                return t.includes(cleanCode);
             });
             return found ? found.form : "?????";
         };
-        
-        hForm = findForm(currentHome).split('');
-        aForm = findForm(currentAway).split('');
+        hForm = findFormInTable(currentHome).split('');
+        aForm = findFormInTable(currentAway).split('');
     }
 
-    // 2. CALCULATE H2H STATS
+    // --- 3. CALCULATE H2H STATS ---
     let hWins = 0, draws = 0, aWins = 0, total = 0;
     const historyGames = (h2hData || []).filter(m => m.score && (m.score.home !== null || typeof m.score === 'string'));
     
@@ -2386,15 +2413,15 @@ function renderH2H(h2hData, currentHome, currentAway) {
         if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
         else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
         
-        // Check if Current Home Team matches the History Home Team
-        let histHomeName = normalizeName(m.home).toLowerCase();
-        let currHomeName = normalizeName(currentHome).toLowerCase();
-        
-        // Special case for Manchester 
-        if(currentHome === "MAN") currHomeName = "united";
-        if(currentHome === "CTY") currHomeName = "city";
+        // Normalize "Home" logic
+        let histHome = normalizeName(m.home).toUpperCase();
+        let currHome = normalizeName(currentHome).toUpperCase();
+        // Fix for "Manchester United" vs "MAN"
+        if(currHome === "MAN") currHome = "UNITED";
+        if(currHome === "CTY") currHome = "CITY";
+        if(currHome === "NOT") currHome = "FOREST";
 
-        let isHome = histHomeName.includes(currHomeName);
+        let isHome = histHome.includes(currHome);
         
         if (hS > aS) { isHome ? hWins++ : aWins++; }
         else if (aS > hS) { isHome ? aWins++ : hWins++; }
@@ -2402,72 +2429,63 @@ function renderH2H(h2hData, currentHome, currentAway) {
         total++;
     });
 
-    // 3. BUILD HTML
+    // --- 4. BUILD HTML ---
     let html = ``;
 
-    // --- SECTION A: RECENT FORM ---
+    // A. RECENT FORM
     const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':'dot-D')}"></div>`).join('');
     
-    // Use renderTeam but strip absolute positioning if necessary, or just wrap nicely
     html += `
     <div class="h2h-section-title">Recent Form (Last 5)</div>
     <div class="form-container">
         <div class="form-team-col">
-            <div style="transform:scale(1.1);">${renderTeam(currentHome)}</div>
+            <img src="${TEAM_LOGOS[currentHome]}" class="team-logo" style="width:40px;height:40px;object-fit:contain;">
             <div class="form-dots-row">${renderDots(hForm)}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
         <div class="form-team-col">
-            <div style="transform:scale(1.1);">${renderTeam(currentAway)}</div>
+            <img src="${TEAM_LOGOS[currentAway]}" class="team-logo" style="width:40px;height:40px;object-fit:contain;">
             <div class="form-dots-row">${renderDots(aForm)}</div>
         </div>
     </div>`;
 
-    // --- SECTION B: H2H SUMMARY BAR ---
+    // B. SUMMARY BAR (Dynamic Colors)
     if(total > 0) {
         let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
+        
+        // Logic: Winner gets Green, Loser gets Red. Tie = Both Green.
+        let hColor = "var(--accent-green)"; 
+        let aColor = "#ff4d4d"; // Default Red
+        
+        if (aWins > hWins) {
+            hColor = "#ff4d4d"; 
+            aColor = "var(--accent-green)";
+        } else if (aWins === hWins) {
+            aColor = "var(--accent-green)";
+        }
+
         html += `
         <div class="h2h-section-title">Head to Head (Last ${total})</div>
         <div class="h2h-summary-box">
             <div class="summary-labels">
-                <span style="color:var(--accent-green)">${hWins} Wins</span>
+                <span style="color:${hColor}; font-weight:800;">${hWins} Wins</span>
                 <span style="color:var(--accent-orange); opacity:0.8;">${draws} Draws</span>
-                <span style="color:#ff4d4d">${aWins} Wins</span>
+                <span style="color:${aColor}; font-weight:800;">${aWins} Wins</span>
             </div>
             <div class="summary-bar">
-                <div class="bar-seg bar-h" style="width:${hp}%"></div>
+                <div class="bar-seg" style="width:${hp}%; background:${hColor}"></div>
                 <div class="bar-seg bar-d" style="width:${dp}%"></div>
-                <div class="bar-seg bar-a" style="width:${ap}%"></div>
+                <div class="bar-seg" style="width:${ap}%; background:${aColor}"></div>
             </div>
         </div>`;
     }
 
-    // --- SECTION C: MATCH LIST (LiveScore Style) ---
+    // C. MATCH LIST
     if (historyGames.length === 0) {
         html += '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
     } else {
         html += `<div style="display:flex; flex-direction:column;">`;
         
-        // Helper to get logo URL from your global map
-        const getLogo = (name) => {
-            // Try to match name to a key in TEAM_LOGOS (e.g. "Arsenal" -> "ARS")
-            // Simple lookup for demo:
-            for (const [code, url] of Object.entries(TEAM_LOGOS)) {
-                // If the code is inside the name (e.g. ARS inside Arsenal?? No.)
-                // If the name starts with the code's known full name? 
-                // Let's rely on your existing helper logic:
-                if(normalizeName(name).toLowerCase().includes(normalizeName(code).toLowerCase())) return url;
-            }
-            // Fallback: If we can't match, return generic or try to use current home/away logos
-            // if we know it's them.
-            
-            // Hacky but effective:
-            if(normalizeName(name).includes(normalizeName(currentHome)) || (currentHome==="MAN" && name.includes("United"))) return TEAM_LOGOS[currentHome];
-            if(normalizeName(name).includes(normalizeName(currentAway)) || (currentAway==="MAN" && name.includes("United"))) return TEAM_LOGOS[currentAway];
-            
-            return "https://media.api-sports.io/football/leagues/39.png"; // Fallback PL logo
-        };
-
         historyGames.forEach(m => {
             const d = new Date(m.date);
             const year = d.getFullYear();
@@ -2476,8 +2494,8 @@ function renderH2H(h2hData, currentHome, currentAway) {
             if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
             else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
 
-            const hLogo = getLogo(m.home);
-            const aLogo = getLogo(m.away);
+            const hLogo = getLogoUrl(m.home);
+            const aLogo = getLogoUrl(m.away);
 
             // Winner classes
             const hWin = hS > aS ? "winner" : "";
@@ -2509,7 +2527,6 @@ function renderH2H(h2hData, currentHome, currentAway) {
     
     el.innerHTML = html;
 }
-
 function openPreMatchStats(matchKey) {
     // 1. Find the match object
     const m = window.allMatches.find(x => x.match === matchKey);

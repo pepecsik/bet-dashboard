@@ -894,6 +894,29 @@ body{
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
 
+/* === FIXED ALIGNMENT & SUCCESS SCREEN === */
+
+/* Force Header to match Row Grid exactly */
+.bet-header-row {
+  display: grid !important; 
+  grid-template-columns: 1fr 60px 60px !important; 
+  gap: 8px; 
+  padding: 0 8px 8px 8px; 
+  align-items: center;
+}
+
+/* Success Overlay */
+.success-overlay {
+  position: absolute; top:0; left:0; width:100%; height:100%;
+  background: var(--bg-card); z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 20px 20px 0 0; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.success-overlay.active { opacity: 1; pointer-events: all; }
+.success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
+.success-title { font-size: 24px; font-weight: 800; color: var(--accent-green); text-transform: uppercase; letter-spacing: 1px; }
+.success-sub { font-size: 14px; opacity: 0.6; margin-top: 5px; font-weight: 600; }
+ 
 </style>
 </head>
 <body>
@@ -1033,12 +1056,19 @@ body{
 </div>
 
 <div class="modal-overlay" id="modalBetList" style="z-index: 2001; align-items:end;">
-  <div class="modal-sheet" style="height: 85vh;">
+  <div class="modal-sheet" style="height: 85vh; position: relative;">
+    
+    <div class="success-overlay" id="successScreen">
+      <div class="success-icon">⚽</div>
+      <div class="success-title">GAME ON!</div>
+      <div class="success-sub">Bets placed successfully</div>
+    </div>
+
     <div class="close-btn" onclick="closeModal('modalBetList')">×</div>
     <div class="picker-title" id="lblPlayerName">BETTING</div>
     
-    <div class="bet-header-row" style="display:flex; justify-content:space-between; padding:0 10px; font-size:10px; font-weight:800; color:var(--text-muted);">
-      <span>MATCH</span> <span style="display:flex; gap:25px;"><span>BET 1</span> <span>BET 2</span></span>
+    <div class="bet-header-row" style="font-size:10px; font-weight:800; color:var(--text-muted);">
+      <div>MATCH</div> <div style="text-align:center">BET 1</div> <div style="text-align:center">BET 2</div>
     </div>
 
     <div id="betListContainer" class="scroll-y">
@@ -2116,7 +2146,7 @@ if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");
 
 Chart.register(ChartDataLabels);
 
-/* === NEW BETTING LOGIC (Paste at bottom of script) === */
+/* === NEW BETTING LOGIC (Updated v7.1) === */
 
 let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
@@ -2133,6 +2163,14 @@ function selectPlayer(name) {
   const container = document.getElementById('betListContainer'); 
   container.innerHTML = "";
   
+  // 1. LOAD SAVED BETS FROM MEMORY
+  const savedData = localStorage.getItem('jb_saved_' + name);
+  if(savedData) {
+      pendingBets = JSON.parse(savedData);
+  } else {
+      pendingBets = {};
+  }
+
   // Filter for NS (Not Started)
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];
   
@@ -2144,15 +2182,20 @@ function selectPlayer(name) {
 
   upcoming.forEach(m => {
     const [h, a] = m.match.split("-").map(s => s.trim());
+    
+    // Ensure object exists
     if(!pendingBets[m.match]) pendingBets[m.match] = { col1: null, col2: null };
     
+    // Get saved values (if any)
+    const val1 = pendingBets[m.match].col1;
+    const val2 = pendingBets[m.match].col2;
+
     const div = document.createElement('div'); 
     div.className = 'bet-row';
-    // Use your existing renderTeam function
     div.innerHTML = `
       <div class="match-info">${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}</div>
-      <div class="bet-input-slot" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">BET 1</div>
-      <div class="bet-input-slot" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">BET 2</div>`;
+      <div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>
+      <div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
     container.appendChild(div);
   });
   document.getElementById('modalBetList').classList.add('active');
@@ -2174,6 +2217,9 @@ function pickValue(val) {
   if(!pendingBets[match]) pendingBets[match] = {};
   pendingBets[match][`col${col}`] = val;
   
+  // SAVE TO LOCAL STORAGE IMMEDIATELY
+  localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
+
   const slot = document.getElementById(`slot-${match}-${col}`);
   if(slot) {
       if(val) { slot.innerText = val; slot.classList.add('filled'); } 
@@ -2201,9 +2247,19 @@ function submitAllBets() {
   .then(r => r.json())
   .then(res => {
     if(res.status === "success") { 
-        alert("Bets Placed!"); 
-        closeModal('modalBetList'); 
-        pendingBets = {}; 
+        // SHOW SUCCESS OVERLAY
+        document.getElementById('successScreen').classList.add('active');
+        
+        // Clear saved bets locally? Optional. 
+        // Uncomment next line if you want to clear memory after success
+        // localStorage.removeItem('jb_saved_' + selectedPlayer);
+
+        setTimeout(() => {
+            document.getElementById('successScreen').classList.remove('active');
+            closeModal('modalBetList'); 
+            // Optional: Reload data to see changes if backend is fast enough
+            // loadData();
+        }, 2000); // Wait 2 seconds
     } else { 
         alert("Error: " + res.message); 
     }

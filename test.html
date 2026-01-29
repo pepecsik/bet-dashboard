@@ -1979,7 +1979,7 @@ if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");
 
 Chart.register(ChartDataLabels);
 
-/* === NEW BETTING LOGIC (Pro Version v8) === */
+/* === NEW BETTING LOGIC (Fixed v9) === */
 
 let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
@@ -1996,20 +1996,20 @@ function selectPlayer(name) {
   const container = document.getElementById('betListContainer'); 
   container.innerHTML = "";
   
-  // 1. Load Local Drafts (Unsaved changes)
+  // 1. Load Drafts from Browser Memory
   const savedData = localStorage.getItem('jb_saved_' + name);
   pendingBets = savedData ? JSON.parse(savedData) : {};
 
-  // 2. Identify Player Columns in Sheet (for Pre-filling)
-  // We look at the global headers to find which columns belong to this player
-  let playerColIndices = [];
+  // 2. Find Player Columns in Dashboard Data (to show existing bets)
+  let pIndices = [];
   if(window.globalHeaders) {
-      window.globalHeaders.forEach((h, index) => {
-          if(h.name === name) playerColIndices.push(index);
+      window.globalHeaders.forEach((h, i) => {
+          // Normalize names to match (remove "1. " etc if present, though your headers seem clean)
+          if(h.name.includes(name)) pIndices.push(i);
       });
   }
 
-  // 3. Filter for Upcoming Games
+  // 3. Filter Upcoming Matches
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];
   
   if(upcoming.length === 0) { 
@@ -2021,36 +2021,33 @@ function selectPlayer(name) {
   upcoming.forEach(m => {
     const [h, a] = m.match.split("-").map(s => s.trim());
     
-    // Ensure entry exists in pending object
-    if(!pendingBets[m.match]) pendingBets[m.match] = { col1: null, col2: null };
-    
-    // --- SMART PRE-FILL LOGIC ---
-    // Priority: 1. Local Draft  2. Existing Sheet Value  3. "BET X" label
-    
-    // Check Sheet Data (using the indices we found)
-    let sheetVal1 = (playerColIndices[0] !== undefined && m.cells[playerColIndices[0]]) ? m.cells[playerColIndices[0]].value : null;
-    let sheetVal2 = (playerColIndices[1] !== undefined && m.cells[playerColIndices[1]]) ? m.cells[playerColIndices[1]].value : null;
+    // Ensure storage object exists
+    if(!pendingBets[m.match]) pendingBets[m.match] = {};
 
-    // Decide what to display (Draft overrides Sheet)
-    let display1 = pendingBets[m.match].col1 || sheetVal1;
-    let display2 = pendingBets[m.match].col2 || sheetVal2;
+    // -- SMART PRE-FILL --
+    // We look at the Dashboard Data (m.cells) to see if there is already a confirmed bet.
+    // Bet 1 is the first column found for this player, Bet 2 is the second.
+    let confirmed1 = (pIndices[0] !== undefined && m.cells[pIndices[0]]) ? m.cells[pIndices[0]].value : "";
+    let confirmed2 = (pIndices[1] !== undefined && m.cells[pIndices[1]]) ? m.cells[pIndices[1]].value : "";
 
-    // If we are showing sheet data, make sure 'pendingBets' knows about it so we don't overwrite it with null later
-    if(!pendingBets[m.match].col1 && sheetVal1) pendingBets[m.match].col1 = sheetVal1;
-    if(!pendingBets[m.match].col2 && sheetVal2) pendingBets[m.match].col2 = sheetVal2;
+    // If pendingBets is empty for this slot, use the confirmed bet
+    if(pendingBets[m.match].col1 === undefined) pendingBets[m.match].col1 = confirmed1;
+    if(pendingBets[m.match].col2 === undefined) pendingBets[m.match].col2 = confirmed2;
+
+    const val1 = pendingBets[m.match].col1;
+    const val2 = pendingBets[m.match].col2;
 
     const div = document.createElement('div'); 
     div.className = 'bet-row';
     div.innerHTML = `
       <div class="match-info">${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}</div>
-      <div class="bet-input-slot ${display1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${display1 || 'BET 1'}</div>
-      <div class="bet-input-slot ${display2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${display2 || 'BET 2'}</div>`;
+      <div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>
+      <div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
     container.appendChild(div);
   });
   
-  // Save merged state back to local storage so everything is synced
+  // Save merged state to ensure consistency
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
-  
   document.getElementById('modalBetList').classList.add('active');
 }
 
@@ -2064,18 +2061,21 @@ function openPicker(matchId, home, away, colNum) {
 }
 
 function pickValue(val) {
-  if(!val) val = null; 
-  const { match, col } = activePicker;
+  // Allow empty string to clear a bet
+  if(val === null || val === undefined) val = ""; 
   
+  const { match, col } = activePicker;
   if(!pendingBets[match]) pendingBets[match] = {};
+  
   pendingBets[match][`col${col}`] = val;
   
-  // SAVE TO MEMORY
+  // Save to local storage
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
 
+  // Update UI instantly
   const slot = document.getElementById(`slot-${match}-${col}`);
   if(slot) {
-      if(val) { slot.innerText = val; slot.classList.add('filled'); } 
+      if(val && val !== "") { slot.innerText = val; slot.classList.add('filled'); } 
       else { slot.innerText = `BET ${col}`; slot.classList.remove('filled'); }
   }
   closeModal('modalPicker');
@@ -2083,18 +2083,26 @@ function pickValue(val) {
 
 function submitAllBets() {
   const betsToSend = [];
+  
+  // Loop through all pending bets
   for (const [match, data] of Object.entries(pendingBets)) {
-    // Only send if there is data (even if it's the same as sheet, sending it again ensures consistency)
-    if (data.col1 || data.col2) betsToSend.push({ match: match, col1: data.col1, col2: data.col2 });
+    // IMPORTANT: Send even if empty string (to clear bets), but ignore undefined
+    let v1 = data.col1;
+    let v2 = data.col2;
+    
+    // We only send if there is actual data (string or number), ignoring pure nulls if they somehow exist
+    if (v1 !== undefined || v2 !== undefined) {
+        betsToSend.push({ match: match, col1: v1, col2: v2 });
+    }
   }
   
-  if(betsToSend.length === 0) { alert("No bets selected."); return; }
+  if(betsToSend.length === 0) { alert("No bets to send."); return; }
   
   const btn = document.querySelector('.action-btn'); 
   const originalText = btn.innerText;
   btn.innerText = "SENDING...";
+  btn.style.opacity = "0.7";
   
-  // Use API_URL from the top of your script (Assuming you have one unified script)
   fetch(API_URL, { 
     method: "POST", 
     body: JSON.stringify({ player: selectedPlayer, bets: betsToSend }) 
@@ -2105,22 +2113,25 @@ function submitAllBets() {
         // 1. Show Success Screen
         document.getElementById('successScreen').classList.add('active');
         
-        // 2. INSTANT REFRESH
-        loadData(); 
-
+        // 2. Clear Local Storage (Optional - keeps it clean)
+        // localStorage.removeItem('jb_saved_' + selectedPlayer);
+        
+        // 3. WAIT, THEN REFRESH
         setTimeout(() => {
             document.getElementById('successScreen').classList.remove('active');
             closeModal('modalBetList'); 
-            // Note: We keep pendingBets in localStorage so you can see them next time too
-        }, 1500); 
+            loadData(); // <--- This refreshes the main dashboard
+        }, 2500); // 2.5 seconds to let Google Sheets finish saving
     } else { 
         alert("Error: " + res.message); 
     }
     btn.innerText = originalText;
+    btn.style.opacity = "1";
   })
   .catch(err => { 
-      alert("Network Error"); 
+      alert("Network Error: " + err.toString()); 
       btn.innerText = originalText; 
+      btn.style.opacity = "1";
   });
 }
  

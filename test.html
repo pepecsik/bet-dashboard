@@ -977,31 +977,53 @@ body {
 .opacity-80 { opacity: 0.8; }
 .txt-green { color: var(--accent-green) !important; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
 
-/* === H2H & FORM STYLES === */
+/* === H2H & FORM STYLES (LiveScore V2) === */
 .h2h-section-title { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 0; }
 
 /* 1. FORM SECTION */
 .form-container { display: flex; justify-content: space-between; gap: 10px; background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-.form-team-col { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; }
-.form-team-name { font-size: 12px; font-weight: 800; }
-.form-dots-row { display: flex; gap: 3px; }
-.big-dot { width: 8px; height: 8px; border-radius: 2px; } /* Square dots like LiveScore */
+.form-team-col { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; }
+/* Align logos properly */
+.form-team-col .team-logo { width: 40px; height: 40px; } 
+.form-dots-row { display: flex; gap: 3px; margin-top: 4px;}
+.big-dot { width: 8px; height: 8px; border-radius: 2px; }
+.dot-W { background: var(--accent-green); } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
 
-/* 2. SUMMARY BAR */
+/* 2. SUMMARY BAR (Orange Draw) */
 .h2h-summary-box { background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
 .summary-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; margin-bottom: 6px; }
 .summary-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #333; width: 100%; }
 .bar-seg { height: 100%; transition: width 0.5s ease; }
 .bar-h { background: var(--accent-green); }
-.bar-d { background: #666; }
+.bar-d { background: var(--accent-orange); } /* CHANGED TO ORANGE */
 .bar-a { background: #ff4d4d; }
 
-/* 3. MATCH CARD (LiveScore Style) */
-.h2h-card { background: var(--bg-soft); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid transparent; display: flex; flex-direction: column; gap: 4px; }
-.h2h-meta { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.6; font-weight: 700; text-transform: uppercase; }
-.h2h-main { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; }
-.h2h-score-box { background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; color: #fff; font-weight: 800; min-width: 40px; text-align: center; }
-.winner-text { color: var(--accent-green); }
+/* 3. LIVESCORE MATCH CARD */
+.ls-card { 
+    background: var(--bg-soft); 
+    border-radius: 8px; 
+    padding: 10px 12px; 
+    margin-bottom: 8px; 
+    border: 1px solid rgba(255,255,255,0.05);
+    display: flex; 
+    align-items: center;
+    gap: 12px;
+}
+.ls-year { 
+    font-size: 11px; 
+    font-weight: 700; 
+    opacity: 0.5; 
+    width: 30px; 
+    text-align: center;
+}
+.ls-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.ls-row { display: flex; align-items: center; justify-content: space-between; height: 20px; }
+.ls-team-wrap { display: flex; align-items: center; gap: 8px; }
+.ls-logo { width: 18px; height: 18px; object-fit: contain; }
+.ls-name { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.ls-name.winner { color: var(--text-main); }
+.ls-score { font-size: 13px; font-weight: 800; color: var(--text-muted); width: 20px; text-align: right; }
+.ls-score.winner { color: var(--text-main); }
  
 </style>
 </head>
@@ -2326,18 +2348,31 @@ function submitAllBets() {
 function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     
-    // 1. GET FORM DATA (From Table Cache)
-    // We try to find the team in the table using the codes (e.g. "ARS")
+    // 1. GET FORM DATA (Improved Matching)
     let hForm = [], aForm = [];
     if (window.tableCache) {
-        // Helper to find form string in table
         const findForm = (code) => {
-            const mappings = { "NOT": "Nottingham", "WHA": "West Ham", "NWC": "Newcastle", "MAN": "Man Utd", "CTY": "Man City", "TOT": "Tottenham", "WOL": "Wolves", "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", "LEI": "Leicester" };
+            // Expanded mapping for better hits
+            const mappings = { 
+                "NOT": "Nottingham", "WHA": "West Ham", "NWC": "Newcastle", 
+                "MAN": "Manchester United", "CTY": "Manchester City", "TOT": "Tottenham", 
+                "WOL": "Wolves", "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", 
+                "LEI": "Leicester", "BOU": "Bournemouth", "BRE": "Brentford", "BRI": "Brighton",
+                "CPA": "Crystal Palace", "FUL": "Fulham", "EVE": "Everton", "LIV": "Liverpool",
+                "ARS": "Arsenal", "CHE": "Chelsea" 
+            };
+            
             let search = mappings[code] || code;
-            search = normalizeName(search);
-            const found = window.tableCache.find(r => normalizeName(r.team).includes(search) || search.includes(normalizeName(r.team)));
+            // Clean both strings to standard "simple" alphabet
+            let searchClean = normalizeName(search).toLowerCase();
+            
+            const found = window.tableCache.find(r => {
+                let teamClean = normalizeName(r.team).toLowerCase();
+                return teamClean.includes(searchClean) || searchClean.includes(teamClean);
+            });
             return found ? found.form : "?????";
         };
+        
         hForm = findForm(currentHome).split('');
         aForm = findForm(currentAway).split('');
     }
@@ -2351,15 +2386,18 @@ function renderH2H(h2hData, currentHome, currentAway) {
         if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
         else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
         
-        // We assume the API returns data relative to the match request
-        // But the API actually returns "Home" and "Away" relative to THAT specific match date.
-        // We need to check if 'currentHome' was the home team in history or the away team.
+        // Check if Current Home Team matches the History Home Team
+        let histHomeName = normalizeName(m.home).toLowerCase();
+        let currHomeName = normalizeName(currentHome).toLowerCase();
         
-        let isHomeTeamActuallyHome = normalizeName(m.home).includes(normalizeName(currentHome)) || (currentHome === "MAN" && m.home.includes("United")) || (currentHome === "CTY" && m.home.includes("City"));
+        // Special case for Manchester 
+        if(currentHome === "MAN") currHomeName = "united";
+        if(currentHome === "CTY") currHomeName = "city";
+
+        let isHome = histHomeName.includes(currHomeName);
         
-        // Normalize winner logic to Current Home Team
-        if (hS > aS) { isHomeTeamActuallyHome ? hWins++ : aWins++; }
-        else if (aS > hS) { isHomeTeamActuallyHome ? aWins++ : hWins++; }
+        if (hS > aS) { isHome ? hWins++ : aWins++; }
+        else if (aS > hS) { isHome ? aWins++ : hWins++; }
         else { draws++; }
         total++;
     });
@@ -2370,16 +2408,17 @@ function renderH2H(h2hData, currentHome, currentAway) {
     // --- SECTION A: RECENT FORM ---
     const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':'dot-D')}"></div>`).join('');
     
+    // Use renderTeam but strip absolute positioning if necessary, or just wrap nicely
     html += `
     <div class="h2h-section-title">Recent Form (Last 5)</div>
     <div class="form-container">
         <div class="form-team-col">
-            <div style="transform:scale(1.2); margin-bottom:4px;">${renderTeam(currentHome)}</div>
+            <div style="transform:scale(1.1);">${renderTeam(currentHome)}</div>
             <div class="form-dots-row">${renderDots(hForm)}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
         <div class="form-team-col">
-            <div style="transform:scale(1.2); margin-bottom:4px;">${renderTeam(currentAway)}</div>
+            <div style="transform:scale(1.1);">${renderTeam(currentAway)}</div>
             <div class="form-dots-row">${renderDots(aForm)}</div>
         </div>
     </div>`;
@@ -2392,7 +2431,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
         <div class="h2h-summary-box">
             <div class="summary-labels">
                 <span style="color:var(--accent-green)">${hWins} Wins</span>
-                <span style="opacity:0.5">${draws} Draws</span>
+                <span style="color:var(--accent-orange); opacity:0.8;">${draws} Draws</span>
                 <span style="color:#ff4d4d">${aWins} Wins</span>
             </div>
             <div class="summary-bar">
@@ -2403,40 +2442,65 @@ function renderH2H(h2hData, currentHome, currentAway) {
         </div>`;
     }
 
-    // --- SECTION C: MATCH LIST ---
+    // --- SECTION C: MATCH LIST (LiveScore Style) ---
     if (historyGames.length === 0) {
         html += '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
     } else {
-        html += `<div style="display:flex; flex-direction:column; gap:6px;">`;
+        html += `<div style="display:flex; flex-direction:column;">`;
+        
+        // Helper to get logo URL from your global map
+        const getLogo = (name) => {
+            // Try to match name to a key in TEAM_LOGOS (e.g. "Arsenal" -> "ARS")
+            // Simple lookup for demo:
+            for (const [code, url] of Object.entries(TEAM_LOGOS)) {
+                // If the code is inside the name (e.g. ARS inside Arsenal?? No.)
+                // If the name starts with the code's known full name? 
+                // Let's rely on your existing helper logic:
+                if(normalizeName(name).toLowerCase().includes(normalizeName(code).toLowerCase())) return url;
+            }
+            // Fallback: If we can't match, return generic or try to use current home/away logos
+            // if we know it's them.
+            
+            // Hacky but effective:
+            if(normalizeName(name).includes(normalizeName(currentHome)) || (currentHome==="MAN" && name.includes("United"))) return TEAM_LOGOS[currentHome];
+            if(normalizeName(name).includes(normalizeName(currentAway)) || (currentAway==="MAN" && name.includes("United"))) return TEAM_LOGOS[currentAway];
+            
+            return "https://media.api-sports.io/football/leagues/39.png"; // Fallback PL logo
+        };
+
         historyGames.forEach(m => {
             const d = new Date(m.date);
-            const dateStr = d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'2-digit' });
+            const year = d.getFullYear();
             
             let hS = 0, aS = 0;
             if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
             else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
 
-            // Highlight Logic
-            let hStyle = hS > aS ? "color:var(--text-main)" : "opacity:0.6";
-            let aStyle = aS > hS ? "color:var(--text-main)" : "opacity:0.6";
-            let borderStyle = ""; 
-            
-            // Check if Current Home Team won this specific match
-            let isHomeTeam = normalizeName(m.home).includes(normalizeName(currentHome)) || (currentHome === "MAN" && m.home.includes("United"));
-            if ((isHomeTeam && hS > aS) || (!isHomeTeam && aS > hS)) borderStyle = "border-left-color: var(--accent-green);"; // Win
-            else if (hS === aS) borderStyle = "border-left-color: #999;"; // Draw
-            else borderStyle = "border-left-color: #ff4d4d;"; // Loss
+            const hLogo = getLogo(m.home);
+            const aLogo = getLogo(m.away);
+
+            // Winner classes
+            const hWin = hS > aS ? "winner" : "";
+            const aWin = aS > hS ? "winner" : "";
 
             html += `
-            <div class="h2h-card" style="${borderStyle}">
-                <div class="h2h-meta">
-                    <span>${dateStr}</span>
-                    <span>${m.league || "Cup"}</span>
-                </div>
-                <div class="h2h-main">
-                    <div style="flex:1; text-align:right; ${hStyle}">${m.home}</div>
-                    <div style="margin:0 10px;" class="h2h-score-box">${hS} - ${aS}</div>
-                    <div style="flex:1; text-align:left; ${aStyle}">${m.away}</div>
+            <div class="ls-card">
+                <div class="ls-year">${year}</div>
+                <div class="ls-content">
+                    <div class="ls-row">
+                        <div class="ls-team-wrap">
+                            <img src="${hLogo}" class="ls-logo" onerror="this.style.display='none'">
+                            <span class="ls-name ${hWin}">${m.home}</span>
+                        </div>
+                        <span class="ls-score ${hWin}">${hS}</span>
+                    </div>
+                    <div class="ls-row">
+                        <div class="ls-team-wrap">
+                            <img src="${aLogo}" class="ls-logo" onerror="this.style.display='none'">
+                            <span class="ls-name ${aWin}">${m.away}</span>
+                        </div>
+                        <span class="ls-score ${aWin}">${aS}</span>
+                    </div>
                 </div>
             </div>`;
         });

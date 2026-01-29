@@ -1014,6 +1014,7 @@ body {
       <button class="tab-btn active" id="tabStats" onclick="switchTab('stats')">STATS</button>
       <button class="tab-btn" id="tabSummary" onclick="switchTab('summary')">SUMMARY</button>
       <button class="tab-btn" id="tabLineups" onclick="switchTab('lineups')">LINEUPS</button>
+      <button class="tab-btn" id="tabH2h" onclick="switchTab('h2h')">H2H</button>
     </div>
     <div class="modal-scroll-area">
        <div id="viewStats">
@@ -1042,6 +1043,9 @@ body {
        <div id="viewSummary" style="display:none;">
           <div id="aiSummaryWrapper"></div>
           <div id="summaryTimeline" class="sum-timeline"></div>
+       </div>
+       <div id="viewH2h" style="display:none;">
+          <div id="h2hList" style="display:flex; flex-direction:column; gap:8px;"></div>
        </div>
     </div>
   </div>
@@ -2020,6 +2024,7 @@ function openModal(m){
       subsCont.style.display = "flex"; subsCont.style.gap = "10px";
       renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
       renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
+      renderH2H(m.stats.h2h);
 
   } catch(err) {
       console.error("Modal Error:", err);
@@ -2160,8 +2165,11 @@ function selectPlayer(name) {
 
     const div = document.createElement('div'); 
     div.className = 'bet-row';
+    // In selectPlayer function, replace the div.innerHTML part with this:
     div.innerHTML = `
-      <div class="match-info">${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}</div>
+      <div class="match-info" onclick="openPreMatchStats('${m.match}')" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;">
+          ${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}
+      </div>
       ${htmlBtn1}
       ${htmlBtn2}
     `;
@@ -2270,6 +2278,77 @@ function submitAllBets() {
       btn.innerText = originalText; 
       btn.style.opacity = "1";
   });
+}
+
+function renderH2H(h2hData) {
+    const el = document.getElementById("h2hList");
+    if (!h2hData || h2hData.length === 0) {
+        el.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No Head-to-Head data available</div>';
+        return;
+    }
+    let html = '<div class="picker-label" style="text-align:center; margin-bottom:10px;">Last Meetings</div>';
+    
+    h2hData.forEach(m => {
+        const d = new Date(m.date);
+        const dateStr = d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'2-digit' });
+        const [hS, aS] = (m.score.home !== null) ? [m.score.home, m.score.away] : (m.score || "0-0").split("-");
+        
+        // Simple logic to color the winner
+        let hCol = "#fff", aCol = "#fff";
+        if(hS > aS) { hCol = "var(--accent-green)"; aCol = "rgba(255,255,255,0.5)"; }
+        else if(aS > hS) { aCol = "var(--accent-green)"; hCol = "rgba(255,255,255,0.5)"; }
+
+        html += `
+        <div style="background:var(--bg-row); padding:8px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; font-size:11px; border:1px solid rgba(255,255,255,0.05);">
+            <div style="width:35%; text-align:right; font-weight:700; color:${hCol}">${m.home}</div>
+            <div style="background:var(--bg-card); padding:4px 8px; border-radius:6px; font-weight:800; border:1px solid rgba(255,255,255,0.1); white-space:nowrap;">
+               ${hS} - ${aS}
+               <div style="font-size:8px; font-weight:500; opacity:0.5; margin-top:2px; text-align:center;">${dateStr}</div>
+            </div>
+            <div style="width:35%; text-align:left; font-weight:700; color:${aCol}">${m.away}</div>
+        </div>`;
+    });
+    el.innerHTML = html;
+}
+
+function openPreMatchStats(matchKey) {
+    // 1. Find the match object
+    const m = window.allMatches.find(x => x.match === matchKey);
+    if (!m) return;
+
+    // 2. Open the standard modal
+    openModal(m);
+
+    // 3. FORCE H2H VIEW & HIDE OTHERS
+    // Hide tabs that are irrelevant for pre-match
+    document.getElementById('tabStats').style.display = 'none';
+    document.getElementById('tabLineups').style.display = 'none';
+    document.getElementById('tabSummary').style.display = 'none';
+    
+    // Show only H2H
+    document.getElementById('tabH2h').style.display = 'block';
+    
+    // Switch to H2H tab programmatically
+    switchTab('h2h');
+
+    // 4. Add a "clean up" listener to restore tabs when closing
+    // We modify the close button behavior temporarily
+    const modal = document.getElementById('matchModal');
+    const onRestore = () => {
+        // Restore buttons
+        document.getElementById('tabStats').style.display = 'block';
+        document.getElementById('tabLineups').style.display = 'block';
+        document.getElementById('tabSummary').style.display = 'block';
+        modal.removeEventListener('click', checkClose);
+    };
+    
+    const checkClose = (e) => {
+        // If clicking overlay (outside card) or back button
+        if(e.target === modal || e.target.classList.contains('modal-back-btn')) {
+             setTimeout(onRestore, 300); // Wait for animation
+        }
+    };
+    modal.addEventListener('click', checkClose);
 }
  
 </script>

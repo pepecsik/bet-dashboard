@@ -1676,8 +1676,18 @@ function normalizeName(str) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 function formatName(n){return n||""}
-function switchTab(t){vibe();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');['stats','lineups','summary'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).style.display=x===t?'block':'none')}
-
+function switchTab(t){
+  vibe();
+  // Update button active states
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');
+  
+  // Update view visibility (Added 'h2h' to this list)
+  ['stats','lineups','summary', 'h2h'].forEach(x => {
+     const view = document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1));
+     if(view) view.style.display = x===t ? 'block' : 'none';
+  });
+}
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
     if(status === "NS") {

@@ -980,23 +980,38 @@ body {
 /* === H2H & FORM STYLES (LiveScore V2) === */
 .h2h-section-title { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 0; }
 
+/* FIX: Unknown Form Dot Color */
 .dot-\? { background: #333; border: 1px solid rgba(255,255,255,0.3); } 
 
-/* Fix: Ensure form logos are centered and constrained */
-.form-team-col .team-logo { 
-    max-width: 50px !important; 
-    max-height: 50px !important; 
-    width: auto !important; 
-    height: auto !important; 
-} 
+/* FIX: Specific Logo Tweaks */
+.form-team-col div[style*="relative"] {
+    width: 40px; 
+    height: 40px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
+.team-logo { max-width: 100%; max-height: 100%; }
+
+/* Fix TOT background to be circle not oval */
+img[alt="TOT"] { 
+    background: white; 
+    border-radius: 50%; 
+    padding: 2px; 
+    box-shadow: 0 0 10px rgba(255,255,255,0.2);
+    width: 32px !important; 
+    height: 32px !important;
+}
+
+/* Fix AVI (Aston Villa) size */
+img[alt="AVI"] { 
+    transform: scale(1.6) !important; 
+}
  
 /* 1. FORM SECTION */
 .form-container { display: flex; justify-content: space-between; gap: 10px; background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-.form-team-col { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; }
-/* Align logos properly */
-.form-team-col .team-logo { width: 40px; height: 40px; } 
 .form-dots-row { display: flex; gap: 3px; margin-top: 4px;}
-.big-dot { width: 8px; height: 8px; border-radius: 2px; }
+.big-dot { width: 8px; height: 8px; border-radius: 50%; }
 .dot-W { background: var(--accent-green); } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
 
 /* 2. SUMMARY BAR (Orange Draw) */
@@ -2384,7 +2399,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
         return "https://media.api-sports.io/football/leagues/39.png"; 
     };
 
-    // --- 2. GET FORM DATA ---
+    // --- 2. GET FORM DATA (THE FIX) ---
     let hForm = "??????".split(''); 
     let aForm = "??????".split('');
 
@@ -2392,27 +2407,29 @@ function renderH2H(h2hData, currentHome, currentAway) {
         const findFormInTable = (code) => {
             const cleanCode = normalizeName(code).toUpperCase();
             
-            // 1. Try Direct Match
+            // SUPER MAP: Connects your "Short Codes" to the "Long Names" in the Table
+            const mapping = {
+                "MAN": "Manchester United", "CTY": "Manchester City", "NOT": "Nottingham Forest",
+                "NWC": "Newcastle", "WHA": "West Ham", "TOT": "Tottenham", "WOL": "Wolves",
+                "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", "LEI": "Leicester",
+                "BOU": "Bournemouth", "BRE": "Brentford", "BRI": "Brighton", "CPA": "Crystal Palace",
+                "FUL": "Fulham", "EVE": "Everton", "LIV": "Liverpool", "ARS": "Arsenal", "CHE": "Chelsea",
+                "BUR": "Burnley", "SHU": "Sheffield Utd", "LUT": "Luton"
+            };
+
+            // 1. Try Exact Code Match (unlikely for table)
             let found = window.tableCache.find(r => r.team.toUpperCase() === cleanCode);
             
-            // 2. Try Smart Map
+            // 2. Try Mapped Name
             if(!found) {
-                 const mapping = {
-                    "MAN": "Manchester United", "CTY": "Manchester City", "NOT": "Nottingham Forest",
-                    "NWC": "Newcastle", "WHA": "West Ham", "TOT": "Tottenham", "WOL": "Wolves",
-                    "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", "LEI": "Leicester",
-                    "BOU": "Bournemouth", "BRE": "Brentford", "BRI": "Brighton", "CPA": "Crystal Palace",
-                    "FUL": "Fulham", "EVE": "Everton", "LIV": "Liverpool", "ARS": "Arsenal", "CHE": "Chelsea"
-                 };
                  const fullName = mapping[cleanCode] || cleanCode;
-                 found = window.tableCache.find(r => normalizeName(r.team).includes(normalizeName(fullName)));
+                 const search = normalizeName(fullName).toLowerCase();
+                 found = window.tableCache.find(r => {
+                     const t = normalizeName(r.team).toLowerCase();
+                     return t.includes(search) || search.includes(t);
+                 });
             }
             
-            // 3. Fallback to 3-letter match
-            if(!found) {
-                found = window.tableCache.find(r => normalizeName(r.team).toUpperCase().includes(cleanCode.substring(0,3)));
-            }
-
             return found ? found.form : "??????";
         };
         
@@ -2429,9 +2446,9 @@ function renderH2H(h2hData, currentHome, currentAway) {
         if(typeof m.score === 'string' && m.score.includes("-")) { [hS, aS] = m.score.split("-").map(Number); } 
         else if (m.score && typeof m.score === 'object') { hS = m.score.home; aS = m.score.away; }
         
-        // Normalize "Home" logic
         let histHome = normalizeName(m.home).toUpperCase();
         let currHome = normalizeName(currentHome).toUpperCase();
+        // Fix for "Manchester United" vs "MAN"
         if(currHome === "MAN") currHome = "UNITED";
         if(currHome === "CTY") currHome = "CITY";
         if(currHome === "NOT") currHome = "FOREST";
@@ -2464,12 +2481,12 @@ function renderH2H(h2hData, currentHome, currentAway) {
         </div>
     </div>`;
 
-    // B. SUMMARY BAR (Winner Green, Loser Red, Draws Orange)
+    // B. SUMMARY BAR (Dynamic Colors)
     if(total > 0) {
         let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
         
         let hColor = "var(--accent-green)"; 
-        let aColor = "#ff4d4d"; // Default Red
+        let aColor = "#ff4d4d"; 
         
         if (aWins > hWins) {
             hColor = "#ff4d4d"; 
@@ -2494,7 +2511,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
         </div>`;
     }
 
-    // C. MATCH LIST
+    // C. MATCH LIST (LiveScore Style)
     if (historyGames.length === 0) {
         html += '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
     } else {
@@ -2511,7 +2528,6 @@ function renderH2H(h2hData, currentHome, currentAway) {
             const hLogo = getLogoUrl(m.home);
             const aLogo = getLogoUrl(m.away);
 
-            // Winner classes
             const hWin = hS > aS ? "winner" : "";
             const aWin = aS > hS ? "winner" : "";
 

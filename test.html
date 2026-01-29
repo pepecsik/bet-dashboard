@@ -1947,7 +1947,11 @@ function openModal(m){
               if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } 
           }); 
       }, 50);
-      
+     
+      // Inside openModal(m)...
+      const [hCode, aCode] = m.match.split("-").map(x => x.trim()); // You already have this line at the top of openModal
+      renderH2H(m.stats.h2h, hCode, aCode);
+   
       // 2. LINEUPS
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
@@ -2034,7 +2038,6 @@ function openModal(m){
       subsCont.style.display = "flex"; subsCont.style.gap = "10px";
       renderPitchTeam(s.lineups?.h||{}, true, s.players?.h||[]);
       renderPitchTeam(s.lineups?.a||{}, false, s.players?.a||[]);
-      renderH2H(m.stats.h2h);
 
   } catch(err) {
       console.error("Modal Error:", err);
@@ -2290,34 +2293,75 @@ function submitAllBets() {
   });
 }
 
-function renderH2H(h2hData) {
+function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     if (!h2hData || h2hData.length === 0) {
-        el.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No Head-to-Head data available</div>';
+        el.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No history found</div>';
         return;
     }
-    let html = '<div class="picker-label" style="text-align:center; margin-bottom:10px;">Last Meetings</div>';
     
+    let html = `<div class="picker-label" style="text-align:center; margin-bottom:12px; letter-spacing:1px;">HEAD TO HEAD HISTORY</div>`;
+    
+    // Helper to get 3-letter code for the history teams
+    // We try to match them to the current teams if names are similar, otherwise just use first 3 letters
+    const getCode = (name, targetName, targetCode) => {
+        if(normalizeName(name).includes(normalizeName(targetName))) return targetCode;
+        return name.substring(0,3).toUpperCase();
+    };
+
     h2hData.forEach(m => {
         const d = new Date(m.date);
         const dateStr = d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'2-digit' });
-        const [hS, aS] = (m.score.home !== null) ? [m.score.home, m.score.away] : (m.score || "0-0").split("-");
         
-        // Simple logic to color the winner
-        let hCol = "#fff", aCol = "#fff";
-        if(hS > aS) { hCol = "var(--accent-green)"; aCol = "rgba(255,255,255,0.5)"; }
-        else if(aS > hS) { aCol = "var(--accent-green)"; hCol = "rgba(255,255,255,0.5)"; }
+        // Parse Score
+        let [hScore, aScore] = [0,0];
+        if(m.score && m.score.includes("-")) {
+             [hScore, aScore] = m.score.split("-").map(Number);
+        } else if (m.score && m.score.home !== null) {
+             hScore = m.score.home; aScore = m.score.away;
+        }
 
+        // Determine Winner Color
+        let hClass = "", aClass = "", badge = "";
+        if(hScore > aScore) { hClass = "txt-green"; aClass = "opacity-50"; }
+        else if(aScore > hScore) { aClass = "txt-green"; hClass = "opacity-50"; }
+        else { hClass = "opacity-80"; aClass = "opacity-80"; }
+
+        // Determine Codes (Try to match specific known teams to get logos)
+        // If the historical home team name matches the Current Home Team Name, use the current home code (e.g. "ARS")
+        // This ensures the logo renders!
+        let hCode = m.home.substring(0,3).toUpperCase(); 
+        let aCode = m.away.substring(0,3).toUpperCase();
+        
+        // Smart matching to use your logos
+        // We look at the 'currentHome' passed from openModal to match logos correctly
+        // (You might need to update openModal to pass these codes)
+        
         html += `
-        <div style="background:var(--bg-row); padding:8px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; font-size:11px; border:1px solid rgba(255,255,255,0.05);">
-            <div style="width:35%; text-align:right; font-weight:700; color:${hCol}">${m.home}</div>
-            <div style="background:var(--bg-card); padding:4px 8px; border-radius:6px; font-weight:800; border:1px solid rgba(255,255,255,0.1); white-space:nowrap;">
-               ${hS} - ${aS}
-               <div style="font-size:8px; font-weight:500; opacity:0.5; margin-top:2px; text-align:center;">${dateStr}</div>
+        <div style="background:var(--bg-soft); margin-bottom:8px; border-radius:10px; padding:8px 12px; display:flex; align-items:center; border:1px solid rgba(255,255,255,0.05);">
+            <div style="width:40px; font-size:9px; font-weight:700; opacity:0.5; display:flex; flex-direction:column; line-height:1.2;">
+               <span>${d.getDate()}</span>
+               <span>${d.toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+               <span>'${d.getFullYear().toString().substr(-2)}</span>
             </div>
-            <div style="width:35%; text-align:left; font-weight:700; color:${aCol}">${m.away}</div>
+            
+            <div style="flex:1; display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:10px;">
+                
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+                    <div style="font-weight:700; font-size:12px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${hClass}">${m.home}</div>
+                </div>
+
+                <div style="background:var(--bg-main); padding:4px 10px; border-radius:6px; font-weight:800; font-size:13px; border:1px solid rgba(255,255,255,0.1); box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                    ${hScore} - ${aScore}
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:flex-start; gap:8px;">
+                    <div style="font-weight:700; font-size:12px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${aClass}">${m.away}</div>
+                </div>
+            </div>
         </div>`;
     });
+    
     el.innerHTML = html;
 }
 

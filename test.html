@@ -906,14 +906,36 @@ body{
 /* === LOCKED & DISABLED STATES (Paste at bottom of style) === */
 
 /* Grayed out bet slot (Visible but unclickable) */
+/* --- UPDATED BET PILLS --- */
+.bet-input-slot {
+  height: 36px;
+  background: var(--bg-soft);       /* Gray Background */
+  border: 1px dashed var(--accent-orange); /* Orange Dotted Line */
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--text-main);
+  cursor: pointer; transition: all 0.2s;
+  text-align: center; overflow: hidden; white-space: nowrap;
+}
+
+/* Filled State (Green Solid) */
+.bet-input-slot.filled {
+  color: #000;
+  border: 1px solid var(--accent-green);
+  background: var(--accent-green);
+}
+
+/* Locked State (Fade out, remove orange dashes) */
 .bet-input-slot.locked {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.05); /* Solid thin border */
   cursor: default;
-  opacity: 0.6;
-  pointer-events: none; /* Disables clicking */
+  opacity: 0.5;
+  pointer-events: none;
 }
+
+.bet-input-slot:active { transform: scale(0.95); }
 
 /* "All Bets Placed" Button Style */
 .place-bets-btn.disabled {
@@ -2133,15 +2155,28 @@ function openPicker(matchId, home, away, colNum) {
 }
 
 function pickValue(val) {
+  // If val is null/undefined, make it empty string
   if(val === null || val === undefined) val = ""; 
+  
   const { match, col } = activePicker;
+  
   if(!pendingBets[match]) pendingBets[match] = {};
   pendingBets[match][`col${col}`] = val;
+  
+  // Save to local storage
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
+
+  // Update UI instantly
   const slot = document.getElementById(`slot-${match}-${col}`);
   if(slot) {
-      if(val && val !== "") { slot.innerText = val; slot.classList.add('filled'); } 
-      else { slot.innerText = `BET ${col}`; slot.classList.remove('filled'); }
+      if(val && val !== "") { 
+          slot.innerText = val; 
+          slot.classList.add('filled'); 
+      } else { 
+          // CLEAR THE SLOT
+          slot.innerText = ""; // Empty text
+          slot.classList.remove('filled'); 
+      }
   }
   closeModal('modalPicker');
 }

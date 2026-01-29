@@ -1311,8 +1311,7 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        // Store Row 18 (Win Price) data globally
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; // Store Win Prices
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1354,6 +1353,7 @@ function loadData(){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
 
         const matchCount = data.matches.length;
+
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
@@ -1367,7 +1367,7 @@ function loadData(){
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
           const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
@@ -1396,30 +1396,25 @@ function loadData(){
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
         // === SMART BUTTON LOGIC ===
-        // Check if ALL active columns have a price in Row 18
         let allLocked = true;
         let activeColsFound = false;
         if(data.headers && window.winData) {
             data.headers.forEach((h, i) => {
-                if(h.status !== 'red') { // Only check active players
+                if(h.status !== 'red') { 
                     activeColsFound = true;
-                    // Check if value exists in Row 18
                     if(!window.winData[i] || !window.winData[i].value) allLocked = false;
                 }
             });
         } else { allLocked = false; }
-        if(!activeColsFound) allLocked = false; // Safety check
+        if(!activeColsFound) allLocked = false;
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
-        
         const btnDiv = document.createElement("button");
         if(allLocked) {
-             // GRAY STATE
              btnDiv.className = "place-bets-btn disabled";
-             btnDiv.innerHTML = "ALL BETS<br>PLACED";
-             // No onclick event
+             // UPDATE: CHANGED TEXT HERE
+             btnDiv.innerHTML = "ALL BETS<br>ARE PLACED";
         } else {
-             // GREEN STATE
              btnDiv.className = "place-bets-btn";
              btnDiv.innerHTML = "PLACE<br>BETS";
              btnDiv.onclick = startBettingProcess;
@@ -2065,14 +2060,13 @@ function selectPlayer(name) {
   const savedData = localStorage.getItem('jb_saved_' + name);
   pendingBets = savedData ? JSON.parse(savedData) : {};
 
-  // 2. Identify Player Columns & Locks (Pro Logic)
+  // 2. Identify Player Columns & Locks
   let pIndices = [];
   if(window.globalHeaders) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
   
   // Check locks for specific columns
-  // If window.winData[i].value exists, that column is locked
   let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
   let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
 
@@ -2100,24 +2094,19 @@ function selectPlayer(name) {
     const val1 = pendingBets[m.match].col1;
     const val2 = pendingBets[m.match].col2;
 
-    // --- RENDER BET SLOTS ---
-    // If locked: Render grayed out div with the value.
-    // If open: Render clickable div.
+    // --- FIXED HTML GENERATION ---
+    // Always render a div for alignment. If locked, apply locked class.
     
     let htmlBtn1 = "";
     if (isLocked1) {
-        // Locked: Show value or "LOCKED" if empty, add locked class
-        let display = sheetVal1 || "-";
-        htmlBtn1 = `<div class="bet-input-slot locked">${display}</div>`;
+        htmlBtn1 = `<div class="bet-input-slot locked">${sheetVal1 || "-"}</div>`;
     } else {
-        // Unlocked
         htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>`;
     }
 
     let htmlBtn2 = "";
     if (isLocked2) {
-        let display = sheetVal2 || "-";
-        htmlBtn2 = `<div class="bet-input-slot locked">${display}</div>`;
+        htmlBtn2 = `<div class="bet-input-slot locked">${sheetVal2 || "-"}</div>`;
     } else {
         htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
     }

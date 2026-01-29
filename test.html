@@ -972,6 +972,10 @@ body {
   border: 1px solid rgba(255,255,255,0.05);
 }
 .place-bets-btn.disabled:active { transform: none; } 
+/* Utility Classes for H2H */
+.opacity-50 { opacity: 0.5; }
+.opacity-80 { opacity: 0.8; }
+.txt-green { color: var(--accent-green) !important; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
  
 </style>
 </head>
@@ -1805,11 +1809,14 @@ function openModal(m){
   try {
       vibe(); 
       document.getElementById('playerPopup').style.display='none';
+      
+      // 1. THIS IS THE ONLY PLACE WE DEFINE hCode/aCode
       const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
+      
       const s=m.stats||{};
       switchTab('stats'); 
       
-      // SHOW MODAL FIRST (CRITICAL FIX)
+      // SHOW MODAL FIRST
       document.getElementById("matchModal").classList.add("active");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
@@ -1830,7 +1837,7 @@ function openModal(m){
         }
       }
 
-      // 1. GENERATE GROUP PREDICTIONS
+      // GROUP PREDICTIONS
       let consensusHTML = "";
       if(m && m.cells) {
           let votes = { H: 0, D: 0, A: 0, Total: 0 };
@@ -1937,22 +1944,19 @@ function openModal(m){
             allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
           });
           sb.innerHTML = allStatsHTML;
-          // TRIGGER ANIMATION FOR STAT BARS HERE TOO
           setTimeout(() => { document.querySelectorAll('#statsArea .animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
       }
       
-      // TRIGGER ANIMATION FOR PREDICTION BARS (MOVED OUTSIDE 'ELSE')
       setTimeout(() => { 
           document.querySelectorAll('#consensusArea .animate-bar').forEach(bar => { 
               if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } 
           }); 
       }, 50);
-     
-      // Inside openModal(m)...
-      const [hCode, aCode] = m.match.split("-").map(x => x.trim()); // You already have this line at the top of openModal
+      
+      // CALL H2H RENDER (Use the variables defined at top of function)
       renderH2H(m.stats.h2h, hCode, aCode);
    
-      // 2. LINEUPS
+      // LINEUPS
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
       

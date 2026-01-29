@@ -1979,7 +1979,7 @@ if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");
 
 Chart.register(ChartDataLabels);
 
-/* === NEW BETTING LOGIC (Updated v7.1) === */
+/* === NEW BETTING LOGIC (Pro Version v8) === */
 
 let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
@@ -1996,15 +1996,20 @@ function selectPlayer(name) {
   const container = document.getElementById('betListContainer'); 
   container.innerHTML = "";
   
-  // 1. LOAD SAVED BETS FROM MEMORY
+  // 1. Load Local Drafts (Unsaved changes)
   const savedData = localStorage.getItem('jb_saved_' + name);
-  if(savedData) {
-      pendingBets = JSON.parse(savedData);
-  } else {
-      pendingBets = {};
+  pendingBets = savedData ? JSON.parse(savedData) : {};
+
+  // 2. Identify Player Columns in Sheet (for Pre-filling)
+  // We look at the global headers to find which columns belong to this player
+  let playerColIndices = [];
+  if(window.globalHeaders) {
+      window.globalHeaders.forEach((h, index) => {
+          if(h.name === name) playerColIndices.push(index);
+      });
   }
 
-  // Filter for NS (Not Started)
+  // 3. Filter for Upcoming Games
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];
   
   if(upcoming.length === 0) { 
@@ -2016,21 +2021,36 @@ function selectPlayer(name) {
   upcoming.forEach(m => {
     const [h, a] = m.match.split("-").map(s => s.trim());
     
-    // Ensure object exists
+    // Ensure entry exists in pending object
     if(!pendingBets[m.match]) pendingBets[m.match] = { col1: null, col2: null };
     
-    // Get saved values (if any)
-    const val1 = pendingBets[m.match].col1;
-    const val2 = pendingBets[m.match].col2;
+    // --- SMART PRE-FILL LOGIC ---
+    // Priority: 1. Local Draft  2. Existing Sheet Value  3. "BET X" label
+    
+    // Check Sheet Data (using the indices we found)
+    let sheetVal1 = (playerColIndices[0] !== undefined && m.cells[playerColIndices[0]]) ? m.cells[playerColIndices[0]].value : null;
+    let sheetVal2 = (playerColIndices[1] !== undefined && m.cells[playerColIndices[1]]) ? m.cells[playerColIndices[1]].value : null;
+
+    // Decide what to display (Draft overrides Sheet)
+    let display1 = pendingBets[m.match].col1 || sheetVal1;
+    let display2 = pendingBets[m.match].col2 || sheetVal2;
+
+    // If we are showing sheet data, make sure 'pendingBets' knows about it so we don't overwrite it with null later
+    if(!pendingBets[m.match].col1 && sheetVal1) pendingBets[m.match].col1 = sheetVal1;
+    if(!pendingBets[m.match].col2 && sheetVal2) pendingBets[m.match].col2 = sheetVal2;
 
     const div = document.createElement('div'); 
     div.className = 'bet-row';
     div.innerHTML = `
       <div class="match-info">${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}</div>
-      <div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>
-      <div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
+      <div class="bet-input-slot ${display1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${display1 || 'BET 1'}</div>
+      <div class="bet-input-slot ${display2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${display2 || 'BET 2'}</div>`;
     container.appendChild(div);
   });
+  
+  // Save merged state back to local storage so everything is synced
+  localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
+  
   document.getElementById('modalBetList').classList.add('active');
 }
 
@@ -2050,7 +2070,7 @@ function pickValue(val) {
   if(!pendingBets[match]) pendingBets[match] = {};
   pendingBets[match][`col${col}`] = val;
   
-  // SAVE TO LOCAL STORAGE IMMEDIATELY
+  // SAVE TO MEMORY
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
 
   const slot = document.getElementById(`slot-${match}-${col}`);
@@ -2064,6 +2084,7 @@ function pickValue(val) {
 function submitAllBets() {
   const betsToSend = [];
   for (const [match, data] of Object.entries(pendingBets)) {
+    // Only send if there is data (even if it's the same as sheet, sending it again ensures consistency)
     if (data.col1 || data.col2) betsToSend.push({ match: match, col1: data.col1, col2: data.col2 });
   }
   
@@ -2073,6 +2094,7 @@ function submitAllBets() {
   const originalText = btn.innerText;
   btn.innerText = "SENDING...";
   
+  // Use API_URL from the top of your script (Assuming you have one unified script)
   fetch(API_URL, { 
     method: "POST", 
     body: JSON.stringify({ player: selectedPlayer, bets: betsToSend }) 
@@ -2080,19 +2102,17 @@ function submitAllBets() {
   .then(r => r.json())
   .then(res => {
     if(res.status === "success") { 
-        // SHOW SUCCESS OVERLAY
+        // 1. Show Success Screen
         document.getElementById('successScreen').classList.add('active');
         
-        // Clear saved bets locally? Optional. 
-        // Uncomment next line if you want to clear memory after success
-        // localStorage.removeItem('jb_saved_' + selectedPlayer);
+        // 2. INSTANT REFRESH
+        loadData(); 
 
         setTimeout(() => {
             document.getElementById('successScreen').classList.remove('active');
             closeModal('modalBetList'); 
-            // Optional: Reload data to see changes if backend is fast enough
-            // loadData();
-        }, 2000); // Wait 2 seconds
+            // Note: We keep pendingBets in localStorage so you can see them next time too
+        }, 1500); 
     } else { 
         alert("Error: " + res.message); 
     }

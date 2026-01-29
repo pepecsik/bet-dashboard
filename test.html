@@ -1074,11 +1074,10 @@ body{
     <div class="picker-title" id="lblPlayerName">BETTING</div>
     
     <div class="bet-header-row" style="font-size:10px; font-weight:800; color:var(--text-muted);">
-      <div>MATCH</div> <div style="text-align:center">BET 1</div> <div style="text-align:center">BET 2</div>
+      <div>MATCH</div> <div></div> <div></div>
     </div>
 
-    <div id="betListContainer" class="scroll-y">
-      </div>
+    <div id="betListContainer" class="scroll-y"></div>
 
     <button class="action-btn" onclick="submitAllBets()">CONFIRM & SEND</button>
   </div>
@@ -2066,7 +2065,7 @@ function selectPlayer(name) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
   
-  // Check locks for specific columns
+  // Check locks
   let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
   let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
 
@@ -2087,28 +2086,28 @@ function selectPlayer(name) {
     let sheetVal1 = (pIndices[0] !== undefined && m.cells[pIndices[0]]) ? m.cells[pIndices[0]].value : "";
     let sheetVal2 = (pIndices[1] !== undefined && m.cells[pIndices[1]]) ? m.cells[pIndices[1]].value : "";
 
-    // If pending is empty, adopt sheet value (so we don't accidentally clear locks visually)
+    // If pending is empty, adopt sheet value
     if(pendingBets[m.match].col1 === undefined) pendingBets[m.match].col1 = sheetVal1;
     if(pendingBets[m.match].col2 === undefined) pendingBets[m.match].col2 = sheetVal2;
 
     const val1 = pendingBets[m.match].col1;
     const val2 = pendingBets[m.match].col2;
 
-    // --- FIXED HTML GENERATION ---
-    // Always render a div for alignment. If locked, apply locked class.
+    // --- HTML GENERATION (Cleaner) ---
+    // Change: Removed "BET 1" / "BET 2" fallback text. Now it defaults to empty string.
     
     let htmlBtn1 = "";
     if (isLocked1) {
         htmlBtn1 = `<div class="bet-input-slot locked">${sheetVal1 || "-"}</div>`;
     } else {
-        htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || 'BET 1'}</div>`;
+        htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || ''}</div>`;
     }
 
     let htmlBtn2 = "";
     if (isLocked2) {
         htmlBtn2 = `<div class="bet-input-slot locked">${sheetVal2 || "-"}</div>`;
     } else {
-        htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || 'BET 2'}</div>`;
+        htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || ''}</div>`;
     }
 
     const div = document.createElement('div'); 
@@ -2124,7 +2123,6 @@ function selectPlayer(name) {
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
   document.getElementById('modalBetList').classList.add('active');
 }
-
 function openPicker(matchId, home, away, colNum) {
   activePicker = { match: matchId, col: colNum };
   document.getElementById('pickerMatchTitle').innerText = matchId + ` (BET ${colNum})`;

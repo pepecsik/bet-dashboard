@@ -826,92 +826,91 @@ body{
 .form-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; }
 .dot-W { background: var(--accent-green); } .dot-D { background: #aaa; } .dot-L { background: #ff4d4d; }
 
-/* === NEW BETTING STYLES (Paste at the bottom of <style>) === */
-.float-bet-btn {
-  position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px;
-  background: var(--accent-green); color: #000; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 30px; font-weight: 800; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  z-index: 100; cursor: pointer; border: 2px solid #fff;
-  transition: transform 0.2s;
-}
-.float-bet-btn:active { transform: scale(0.9); }
+/* === NEW BETTING STYLES (v2) === */
 
+/* 1. LAYOUT FOR BOTTOM LEFT CARD (Button + Labels) */
+.bottom-control-grid {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr; /* Button takes more space */
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.stats-column {
+  display: flex; flex-direction: column; gap: 4px;
+}
+/* The specific labels inside the small column */
+.stats-column .left-label {
+  height: 32px !important; /* Smaller height to fit 3 in the space of the button */
+  font-size: 10px;
+  margin: 0;
+}
+
+/* THE NEW BIG BUTTON */
+.place-bets-btn {
+  background: var(--accent-green);
+  color: #000;
+  border: none;
+  border-radius: var(--rad-md);
+  font-weight: 800;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.2);
+  transition: transform 0.1s;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  line-height: 1.2;
+}
+.place-bets-btn:active { transform: scale(0.96); }
+
+/* 2. MODAL & AVATARS (Centered & Square) */
 .modal-sheet {
-  width: 100%; max-width: 500px; background: var(--bg-card);
-  border-radius: 20px 20px 0 0; padding: 20px; max-height: 85vh;
-  display: flex; flex-direction: column; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1);
+  width: 90%; max-width: 400px; background: var(--bg-card);
+  border-radius: 20px; padding: 25px; max-height: 85vh;
+  display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
-/* Aligns sheet to bottom */
-.modal-overlay[style*="align-items:end"] { align-items: flex-end; }
+/* Center the overlay */
+.modal-overlay { justify-content: center; align-items: center; }
 
-/* PLAYER SELECT */
-.player-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+/* Remove names, big square avatars */
+.player-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; }
 .player-card {
-  background: var(--bg-soft); padding: 15px; border-radius: 12px;
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  border: 2px solid transparent; cursor: pointer;
+  background: var(--bg-soft); padding: 10px; border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  border: 2px solid transparent; cursor: pointer; aspect-ratio: 1/1;
 }
 .player-card:active { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.1); }
-.player-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+.player-avatar { 
+  width: 100%; height: 100%; 
+  border-radius: 8px; /* Slightly rounded square */
+  object-fit: cover; 
+  display: block;
+}
+.player-name-text { display: none; } /* Hide text as requested */
 
-/* BETTING SHEET ROWS */
+/* 3. EXISTING BETTING UI (Kept same) */
 .bet-row { display:grid; grid-template-columns: 1fr 60px 60px; gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; align-items:center; }
 .match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); }
 .vs-tag { opacity:0.4; font-size:10px; }
-.bet-input-slot {
-  height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer;
-  transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap;
-}
+.bet-input-slot { height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
 .bet-input-slot.filled { color: #000; border-color: var(--accent-green); background: var(--accent-green); }
-.bet-input-slot:active { transform: scale(0.95); }
-
-/* PICKER STYLES */
 .picker-title { text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 10px; color: var(--accent-orange); }
 .picker-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .picker-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 .picker-grid-1x2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.picker-btn {
-  background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1);
-  padding: 12px; border-radius: 8px; font-weight: 700; font-size: 13px;
-  color: var(--text-main); cursor: pointer; text-align: center;
-}
+.picker-btn { background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; font-weight: 700; font-size: 13px; color: var(--text-main); cursor: pointer; text-align: center; }
 .picker-btn:active { background: var(--text-main); color: #000; }
 .picker-grid-goals { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .picker-btn-sm { padding: 8px; font-size: 11px; }
-.score-input {
-  background: #000; border: 1px solid rgba(255,255,255,0.2);
-  color: #fff; padding: 12px; border-radius: 8px; font-size: 16px;
-  font-weight: 700; text-align: center; width: 100%;
-}
-.action-btn {
-  background: var(--accent-green); color: #000; padding: 15px;
-  border-radius: 12px; font-weight: 800; text-align: center;
-  border: none; cursor: pointer; width: 100%; font-size: 14px;
-}
+.score-input { background: #000; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; width: 100%; }
+.action-btn { background: var(--accent-green); color: #000; padding: 15px; border-radius: 12px; font-weight: 800; text-align: center; border: none; cursor: pointer; width: 100%; font-size: 14px; }
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
-
-/* === FIXED ALIGNMENT & SUCCESS SCREEN === */
-
-/* Force Header to match Row Grid exactly */
-.bet-header-row {
-  display: grid !important; 
-  grid-template-columns: 1fr 60px 60px !important; 
-  gap: 8px; 
-  padding: 0 8px 8px 8px; 
-  align-items: center;
-}
-
-/* Success Overlay */
-.success-overlay {
-  position: absolute; top:0; left:0; width:100%; height:100%;
-  background: var(--bg-card); z-index: 10;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border-radius: 20px 20px 0 0; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-}
+.bet-header-row { display: grid !important; grid-template-columns: 1fr 60px 60px !important; gap: 8px; padding: 0 8px 8px 8px; align-items: center; }
+.success-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-card); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .success-overlay.active { opacity: 1; pointer-events: all; }
 .success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
 .success-title { font-size: 24px; font-weight: 800; color: var(--accent-green); text-transform: uppercase; letter-spacing: 1px; }
@@ -1035,21 +1034,19 @@ body{
     </div>
 </div>
 
-<div class="float-bet-btn" onclick="startBettingProcess()">+</div>
-
-<div class="modal-overlay" id="modalPlayer" style="align-items:end;">
+<div class="modal-overlay" id="modalPlayer">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
     <div class="picker-title">WHO ARE YOU?</div>
     <div class="player-grid">
       <div class="player-card" onclick="selectPlayer('Snackbar')">
-        <img src="./snackbar.png" class="player-avatar"><div>Snackbar</div>
+        <img src="./snackbar.png" class="player-avatar">
       </div>
       <div class="player-card" onclick="selectPlayer('Timbo')">
-        <img src="./timbo.png" class="player-avatar"><div>Timbo</div>
+        <img src="./timbo.png" class="player-avatar">
       </div>
       <div class="player-card" onclick="selectPlayer('Pepe')">
-        <img src="./pepe.png" class="player-avatar"><div>Pepe</div>
+        <img src="./pepe.png" class="player-avatar">
       </div>
     </div>
   </div>
@@ -1304,277 +1301,136 @@ function renderSkeletons() {
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
-        // --- THIS IS THE NEW PART ---
+        // 1. STORE MATCH DATA GLOBALLY
         window.allMatches = data.matches || [];
-        // ----------------------------
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        // COUNT MATCHES FOR HEADER
-        let nLive = 0, nUpcoming = 0, nFinished = 0;
+        // COUNT MATCHES
+        let nLive = 0, nUpcoming = 0;
         data.matches.forEach(m => {
              const st = m.status;
              if(st.includes("'") || ["HT","1H","2H","LIVE"].includes(st)) nLive++;
-             else if(st === "FT" || st === "AET" || st === "PEN") nFinished++;
-             else nUpcoming++;
+             else if(st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
         });
 
-        // 1. LEFT HEADER
+        // LEFT HEADER
         const lh=document.createElement("div"); lh.className="left-header"; 
-        
         let statusHtml = "";
         if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
         if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
         if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
         
-        lh.innerHTML=`
-            <div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div>
-            <div class="header-title-box">
-                <span class="header-main-text">MATCHDAY</span>
-                <span class="header-sub-text">${statusHtml}</span>
-            </div>
-            <div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>
-        `;
+        lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text">${statusHtml}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
-        left.appendChild(lh); 
-        left.appendChild(document.createElement("div")).className="left-divider";
-
-        // HEADER ROW STICKY
+        // HEADER ROW (Right)
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
-
-        // === AVATAR CONFIGURATION ===
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
 
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-           data.matches.forEach(m=>{
-              const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
-              if(!c||!c.value)return; hasB=true;
-              if(!isWinningGreen(c.color))allG=false;
-              if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true;
-              if(st!=="FT")pen++;
-           });
+           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            
-           const wrapper = document.createElement("div");
-           wrapper.className = "header-pill-wrapper";
-           // ADD INDEX FOR FILTERING
-           wrapper.setAttribute('data-col-idx', i);
-
-           const p=document.createElement("div"); 
-           p.className="header-pill";
-           
-           if(AVATARS[h.name]) {
-               p.classList.add("has-avatar");
-               p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
-           } else {
-               p.textContent=h.name;
-           }
-
-           if(hasB&&!hasR&&allG&&pen===0){
-               p.classList.add("status-green");
-               // BIG WIN TRIGGER (MANUAL REFRESH FIX)
-               if(isFirstLoad) {
-                   setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500);
-               } else {
-                   fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);
-               }
-           }
+           const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
+           const p=document.createElement("div"); p.className="header-pill";
+           if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
+           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
-           
-           wrapper.appendChild(p);
-           headerRow.appendChild(wrapper);
+           wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
-
-        right.appendChild(headerRow); 
-        right.appendChild(document.createElement("div")).className="right-divider"; // Initial divider
+        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
 
         const matchCount = data.matches.length;
 
+        // MATCH ROWS
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-
-          const lr=document.createElement("div");
-          lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; 
-          // FIX MODAL CLICK
-          lr.onclick = function() { openModal(m); };
-          
-          lr.setAttribute('data-status', getMatchStatusType(m)); // For filtering
-
-          if(isFirstLoad) {
-            lr.classList.add("animate-enter");
-            lr.style.animationDelay = (idx * 0.05) + "s";
-          }
-
+          const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; lr.setAttribute('data-status', getMatchStatusType(m));
+          if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
-
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
-          
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
-          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
-             displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
-          }
-
-          const hRed = (m.stats && m.stats.h_red) || 0;
-          const aRed = (m.stats && m.stats.a_red) || 0;
-
+          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
+          
+          // Golden Score
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          const minutes = parseInt(m.status) || 0;
-          const isLate = (minutes >= 85 || m.status === "ET");
+          let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
+          const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
 
-          // GOLDEN SCORE CHECK
-          let isGoldenScore = false;
-          m.cells.forEach(c => {
-             if(c.value && String(c.value).includes("-")) {
-                 if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
-             }
-          });
-          const goldenClass = isGoldenScore ? "gold-active" : "";
-          const liveDot = live ? '<div class="live-dot"></div>' : '';
-
-          lr.innerHTML=`<div class="left-cell match">
-                <div class="match-teams">
-                    <div class="team-wrap-rel">${renderTeam(h)}${hRed>0?'<div class="rc-badge"></div>':''}</div>
-                    <span>-</span>
-                    <div class="team-wrap-rel">${renderTeam(a)}${aRed>0?'<div class="rc-badge"></div>':''}</div>
-                </div>
-          </div>
-          <div class="left-cell">
-             <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
-                <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span>
-                <span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>
-             </div>
-          </div>`;
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${liveDot}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
 
           const rr=document.createElement("div"); rr.className="row";
-          
-          if(isFirstLoad) {
-            rr.classList.add("animate-enter");
-            rr.style.animationDelay = (idx * 0.05) + "s";
-          }
-
+          if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
           m.cells.forEach((c, cellIndex)=>{
-              const el=document.createElement("div");
-              el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
-              // ADD COL INDEX FOR FILTERING
-              el.setAttribute('data-col-idx', cellIndex);
-
+              const el=document.createElement("div"); el.className=`bet ${hasChanged ? 'flash-active' : ''}`; el.setAttribute('data-col-idx', cellIndex);
               if(c.value){
                   el.textContent=c.value;
-                  // Handle green mapping for new palette
-                  let color = c.color || '#262a30';
-                  if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  
-                  el.style.setProperty('--bet-bg', color);
-                  el.style.backgroundColor = color; 
-                  
-                  const headerInfo = data.headers[cellIndex];
-                  const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-
-                  // PULSE ONLY IF ALIVE
-                  if(live && isLate && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase();
-                      let isWinning = false;
-                      if(bet.includes("-")) {
-                          let [bH, bA] = bet.split("-").map(Number);
-                          if(bH === hScore && bA === aScore) isWinning = true;
-                      } else {
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
-                      }
+                  let color = c.color || '#262a30'; if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
+                  el.style.setProperty('--bet-bg', color); el.style.backgroundColor = color; 
+                  // Pulse if winning
+                  const headerInfo = data.headers[cellIndex]; const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+                  if(live && !isColumnDead) {
+                      let bet = String(c.value).toUpperCase(); let isWinning = false;
+                      if(bet.includes("-")) { let [bH, bA] = bet.split("-").map(Number); if(bH === hScore && bA === aScore) isWinning = true; } 
+                      else { if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; }
                       if(isWinning) el.classList.add("sweat-active");
                   }
-              } else {
-                  el.style.setProperty('--bet-bg', 'transparent');
-                  el.classList.add('empty');
-              }
+              } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
           right.appendChild(rr);
-      });
+        });
 
-      // --- FILTER SECTION INSERTION ---
-      const filterSection = document.createElement("div");
-      filterSection.className = "filter-separator spacer-bar";
-      filterSection.innerHTML = `
-          <div class="filter-title">Filters</div>
-          <div class="filter-actions">
-               <button class="filter-btn" onclick="toggleFilter('all')">ALL</button>
-               <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
-               <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
-          </div>
-      `;
-      left.appendChild(filterSection);
-      left.appendChild(document.createElement("div")).className="left-divider";
-      
-      // INSERT SPACER IN RIGHT COLUMN TO MAINTAIN ALIGNMENT
-      const rightSpacer = document.createElement("div");
-      rightSpacer.className = "spacer-bar"; // Same class = Same height
-      rightSpacer.innerHTML = "&nbsp;"; 
-      right.appendChild(rightSpacer);
-      right.appendChild(document.createElement("div")).className="right-divider";
+        // FILTER BAR
+        const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
+        filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
+        left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
+        const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
-      ["BET","WIN","WIN PP"].forEach((l,i)=>{
-          const lab=document.createElement("div"); lab.className="left-label"; lab.textContent=l; 
-          left.appendChild(lab);
+        // === NEW BOTTOM LAYOUT (Button + Labels) ===
+        const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
+        
+        // 1. BIG BUTTON (LEFT)
+        const btnDiv = document.createElement("button");
+        btnDiv.className = "place-bets-btn";
+        btnDiv.innerHTML = "PLACE<br>BETS";
+        btnDiv.onclick = startBettingProcess;
+        bottomGrid.appendChild(btnDiv);
+
+        // 2. LABELS STACK (RIGHT)
+        const labelCol = document.createElement("div"); labelCol.className = "stats-column";
+        ["BET","WIN","WIN PP"].forEach(l => { const lab = document.createElement("div"); lab.className = "left-label"; lab.textContent = l; labelCol.appendChild(lab); });
+        bottomGrid.appendChild(labelCol);
+        left.appendChild(bottomGrid);
+
+        // 3. RIGHT CARD ROWS (MATCHING LABELS)
+        ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row";
-          if(isFirstLoad) {
-            rr.classList.add("animate-enter");
-            rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
-          }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{
-             const el=document.createElement("div");
-             el.className="bet";
-             el.setAttribute('data-col-idx', cellIndex); // For filtering
-             el.textContent=formatGBP(c.value);
-             el.style.setProperty('--bet-bg', c.color || '#2f343a');
-             el.style.backgroundColor = c.color;
-             rr.appendChild(el);
-          });
+          if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
           right.appendChild(rr);
         });
 
-        // Store headers globally for filter logic
-        window.globalHeaders = data.headers;
+        window.globalHeaders = data.headers; applyFilterLogic();
 
-        // RE-APPLY CURRENT FILTER
-        applyFilterLogic();
-
-        data.totals.forEach(t=>{
-          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
-          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
-          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
-        });
-        
-        data.ranking.forEach((r,i)=>{
-          let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1);
-          let rowClass = "rank-row";
-          if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) {
-              const hist = data.chartData.money;
-              if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire";
-          }
-          if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; }
-          let nameHtml = r.name;
-          if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>';
-          ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`;
-        });
+        // FOOTER
+        data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
+        data.ranking.forEach((r,i)=>{ let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1); let rowClass = "rank-row"; if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) { const hist = data.chartData.money; if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire"; } if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; } let nameHtml = r.name; if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>'; ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`; });
 
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
 }
-
 function getMatchStatusType(m) {
     if(!m.status) return 'upcoming';
     const s = m.status.toUpperCase();

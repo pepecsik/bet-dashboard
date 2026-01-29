@@ -2084,25 +2084,20 @@ function pickValue(val) {
 function submitAllBets() {
   const betsToSend = [];
   
-  // Loop through all pending bets
+  // 1. Prepare data for Server
   for (const [match, data] of Object.entries(pendingBets)) {
-    // IMPORTANT: Send even if empty string (to clear bets), but ignore undefined
-    let v1 = data.col1;
-    let v2 = data.col2;
-    
-    // We only send if there is actual data (string or number), ignoring pure nulls if they somehow exist
-    if (v1 !== undefined || v2 !== undefined) {
-        betsToSend.push({ match: match, col1: v1, col2: v2 });
+    if (data.col1 !== undefined || data.col2 !== undefined) {
+        betsToSend.push({ match: match, col1: data.col1, col2: data.col2 });
     }
   }
   
-  if(betsToSend.length === 0) { alert("No bets to send."); return; }
+  if(betsToSend.length === 0) { alert("No bets selected."); return; }
   
   const btn = document.querySelector('.action-btn'); 
   const originalText = btn.innerText;
   btn.innerText = "SENDING...";
-  btn.style.opacity = "0.7";
   
+  // 2. SEND TO SERVER
   fetch(API_URL, { 
     method: "POST", 
     body: JSON.stringify({ player: selectedPlayer, bets: betsToSend }) 
@@ -2110,28 +2105,73 @@ function submitAllBets() {
   .then(r => r.json())
   .then(res => {
     if(res.status === "success") { 
-        // 1. Show Success Screen
+        // === OPTIMISTIC UI UPDATE (The Magic Part) ===
+        // We update the main dashboard screen IMMEDIATELY without waiting for reload
+        
+        // A. Find which columns belong to this player (e.g., Timbo might be col 4 and 5)
+        let playerIndices = [];
+        if(window.globalHeaders) {
+            window.globalHeaders.forEach((h, i) => {
+                // Check if header matches player name
+                if(h.name === selectedPlayer) playerIndices.push(i);
+            });
+        }
+
+        // B. Loop through the bets we just placed
+        betsToSend.forEach(bet => {
+            // Find the row index of this match in the main list
+            const matchIndex = window.allMatches.findIndex(m => m.match === bet.match);
+            
+            if(matchIndex > -1) {
+                // Get the row in the DOM (Right Card)
+                // Note: The rows in .right-card correspond 1-to-1 with window.allMatches indices
+                // BUT we have a header row first, so row index is matchIndex + 1 (header)
+                // Actually, let's use querySelectorAll on .right-card .row NOT including header-row-sticky
+                const rows = document.querySelectorAll('.right-card .row:not(.header-row-sticky)');
+                const targetRow = rows[matchIndex];
+
+                if(targetRow) {
+                   // Update Bet 1
+                   if(playerIndices[0] !== undefined && bet.col1 !== undefined) {
+                       const cell = targetRow.children[playerIndices[0]];
+                       if(cell) {
+                           cell.textContent = bet.col1;
+                           cell.classList.remove('empty');
+                           cell.style.backgroundColor = 'var(--bg-soft)'; // Temporary color indicating "filled"
+                           cell.style.border = '1px solid var(--accent-green)'; // Highlight change
+                       }
+                   }
+                   // Update Bet 2
+                   if(playerIndices[1] !== undefined && bet.col2 !== undefined) {
+                       const cell = targetRow.children[playerIndices[1]];
+                       if(cell) {
+                           cell.textContent = bet.col2;
+                           cell.classList.remove('empty');
+                           cell.style.backgroundColor = 'var(--bg-soft)';
+                           cell.style.border = '1px solid var(--accent-green)';
+                       }
+                   }
+                }
+            }
+        });
+
+        // 3. SHOW SUCCESS & CLOSE
         document.getElementById('successScreen').classList.add('active');
         
-        // 2. Clear Local Storage (Optional - keeps it clean)
-        // localStorage.removeItem('jb_saved_' + selectedPlayer);
-        
-        // 3. WAIT, THEN REFRESH
         setTimeout(() => {
             document.getElementById('successScreen').classList.remove('active');
             closeModal('modalBetList'); 
-            loadData(); // <--- This refreshes the main dashboard
-        }, 2500); // 2.5 seconds to let Google Sheets finish saving
+            // We still reload in background just to be sure, but user already sees data!
+            loadData(); 
+        }, 1500); 
     } else { 
         alert("Error: " + res.message); 
     }
     btn.innerText = originalText;
-    btn.style.opacity = "1";
   })
   .catch(err => { 
-      alert("Network Error: " + err.toString()); 
+      alert("Network Error"); 
       btn.innerText = originalText; 
-      btn.style.opacity = "1";
   });
 }
  

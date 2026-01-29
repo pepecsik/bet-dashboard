@@ -980,6 +980,16 @@ body {
 /* === H2H & FORM STYLES (LiveScore V2) === */
 .h2h-section-title { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 0; }
 
+.dot-\? { background: #333; border: 1px solid rgba(255,255,255,0.3); } 
+
+/* Fix: Ensure form logos are centered and constrained */
+.form-team-col .team-logo { 
+    max-width: 50px !important; 
+    max-height: 50px !important; 
+    width: auto !important; 
+    height: auto !important; 
+} 
+ 
 /* 1. FORM SECTION */
 .form-container { display: flex; justify-content: space-between; gap: 10px; background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
 .form-team-col { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; }
@@ -2349,13 +2359,9 @@ function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     
     // --- 1. SMART LOGO LOOKUP ---
-    // Finds the best logo URL by matching names to your existing TEAM_LOGOS keys
     const getLogoUrl = (name) => {
         const norm = normalizeName(name).toUpperCase();
-        // 1. Direct Code Match (if name is "ARS")
         if (TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
-        
-        // 2. Specific Overrides for API Names
         const map = {
             "MANCHESTER UNITED": "MAN", "MAN UTD": "MAN",
             "MANCHESTER CITY": "CTY", "MAN CITY": "CTY",
@@ -2367,39 +2373,49 @@ function renderH2H(h2hData, currentHome, currentAway) {
             "LEEDS": "LEE", "LEICESTER": "LEI",
             "TOTTENHAM": "TOT", "SPURS": "TOT",
             "ASTON VILLA": "AVI", "VILLA": "AVI",
-            "CRYSTAL PALACE": "CPA", "PALACE": "CPA",
-            "SHEFFIELD": "SHE", "LUTON": "LUT", "BURNLEY": "BUR"
+            "CRYSTAL PALACE": "CPA", "PALACE": "CPA"
         };
-        
-        // Check map
         for (const [k, v] of Object.entries(map)) {
             if (norm.includes(k) || k.includes(norm)) return TEAM_LOGOS[v];
         }
-        
-        // 3. Fallback: Check if name starts with a known code (e.g. ARS..enal)
         for (const [code, url] of Object.entries(TEAM_LOGOS)) {
             if (norm.startsWith(code) || code.includes(norm.substring(0,3))) return url;
         }
-        return "https://media.api-sports.io/football/leagues/39.png"; // Generic fallback
+        return "https://media.api-sports.io/football/leagues/39.png"; 
     };
 
     // --- 2. GET FORM DATA ---
-    let hForm = [], aForm = [];
+    let hForm = "??????".split(''); 
+    let aForm = "??????".split('');
+
     if (window.tableCache) {
-        // We use the same logo-finder logic to normalize names for table matching
         const findFormInTable = (code) => {
-            // Map code (ARS) to Table Name (Arsenal) is hard, so we search the table loosely
-            const cleanCode = normalizeName(code).substring(0,3).toLowerCase();
-            const found = window.tableCache.find(r => {
-                const t = normalizeName(r.team).toLowerCase();
-                // Special checks for the confusing teams
-                if(code === "MAN" && t.includes("united")) return true;
-                if(code === "CTY" && t.includes("city")) return true;
-                if(code === "NOT" && t.includes("forest")) return true;
-                return t.includes(cleanCode);
-            });
-            return found ? found.form : "?????";
+            const cleanCode = normalizeName(code).toUpperCase();
+            
+            // 1. Try Direct Match
+            let found = window.tableCache.find(r => r.team.toUpperCase() === cleanCode);
+            
+            // 2. Try Smart Map
+            if(!found) {
+                 const mapping = {
+                    "MAN": "Manchester United", "CTY": "Manchester City", "NOT": "Nottingham Forest",
+                    "NWC": "Newcastle", "WHA": "West Ham", "TOT": "Tottenham", "WOL": "Wolves",
+                    "AVI": "Aston Villa", "LEE": "Leeds", "SOU": "Southampton", "LEI": "Leicester",
+                    "BOU": "Bournemouth", "BRE": "Brentford", "BRI": "Brighton", "CPA": "Crystal Palace",
+                    "FUL": "Fulham", "EVE": "Everton", "LIV": "Liverpool", "ARS": "Arsenal", "CHE": "Chelsea"
+                 };
+                 const fullName = mapping[cleanCode] || cleanCode;
+                 found = window.tableCache.find(r => normalizeName(r.team).includes(normalizeName(fullName)));
+            }
+            
+            // 3. Fallback to 3-letter match
+            if(!found) {
+                found = window.tableCache.find(r => normalizeName(r.team).toUpperCase().includes(cleanCode.substring(0,3)));
+            }
+
+            return found ? found.form : "??????";
         };
+        
         hForm = findFormInTable(currentHome).split('');
         aForm = findFormInTable(currentAway).split('');
     }
@@ -2416,7 +2432,6 @@ function renderH2H(h2hData, currentHome, currentAway) {
         // Normalize "Home" logic
         let histHome = normalizeName(m.home).toUpperCase();
         let currHome = normalizeName(currentHome).toUpperCase();
-        // Fix for "Manchester United" vs "MAN"
         if(currHome === "MAN") currHome = "UNITED";
         if(currHome === "CTY") currHome = "CITY";
         if(currHome === "NOT") currHome = "FOREST";
@@ -2432,28 +2447,27 @@ function renderH2H(h2hData, currentHome, currentAway) {
     // --- 4. BUILD HTML ---
     let html = ``;
 
-    // A. RECENT FORM
-    const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':'dot-D')}"></div>`).join('');
+    // A. RECENT FORM (Using renderTeam for perfect sizing)
+    const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':(c==='D'?'dot-D':'dot-?'))}"></div>`).join('');
     
     html += `
     <div class="h2h-section-title">Recent Form (Last 5)</div>
     <div class="form-container">
         <div class="form-team-col">
-            <img src="${TEAM_LOGOS[currentHome]}" class="team-logo" style="width:40px;height:40px;object-fit:contain;">
+            <div style="transform:scale(1.2);">${renderTeam(currentHome)}</div>
             <div class="form-dots-row">${renderDots(hForm)}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
         <div class="form-team-col">
-            <img src="${TEAM_LOGOS[currentAway]}" class="team-logo" style="width:40px;height:40px;object-fit:contain;">
+            <div style="transform:scale(1.2);">${renderTeam(currentAway)}</div>
             <div class="form-dots-row">${renderDots(aForm)}</div>
         </div>
     </div>`;
 
-    // B. SUMMARY BAR (Dynamic Colors)
+    // B. SUMMARY BAR (Winner Green, Loser Red, Draws Orange)
     if(total > 0) {
         let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
         
-        // Logic: Winner gets Green, Loser gets Red. Tie = Both Green.
         let hColor = "var(--accent-green)"; 
         let aColor = "#ff4d4d"; // Default Red
         
@@ -2474,7 +2488,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
             </div>
             <div class="summary-bar">
                 <div class="bar-seg" style="width:${hp}%; background:${hColor}"></div>
-                <div class="bar-seg bar-d" style="width:${dp}%"></div>
+                <div class="bar-seg" style="width:${dp}%; background:var(--accent-orange)"></div>
                 <div class="bar-seg" style="width:${ap}%; background:${aColor}"></div>
             </div>
         </div>`;
@@ -2527,6 +2541,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
     
     el.innerHTML = html;
 }
+ 
 function openPreMatchStats(matchKey) {
     // 1. Find the match object
     const m = window.allMatches.find(x => x.match === matchKey);

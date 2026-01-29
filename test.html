@@ -251,15 +251,16 @@
   user-select: none;
 }
 
-body{
-  margin:0;
+body {
+  margin: 0;
   font-family: var(--font-main);
   font-size: var(--base-size);
   background: var(--bg-grad);
-  color:var(--text-main);
-  height: 100vh;
-  overflow: hidden; 
-  letter-spacing: -0.02em; 
+  color: var(--text-main);
+  /* CHANGE: Remove height: 100vh and overflow: hidden */
+  min-height: 100vh; 
+  overflow-y: auto; 
+  letter-spacing: -0.02em;
   transition: background 0.5s ease, color 0.3s ease;
 }
 
@@ -359,10 +360,11 @@ body{
 .sk-row { height: var(--row-h); margin-bottom: var(--gap); }
 
 /* === APP LAYOUT === */
-.app{
-  height:100vh;
-  display:grid;
-  grid-template-rows: 1fr auto; 
+.app {
+  /* CHANGE: Remove grid restriction so it flows naturally */
+  min-height: 100vh;
+  display: flex;       
+  flex-direction: column;
 }
 
 @media (max-width: 768px){
@@ -389,17 +391,32 @@ body{
   @media (max-width: 360px) { .history-title-text { display: none; } }
 }
 
-.main{
-  display:flex; gap:10px; padding:10px;
-  overflow:hidden; position: relative; z-index: 5; 
+.main {
+  /* CHANGE: Allow content to dictate height */
+  display: flex; 
+  gap: 10px; 
+  padding: 10px;
+  overflow: visible; 
+  position: relative; 
+  z-index: 5;
+  align-items: flex-start; /* Ensures cards don't stretch weirdly */
 }
 
 /* === LEFT CARD (MATCHES) === */
-.left-card{
-  width:var(--left-w); background:var(--bg-card); border-radius:var(--rad-lg);
-  padding:8px; display:flex; flex-direction:column; gap:var(--gap);
-  overflow-y:auto; max-height:100%; scrollbar-width:none;
-  box-shadow: var(--shadow-card); border: var(--border-light);
+.left-card {
+  width: var(--left-w); 
+  background: var(--bg-card); 
+  border-radius: var(--rad-lg);
+  padding: 8px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: var(--gap);
+  
+  /* CHANGE: Remove max-height and overflow */
+  height: auto;       
+  overflow: visible;  
+  box-shadow: var(--shadow-card); 
+  border: var(--border-light);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -506,10 +523,18 @@ body{
 }
 
 /* === RIGHT CARD (BETS) === */
-.right-card{
-  flex:1; background:var(--bg-card); border-radius:var(--rad-lg);
-  overflow-x:auto; overflow-y:auto; padding:8px; scrollbar-width:none;
-  box-shadow: var(--shadow-card); border: var(--border-light);
+.right-card {
+  flex: 1; 
+  background: var(--bg-card); 
+  border-radius: var(--rad-lg);
+  padding: 8px; 
+  
+  /* CHANGE: Remove scrolling logic */
+  overflow: visible; 
+  height: auto; 
+  
+  box-shadow: var(--shadow-card); 
+  border: var(--border-light);
 }
 .right-card::-webkit-scrollbar { display: none; }
 

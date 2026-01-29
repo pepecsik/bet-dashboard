@@ -404,19 +404,18 @@ body {
 
 /* === LEFT CARD (MATCHES) === */
 .left-card {
+  /* Keep your existing styles, but ADD THIS: */
+  flex-shrink: 0; /* Forces it to stay 230px wide */
+  z-index: 60;    /* Ensures it stays on top if anything overlaps */
+  
+  /* Existing styles for context */
   width: var(--left-w); 
   background: var(--bg-card); 
   border-radius: var(--rad-lg);
   padding: 8px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: var(--gap);
-  
-  /* CHANGE: Remove max-height and overflow */
-  height: auto;       
-  overflow: visible;  
-  box-shadow: var(--shadow-card); 
-  border: var(--border-light);
+  display: flex; flex-direction: column; gap: var(--gap);
+  height: auto; overflow: visible; 
+  box-shadow: var(--shadow-card); border: var(--border-light);
 }
 .left-card::-webkit-scrollbar { display: none; }
 
@@ -524,17 +523,19 @@ body {
 
 /* === RIGHT CARD (BETS) === */
 .right-card {
+  /* Keep your existing styles, but ADD THESE: */
+  overflow-x: auto;    /* Enables Horizontal Scrollbar */
+  overflow-y: visible; /* Disables Vertical Scrollbar (Uses Body scroll) */
+  min-width: 0;        /* Critical: Allows this container to shrink and scroll */
+  display: block;      /* Ensures scrollbar appears correctly */
+  
+  /* Existing styles for context */
   flex: 1; 
   background: var(--bg-card); 
   border-radius: var(--rad-lg);
   padding: 8px; 
-  
-  /* CHANGE: Remove scrolling logic */
-  overflow: visible; 
   height: auto; 
-  
-  box-shadow: var(--shadow-card); 
-  border: var(--border-light);
+  box-shadow: var(--shadow-card); border: var(--border-light);
 }
 .right-card::-webkit-scrollbar { display: none; }
 

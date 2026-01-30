@@ -2388,24 +2388,25 @@ function submitAllBets() {
 function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     
-    // --- 1. SAFE FORM LOOKUP ---
+    // --- 1. ROBUST FORM FINDER ---
     const findFormInTable = (code) => {
-        // SAFETY FIX: If table hasn't loaded yet, return question marks instead of Crashing
-        if(!window.tableCache || !code) return "??????"; 
-
+        // Safety: If table isn't loaded or code is missing, return empty dots
+        if(!window.tableCache || !code) return "??????";
+        
         const cleanCode = normalizeName(code).toLowerCase().trim();
         
+        // Map common codes to Table Names
         const map = {
-            "man": "manchester united", "mun": "manchester united",
-            "cty": "manchester city", "mci": "manchester city",
-            "not": "nottingham", "nfo": "nottingham", "forest": "nottingham",
+            "man": "manchester", "mun": "manchester", "utd": "manchester",
+            "cty": "city", "mci": "city",
+            "not": "forest", "nfo": "forest",
             "nwc": "newcastle", "new": "newcastle",
             "wha": "west ham", "whu": "west ham",
             "tot": "tottenham", "wol": "wolves",
-            "avi": "aston villa", "avl": "aston villa", "aston": "aston villa",
+            "avi": "aston", "avl": "aston", "aston": "aston",
             "lee": "leeds", "sou": "southampton", "lei": "leicester",
             "bou": "bournemouth", "bre": "brentford", "bri": "brighton",
-            "cpa": "crystal palace", "cry": "crystal palace", "palace": "crystal palace",
+            "cpa": "palace", "cry": "palace", "palace": "palace",
             "ful": "fulham", "eve": "everton", "liv": "liverpool",
             "ars": "arsenal", "che": "chelsea", "bur": "burnley",
             "shu": "sheffield", "lut": "luton"
@@ -2413,12 +2414,15 @@ function renderH2H(h2hData, currentHome, currentAway) {
 
         const target = map[cleanCode] || cleanCode;
         
+        // Strategy 1: Check if Table Team Name includes our target (e.g. "Aston Villa" includes "aston")
         let found = window.tableCache.find(r => normalizeName(r.team).toLowerCase().includes(target));
         
+        // Strategy 2: Check if our Code includes the Table Team Name (Reverse check)
         if(!found) {
             found = window.tableCache.find(r => target.includes(normalizeName(r.team).toLowerCase()));
         }
         
+        // Strategy 3: Check First 3 letters (e.g. "BRE" matches "Brentford")
         if(!found && cleanCode.length >= 3) {
             found = window.tableCache.find(r => normalizeName(r.team).toLowerCase().startsWith(cleanCode.substring(0,3)));
         }
@@ -2426,19 +2430,20 @@ function renderH2H(h2hData, currentHome, currentAway) {
         return found ? found.form : "??????";
     };
 
-    // Get the forms (Safe now)
+    // Get the forms
     const hForm = findFormInTable(currentHome).split('');
     const aForm = findFormInTable(currentAway).split('');
 
-    // --- 2. SMART LOGO LOOKUP ---
+    // --- 2. LOGO HELPERS ---
     const getLogoUrl = (name) => {
         if(!name) return "https://media.api-sports.io/football/leagues/39.png";
         const norm = normalizeName(name).toUpperCase();
         
-        if(norm.includes("ASTON") && norm.includes("VILLA")) return TEAM_LOGOS.AVI;
+        // Manual Short Code Matches
+        if(norm.includes("ASTON") || norm.includes("VILLA")) return TEAM_LOGOS.AVI;
         if(norm.includes("MAN") && norm.includes("CITY")) return TEAM_LOGOS.CTY;
-        if(norm.includes("MAN") && norm.includes("UNITED")) return TEAM_LOGOS.MAN;
-        if(norm.includes("NOTTINGHAM")) return TEAM_LOGOS.NOT;
+        if(norm.includes("MAN") && (norm.includes("UNITED") || norm.includes("UTD"))) return TEAM_LOGOS.MAN;
+        if(norm.includes("FOREST")) return TEAM_LOGOS.NOT;
         if(norm.includes("NEWCASTLE")) return TEAM_LOGOS.NWC;
         if(norm.includes("WEST HAM")) return TEAM_LOGOS.WHA;
         if(norm.includes("TOTTENHAM")) return TEAM_LOGOS.TOT;
@@ -2453,24 +2458,22 @@ function renderH2H(h2hData, currentHome, currentAway) {
 
     // --- 3. CALCULATE STATS ---
     let hWins = 0, draws = 0, aWins = 0, total = 0;
-    // Filter out matches with no score to prevent errors
     const historyGames = (h2hData || []).filter(m => m.score && (typeof m.score === 'string' || m.score.home !== null));
     
     historyGames.forEach(m => {
         let hS = 0, aS = 0;
         if(typeof m.score === 'string') { 
-            // Handle "1-2" string format
             const parts = m.score.split("-");
             if(parts.length === 2) { hS = parseInt(parts[0]); aS = parseInt(parts[1]); }
         } else if (m.score) { 
-            // Handle object format {home: 1, away: 2}
             hS = m.score.home || 0; aS = m.score.away || 0; 
         }
 
+        // Smart name matching for stats calculation
         let histHome = normalizeName(m.home).toUpperCase();
         let currHome = normalizeName(currentHome).toUpperCase();
         
-        // Manual Map for History Logic (Crucial for Man Utd/City matching)
+        // Normalize commonly different names for accurate H2H stats
         if(currHome === "MAN" || currHome === "MUN") currHome = "UNITED";
         if(currHome === "CTY" || currHome === "MCI") currHome = "CITY";
         if(currHome === "NOT" || currHome === "NFO") currHome = "FOREST";
@@ -2487,7 +2490,6 @@ function renderH2H(h2hData, currentHome, currentAway) {
     let html = ``;
     const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':(c==='D'?'dot-D':'dot-?'))}"></div>`).join('');
     
-    // Using manual IMG tags here ensures logos always show even if renderTeam fails
     html += `
     <div class="h2h-section-title">Recent Form (Last 5)</div>
     <div class="form-container">
@@ -2508,9 +2510,7 @@ function renderH2H(h2hData, currentHome, currentAway) {
 
     if(total > 0) {
         let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
-        
-        let hColor = "var(--accent-green)"; 
-        let aColor = "#ff4d4d"; 
+        let hColor = "var(--accent-green)"; let aColor = "#ff4d4d"; 
         if (aWins > hWins) { hColor = "#ff4d4d"; aColor = "var(--accent-green)"; }
         else if (aWins === hWins) { aColor = "var(--accent-green)"; }
 
@@ -2546,16 +2546,28 @@ function renderH2H(h2hData, currentHome, currentAway) {
             const hLogo = getLogoUrl(m.home);
             const aLogo = getLogoUrl(m.away);
 
+            // === FIX: Custom Style for Aston Villa in History List ===
+            // We check if the name contains "Villa" and apply scale(2.0)
+            const getStyle = (n) => normalizeName(n).toLowerCase().includes('villa') ? 'style="transform:scale(2.0)"' : '';
+            const hStyle = getStyle(m.home);
+            const aStyle = getStyle(m.away);
+
             html += `
             <div class="ls-card">
                 <div class="ls-year">${d.getFullYear()}</div>
                 <div class="ls-content">
                     <div class="ls-row">
-                        <div class="ls-team-wrap"><img src="${hLogo}" class="ls-logo"><span class="ls-name ${hS>aS?'winner':''}">${m.home}</span></div>
+                        <div class="ls-team-wrap">
+                            <img src="${hLogo}" class="ls-logo" ${hStyle}>
+                            <span class="ls-name ${hS>aS?'winner':''}">${m.home}</span>
+                        </div>
                         <span class="ls-score ${hS>aS?'winner':''}">${hS}</span>
                     </div>
                     <div class="ls-row">
-                        <div class="ls-team-wrap"><img src="${aLogo}" class="ls-logo"><span class="ls-name ${aS>hS?'winner':''}">${m.away}</span></div>
+                        <div class="ls-team-wrap">
+                            <img src="${aLogo}" class="ls-logo" ${aStyle}>
+                            <span class="ls-name ${aS>hS?'winner':''}">${m.away}</span>
+                        </div>
                         <span class="ls-score ${aS>hS?'winner':''}">${aS}</span>
                     </div>
                 </div>

@@ -1016,7 +1016,8 @@ img[alt="TOT"] {
     height: 32px !important;
 }
 img[alt="AVI"] { 
-    transform: scale(1.6) !important; 
+    /* Increased from 1.6 to 2.2 to fix the size issue */
+    transform: scale(2.2) !important; 
 }
 
 /* DOTS */
@@ -2389,32 +2390,69 @@ function renderH2H(h2hData, currentHome, currentAway) {
     
     // Helper to find form in the table cache using fuzzy matching
     const findFormInTable = (code) => {
-        if (!window.tableCache || !code) return "??????";
-        
-        const cleanCode = code.trim().toLowerCase();
-        
-        // 1. Try to find a match where the table team name contains our code or vice versa
-        let found = window.tableCache.find(r => {
-            const tableTeam = r.team.toLowerCase();
-            // Match if: "Aston Villa" includes "avi" OR "avi" is part of "Aston Villa"
-            return tableTeam.includes(cleanCode) || cleanCode.includes(tableTeam) || 
-                   (cleanCode === 'avi' && tableTeam.includes('aston villa')) ||
-                   (cleanCode === 'wha' && tableTeam.includes('west ham')) ||
-                   (cleanCode === 'cty' && tableTeam.includes('manchester city'));
-        });
+            if(!code) return "??????";
+            const cleanCode = normalizeName(code).toLowerCase().trim();
+            
+            // A. Manual Map (Updated for reliability)
+            const map = {
+                "man": "manchester united", "mun": "manchester united",
+                "cty": "manchester city", "mci": "manchester city",
+                "not": "nottingham", "nfo": "nottingham", "forest": "nottingham",
+                "nwc": "newcastle", "new": "newcastle",
+                "wha": "west ham", "whu": "west ham",
+                "tot": "tottenham", "wol": "wolves",
+                "avi": "aston villa", "avl": "aston villa", "aston": "aston villa",
+                "lee": "leeds", "sou": "southampton", "lei": "leicester",
+                "bou": "bournemouth", "bre": "brentford", "bri": "brighton",
+                "cpa": "crystal palace", "cry": "crystal palace", "palace": "crystal palace",
+                "ful": "fulham", "eve": "everton", "liv": "liverpool",
+                "ars": "arsenal", "che": "chelsea", "bur": "burnley",
+                "shu": "sheffield", "lut": "luton"
+            };
 
-        return found ? found.form : "??????";
-    };
+            // Search Strategy
+            const target = map[cleanCode] || cleanCode;
+            
+            // 1. Try Exact Name Match in Table
+            let found = window.tableCache.find(r => normalizeName(r.team).toLowerCase().includes(target));
+            
+            // 2. Try Reverse Match (Table name inside our Code)
+            if(!found) {
+                found = window.tableCache.find(r => target.includes(normalizeName(r.team).toLowerCase()));
+            }
+            
+            // 3. Last Resort: First 3 letters match
+            if(!found && cleanCode.length >= 3) {
+                found = window.tableCache.find(r => normalizeName(r.team).toLowerCase().startsWith(cleanCode.substring(0,3)));
+            }
+
+            return found ? found.form : "??????";
+        };
 
     // Get the forms
     const hForm = findFormInTable(currentHome).split('');
     const aForm = findFormInTable(currentAway).split('');
 
-    // --- LOGO LOOKUP ---
+    // --- 1. SMART LOGO LOOKUP (FIXED) ---
     const getLogoUrl = (name) => {
         const norm = normalizeName(name).toUpperCase();
-        const key = Object.keys(TEAM_LOGOS).find(k => norm.includes(k) || k.includes(norm.substring(0,3)));
-        return key ? TEAM_LOGOS[key] : "https://media.api-sports.io/football/leagues/39.png"; 
+        
+        // Manual Fixes for full names
+        if(norm.includes("ASTON") && norm.includes("VILLA")) return TEAM_LOGOS.AVI;
+        if(norm.includes("MAN") && norm.includes("CITY")) return TEAM_LOGOS.CTY;
+        if(norm.includes("MAN") && norm.includes("UNITED")) return TEAM_LOGOS.MAN;
+        if(norm.includes("NOTTINGHAM")) return TEAM_LOGOS.NOT;
+        if(norm.includes("NEWCASTLE")) return TEAM_LOGOS.NWC;
+        if(norm.includes("WEST HAM")) return TEAM_LOGOS.WHA;
+        if(norm.includes("TOTTENHAM")) return TEAM_LOGOS.TOT;
+
+        if (TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
+        
+        // Try fuzzy match on global logos
+        for (const [code, url] of Object.entries(TEAM_LOGOS)) {
+            if (norm.startsWith(code) || code.includes(norm.substring(0,3))) return url;
+        }
+        return "https://media.api-sports.io/football/leagues/39.png"; 
     };
 
     // --- CALCULATE H2H STATS ---

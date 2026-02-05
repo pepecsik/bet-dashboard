@@ -644,6 +644,15 @@ body {
 
 .week-gbp.green{color:var(--accent-green);}
 
+/* NEW: Short Rows for Summary */
+.row.short-row {
+    height: 28px !important; /* Force short height */
+}
+.row.short-row .bet {
+    height: 28px !important; /* Force pills to match */
+    font-size: 11px !important; /* Smaller text */
+}
+ 
 .rank-row{
   display:grid; grid-template-columns:18px 1fr auto; grid-template-rows:auto auto;
   gap:2px 4px; background:var(--bg-row); border-radius:var(--rad-md);
@@ -867,23 +876,24 @@ body {
   display: flex; flex-direction: column; gap: 8px; /* Matches --gap variable */
 }
 
-/* Labels match the height of betting pills exactly */
+/* UPDATED: Smaller Label Height */
 .stats-column .left-label {
-  height: 50px !important; /* Matches --row-h */
+  height: 28px !important; /* Reduced from 50px */
   margin: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800;
+  font-size: 10px; /* Reduced font size */
+  font-weight: 800;
   background: var(--bg-soft); border-radius: var(--rad-md);
 }
 
-/* The Big Green Button */
+/* UPDATED: Smaller Button Height */
 .place-bets-btn {
   background: var(--accent-green);
   color: #000;
   border: none;
   border-radius: var(--rad-md);
   font-weight: 800;
-  font-size: 18px; /* Slightly bigger text */
+  font-size: 14px; /* Reduced font size */
   text-transform: uppercase;
   letter-spacing: 1px;
   cursor: pointer;
@@ -891,7 +901,7 @@ body {
   transition: transform 0.1s;
   display: flex; align-items: center; justify-content: center; text-align: center;
   line-height: 1.2;
-  height: 166px; /* 50*3 + 8*2 = 166px total height to match 3 rows */
+  height: 100px; /* Reduced from 166px to 100px */
 }
 .place-bets-btn:active { transform: scale(0.96); }
 
@@ -1833,7 +1843,7 @@ function loadData(){
         left.appendChild(bottomGrid);
 
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
-          const rr=document.createElement("div"); rr.className="row";
+          const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
           right.appendChild(rr);

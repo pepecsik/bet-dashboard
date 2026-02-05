@@ -31,11 +31,12 @@
   --font-main: 'Inter', system-ui, sans-serif;
   --base-size: 12px;
   
-  --bg-main: #141619;
-  --bg-card: rgba(33, 37, 43, 0.95);
-  --bg-soft: #2b3038;
-  --bg-row:  #1f2329;
-  --bg-modal: #141619; 
+  --bg-main: #0b0d0f;
+  /* Glass effect colors */
+  --bg-card: rgba(20, 22, 25, 0.6); 
+  --bg-soft: rgba(255, 255, 255, 0.05);
+  --bg-row:  rgba(255, 255, 255, 0.02);
+  --bg-modal: rgba(20, 22, 25, 0.9); 
   
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
@@ -44,18 +45,18 @@
   --accent-gold: #fbbf24;
   --accent-green: #4ade80;
   
-  --border-light: 1px solid rgba(255, 255, 255, 0.08);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --border-light: 1px solid rgba(255, 255, 255, 0.1);
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
   
   --rad-sm: 6px;
   --rad-md: 10px;
-  --rad-lg: 14px;
+  --rad-lg: 16px;
   
-  --bg-grad: radial-gradient(circle at 50% 0%, #2b3038 0%, #141619 80%);
+  --bg-grad: radial-gradient(circle at 50% 0%, #1c2127 0%, #0b0d0f 100%);
   --logo-filter: none;
-  --modal-overlay: rgba(20, 22, 25, 0.85);
+  --modal-overlay: rgba(0, 0, 0, 0.7);
 }
-
+ 
 /* 2. CANDY (Vibrant, Glossy, Pop) */
 [data-theme="candy"] {
   --font-main: 'Quicksand', sans-serif;
@@ -370,6 +371,8 @@ body {
     zoom: 0.78; 
     display: flex; flex-direction: column;
     width: 100%; height: auto; min-height: 100vh; overflow: visible;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
   .main { flex-direction: row; height: auto; overflow: visible; margin-bottom: 10px; }
   .left-card, .right-card {
@@ -641,6 +644,15 @@ body {
 
 .week-gbp.green{color:var(--accent-green);}
 
+/* NEW: Short Rows for Summary */
+.row.short-row {
+    height: 28px !important; /* Force short height */
+}
+.row.short-row .bet {
+    height: 28px !important; /* Force pills to match */
+    font-size: 11px !important; /* Smaller text */
+}
+ 
 .rank-row{
   display:grid; grid-template-columns:18px 1fr auto; grid-template-rows:auto auto;
   gap:2px 4px; background:var(--bg-row); border-radius:var(--rad-md);
@@ -864,23 +876,24 @@ body {
   display: flex; flex-direction: column; gap: 8px; /* Matches --gap variable */
 }
 
-/* Labels match the height of betting pills exactly */
+/* UPDATED: Smaller Label Height */
 .stats-column .left-label {
-  height: 50px !important; /* Matches --row-h */
+  height: 28px !important; /* Reduced from 50px */
   margin: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800;
+  font-size: 10px; /* Reduced font size */
+  font-weight: 800;
   background: var(--bg-soft); border-radius: var(--rad-md);
 }
 
-/* The Big Green Button */
+/* UPDATED: Smaller Button Height */
 .place-bets-btn {
   background: var(--accent-green);
   color: #000;
   border: none;
   border-radius: var(--rad-md);
   font-weight: 800;
-  font-size: 18px; /* Slightly bigger text */
+  font-size: 14px; /* Reduced font size */
   text-transform: uppercase;
   letter-spacing: 1px;
   cursor: pointer;
@@ -888,7 +901,7 @@ body {
   transition: transform 0.1s;
   display: flex; align-items: center; justify-content: center; text-align: center;
   line-height: 1.2;
-  height: 166px; /* 50*3 + 8*2 = 166px total height to match 3 rows */
+  height: 100px; /* Reduced from 166px to 100px */
 }
 .place-bets-btn:active { transform: scale(0.96); }
 
@@ -1169,6 +1182,158 @@ img[alt="AVI"] {
     opacity: 0.9;
 }
 .diff-up { color: var(--accent-green); }
+
+/* Glassmorphism Global Filter */
+/* Only blur the big containers to save GPU power */
+.left-card, .right-card, .summary, .modal-card, .ranking-card {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: var(--border-light) !important;
+}
+
+/* FIXED: Allow betting colors to show */
+.bet, .left-cell {
+  /* Use the color variable if it exists, otherwise gray */
+  background: var(--bet-bg, rgba(255, 255, 255, 0.05)); 
+  backdrop-filter: none !important; 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Force the color to stick if JavaScript sets it */
+.bet[style*="background-color"] {
+    background-color: var(--bet-bg) !important;
+}
+
+/* === PODIUM V3 STYLES (Final Polish) === */
+.podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px; 
+    padding: 15px 5px 5px 5px;
+    height: 160px;
+    margin-bottom: 5px;
+}
+
+.podium-place {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Height Hierarchy */
+.place-1 { height: 100%; z-index: 2; }
+.place-2 { height: 82%; }
+.place-3 { height: 70%; }
+
+/* The "Bar" underneath the avatar */
+.podium-bar {
+    width: 100%;
+    background: var(--bg-row);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    flex-direction: column;
+    
+    /* FIX: This moves the numbers HIGHER up in the bar */
+    justify-content: flex-start; 
+    padding-top: 12px;
+    
+    align-items: center;
+    flex-grow: 1; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* 1st Place (Gold) */
+.place-1 .podium-bar {
+    background: linear-gradient(to top, rgba(251, 191, 36, 0.15), var(--bg-row));
+    border-top: 1px solid var(--accent-gold);
+}
+/* 2nd Place (Silver) */
+.place-2 .podium-bar { border-top: 3px solid #C0C0C0; }
+
+/* 3rd Place (Brown/Poop) */
+.place-3 .podium-bar { 
+    border-top: 3px solid #8D6E63; /* Poop Brown */
+    background: linear-gradient(to top, rgba(62, 39, 35, 0.4), var(--bg-row));
+}
+
+/* Square Avatars */
+.podium-avatar {
+    width: 42px; 
+    height: 42px;
+    border-radius: 6px; 
+    object-fit: contain;
+    margin-bottom: 6px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    background: #000;
+}
+
+/* Bigger Avatar for 1st */
+.place-1 .podium-avatar {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 8px;
+    border: 2px solid var(--accent-gold);
+}
+
+/* 3rd Place Avatar Border */
+.place-3 .podium-avatar {
+    border: 1px solid #8D6E63;
+}
+
+/* Money Text - Condensed */
+.podium-money {
+    color: var(--accent-green);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+/* Matches Right Text */
+.podium-stats {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.1;
+}
+
+/* Crown Animation */
+.crown-icon {
+    position: absolute;
+    top: -22px;
+    font-size: 22px;
+    filter: drop-shadow(0 0 5px gold);
+    animation: floatCrown 2s infinite ease-in-out;
+}
+
+/* Poop Animation */
+.poop-icon {
+    position: absolute;
+    top: -20px;
+    font-size: 18px;
+    filter: drop-shadow(0 0 5px #000);
+    animation: floatCrown 2s infinite ease-in-out; /* Re-use float animation */
+}
+
+@keyframes floatCrown { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+
+/* CENTERED CARD TITLES */
+.weekly-title, .ranking-title {
+    text-align: center;
+    width: 100%;
+    display: block;
+    margin-bottom: 15px; /* Little extra space looks nicer */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
  
 </style>
 </head>
@@ -1678,7 +1843,7 @@ function loadData(){
         left.appendChild(bottomGrid);
 
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
-          const rr=document.createElement("div"); rr.className="row";
+          const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
           right.appendChild(rr);
@@ -1686,8 +1851,50 @@ function loadData(){
 
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        data.ranking.forEach((r,i)=>{ let rankIcon = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : "#"+(i+1); let rowClass = "rank-row"; if(i===0 && data.chartData && data.chartData.money && data.chartData.money.length >= 2) { const hist = data.chartData.money; if((hist[hist.length-1][r.name]||0) > (hist[hist.length-2][r.name]||0)) rowClass += " on-fire"; } if(i===data.ranking.length-1 && data.ranking.length>2) { rankIcon = "💩"; rowClass += " shame-row"; } let nameHtml = r.name; if(r.streak >= 3) nameHtml += ' <span style="font-size:10px">🔥</span>'; ranking.innerHTML+=`<div class="${rowClass}"><div class="rank-pos" style="font-size:1.2em">${rankIcon}</div><div class="rank-name">${nameHtml}</div><div class="rank-money">${formatGBP(r.money)}</div><div class="rank-bets">${r.matchesRight} matches right</div></div>`; });
+        // --- NEW PODIUM LOGIC ---
+        // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
+        // --- NEW PODIUM LOGIC (Square, No Names, Poop Included) ---
+        if (data.ranking && data.ranking.length >= 3) {
+            const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+    
+            // Sort just in case API isn't sorted
+            const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
+            const p1 = sorted[0];
+            const p2 = sorted[1];
+            const p3 = sorted[2];
 
+            ranking.innerHTML = `
+            <div class="podium-container">
+                <div class="podium-place place-2">
+                    <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
+                    <div class="podium-bar">
+                        <div class="podium-money">${formatGBP(p2.money)}</div>
+                        <div class="podium-stats">${p2.matchesRight} Bets</div>
+                    </div>
+                </div>
+
+                <div class="podium-place place-1">
+                    <div class="crown-icon">👑</div>
+                    <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
+                    <div class="podium-bar">
+                        <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
+                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
+                    </div>
+                </div>
+
+                <div class="podium-place place-3">
+                    <div class="poop-icon">💩</div>
+                    <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
+                    <div class="podium-bar">
+                        <div class="podium-money">${formatGBP(p3.money)}</div>
+                        <div class="podium-stats">${p3.matchesRight} Bets</div>
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            // Fallback
+            ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
+        }
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });

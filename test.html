@@ -1064,6 +1064,22 @@ img[alt="AVI"] {
 .ls-score { font-size: 13px; font-weight: 800; color: var(--text-muted); width: 20px; text-align: right; }
 .ls-score.winner { color: var(--text-main); }
 
+.odd-quote {
+  display: block;
+  font-size: 10px;
+  color: var(--accent-orange); /* Or var(--accent-green) */
+  font-weight: 800;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+.picker-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 55px; /* Give room for the extra line */
+}
+ 
 </style>
 </head>
 <body>
@@ -2611,6 +2627,34 @@ function openPreMatchStats(matchKey) {
         }
     };
     modal.addEventListener('click', checkClose);
+}
+
+function openPicker(matchId, home, away, colNum) {
+  activePicker = { match: matchId, col: colNum };
+  
+  // Find the match in the global array we just updated in buildDashboard
+  const m = window.allMatches.find(x => x.match === matchId);
+  
+  document.getElementById('pickerMatchTitle').innerText = matchId + ` (BET ${colNum})`;
+  
+  // Update Button Labels
+  const btnHome = document.getElementById('btnHome');
+  const btnAway = document.getElementById('btnAway');
+  
+  // Display the Quote if it exists, otherwise default to '-'
+  const qH = m.odds ? m.odds.home : '-';
+  const qD = m.odds ? m.odds.draw : '-';
+  const qA = m.odds ? m.odds.away : '-';
+
+  btnHome.innerHTML = `${home} <span class="odd-quote">${qH}</span>`;
+  btnAway.innerHTML = `${away} <span class="odd-quote">${qA}</span>`;
+  
+  // Update Draw button (it's the middle one in your picker-grid-1x2)
+  const drawBtn = document.querySelector('.picker-grid-1x2 .picker-btn:nth-child(2)');
+  drawBtn.innerHTML = `X <span class="odd-quote">${qD}</span>`;
+
+  document.getElementById('manualScore').value = "";
+  document.getElementById('modalPicker').classList.add('active');
 }
  
 </script>

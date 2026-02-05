@@ -1104,10 +1104,11 @@ img[alt="AVI"] {
 } 
 
 /* Clean full-width scoreboard */
+/* History Modal Scoreboard tweaks */
 .history-stats-row {
     display: flex;
-    justify-content: space-between; /* Uses full width */
-    padding: 15px 10px;
+    justify-content: space-between;
+    padding: 12px 5px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--rad-md);
     margin-bottom: 15px;
@@ -1115,45 +1116,57 @@ img[alt="AVI"] {
 }
 
 .stat-pill {
-    flex: 1; /* Each player gets equal space */
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     position: relative;
 }
 
-/* Avatar styling inside the chart header */
+/* Square Avatars with Crown support */
+.chart-avatar-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
 .chart-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px; /* Squarish with very slight round */
     border: 2px solid currentColor;
     object-fit: cover;
-    margin-bottom: 2px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
-.stat-pill .p-name {
-    font-size: 9px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    opacity: 0.8;
+.leader-crown {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.6));
+    z-index: 10;
+}
+
+/* Numbers side-by-side */
+.p-score-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .stat-pill .p-score {
-    font-size: 16px;
+    font-size: 13px; /* Slightly smaller */
     font-weight: 900;
 }
 
 .stat-pill .p-diff {
     font-size: 10px;
     font-weight: 800;
-    background: rgba(74, 222, 128, 0.15);
     color: var(--accent-green);
-    padding: 1px 6px;
-    border-radius: 4px;
+    opacity: 0.9;
 }
 .diff-up { color: var(--accent-green); }
  
@@ -1255,31 +1268,29 @@ img[alt="AVI"] {
 
 <div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
     <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
-      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0;">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
         <button class="modal-back-btn" onclick="closeModal('historyModal')">Back</button>
         <div class="modal-title">Performance History</div>
         <div class="modal-sub">Season 2025/2026</div>
       </div>
       
       <div class="history-card-inner">
-         <div class="history-header">
-             <div class="history-header-top">
-                 <div class="toggle-group">
-                     <button id="btnMatches" class="toggle-btn active">Matches</button>
-                     <button id="btnMoney" class="toggle-btn">Money</button>
-                 </div>
+         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+             <div class="toggle-group">
+                 <button id="btnMatches" class="toggle-btn active">Matches</button>
+                 <button id="btnMoney" class="toggle-btn">Money</button>
              </div>
-             
-             <div class="history-stats-row" id="historyScoreboard"></div>
          </div>
+
+         <div class="history-stats-row" id="historyScoreboard"></div>
          
-         <div style="position: relative; height: 200px; width: 100%;">
+         <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
          </div>
       </div>
     </div>
 </div>
-
+ 
 <div class="modal-overlay" id="modalPlayer" style="align-items:end;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -1765,33 +1776,42 @@ function drawHistoryChart(t) {
     const cols = { Snackbar: "#4ade80", Timbo: "#4DA3FF", Pepe: "#FF5BC4" };
     const avatars = { Snackbar: "./snackbar.png", Timbo: "./timbo.png", Pepe: "./pepe.png" };
 
-    // 1. Update the Full-Width Scoreboard with Avatars
     const lastEntry = d[d.length - 1];
     const prevEntry = d[d.length - 2] || d[d.length - 1];
+    
+    // Find the Leader for the Crown
+    let leader = ps[0];
+    ps.forEach(p => { if((lastEntry[p]||0) > (lastEntry[leader]||0)) leader = p; });
+
+    // 1. Update Scoreboard (No titles, numbers side-by-side)
     const scoreboard = document.getElementById("historyScoreboard");
     scoreboard.innerHTML = "";
 
     ps.forEach(p => {
         const score = lastEntry[p] || 0;
         const diff = score - (prevEntry[p] || 0);
-        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(2)}</span>` : ``;
+        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(1)}</span>` : ``;
+        const crownHtml = p === leader ? `<div class="leader-crown">👑</div>` : ``;
         
         scoreboard.innerHTML += `
             <div class="stat-pill" style="color: ${cols[p]}">
-                <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
-                <span class="p-name">${p}</span>
-                <span class="p-score">${t === 'money' ? '£'+score.toFixed(2) : score}</span>
-                ${diffHtml}
+                <div class="chart-avatar-wrap">
+                    ${crownHtml}
+                    <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
+                </div>
+                <div class="p-score-box">
+                    <span class="p-score">${t === 'money' ? '£'+score.toFixed(0) : score}</span>
+                    ${diffHtml}
+                </div>
             </div>
         `;
     });
 
-    // 2. Line Order (Leader on top)
+    // 2. Setup Chart Data
     const sortedPlayers = [...ps].sort((a, b) => (lastEntry[a] || 0) - (lastEntry[b] || 0));
-
     const datasets = ps.map((p) => {
         const c = cols[p] || "#fff";
-        const grad = ctx.createLinearGradient(0, 0, 0, 200);
+        const grad = ctx.createLinearGradient(0, 0, 0, 220);
         grad.addColorStop(0, hexToRgba(c, 0.25));
         grad.addColorStop(1, hexToRgba(c, 0));
 
@@ -1802,7 +1822,7 @@ function drawHistoryChart(t) {
             backgroundColor: grad,
             fill: true,
             tension: 0.4,
-            pointRadius: d.length > 20 ? 2 : 4, // Smaller points if lots of data
+            pointRadius: 3,
             pointBackgroundColor: c,
             borderWidth: 3,
             order: 3 - sortedPlayers.indexOf(p) 
@@ -1820,7 +1840,7 @@ function drawHistoryChart(t) {
                 x: { display: false },
                 y: {
                     display: true,
-                    position: 'right', // Move labels to right to save space
+                    position: 'right',
                     grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
                     ticks: { 
                         color: 'rgba(154, 160, 166, 0.5)', 
@@ -1838,10 +1858,7 @@ function drawHistoryChart(t) {
                     intersect: false,
                     backgroundColor: 'rgba(20, 22, 25, 0.95)',
                     titleFont: { size: 11, weight: '800' },
-                    bodyFont: { size: 10, weight: '600' },
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true
+                    bodyFont: { size: 10, weight: '600' }
                 }
             }
         }

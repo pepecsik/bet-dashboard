@@ -2459,15 +2459,41 @@ function renderH2H(h2hData, currentHome, currentAway) {
     
     const findFormInTable = (code) => {
         if(!tableCache || !code) return "??????";
-        const cleanCode = normalizeName(code).toLowerCase().trim();
+        const cleanCode = code.trim().toUpperCase();
         
-        // Match logic using your existing tableCache
+        // YOUR EXACT MAPPING LIST
+        const mappings = {
+            "WHA": "West Ham",
+            "CTY": "Manchester City",
+            "MAN": "Manchester United",
+            "NWC": "Newcastle",
+            "NOT": "Nottingham Forest",
+            "AVI": "Aston Villa",
+            "CPA": "Crystal Palace",
+            "CHE": "Chelsea",
+            "ARS": "Arsenal",
+            "LIV": "Liverpool",
+            "TOT": "Tottenham",
+            "BOU": "Bournemouth",
+            "BRE": "Brentford",
+            "BRI": "Brighton",
+            "BUR": "Burnley",
+            "EVE": "Everton",
+            "FUL": "Fulham",
+            "WOL": "Wolves",
+            "SUN": "Sunderland",
+            "LEE": "Leeds"
+        };
+
+        const targetName = mappings[cleanCode] ? normalizeName(mappings[cleanCode]) : normalizeName(cleanCode);
+        
+        // Match logic: find row where team name matches your mapped name
         let found = tableCache.find(r => {
-            const t = normalizeName(r.team).toLowerCase();
-            return t.includes(cleanCode) || cleanCode.includes(t.substring(0,3));
+            const tableName = normalizeName(r.team);
+            // Check for exact match or if the table name contains our target
+            return tableName === targetName || tableName.includes(targetName) || targetName.includes(tableName);
         });
 
-        // Return the form string (e.g. "WWDLN") or placeholders if not found
         return found ? found.form : "?????";
     };
 

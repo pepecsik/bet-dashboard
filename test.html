@@ -1257,38 +1257,71 @@ img[alt="AVI"] {
 .place-2 { height: 82%; }
 .place-3 { height: 70%; }
 
+/* === PODIUM V3 STYLES (Final Polish) === */
+.podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px; 
+    padding: 15px 5px 5px 5px;
+    height: 160px;
+    margin-bottom: 5px;
+}
+
+.podium-place {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Height Hierarchy */
+.place-1 { height: 100%; z-index: 2; }
+.place-2 { height: 82%; }
+.place-3 { height: 70%; }
+
 /* The "Bar" underneath the avatar */
 .podium-bar {
     width: 100%;
-    background: var(--bg-row); /* Matches theme */
+    background: var(--bg-row);
     border: 1px solid rgba(255,255,255,0.05);
     border-radius: 6px 6px 0 0;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    
+    /* FIX: This moves the numbers HIGHER up in the bar */
+    justify-content: flex-start; 
+    padding-top: 12px;
+    
     align-items: center;
-    padding: 8px 2px;
-    flex-grow: 1; /* Fills the rest of the height */
+    flex-grow: 1; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-/* 1st Place Highlights */
+/* 1st Place (Gold) */
 .place-1 .podium-bar {
     background: linear-gradient(to top, rgba(251, 191, 36, 0.15), var(--bg-row));
     border-top: 1px solid var(--accent-gold);
 }
+/* 2nd Place (Silver) */
 .place-2 .podium-bar { border-top: 3px solid #C0C0C0; }
-.place-3 .podium-bar { border-top: 3px solid #CD7F32; }
+
+/* 3rd Place (Brown/Poop) */
+.place-3 .podium-bar { 
+    border-top: 3px solid #8D6E63; /* Poop Brown */
+    background: linear-gradient(to top, rgba(62, 39, 35, 0.4), var(--bg-row));
+}
 
 /* Square Avatars */
 .podium-avatar {
     width: 42px; 
     height: 42px;
-    border-radius: 6px; /* Just slightly rounded corners, effectively square */
+    border-radius: 6px; 
     object-fit: contain;
     margin-bottom: 6px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    background: #000; /* Dark bg for transparent pngs */
+    background: #000;
 }
 
 /* Bigger Avatar for 1st */
@@ -1299,12 +1332,17 @@ img[alt="AVI"] {
     border: 2px solid var(--accent-gold);
 }
 
-/* Money Text - Condensed to fit */
+/* 3rd Place Avatar Border */
+.place-3 .podium-avatar {
+    border: 1px solid #8D6E63;
+}
+
+/* Money Text - Condensed */
 .podium-money {
     color: var(--accent-green);
     font-size: 13px;
     font-weight: 900;
-    letter-spacing: -0.5px; /* Tighter spacing for long numbers */
+    letter-spacing: -0.5px;
     margin-bottom: 2px;
     white-space: nowrap;
 }
@@ -1322,11 +1360,21 @@ img[alt="AVI"] {
 /* Crown Animation */
 .crown-icon {
     position: absolute;
-    top: -20px;
+    top: -22px;
     font-size: 22px;
     filter: drop-shadow(0 0 5px gold);
     animation: floatCrown 2s infinite ease-in-out;
 }
+
+/* Poop Animation */
+.poop-icon {
+    position: absolute;
+    top: -20px;
+    font-size: 18px;
+    filter: drop-shadow(0 0 5px #000);
+    animation: floatCrown 2s infinite ease-in-out; /* Re-use float animation */
+}
+
 @keyframes floatCrown { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
  
 </style>
@@ -1847,6 +1895,7 @@ function loadData(){
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         // --- NEW PODIUM LOGIC ---
         // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
+        // --- NEW PODIUM LOGIC (Square, No Names, Poop Included) ---
         if (data.ranking && data.ranking.length >= 3) {
             const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
     
@@ -1862,7 +1911,7 @@ function loadData(){
                     <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
                     <div class="podium-bar">
                         <div class="podium-money">${formatGBP(p2.money)}</div>
-                        <div class="podium-stats">${p2.matchesRight} Bets ✅</div>
+                        <div class="podium-stats">${p2.matchesRight} Bets</div>
                     </div>
                 </div>
 
@@ -1871,20 +1920,21 @@ function loadData(){
                     <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
                     <div class="podium-bar">
                         <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets ✅</div>
+                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
                     </div>
                 </div>
 
                 <div class="podium-place place-3">
+                    <div class="poop-icon">💩</div>
                     <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
                     <div class="podium-bar">
                         <div class="podium-money">${formatGBP(p3.money)}</div>
-                        <div class="podium-stats">${p3.matchesRight} Bets ✅</div>
+                        <div class="podium-stats">${p3.matchesRight} Bets</div>
                     </div>
                 </div>
             </div>`;
         } else {
-            // Fallback if data is loading or incomplete
+            // Fallback
             ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
         }
         isFirstLoad = false;

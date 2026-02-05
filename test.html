@@ -1801,6 +1801,37 @@ function switchTab(t){
 }
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
+    let proTip = "";
+
+    // --- NEW: Pro Tip Logic ---
+    if (matchData.stats.h2h && matchData.stats.h2h.length >= 3) {
+        let hWins = 0;
+        const total = matchData.stats.h2h.length;
+        matchData.stats.h2h.forEach(prev => {
+            let hS = 0, aS = 0;
+            if(typeof prev.score === 'string') {
+                const p = prev.score.split("-");
+                hS = parseInt(p[0]); aS = parseInt(p[1]);
+            } else if(prev.score) {
+                hS = prev.score.home; aS = prev.score.away;
+            }
+            
+            const histHome = normalizeName(prev.home).toUpperCase();
+            const currHome = normalizeName(home).toUpperCase();
+            const isHomeInHist = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
+
+            if (hS > aS && isHomeInHist) hWins++;
+            else if (aS > hS && !isHomeInHist) hWins++;
+        });
+
+        const winPct = (hWins / total) * 100;
+        if (winPct >= 70) {
+            proTip = `<div style="background:rgba(251,191,36,0.1); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:10px; border-radius:10px; margin-bottom:15px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <span style="font-size:16px;">⭐</span> <span>PRO TIP: ${home} has won ${Math.round(winPct)}% of recent meetings against ${away}.</span>
+            </div>`;
+        }
+    }
+
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -1817,7 +1848,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
         }
         story += `</div>`;
-        el.innerHTML = story;
+        el.innerHTML = proTip + story; // Added proTip
         return;
     }
 
@@ -1867,7 +1898,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
     }
 
     story += `</div>`;
-    el.innerHTML = story;
+    el.innerHTML = proTip + story; // Added proTip
 }
 
 function findPlayerStats(name, list) {
@@ -2630,27 +2661,41 @@ function openPreMatchStats(matchKey) {
 }
 
 function openPicker(matchId, home, away, colNum) {
+  vibe();
   activePicker = { match: matchId, col: colNum };
   const m = window.allMatches.find(x => x.match === matchId);
   document.getElementById('pickerMatchTitle').innerText = matchId + ` (BET ${colNum})`;
 
   const btnHome = document.getElementById('btnHome');
   const btnAway = document.getElementById('btnAway');
-  // Find Draw button
-  const drawBtn = document.querySelector('.picker-grid-1x2 .picker-btn:nth-child(2)');
+  const drawBtn = document.getElementById('btnDraw');
   
   const qH = (m.odds && m.odds.home) ? m.odds.home : '-';
   const qD = (m.odds && m.odds.draw) ? m.odds.draw : '-';
   const qA = (m.odds && m.odds.away) ? m.odds.away : '-';
 
-  // Important: Use pickValue with strings, but innerHTML for the label
-  btnHome.innerHTML = `${home} <span class="odd-quote">${qH}</span>`;
+  // --- NEW: Consensus Logic ---
+  let counts = { H: 0, X: 0, A: 0 };
+  m.cells.forEach(c => {
+      if (!c.value) return;
+      let v = String(c.value).toUpperCase().trim();
+      // Match against short codes or outcome
+      if (v === '1' || v === 'H' || v === home.toUpperCase()) counts.H++;
+      else if (v === '2' || v === 'A' || v === away.toUpperCase()) counts.A++;
+      else if (v === 'X' || v === 'D') counts.X++;
+  });
+
+  const bH = counts.H > 0 ? `<small style="opacity:0.5; font-weight:400; font-size:9px;">👥${counts.H}</small>` : '';
+  const bX = counts.X > 0 ? `<small style="opacity:0.5; font-weight:400; font-size:9px;">👥${counts.X}</small>` : '';
+  const bA = counts.A > 0 ? `<small style="opacity:0.5; font-weight:400; font-size:9px;">👥${counts.A}</small>` : '';
+
+  btnHome.innerHTML = `<span>${home} ${bH}</span> <span class="odd-quote">${qH}</span>`;
   btnHome.onclick = () => pickValue(home);
   
-  drawBtn.innerHTML = `X <span class="odd-quote">${qD}</span>`;
+  drawBtn.innerHTML = `<span>X ${bX}</span> <span class="odd-quote">${qD}</span>`;
   drawBtn.onclick = () => pickValue('X');
   
-  btnAway.innerHTML = `${away} <span class="odd-quote">${qA}</span>`;
+  btnAway.innerHTML = `<span>${away} ${bA}</span> <span class="odd-quote">${qA}</span>`;
   btnAway.onclick = () => pickValue(away);
 
   document.getElementById('manualScore').value = "";

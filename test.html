@@ -1253,9 +1253,9 @@ img[alt="AVI"] {
     <div class="picker-section">
       <div class="picker-label">Winner / Draw</div>
       <div class="picker-grid-1x2">
-        <div class="picker-btn" id="btnHome" onclick="pickValue(this.innerText)">HOME</div>
-        <div class="picker-btn" onclick="pickValue('X')">X</div>
-        <div class="picker-btn" id="btnAway" onclick="pickValue(this.innerText)">AWAY</div>
+        <div class="picker-btn" id="btnHome">HOME</div>
+        <div class="picker-btn" id="btnDraw">X</div>
+        <div class="picker-btn" id="btnAway">AWAY</div>
       </div>
     </div>
 
@@ -1283,7 +1283,7 @@ img[alt="AVI"] {
         <span style="font-size:11px; color:#ff4d4d; cursor:pointer;" onclick="pickValue('')">Clear Selection</span>
     </div>
   </div>
-</div> 
+</div>
  
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
@@ -2631,27 +2631,27 @@ function openPreMatchStats(matchKey) {
 
 function openPicker(matchId, home, away, colNum) {
   activePicker = { match: matchId, col: colNum };
-  
-  // Find the match in the global array we just updated in buildDashboard
   const m = window.allMatches.find(x => x.match === matchId);
-  
   document.getElementById('pickerMatchTitle').innerText = matchId + ` (BET ${colNum})`;
-  
-  // Update Button Labels
+
   const btnHome = document.getElementById('btnHome');
   const btnAway = document.getElementById('btnAway');
-  
-  // Display the Quote if it exists, otherwise default to '-'
-  const qH = m.odds ? m.odds.home : '-';
-  const qD = m.odds ? m.odds.draw : '-';
-  const qA = m.odds ? m.odds.away : '-';
-
-  btnHome.innerHTML = `${home} <span class="odd-quote">${qH}</span>`;
-  btnAway.innerHTML = `${away} <span class="odd-quote">${qA}</span>`;
-  
-  // Update Draw button (it's the middle one in your picker-grid-1x2)
+  // Find Draw button
   const drawBtn = document.querySelector('.picker-grid-1x2 .picker-btn:nth-child(2)');
+  
+  const qH = (m.odds && m.odds.home) ? m.odds.home : '-';
+  const qD = (m.odds && m.odds.draw) ? m.odds.draw : '-';
+  const qA = (m.odds && m.odds.away) ? m.odds.away : '-';
+
+  // Important: Use pickValue with strings, but innerHTML for the label
+  btnHome.innerHTML = `${home} <span class="odd-quote">${qH}</span>`;
+  btnHome.onclick = () => pickValue(home);
+  
   drawBtn.innerHTML = `X <span class="odd-quote">${qD}</span>`;
+  drawBtn.onclick = () => pickValue('X');
+  
+  btnAway.innerHTML = `${away} <span class="odd-quote">${qA}</span>`;
+  btnAway.onclick = () => pickValue(away);
 
   document.getElementById('manualScore').value = "";
   document.getElementById('modalPicker').classList.add('active');

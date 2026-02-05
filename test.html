@@ -1181,81 +1181,18 @@ img[alt="AVI"] {
   border: var(--border-light) !important;
 }
 
-/* For the small pills, use a simple solid semi-transparent color */
+/* FIXED: Allow betting colors to show */
 .bet, .left-cell {
-  background: rgba(255, 255, 255, 0.05) !important;
-  backdrop-filter: none !important; /* This fixes the lag */
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  /* Use the color variable if it exists, otherwise gray */
+  background: var(--bet-bg, rgba(255, 255, 255, 0.05)); 
+  backdrop-filter: none !important; 
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* PODIUM SPECIFIC STYLES */
-.podium-container {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px 5px 10px 5px;
-  height: 180px; 
+/* Force the color to stick if JavaScript sets it */
+.bet[style*="background-color"] {
+    background-color: var(--bet-bg) !important;
 }
-.podium-place {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
-.place-1 { height: 100%; z-index: 2; }
-.place-2 { height: 85%; }
-.place-3 { height: 75%; }
-
-.podium-column {
-  width: 100%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.01) 100%);
-  border-radius: 8px 8px 4px 4px;
-  border: 1px solid rgba(255,255,255,0.1);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 10px 4px;
-  text-align: center;
-}
-.podium-avatar {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  border: 2px solid #9ca3af;
-  margin-bottom: 8px;
-  object-fit: cover;
-}
-.place-1 .podium-avatar {
-  width: 60px; height: 60px;
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
-}
-.podium-name { font-weight: 800; font-size: 11px; color: var(--text-main); }
-.podium-money { color: var(--accent-green); font-size: 11px; font-weight: 800; }
-/* === PODIUM V2 STYLES === */
-.podium-container {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 6px; /* Tight gap to fit everything */
-    padding: 15px 5px 5px 5px;
-    height: 160px; /* Fixed height */
-    margin-bottom: 5px;
-}
-
-.podium-place {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-}
-
-/* Height Hierarchy */
-.place-1 { height: 100%; z-index: 2; }
-.place-2 { height: 82%; }
-.place-3 { height: 70%; }
 
 /* === PODIUM V3 STYLES (Final Polish) === */
 .podium-container {
@@ -1376,6 +1313,17 @@ img[alt="AVI"] {
 }
 
 @keyframes floatCrown { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+
+/* CENTERED CARD TITLES */
+.weekly-title, .ranking-title {
+    text-align: center;
+    width: 100%;
+    display: block;
+    margin-bottom: 15px; /* Little extra space looks nicer */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
  
 </style>
 </head>

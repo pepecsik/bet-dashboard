@@ -1763,8 +1763,9 @@ function drawHistoryChart(t) {
     const labs = d.map(r => new Date(r.date).toLocaleDateString());
     const ps = ["Snackbar", "Timbo", "Pepe"];
     const cols = { Snackbar: "#4ade80", Timbo: "#4DA3FF", Pepe: "#FF5BC4" };
+    const avatars = { Snackbar: "./snackbar.png", Timbo: "./timbo.png", Pepe: "./pepe.png" };
 
-    // 1. Update the Header Scoreboard
+    // 1. Update the Full-Width Scoreboard with Avatars
     const lastEntry = d[d.length - 1];
     const prevEntry = d[d.length - 2] || d[d.length - 1];
     const scoreboard = document.getElementById("historyScoreboard");
@@ -1773,10 +1774,11 @@ function drawHistoryChart(t) {
     ps.forEach(p => {
         const score = lastEntry[p] || 0;
         const diff = score - (prevEntry[p] || 0);
-        const diffHtml = diff > 0 ? `<span class="p-diff diff-up">+${diff % 1 === 0 ? diff : diff.toFixed(2)}</span>` : `<span class="p-diff" style="opacity:0.3">--</span>`;
+        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(2)}</span>` : ``;
         
         scoreboard.innerHTML += `
             <div class="stat-pill" style="color: ${cols[p]}">
+                <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
                 <span class="p-name">${p}</span>
                 <span class="p-score">${t === 'money' ? '£'+score.toFixed(2) : score}</span>
                 ${diffHtml}
@@ -1784,13 +1786,13 @@ function drawHistoryChart(t) {
         `;
     });
 
-    // 2. Sort players by score to handle Z-index (Leader on top)
+    // 2. Line Order (Leader on top)
     const sortedPlayers = [...ps].sort((a, b) => (lastEntry[a] || 0) - (lastEntry[b] || 0));
 
     const datasets = ps.map((p) => {
         const c = cols[p] || "#fff";
-        const grad = ctx.createLinearGradient(0, 0, 0, 180);
-        grad.addColorStop(0, hexToRgba(c, 0.2));
+        const grad = ctx.createLinearGradient(0, 0, 0, 200);
+        grad.addColorStop(0, hexToRgba(c, 0.25));
         grad.addColorStop(1, hexToRgba(c, 0));
 
         return {
@@ -1800,10 +1802,9 @@ function drawHistoryChart(t) {
             backgroundColor: grad,
             fill: true,
             tension: 0.4,
-            pointRadius: 4,
+            pointRadius: d.length > 20 ? 2 : 4, // Smaller points if lots of data
             pointBackgroundColor: c,
             borderWidth: 3,
-            // Chart.js 'order' property: lower number = drawn on top
             order: 3 - sortedPlayers.indexOf(p) 
         };
     });
@@ -1814,30 +1815,33 @@ function drawHistoryChart(t) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 10, right: 10, left: 0, bottom: 0 } },
+            layout: { padding: { top: 10, right: 15, left: 5, bottom: 0 } },
             scales: {
                 x: { display: false },
                 y: {
                     display: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
-                    ticks: { color: '#9aa0a6', font: { size: 10, weight: '600' } }
+                    position: 'right', // Move labels to right to save space
+                    grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
+                    ticks: { 
+                        color: 'rgba(154, 160, 166, 0.5)', 
+                        font: { size: 9, weight: '600' },
+                        callback: (val) => t === 'money' ? '£' + val : val
+                    }
                 }
             },
             plugins: {
                 legend: { display: false },
-                // Disable the overlapping data labels
                 datalabels: { display: false }, 
                 tooltip: {
                     enabled: true,
                     mode: 'index',
                     intersect: false,
-                    backgroundColor: 'rgba(20, 22, 25, 0.9)',
-                    titleFont: { size: 12, weight: '800' },
-                    bodyFont: { size: 11, weight: '600' },
-                    padding: 12,
-                    cornerRadius: 10,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(20, 22, 25, 0.95)',
+                    titleFont: { size: 11, weight: '800' },
+                    bodyFont: { size: 10, weight: '600' },
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true
                 }
             }
         }

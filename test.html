@@ -1233,6 +1233,101 @@ img[alt="AVI"] {
 }
 .podium-name { font-weight: 800; font-size: 11px; color: var(--text-main); }
 .podium-money { color: var(--accent-green); font-size: 11px; font-weight: 800; }
+/* === PODIUM V2 STYLES === */
+.podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px; /* Tight gap to fit everything */
+    padding: 15px 5px 5px 5px;
+    height: 160px; /* Fixed height */
+    margin-bottom: 5px;
+}
+
+.podium-place {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Height Hierarchy */
+.place-1 { height: 100%; z-index: 2; }
+.place-2 { height: 82%; }
+.place-3 { height: 70%; }
+
+/* The "Bar" underneath the avatar */
+.podium-bar {
+    width: 100%;
+    background: var(--bg-row); /* Matches theme */
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px 2px;
+    flex-grow: 1; /* Fills the rest of the height */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* 1st Place Highlights */
+.place-1 .podium-bar {
+    background: linear-gradient(to top, rgba(251, 191, 36, 0.15), var(--bg-row));
+    border-top: 1px solid var(--accent-gold);
+}
+.place-2 .podium-bar { border-top: 3px solid #C0C0C0; }
+.place-3 .podium-bar { border-top: 3px solid #CD7F32; }
+
+/* Square Avatars */
+.podium-avatar {
+    width: 42px; 
+    height: 42px;
+    border-radius: 6px; /* Just slightly rounded corners, effectively square */
+    object-fit: contain;
+    margin-bottom: 6px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    background: #000; /* Dark bg for transparent pngs */
+}
+
+/* Bigger Avatar for 1st */
+.place-1 .podium-avatar {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 8px;
+    border: 2px solid var(--accent-gold);
+}
+
+/* Money Text - Condensed to fit */
+.podium-money {
+    color: var(--accent-green);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: -0.5px; /* Tighter spacing for long numbers */
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+/* Matches Right Text */
+.podium-stats {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.1;
+}
+
+/* Crown Animation */
+.crown-icon {
+    position: absolute;
+    top: -20px;
+    font-size: 22px;
+    filter: drop-shadow(0 0 5px gold);
+    animation: floatCrown 2s infinite ease-in-out;
+}
+@keyframes floatCrown { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
  
 </style>
 </head>
@@ -1751,44 +1846,46 @@ function loadData(){
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         // --- NEW PODIUM LOGIC ---
+        // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
         if (data.ranking && data.ranking.length >= 3) {
             const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-            // We sort the rankings to ensure we pick the top 3
-            const top3 = data.ranking.slice(0, 3);
-            const p1 = top3[0]; // Gold
-            const p2 = top3[1]; // Silver
-            const p3 = top3[2]; // Bronze
+    
+            // Sort just in case API isn't sorted
+            const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
+            const p1 = sorted[0];
+            const p2 = sorted[1];
+            const p3 = sorted[2];
 
             ranking.innerHTML = `
             <div class="podium-container">
                 <div class="podium-place place-2">
                     <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-column">
-                        <div class="podium-name">${p2.name}</div>
+                    <div class="podium-bar">
                         <div class="podium-money">${formatGBP(p2.money)}</div>
+                        <div class="podium-stats">${p2.matchesRight} Bets ✅</div>
                     </div>
                 </div>
 
                 <div class="podium-place place-1">
-                    <div style="position:absolute; top:-25px; font-size:24px; filter: drop-shadow(0 0 5px gold);">👑</div>
+                    <div class="crown-icon">👑</div>
                     <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-column" style="border-color: rgba(251, 191, 36, 0.5); background: linear-gradient(180deg, rgba(251,191,36,0.2) 0%, transparent 100%);">
-                        <div class="podium-name">${p1.name}</div>
-                        <div class="podium-money">${formatGBP(p1.money)}</div>
+                    <div class="podium-bar">
+                        <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
+                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets ✅</div>
                     </div>
                 </div>
 
                 <div class="podium-place place-3">
                     <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-column">
-                        <div class="podium-name">${p3.name}</div>
+                    <div class="podium-bar">
                         <div class="podium-money">${formatGBP(p3.money)}</div>
+                        <div class="podium-stats">${p3.matchesRight} Bets ✅</div>
                     </div>
                 </div>
             </div>`;
         } else {
-            // Fallback if data isn't ready
-            ranking.innerHTML = `<div style="padding:20px; text-align:center; opacity:0.5;">Awaiting rankings...</div>`;
+            // Fallback if data is loading or incomplete
+            ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
         }
         isFirstLoad = false;
     } catch(e){ console.error(e); }

@@ -658,13 +658,17 @@ body {
 .on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
 
 .history-card-inner {
-  width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
-  padding:12px; 
-  height: auto; min-height: 180px; 
+    width: 100%;
+    background: var(--bg-soft) !important;
+    border-radius: 0 0 var(--rad-lg) var(--rad-lg); /* Only round bottom */
+    padding: 15px;
+    margin-top: -1px; /* Overlap slightly to hide seams */
 }
-.history-header {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; margin-bottom: 15px;
+.history-header-top {
+    display: flex;
+    justify-content: flex-end; /* Push toggle to the right */
+    width: 100%;
+    margin-bottom: 12px;
 }
 .legend-row {
   display: flex; justify-content: center; align-items: center; gap: 10px;
@@ -1064,6 +1068,108 @@ img[alt="AVI"] {
 .ls-score { font-size: 13px; font-weight: 800; color: var(--text-muted); width: 20px; text-align: right; }
 .ls-score.winner { color: var(--text-main); }
 
+.odd-quote {
+  display: block;
+  font-size: 10px;
+  color: var(--accent-orange); /* Or var(--accent-green) */
+  font-weight: 800;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+.picker-btn {
+    position: relative; /* Crucial for badge positioning */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 55px;
+    padding-top: 8px;
+}
+
+.consensus-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+} 
+
+/* Clean full-width scoreboard */
+/* History Modal Scoreboard tweaks */
+.history-stats-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 5px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--rad-md);
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-pill {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+/* Square Avatars with Crown support */
+.chart-avatar-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
+.chart-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px; /* Squarish with very slight round */
+    border: 2px solid currentColor;
+    object-fit: cover;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.leader-crown {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.6));
+    z-index: 10;
+}
+
+/* Numbers side-by-side */
+.p-score-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-pill .p-score {
+    font-size: 13px; /* Slightly smaller */
+    font-weight: 900;
+}
+
+.stat-pill .p-diff {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--accent-green);
+    opacity: 0.9;
+}
+.diff-up { color: var(--accent-green); }
+ 
 </style>
 </head>
 <body>
@@ -1161,31 +1267,30 @@ img[alt="AVI"] {
 </div>
 
 <div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-header">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
         <button class="modal-back-btn" onclick="closeModal('historyModal')">Back</button>
         <div class="modal-title">Performance History</div>
         <div class="modal-sub">Season 2025/2026</div>
       </div>
+      
       <div class="history-card-inner">
-         <div class="history-header">
-             <div class="legend-row">
-                <div class="legend-item" style="color:#4ade80"><div class="legend-dot" style="background:#4ade80"></div>Snackbar</div>
-                <div class="legend-item" style="color:#4DA3FF"><div class="legend-dot" style="background:#4DA3FF"></div>Timbo</div>
-                <div class="legend-item" style="color:#FF5BC4"><div class="legend-dot" style="background:#FF5BC4"></div>Pepe</div>
-             </div>
+         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
              <div class="toggle-group">
-              <button id="btnMatches" class="toggle-btn active">Matches</button>
-              <button id="btnMoney" class="toggle-btn">Money</button>
+                 <button id="btnMatches" class="toggle-btn active">Matches</button>
+                 <button id="btnMoney" class="toggle-btn">Money</button>
              </div>
          </div>
-         <div style="position: relative; height: 180px; width: 100%;">
+
+         <div class="history-stats-row" id="historyScoreboard"></div>
+         
+         <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
          </div>
       </div>
     </div>
 </div>
-
+ 
 <div class="modal-overlay" id="modalPlayer" style="align-items:end;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -1237,9 +1342,9 @@ img[alt="AVI"] {
     <div class="picker-section">
       <div class="picker-label">Winner / Draw</div>
       <div class="picker-grid-1x2">
-        <div class="picker-btn" id="btnHome" onclick="pickValue(this.innerText)">HOME</div>
-        <div class="picker-btn" onclick="pickValue('X')">X</div>
-        <div class="picker-btn" id="btnAway" onclick="pickValue(this.innerText)">AWAY</div>
+        <div class="picker-btn" id="btnHome">HOME</div>
+        <div class="picker-btn" id="btnDraw">X</div>
+        <div class="picker-btn" id="btnAway">AWAY</div>
       </div>
     </div>
 
@@ -1267,7 +1372,7 @@ img[alt="AVI"] {
         <span style="font-size:11px; color:#ff4d4d; cursor:pointer;" onclick="pickValue('')">Clear Selection</span>
     </div>
   </div>
-</div> 
+</div>
  
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
@@ -1659,86 +1764,106 @@ function applyFilterLogic() {
     });
 }
 
-function drawHistoryChart(t){
-  if(historyChart&&historyChart._type===t)return; 
-  const ctx=document.getElementById("historyChart").getContext("2d");
-  if(historyChart){historyChart.destroy();historyChart=null}
-  
-  const d=chartDataCache?chartDataCache[t]:null; if(!d)return;
-  const labs=d.map(r=>new Date(r.date).toLocaleDateString());
-  const ps=["Snackbar","Timbo","Pepe"];
-  const cols={Snackbar:"#4ade80",Timbo:"#4DA3FF",Pepe:"#FF5BC4"};
+function drawHistoryChart(t) {
+    const ctx = document.getElementById("historyChart").getContext("2d");
+    if (historyChart) { historyChart.destroy(); historyChart = null; }
 
-  historyChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:labs,
-      datasets:ps.map((p, idx)=>{
-        const c=cols[p]||"#fff"; 
-        const grad=ctx.createLinearGradient(0,0,0,300); 
-        grad.addColorStop(0,hexToRgba(c,0.3)); 
-        grad.addColorStop(1,hexToRgba(c,0));
-        const labelAlign = idx === 1 ? 'left' : 'right'; 
+    const d = chartDataCache ? chartDataCache[t] : null;
+    if (!d || d.length === 0) return;
+
+    const labs = d.map(r => new Date(r.date).toLocaleDateString());
+    const ps = ["Snackbar", "Timbo", "Pepe"];
+    const cols = { Snackbar: "#4ade80", Timbo: "#4DA3FF", Pepe: "#FF5BC4" };
+    const avatars = { Snackbar: "./snackbar.png", Timbo: "./timbo.png", Pepe: "./pepe.png" };
+
+    const lastEntry = d[d.length - 1];
+    const prevEntry = d[d.length - 2] || d[d.length - 1];
+    
+    // Find the Leader for the Crown
+    let leader = ps[0];
+    ps.forEach(p => { if((lastEntry[p]||0) > (lastEntry[leader]||0)) leader = p; });
+
+    // 1. Update Scoreboard (No titles, numbers side-by-side)
+    const scoreboard = document.getElementById("historyScoreboard");
+    scoreboard.innerHTML = "";
+
+    ps.forEach(p => {
+        const score = lastEntry[p] || 0;
+        const diff = score - (prevEntry[p] || 0);
+        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(1)}</span>` : ``;
+        const crownHtml = p === leader ? `<div class="leader-crown">👑</div>` : ``;
+        
+        scoreboard.innerHTML += `
+            <div class="stat-pill" style="color: ${cols[p]}">
+                <div class="chart-avatar-wrap">
+                    ${crownHtml}
+                    <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
+                </div>
+                <div class="p-score-box">
+                    <span class="p-score">${t === 'money' ? '£'+score.toFixed(0) : score}</span>
+                    ${diffHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    // 2. Setup Chart Data
+    const sortedPlayers = [...ps].sort((a, b) => (lastEntry[a] || 0) - (lastEntry[b] || 0));
+    const datasets = ps.map((p) => {
+        const c = cols[p] || "#fff";
+        const grad = ctx.createLinearGradient(0, 0, 0, 220);
+        grad.addColorStop(0, hexToRgba(c, 0.25));
+        grad.addColorStop(1, hexToRgba(c, 0));
+
         return {
-            label:p,
-            data: d.map(r=>r[p]), 
-            borderColor:c,
-            backgroundColor:grad,
-            fill:true,
-            tension:0.3,
-            pointRadius: 6, 
-            pointHoverRadius: 8,
-            pointBackgroundColor: "#1c1f23",
-            pointBorderColor: c,
-            pointBorderWidth: 2,
-            borderWidth: 2,
-            _customAlign: labelAlign
-        }
-      })
-    },
-    options:{
-        responsive:true, 
-        maintainAspectRatio:false,
-        layout:{padding:{top:15,right:30,left:0,bottom:30}}, 
-        scales:{
-            x:{ display:false },
-            y:{
-                display:true, 
-                position:'left',
-                beginAtZero: true, 
-                grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
-                ticks: { color: '#9aa0a6', font: { size: 10, family: 'Inter', weight:'600' }, precision: 0 },
-                grace:'5%' 
-            }
-        },
-        animation: { y: { duration: 2000, easing: 'easeOutQuart' }, x: { duration: 0 } },
-        plugins:{
-            legend:{display:false},
-            tooltip: {
-                enabled: true, mode: 'index', intersect: false, backgroundColor: 'rgba(28, 31, 35, 0.9)', titleColor: '#fff', bodyFont: { family: "Inter" }
+            label: p,
+            data: d.map(r => r[p]),
+            borderColor: c,
+            backgroundColor: grad,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: c,
+            borderWidth: 3,
+            order: 3 - sortedPlayers.indexOf(p) 
+        };
+    });
+
+    historyChart = new Chart(ctx, {
+        type: "line",
+        data: { labels: labs, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 10, right: 15, left: 5, bottom: 0 } },
+            scales: {
+                x: { display: false },
+                y: {
+                    display: true,
+                    position: 'right',
+                    grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
+                    ticks: { 
+                        color: 'rgba(154, 160, 166, 0.5)', 
+                        font: { size: 9, weight: '600' },
+                        callback: (val) => t === 'money' ? '£' + val : val
+                    }
+                }
             },
-            datalabels:{
-                formatter:(v,c)=>{
-                    const d=c.dataset.data, i=c.dataIndex; if(i===0)return null;
-                    const prevVal = d[i-1];
-                    const cleanDf = Math.round((v-prevVal) * 100) / 100;
-                    if(cleanDf<=0) return null;
-                    return `+${cleanDf % 1 === 0 ? cleanDf.toFixed(0) : cleanDf}`;
-                },
-                backgroundColor: (c) => c.dataset.borderColor,
-                borderRadius: 4,
-                color: '#000000',
-                font:{ weight:"800", size: 9, family: "Inter, sans-serif" },
-                padding: { top: 2, bottom: 2, left: 4, right: 4 },
-                align: (c) => c.dataset._customAlign,
-                anchor: 'center',
-                offset: 8,
-                display: 'auto'
+            plugins: {
+                legend: { display: false },
+                datalabels: { display: false }, 
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(20, 22, 25, 0.95)',
+                    titleFont: { size: 11, weight: '800' },
+                    bodyFont: { size: 10, weight: '600' }
+                }
             }
         }
-    }
-  });
-  historyChart._type=t;
+    });
+    historyChart._type = t;
 }
 
 // UI & HELPERS
@@ -1785,6 +1910,37 @@ function switchTab(t){
 }
 function generateStory(home, away, stats, score, status, startTime, date, matchData) {
     const el = document.getElementById("aiSummaryWrapper");
+    let proTip = "";
+
+    // --- NEW: Pro Tip Logic ---
+    if (matchData.stats.h2h && matchData.stats.h2h.length >= 3) {
+        let hWins = 0;
+        const total = matchData.stats.h2h.length;
+        matchData.stats.h2h.forEach(prev => {
+            let hS = 0, aS = 0;
+            if(typeof prev.score === 'string') {
+                const p = prev.score.split("-");
+                hS = parseInt(p[0]); aS = parseInt(p[1]);
+            } else if(prev.score) {
+                hS = prev.score.home; aS = prev.score.away;
+            }
+            
+            const histHome = normalizeName(prev.home).toUpperCase();
+            const currHome = normalizeName(home).toUpperCase();
+            const isHomeInHist = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
+
+            if (hS > aS && isHomeInHist) hWins++;
+            else if (aS > hS && !isHomeInHist) hWins++;
+        });
+
+        const winPct = (hWins / total) * 100;
+        if (winPct >= 70) {
+            proTip = `<div style="background:rgba(251,191,36,0.1); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:10px; border-radius:10px; margin-bottom:15px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <span style="font-size:16px;">⭐</span> <span>PRO TIP: ${home} has won ${Math.round(winPct)}% of recent meetings against ${away}.</span>
+            </div>`;
+        }
+    }
+
     if(status === "NS") {
         let matchDate = date ? new Date(date) : null;
         let today = new Date();
@@ -1801,7 +1957,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
              story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
         }
         story += `</div>`;
-        el.innerHTML = story;
+        el.innerHTML = proTip + story; // Added proTip
         return;
     }
 
@@ -1851,7 +2007,7 @@ function generateStory(home, away, stats, score, status, startTime, date, matchD
     }
 
     story += `</div>`;
-    el.innerHTML = story;
+    el.innerHTML = proTip + story; // Added proTip
 }
 
 function findPlayerStats(name, list) {
@@ -2391,92 +2547,74 @@ function submitAllBets() {
 function renderH2H(h2hData, currentHome, currentAway) {
     const el = document.getElementById("h2hList");
     
-    // --- 1. FORM FINDER ---
     const findFormInTable = (code) => {
-        // FIX: Removed "window." because 'tableCache' is a 'let' variable
         if(!tableCache || !code) return "??????";
+        const cleanCode = code.trim().toUpperCase();
         
-        const cleanCode = normalizeName(code).toLowerCase().trim();
-        
-        // Expanded Map for better matching
-        const map = {
-            "man": "manchester", "mun": "manchester", "utd": "manchester",
-            "cty": "city", "mci": "city",
-            "not": "forest", "nfo": "forest",
-            "nwc": "newcastle", "new": "newcastle",
-            "wha": "west ham", "whu": "west ham",
-            "tot": "tottenham", "wol": "wolves",
-            "avi": "aston", "avl": "aston", "aston": "aston",
-            "lee": "leeds", "sou": "southampton", "lei": "leicester",
-            "bou": "bournemouth", "bre": "brentford", "bri": "brighton",
-            "cpa": "palace", "cry": "palace", "palace": "palace",
-            "ful": "fulham", "eve": "everton", "liv": "liverpool",
-            "ars": "arsenal", "che": "chelsea", "bur": "burnley",
-            "shu": "sheffield", "lut": "luton"
+        // YOUR EXACT MAPPING LIST
+        const mappings = {
+            "WHA": "West Ham",
+            "CTY": "Manchester City",
+            "MAN": "Manchester United",
+            "NWC": "Newcastle",
+            "NOT": "Nottingham Forest",
+            "AVI": "Aston Villa",
+            "CPA": "Crystal Palace",
+            "CHE": "Chelsea",
+            "ARS": "Arsenal",
+            "LIV": "Liverpool",
+            "TOT": "Tottenham",
+            "BOU": "Bournemouth",
+            "BRE": "Brentford",
+            "BRI": "Brighton",
+            "BUR": "Burnley",
+            "EVE": "Everton",
+            "FUL": "Fulham",
+            "WOL": "Wolves",
+            "SUN": "Sunderland",
+            "LEE": "Leeds"
         };
 
-        const target = map[cleanCode] || cleanCode;
+        const targetName = mappings[cleanCode] ? normalizeName(mappings[cleanCode]) : normalizeName(cleanCode);
         
-        // Use 'tableCache' directly (not window.tableCache)
-        let found = tableCache.find(r => normalizeName(r.team).toLowerCase().includes(target));
-        
-        if(!found) {
-            found = tableCache.find(r => target.includes(normalizeName(r.team).toLowerCase()));
-        }
-        
-        if(!found && cleanCode.length >= 3) {
-            found = tableCache.find(r => normalizeName(r.team).toLowerCase().startsWith(cleanCode.substring(0,3)));
-        }
+        // Match logic: find row where team name matches your mapped name
+        let found = tableCache.find(r => {
+            const tableName = normalizeName(r.team);
+            // Check for exact match or if the table name contains our target
+            return tableName === targetName || tableName.includes(targetName) || targetName.includes(tableName);
+        });
 
-        return found ? found.form : "??????";
+        return found ? found.form : "?????";
     };
 
-    // Get the forms
+    // Pull dots from actual League Table info
     const hForm = findFormInTable(currentHome).split('');
     const aForm = findFormInTable(currentAway).split('');
 
-    // --- 2. LOGO LOOKUP ---
     const getLogoUrl = (name) => {
         if(!name) return "https://media.api-sports.io/football/leagues/39.png";
         const norm = normalizeName(name).toUpperCase();
-        
-        if(norm.includes("ASTON") || norm.includes("VILLA")) return TEAM_LOGOS.AVI;
-        if(norm.includes("MAN") && norm.includes("CITY")) return TEAM_LOGOS.CTY;
-        if(norm.includes("MAN") && (norm.includes("UNITED") || norm.includes("UTD"))) return TEAM_LOGOS.MAN;
-        if(norm.includes("FOREST")) return TEAM_LOGOS.NOT;
-        if(norm.includes("NEWCASTLE")) return TEAM_LOGOS.NWC;
-        if(norm.includes("WEST HAM")) return TEAM_LOGOS.WHA;
-        if(norm.includes("TOTTENHAM")) return TEAM_LOGOS.TOT;
-
-        if (TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
-        
+        if(TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
         for (const [code, url] of Object.entries(TEAM_LOGOS)) {
             if (norm.startsWith(code) || code.includes(norm.substring(0,3))) return url;
         }
         return "https://media.api-sports.io/football/leagues/39.png"; 
     };
 
-    // --- 3. STATS CALCULATION ---
+    // Calculate H2H stats for the summary bar
     let hWins = 0, draws = 0, aWins = 0, total = 0;
-    const historyGames = (h2hData || []).filter(m => m.score && (typeof m.score === 'string' || m.score.home !== null));
+    const historyGames = (h2hData || []).filter(m => m.score);
     
     historyGames.forEach(m => {
         let hS = 0, aS = 0;
         if(typeof m.score === 'string') { 
             const parts = m.score.split("-");
-            if(parts.length === 2) { hS = parseInt(parts[0]); aS = parseInt(parts[1]); }
-        } else if (m.score) { 
-            hS = m.score.home || 0; aS = m.score.away || 0; 
-        }
+            hS = parseInt(parts[0]); aS = parseInt(parts[1]);
+        } else if (m.score) { hS = m.score.home || 0; aS = m.score.away || 0; }
 
-        let histHome = normalizeName(m.home).toUpperCase();
-        let currHome = normalizeName(currentHome).toUpperCase();
-        
-        if(currHome === "MAN" || currHome === "MUN") currHome = "UNITED";
-        if(currHome === "CTY" || currHome === "MCI") currHome = "CITY";
-        if(currHome === "NOT" || currHome === "NFO") currHome = "FOREST";
-        
-        let isHome = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
+        const histHome = normalizeName(m.home).toUpperCase();
+        const currHome = normalizeName(currentHome).toUpperCase();
+        const isHome = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
         
         if (hS > aS) { isHome ? hWins++ : aWins++; }
         else if (aS > hS) { isHome ? aWins++ : hWins++; }
@@ -2484,91 +2622,68 @@ function renderH2H(h2hData, currentHome, currentAway) {
         total++;
     });
 
-    // --- 4. RENDER HTML ---
-    let html = ``;
-    const renderDots = (arr) => arr.map(c => `<div class="big-dot ${c==='W'?'dot-W':(c==='L'?'dot-L':(c==='D'?'dot-D':'dot-?'))}"></div>`).join('');
-    
-    html += `
-    <div class="h2h-section-title">Recent Form (Last 5)</div>
+    let html = `
+    <div class="h2h-section-title">Actual League Form</div>
     <div class="form-container">
         <div class="form-team-col">
-            <div style="height:40px; display:flex; align-items:center; justify-content:center;">
-                ${renderTeam(currentHome)}
-            </div>
-            <div class="form-dots-row">${renderDots(hForm)}</div>
+            <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentHome)}</div>
+            <div class="form-dots-row">${hForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 10px;"></div>
         <div class="form-team-col">
-            <div style="height:40px; display:flex; align-items:center; justify-content:center;">
-                ${renderTeam(currentAway)}
-            </div>
-            <div class="form-dots-row">${renderDots(aForm)}</div>
+            <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentAway)}</div>
+            <div class="form-dots-row">${aForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
         </div>
     </div>`;
 
     if(total > 0) {
         let hp = (hWins/total)*100, dp = (draws/total)*100, ap = (aWins/total)*100;
-        let hColor = "var(--accent-green)"; let aColor = "#ff4d4d"; 
-        if (aWins > hWins) { hColor = "#ff4d4d"; aColor = "var(--accent-green)"; }
-        else if (aWins === hWins) { aColor = "var(--accent-green)"; }
-
         html += `
-        <div class="h2h-section-title">Head to Head (Last ${total})</div>
+        <div class="h2h-section-title">Head to Head History (Last ${total})</div>
         <div class="h2h-summary-box">
             <div class="summary-labels">
-                <span style="color:${hColor}; font-weight:800;">${hWins} Win</span>
+                <span style="color:var(--accent-green); font-weight:800;">${hWins} Win</span>
                 <span style="color:var(--accent-orange); opacity:0.8;">${draws} Draw</span>
-                <span style="color:${aColor}; font-weight:800;">${aWins} Win</span>
+                <span style="color:#ff4d4d; font-weight:800;">${aWins} Win</span>
             </div>
             <div class="summary-bar">
-                <div class="bar-seg" style="width:${hp}%; background:${hColor}"></div>
+                <div class="bar-seg" style="width:${hp}%; background:var(--accent-green)"></div>
                 <div class="bar-seg" style="width:${dp}%; background:var(--accent-orange)"></div>
-                <div class="bar-seg" style="width:${ap}%; background:${aColor}"></div>
+                <div class="bar-seg" style="width:${ap}%; background:#ff4d4d"></div>
             </div>
         </div>`;
     }
 
     html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
-    
-    if(total === 0) {
-        html += `<div style="text-align:center; opacity:0.5; padding:20px;">No recent history found.</div>`;
-    } else {
-        historyGames.forEach(m => {
-            const d = new Date(m.date);
-            let hS = 0, aS = 0;
-            if(typeof m.score === 'string') { 
-                const parts = m.score.split("-");
-                if(parts.length === 2) { hS = parseInt(parts[0]); aS = parseInt(parts[1]); }
-            } else if(m.score) { hS = m.score.home || 0; aS = m.score.away || 0; }
-
-            const hLogo = getLogoUrl(m.home);
-            const aLogo = getLogoUrl(m.away);
-            
-            // Apply scale(2.0) if name contains Villa
-            const getStyle = (n) => normalizeName(n).toLowerCase().includes('villa') ? 'style="transform:scale(2.0)"' : '';
-            
-            html += `
-            <div class="ls-card">
-                <div class="ls-year">${d.getFullYear()}</div>
-                <div class="ls-content">
-                    <div class="ls-row">
-                        <div class="ls-team-wrap">
-                            <img src="${hLogo}" class="ls-logo" ${getStyle(m.home)}>
-                            <span class="ls-name ${hS>aS?'winner':''}">${m.home}</span>
-                        </div>
-                        <span class="ls-score ${hS>aS?'winner':''}">${hS}</span>
+    historyGames.forEach(m => {
+        const d = new Date(m.date);
+        let hS = 0, aS = 0;
+        if(typeof m.score === 'string') { 
+            const parts = m.score.split("-");
+            hS = parseInt(parts[0]); aS = parseInt(parts[1]);
+        } else if(m.score) { hS = m.score.home || 0; aS = m.score.away || 0; }
+        
+        html += `
+        <div class="ls-card">
+            <div class="ls-year">${d.getFullYear()}</div>
+            <div class="ls-content">
+                <div class="ls-row">
+                    <div class="ls-team-wrap">
+                        <img src="${getLogoUrl(m.home)}" class="ls-logo">
+                        <span class="ls-name ${hS>aS?'winner':''}">${m.home}</span>
                     </div>
-                    <div class="ls-row">
-                        <div class="ls-team-wrap">
-                            <img src="${aLogo}" class="ls-logo" ${getStyle(m.away)}>
-                            <span class="ls-name ${aS>hS?'winner':''}">${m.away}</span>
-                        </div>
-                        <span class="ls-score ${aS>hS?'winner':''}">${aS}</span>
-                    </div>
+                    <span class="ls-score ${hS>aS?'winner':''}">${hS}</span>
                 </div>
-            </div>`;
-        });
-    }
+                <div class="ls-row">
+                    <div class="ls-team-wrap">
+                        <img src="${getLogoUrl(m.away)}" class="ls-logo">
+                        <span class="ls-name ${aS>hS?'winner':''}">${m.away}</span>
+                    </div>
+                    <span class="ls-score ${aS>hS?'winner':''}">${aS}</span>
+                </div>
+            </div>
+        </div>`;
+    });
     html += `</div>`;
     el.innerHTML = html;
 }
@@ -2611,6 +2726,45 @@ function openPreMatchStats(matchKey) {
         }
     };
     modal.addEventListener('click', checkClose);
+}
+
+function openPicker(matchId, home, away, colNum) {
+  vibe();
+  activePicker = { match: matchId, col: colNum };
+  const m = window.allMatches.find(x => x.match === matchId);
+  document.getElementById('pickerMatchTitle').innerText = matchId + ` (BET ${colNum})`;
+
+  const btnHome = document.getElementById('btnHome');
+  const btnAway = document.getElementById('btnAway');
+  const drawBtn = document.getElementById('btnDraw');
+  
+  const qH = (m.odds && m.odds.home) ? m.odds.home : '-';
+  const qD = (m.odds && m.odds.draw) ? m.odds.draw : '-';
+  const qA = (m.odds && m.odds.away) ? m.odds.away : '-';
+
+  // Calculate Consensus
+  let counts = { H: 0, X: 0, A: 0 };
+  m.cells.forEach(c => {
+      if (!c.value) return;
+      let v = String(c.value).toUpperCase().trim();
+      if (v === '1' || v === 'H' || v === home.toUpperCase()) counts.H++;
+      else if (v === '2' || v === 'A' || v === away.toUpperCase()) counts.A++;
+      else if (v === 'X' || v === 'D') counts.X++;
+  });
+
+  const getBadge = (count) => count > 0 ? `<div class="consensus-badge">👥${count}</div>` : '';
+
+  btnHome.innerHTML = `${getBadge(counts.H)}<span class="btn-team-name">${home}</span> <span class="odd-quote">${qH}</span>`;
+  btnHome.onclick = () => pickValue(home);
+  
+  drawBtn.innerHTML = `${getBadge(counts.X)}<span class="btn-team-name">X</span> <span class="odd-quote">${qD}</span>`;
+  drawBtn.onclick = () => pickValue('X');
+  
+  btnAway.innerHTML = `${getBadge(counts.A)}<span class="btn-team-name">${away}</span> <span class="odd-quote">${qA}</span>`;
+  btnAway.onclick = () => pickValue(away);
+
+  document.getElementById('manualScore').value = "";
+  document.getElementById('modalPicker').classList.add('active');
 }
  
 </script>

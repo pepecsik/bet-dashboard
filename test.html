@@ -658,13 +658,17 @@ body {
 .on-fire::after { content: "🔥"; position: absolute; top: -10px; right: -5px; font-size: 16px; z-index: 20; animation: nervousShiver 1s infinite; }
 
 .history-card-inner {
-  width: 100%; background:var(--bg-soft); border-radius:var(--rad-lg);
-  padding:12px; 
-  height: auto; min-height: 180px; 
+    width: 100%;
+    background: var(--bg-soft) !important;
+    border-radius: 0 0 var(--rad-lg) var(--rad-lg); /* Only round bottom */
+    padding: 15px;
+    margin-top: -1px; /* Overlap slightly to hide seams */
 }
-.history-header {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; margin-bottom: 15px;
+.history-header-top {
+    display: flex;
+    justify-content: flex-end; /* Push toggle to the right */
+    width: 100%;
+    margin-bottom: 12px;
 }
 .legend-row {
   display: flex; justify-content: center; align-items: center; gap: 10px;
@@ -1099,35 +1103,56 @@ img[alt="AVI"] {
     gap: 2px;
 } 
 
-/* History Modal Scoreboard Styles */
+/* Clean full-width scoreboard */
 .history-stats-row {
     display: flex;
-    justify-content: space-around;
-    padding: 10px 5px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 12px;
-    margin-bottom: 10px;
+    justify-content: space-between; /* Uses full width */
+    padding: 15px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--rad-md);
+    margin-bottom: 15px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 .stat-pill {
+    flex: 1; /* Each player gets equal space */
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
+    position: relative;
 }
+
+/* Avatar styling inside the chart header */
+.chart-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    object-fit: cover;
+    margin-bottom: 2px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
 .stat-pill .p-name {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
 }
+
 .stat-pill .p-score {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 900;
 }
+
 .stat-pill .p-diff {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 4px;
+    font-size: 10px;
+    font-weight: 800;
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--accent-green);
+    padding: 1px 6px;
     border-radius: 4px;
 }
 .diff-up { color: var(--accent-green); }
@@ -1229,16 +1254,16 @@ img[alt="AVI"] {
 </div>
 
 <div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-header">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0;">
         <button class="modal-back-btn" onclick="closeModal('historyModal')">Back</button>
         <div class="modal-title">Performance History</div>
         <div class="modal-sub">Season 2025/2026</div>
       </div>
+      
       <div class="history-card-inner">
-         <div class="history-header" style="flex-direction: column; gap: 10px;">
-             <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                 <div class="legend-row" style="margin: 0;">Performance Tracker</div>
+         <div class="history-header">
+             <div class="history-header-top">
                  <div class="toggle-group">
                      <button id="btnMatches" class="toggle-btn active">Matches</button>
                      <button id="btnMoney" class="toggle-btn">Money</button>
@@ -1247,7 +1272,8 @@ img[alt="AVI"] {
              
              <div class="history-stats-row" id="historyScoreboard"></div>
          </div>
-         <div style="position: relative; height: 180px; width: 100%;">
+         
+         <div style="position: relative; height: 200px; width: 100%;">
             <canvas id="historyChart"></canvas>
          </div>
       </div>

@@ -1542,7 +1542,6 @@ img[alt="AVI"] {
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
-const REFRESH_MS=30000;
 
 // GLOBAL VARIABLES
 let prevMatches = {};
@@ -2520,9 +2519,6 @@ function openTable(){
 }
 function closeModal(id){document.getElementById(id).classList.remove("active")}
 
-renderSkeletons(); 
-loadData(); 
-setInterval(loadData,REFRESH_MS);
 
 document.getElementById("rankingCard").onclick=()=>{
     // NEW: Open Modal instead of toggle
@@ -2973,6 +2969,511 @@ function openPicker(matchId, home, away, colNum) {
   document.getElementById('manualScore').value = "";
   document.getElementById('modalPicker').classList.add('active');
 }
+
+// ====================================
+// STEP 2: REPLACE YOUR HTML POLLING CODE WITH THIS
+// ====================================
+
+// Find this section in your HTML (around line 1050):
+// const REFRESH_MS=30000;
+// and replace everything related to polling with this:
+
+// === NEW ADAPTIVE POLLING SYSTEM ===
+
+const POLL_INTERVALS = {
+  LIVE: 10000,        // 10 seconds - when matches are LIVE
+  UPCOMING: 60000,    // 1 minute - when matches upcoming soon
+  IDLE: 300000,       // 5 minutes - when nothing happening
+  FINISHED: 600000    // 10 minutes - all matches finished
+};
+
+let currentPollInterval = POLL_INTERVALS.UPCOMING;
+let pollTimeout = null;
+let lastDataHash = null; // Track if data actually changed
+
+// Hash function to detect data changes
+function hashData(data) {
+  try {
+    // Create a simple hash of critical data points
+    const str = JSON.stringify({
+      matches: data.matches?.map(m => m.status + m.score),
+      headers: data.headers?.map(h => h.status)
+    });
+    return str;
+  } catch(e) {
+    return Math.random(); // Force update on error
+  }
+}
+
+// Determine optimal polling speed based on match states
+function calculatePollInterval(matches) {
+  if (!matches || matches.length === 0) {
+    return POLL_INTERVALS.IDLE;
+  }
+  
+  let hasLive = false;
+  let hasUpcoming = false;
+  let allFinished = true;
+  
+  const now = new Date();
+  
+  matches.forEach(m => {
+    const status = m.status;
+    
+    // Check for live matches
+    if (status.includes("'") || ["HT","1H","2H","LIVE"].includes(status)) {
+      hasLive = true;
+      allFinished = false;
+    }
+    // Check for upcoming matches
+    else if (status === "NS" || status.includes(":")) {
+      allFinished = false;
+      
+      // Check if match is starting soon
+      if (m.startTime) {
+        // Simple heuristic: if we have a start time, it's probably within 3 hours
+        hasUpcoming = true;
+      }
+    }
+    // Not finished if not FT
+    else if (status !== "FT" && status !== "AET" && status !== "PEN") {
+      allFinished = false;
+    }
+  });
+  
+  // Priority order
+  if (hasLive) return POLL_INTERVALS.LIVE;
+  if (hasUpcoming) return POLL_INTERVALS.UPCOMING;
+  if (allFinished) return POLL_INTERVALS.FINISHED;
+  return POLL_INTERVALS.IDLE;
+}
+
+// Smart data loader with change detection
+function smartLoadData() {
+  // Show loading indicator (optional)
+  const indicator = document.getElementById('liveIndicator');
+  if (indicator) indicator.style.opacity = '0.5';
+  
+  fetch(API_URL)
+    .then(r => r.json())
+    .then(data => {
+      // Calculate hash to detect changes
+      const newHash = hashData(data);
+      const dataChanged = (newHash !== lastDataHash);
+      
+      if (dataChanged || isFirstLoad) {
+        // Only re-render if data actually changed
+        try {
+          window.allMatches = data.matches || [];
+          window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
+          
+          const left = document.getElementById("left");
+          const right = document.getElementById("right");
+          const weekly = document.getElementById("weeklyCard");
+          const ranking = document.getElementById("rankingBody");
+          
+          left.innerHTML = "";
+          right.innerHTML = "";
+          weekly.innerHTML = '<div class="weekly-title">📊 Weekly Summary</div>';
+          ranking.innerHTML = "";
+          
+          if (data.chartData) chartDataCache = data.chartData;
+          if (data.leagueTable) tableCache = data.leagueTable;
+          
+          // Count live/upcoming for header
+          let nLive = 0, nUpcoming = 0;
+          data.matches.forEach(m => {
+            const st = m.status;
+            if (st.includes("'") || ["HT","1H","2H","LIVE"].includes(st)) nLive++;
+            else if (st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
+          });
+          
+          // Build header
+          const lh = document.createElement("div");
+          lh.className = "left-header";
+          let statusHtml = "";
+          if (nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
+          if (nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
+          if (nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
+          
+          lh.innerHTML = `
+            <div class="pl-btn" onclick="openTable()">
+              <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+            </div>
+            <div class="header-title-box">
+              <span class="header-main-text">MATCHDAY</span>
+              <span class="header-sub-text">${statusHtml}</span>
+            </div>
+            <div class="brand-btn" onclick="handleSecretTap()">
+              <img src="apple-touch-icon.png" class="brand-logo">
+            </div>
+            <div id="liveIndicator" style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:6px; height:6px; background:var(--accent-green); border-radius:50%; opacity:0;"></div>
+          `;
+          
+          left.appendChild(lh);
+          left.appendChild(document.createElement("div")).className = "left-divider";
+          
+          // Build header row for players
+          const headerRow = document.createElement("div");
+          headerRow.className = "row header-row-sticky";
+          const isWinningGreen = h => h && ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
+          const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+          
+          data.headers.forEach((h, i) => {
+            let tot = 0, pen = 0, hasB = false, allG = true, hasR = false;
+            data.matches.forEach(m => {
+              const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : "";
+              if (!c || !c.value) return;
+              hasB = true;
+              if (!isWinningGreen(c.color)) allG = false;
+              if (c.color && ['#ff0000','#ff4d4d','red'].includes(c.color)) hasR = true;
+              if (st !== "FT") pen++;
+            });
+            
+            if (hasB && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+              tot += (data.betSummary[1].cells[i].value || 0);
+            }
+            
+            const wrapper = document.createElement("div");
+            wrapper.className = "header-pill-wrapper";
+            wrapper.setAttribute('data-col-idx', i);
+            
+            const p = document.createElement("div");
+            p.className = "header-pill";
+            
+            if (AVATARS[h.name]) {
+              p.classList.add("has-avatar");
+              p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`;
+            } else {
+              p.textContent = h.name;
+            }
+            
+            if (hasB && !hasR && allG && pen === 0) {
+              p.classList.add("status-green");
+              if (isFirstLoad) {
+                setTimeout(() => {
+                  fireScreenBlaster(p);
+                  showBigWin(formatGBP(tot), AVATARS[h.name]);
+                }, 1500);
+              } else {
+                fireScreenBlaster(p);
+                showBigWin(formatGBP(tot), AVATARS[h.name]);
+              }
+            } else if (hasB && !hasR && allG && pen > 0) {
+              p.classList.add("status-green-live");
+            } else if (h.status === 'orange') {
+              p.classList.add("status-orange");
+            } else if (h.status === 'red') {
+              p.classList.add("status-red");
+            }
+            
+            wrapper.appendChild(p);
+            headerRow.appendChild(wrapper);
+          });
+          
+          right.appendChild(headerRow);
+          right.appendChild(document.createElement("div")).className = "right-divider";
+          
+          const matchCount = data.matches.length;
+          
+          // Build match rows
+          data.matches.forEach((m, idx) => {
+            const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
+            prevMatches[m.match] = { score: m.score };
+            
+            const lr = document.createElement("div");
+            lr.className = "left-row";
+            lr.style.gridTemplateColumns = "1fr 90px";
+            lr.style.cursor = "pointer";
+            lr.onclick = function() { openModal(m); };
+            lr.setAttribute('data-status', getMatchStatusType(m));
+            
+            if (isFirstLoad) {
+              lr.classList.add("animate-enter");
+              lr.style.animationDelay = (idx * 0.05) + "s";
+            }
+            
+            const [h, a] = m.match.split("-").map(t => t.trim().toUpperCase());
+            const live = m.status.includes("'") || ["HT","1H","2H","LIVE"].includes(m.status);
+            const bc = live ? "var(--accent-green)" : "var(--text-muted)";
+            const bg = live ? "rgba(74, 222, 128, 0.15)" : "transparent";
+            const bb = live ? "1px solid var(--accent-green)" : "1px solid transparent";
+            
+            let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
+            if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
+              displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`;
+            }
+            
+            const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x) || 0);
+            let isGoldenScore = false;
+            m.cells.forEach(c => {
+              if (c.value && String(c.value).includes("-")) {
+                if (String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true;
+              }
+            });
+            
+            const goldenClass = isGoldenScore ? "gold-active" : "";
+            const liveDot = live ? '<div class="live-dot"></div>' : '';
+            
+            lr.innerHTML = `
+              <div class="left-cell match">
+                <div class="match-teams">
+                  <div class="team-wrap-rel">
+                    ${renderTeam(h)}
+                    ${m.stats?.h_red > 0 ? '<div class="rc-badge"></div>' : ''}
+                  </div>
+                  <span>-</span>
+                  <div class="team-wrap-rel">
+                    ${renderTeam(a)}
+                    ${m.stats?.a_red > 0 ? '<div class="rc-badge"></div>' : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="left-cell">
+                <div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" 
+                     style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;">
+                  <span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">
+                    ${live ? '<div class="live-dot"></div>' : ''}${displayStatus}
+                  </span>
+                  <span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">
+                    ${m.score || ""}
+                  </span>
+                </div>
+              </div>
+            `;
+            
+            left.appendChild(lr);
+            
+            const rr = document.createElement("div");
+            rr.className = "row";
+            if (isFirstLoad) {
+              rr.classList.add("animate-enter");
+              rr.style.animationDelay = (idx * 0.05) + "s";
+            }
+            
+            m.cells.forEach((c, cellIndex) => {
+              const el = document.createElement("div");
+              el.className = `bet ${hasChanged ? 'flash-active' : ''}`;
+              el.setAttribute('data-col-idx', cellIndex);
+              
+              if (c.value) {
+                el.textContent = c.value;
+                let color = c.color || '#262a30';
+                if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
+                el.style.setProperty('--bet-bg', color);
+                el.style.backgroundColor = color;
+                
+                const headerInfo = data.headers[cellIndex];
+                const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+                
+                if (live && !isColumnDead) {
+                  let bet = String(c.value).toUpperCase();
+                  let isWinning = false;
+                  
+                  if (bet.includes("-")) {
+                    let [bH, bA] = bet.split("-").map(Number);
+                    if (bH === hScore && bA === aScore) isWinning = true;
+                  } else {
+                    if ((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
+                    else if ((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                    else if ((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
+                  }
+                  
+                  if (isWinning) el.classList.add("sweat-active");
+                }
+              } else {
+                el.style.setProperty('--bet-bg', 'transparent');
+                el.classList.add('empty');
+              }
+              
+              rr.appendChild(el);
+            });
+            
+            right.appendChild(rr);
+          });
+          
+          // Add filters
+          const filterSection = document.createElement("div");
+          filterSection.className = "filter-separator spacer-bar";
+          filterSection.innerHTML = `
+            <div class="filter-title">Filters</div>
+            <div class="filter-actions">
+              <button class="filter-btn" onclick="toggleFilter('all')">ALL</button>
+              <button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button>
+              <button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button>
+            </div>
+          `;
+          left.appendChild(filterSection);
+          left.appendChild(document.createElement("div")).className = "left-divider";
+          
+          const rightSpacer = document.createElement("div");
+          rightSpacer.className = "spacer-bar";
+          rightSpacer.innerHTML = "&nbsp;";
+          right.appendChild(rightSpacer);
+          right.appendChild(document.createElement("div")).className = "right-divider";
+          
+          // Smart button logic
+          let allLocked = true;
+          let activeColsFound = false;
+          
+          if (data.headers && window.winData) {
+            data.headers.forEach((h, i) => {
+              if (h.status !== 'red') {
+                activeColsFound = true;
+                if (!window.winData[i] || !window.winData[i].value) allLocked = false;
+              }
+            });
+          } else {
+            allLocked = false;
+          }
+          
+          if (!activeColsFound) allLocked = false;
+          
+          const bottomGrid = document.createElement("div");
+          bottomGrid.className = "bottom-control-grid";
+          
+          const btnDiv = document.createElement("button");
+          if (allLocked) {
+            btnDiv.className = "place-bets-btn disabled";
+            btnDiv.innerHTML = "ALL BETS<br>ARE PLACED";
+          } else {
+            btnDiv.className = "place-bets-btn";
+            btnDiv.innerHTML = "PLACE<br>BETS";
+            btnDiv.onclick = startBettingProcess;
+          }
+          
+          bottomGrid.appendChild(btnDiv);
+          
+          const labelCol = document.createElement("div");
+          labelCol.className = "stats-column";
+          ["BET","WIN","WIN PP"].forEach(l => {
+            const lab = document.createElement("div");
+            lab.className = "left-label";
+            lab.textContent = l;
+            labelCol.appendChild(lab);
+          });
+          
+          bottomGrid.appendChild(labelCol);
+          left.appendChild(bottomGrid);
+          
+          // Add summary rows
+          ["BET","WIN","WIN PP"].forEach((l, i) => {
+            const rr = document.createElement("div");
+            rr.className = "row short-row";
+            if (isFirstLoad) {
+              rr.classList.add("animate-enter");
+              rr.style.animationDelay = ((matchCount + i) * 0.05) + "s";
+            }
+            data.betSummary[i].cells.forEach((c, cellIndex) => {
+              const el = document.createElement("div");
+              el.className = "bet";
+              el.setAttribute('data-col-idx', cellIndex);
+              el.textContent = formatGBP(c.value);
+              el.style.setProperty('--bet-bg', c.color || '#2f343a');
+              el.style.backgroundColor = c.color;
+              rr.appendChild(el);
+            });
+            right.appendChild(rr);
+          });
+          
+          window.globalHeaders = data.headers;
+          applyFilterLogic();
+          
+          // Build weekly totals
+          data.totals.forEach(t => {
+            const green = ["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+            let gbp = (t.cells[1] && t.cells[1].value !== undefined) ? t.cells[1].value : 0;
+            let eur = (t.cells[0] && t.cells[0].value !== undefined) ? t.cells[0].value : 0;
+            weekly.innerHTML += `
+              <div class="week-row">
+                <div class="week-label">${t.label}</div>
+                <div class="week-gbp ${green ? 'green' : 'red'}">${formatGBP(gbp)}</div>
+                <div class="week-eur">${formatEUR(eur)}</div>
+              </div>
+            `;
+          });
+          
+          // Build ranking podium
+          if (data.ranking && data.ranking.length >= 3) {
+            const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+            const sorted = [...data.ranking].sort((a, b) => b.money - a.money);
+            const p1 = sorted[0];
+            const p2 = sorted[1];
+            const p3 = sorted[2];
+            
+            ranking.innerHTML = `
+              <div class="podium-container">
+                <div class="podium-place place-2">
+                  <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
+                  <div class="podium-bar">
+                    <div class="podium-money">${formatGBP(p2.money)}</div>
+                    <div class="podium-stats">${p2.matchesRight} Bets</div>
+                  </div>
+                </div>
+                <div class="podium-place place-1">
+                  <div class="crown-icon">👑</div>
+                  <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
+                  <div class="podium-bar">
+                    <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
+                    <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
+                  </div>
+                </div>
+                <div class="podium-place place-3">
+                  <div class="poop-icon">💩</div>
+                  <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
+                  <div class="podium-bar">
+                    <div class="podium-money">${formatGBP(p3.money)}</div>
+                    <div class="podium-stats">${p3.matchesRight} Bets</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
+          }
+          
+          isFirstLoad = false;
+        } catch (e) {
+          console.error(e);
+        }
+        
+        lastDataHash = newHash;
+      }
+      
+      // Calculate next poll interval
+      currentPollInterval = calculatePollInterval(data.matches);
+      
+      // Show live indicator if polling fast
+      if (indicator) {
+        if (currentPollInterval === POLL_INTERVALS.LIVE) {
+          indicator.style.opacity = '1';
+          indicator.style.animation = 'blink 1.5s infinite ease-in-out';
+        } else {
+          indicator.style.opacity = '0';
+        }
+      }
+      
+      // Schedule next poll
+      clearTimeout(pollTimeout);
+      pollTimeout = setTimeout(smartLoadData, currentPollInterval);
+      
+      // Log for debugging (remove in production)
+      console.log(`Next poll in ${currentPollInterval/1000}s`);
+      
+    })
+    .catch(err => {
+      console.error("Load error:", err);
+      // Retry in 5 seconds on error
+      clearTimeout(pollTimeout);
+      pollTimeout = setTimeout(smartLoadData, 5000);
+    });
+}
+
+// Replace your existing init code:
+// FIND: renderSkeletons(); loadData(); setInterval(loadData, REFRESH_MS);
+// REPLACE WITH:
+renderSkeletons();
+smartLoadData(); // Start the smart polling system
  
 </script>
 </body>

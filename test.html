@@ -1335,48 +1335,62 @@ img[alt="AVI"] {
     opacity: 0.8;
 }
 
-/* --- Z-INDEX ELEVATION STYLES --- */
+/* --- Z-INDEX DEPTH (ALIGNMENT-SAFE) --- */
+
+/* Base reset for all rows to ensure they stay locked together */
 .left-row, .right-card .row {
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
-                box-shadow 0.4s ease, 
-                opacity 0.4s ease;
+    transition: all 0.4s ease;
+    transform: none !important; /* Force-disable vertical movement */
+    border: 1px solid transparent;
     position: relative;
-}
-
-/* 1. FINISHED: Sinks into the background */
-[data-status="finished"] {
-    opacity: 0.5;
-    transform: scale(0.97);
     z-index: 1;
-    filter: grayscale(0.5) blur(0.5px);
 }
 
-/* 2. UPCOMING: Neutral base */
-[data-status="upcoming"] {
-    z-index: 2;
+/* 1. FINISHED GAMES: No blur, just a clean "recede" effect */
+[data-status="finished"] {
+    opacity: 0.4; /* Stronger fade instead of blur */
+    filter: saturate(0.5); /* Desaturate instead of grayscale */
+    background: rgba(0, 0, 0, 0.2);
 }
 
-/* 3. LIVE: Lifts up with a glow */
+/* 2. LIVE GAMES: Edge Glow instead of physical lift */
 [data-status="live"] {
     z-index: 10;
-    transform: translateY(-4px) scale(1.01);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(74, 222, 128, 0.2) !important;
+    background: rgba(255, 255, 255, 0.04);
+    /* Soft green outer glow */
+    box-shadow: inset 0 0 10px rgba(74, 222, 128, 0.1), 
+                0 0 15px rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(74, 222, 128, 0.3) !important;
+    border-bottom: 1px solid rgba(74, 222, 128, 0.3) !important;
 }
 
-/* 4. SWEATING: Highest elevation for active winning bets */
+/* 3. SWEATING: High-Intensity Border Glow */
 .row-is-sweating {
     z-index: 20 !important;
-    transform: translateY(-8px) scale(1.03) !important;
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(251, 146, 60, 0.05) !important; /* Very subtle orange tint */
+    border: 1px solid var(--accent-orange) !important;
+    box-shadow: 0 0 20px rgba(251, 146, 60, 0.2),
+                inset 0 0 15px rgba(251, 146, 60, 0.1);
 }
 
-/* Ambient shadow casting on the row below a lifted row */
+/* Remove the mask/shadow on the next element as it causes misalignment */
 [data-status="live"] + div, .row-is-sweating + div {
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, black 15%);
+    mask-image: none !important;
 }
- 
+
+.right-card {
+    padding: 12px 8px; /* Slightly more side padding */
+}
+
+.row {
+    margin-bottom: 2px; /* Tighten the gap between rows to create more vertical room */
+}
+
+/* Ensure the sticky header doesn't overlap the glowing live rows */
+.header-row-sticky {
+    z-index: 100;
+    margin-bottom: 12px;
+} 
  
 </style>
 </head>
@@ -1770,7 +1784,7 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; 
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1817,7 +1831,7 @@ function loadData(){
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
 
-          // --- Z-INDEX STATUS LOGIC ---
+          // --- Z-INDEX DEPTH LOGIC ---
           const statusType = getMatchStatusType(m);
           let rowIsSweating = false;
 
@@ -1832,7 +1846,7 @@ function loadData(){
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
-          const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
+          const goldenClass = isGoldenScore ? "gold-active" : "";
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
 
@@ -1853,14 +1867,14 @@ function loadData(){
                       else { if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; }
                       if(isWinning) {
                           el.classList.add("sweat-active");
-                          rowIsSweating = true; // Mark row for elevation
+                          rowIsSweating = true; 
                       }
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
 
-          // Apply elevation if a player is winning in a live game
+          // Apply specific "Sweating" class to both columns for vertical sync
           if(rowIsSweating) {
               lr.classList.add('row-is-sweating');
               rr.classList.add('row-is-sweating');

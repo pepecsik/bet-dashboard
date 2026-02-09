@@ -1334,6 +1334,49 @@ img[alt="AVI"] {
     letter-spacing: 1px;
     opacity: 0.8;
 }
+
+/* --- Z-INDEX ELEVATION STYLES --- */
+.left-row, .right-card .row {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                box-shadow 0.4s ease, 
+                opacity 0.4s ease;
+    position: relative;
+}
+
+/* 1. FINISHED: Sinks into the background */
+[data-status="finished"] {
+    opacity: 0.5;
+    transform: scale(0.97);
+    z-index: 1;
+    filter: grayscale(0.5) blur(0.5px);
+}
+
+/* 2. UPCOMING: Neutral base */
+[data-status="upcoming"] {
+    z-index: 2;
+}
+
+/* 3. LIVE: Lifts up with a glow */
+[data-status="live"] {
+    z-index: 10;
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(74, 222, 128, 0.2) !important;
+}
+
+/* 4. SWEATING: Highest elevation for active winning bets */
+.row-is-sweating {
+    z-index: 20 !important;
+    transform: translateY(-8px) scale(1.03) !important;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Ambient shadow casting on the row below a lifted row */
+[data-status="live"] + div, .row-is-sweating + div {
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, black 15%);
+}
+ 
  
 </style>
 </head>
@@ -1727,7 +1770,7 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; // Store Win Prices
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1773,7 +1816,14 @@ function loadData(){
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-          const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; lr.setAttribute('data-status', getMatchStatusType(m));
+
+          // --- Z-INDEX STATUS LOGIC ---
+          const statusType = getMatchStatusType(m);
+          let rowIsSweating = false;
+
+          const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; 
+          lr.setAttribute('data-status', statusType);
+
           if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
@@ -1785,7 +1835,10 @@ function loadData(){
           const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
+
           const rr=document.createElement("div"); rr.className="row";
+          rr.setAttribute('data-status', statusType);
+
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div"); el.className=`bet ${hasChanged ? 'flash-active' : ''}`; el.setAttribute('data-col-idx', cellIndex);
@@ -1798,11 +1851,21 @@ function loadData(){
                       let bet = String(c.value).toUpperCase(); let isWinning = false;
                       if(bet.includes("-")) { let [bH, bA] = bet.split("-").map(Number); if(bH === hScore && bA === aScore) isWinning = true; } 
                       else { if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; }
-                      if(isWinning) el.classList.add("sweat-active");
+                      if(isWinning) {
+                          el.classList.add("sweat-active");
+                          rowIsSweating = true; // Mark row for elevation
+                      }
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
+
+          // Apply elevation if a player is winning in a live game
+          if(rowIsSweating) {
+              lr.classList.add('row-is-sweating');
+              rr.classList.add('row-is-sweating');
+          }
+
           right.appendChild(rr);
         });
 
@@ -1811,7 +1874,6 @@ function loadData(){
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // === SMART BUTTON LOGIC ===
         let allLocked = true;
         let activeColsFound = false;
         if(data.headers && window.winData) {
@@ -1828,7 +1890,6 @@ function loadData(){
         const btnDiv = document.createElement("button");
         if(allLocked) {
              btnDiv.className = "place-bets-btn disabled";
-             // UPDATE: CHANGED TEXT HERE
              btnDiv.innerHTML = "ALL BETS<br>ARE PLACED";
         } else {
              btnDiv.className = "place-bets-btn";
@@ -1851,48 +1912,13 @@ function loadData(){
 
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        // --- NEW PODIUM LOGIC ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Poop Included) ---
+        
         if (data.ranking && data.ranking.length >= 3) {
             const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-    
-            // Sort just in case API isn't sorted
             const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
-            const p1 = sorted[0];
-            const p2 = sorted[1];
-            const p3 = sorted[2];
-
-            ranking.innerHTML = `
-            <div class="podium-container">
-                <div class="podium-place place-2">
-                    <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p2.money)}</div>
-                        <div class="podium-stats">${p2.matchesRight} Bets</div>
-                    </div>
-                </div>
-
-                <div class="podium-place place-1">
-                    <div class="crown-icon">👑</div>
-                    <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
-                    </div>
-                </div>
-
-                <div class="podium-place place-3">
-                    <div class="poop-icon">💩</div>
-                    <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p3.money)}</div>
-                        <div class="podium-stats">${p3.matchesRight} Bets</div>
-                    </div>
-                </div>
-            </div>`;
+            const p1 = sorted[0]; const p2 = sorted[1]; const p3 = sorted[2];
+            ranking.innerHTML = `<div class="podium-container"><div class="podium-place place-2"><img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p2.money)}</div><div class="podium-stats">${p2.matchesRight} Bets</div></div></div><div class="podium-place place-1"><div class="crown-icon">👑</div><img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div><div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div></div></div><div class="podium-place place-3"><div class="poop-icon">💩</div><img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p3.money)}</div><div class="podium-stats">${p3.matchesRight} Bets</div></div></div></div>`;
         } else {
-            // Fallback
             ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
         }
         isFirstLoad = false;

@@ -823,7 +823,17 @@ body {
 .sum-player { font-weight: 700; color: var(--text-main); }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
-.pitch-container { width: 100%; aspect-ratio: 2/3; background: #2e5a2e; background: repeating-linear-gradient(0deg, #2e5a2e 0px, #2e5a2e 40px, #366336 40px, #366336 80px); border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 20px; transition: background 1s ease; }
+.pitch-container { 
+    width: 100%; 
+    aspect-ratio: 2/3; 
+    background: rgba(255, 255, 255, 0.03) !important; /* Transparent Glass */
+    border: 1px solid rgba(255,255,255,0.2); 
+    border-radius: 8px; 
+    position: relative; 
+    overflow: hidden; 
+    margin-bottom: 20px; 
+    backdrop-filter: blur(5px);
+}
 .pitch-line { position: absolute; border: 1px solid rgba(255,255,255,0.3); }
 .center-line { top: 50%; left: 0; right: 0; }
 .center-circle { top: 50%; left: 50%; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); }
@@ -1391,11 +1401,56 @@ img[alt="AVI"] {
     background: rgba(255, 255, 255, 0.9) !important;
     box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
 }
+
+/* --- GLASS PITCH SYSTEM --- */
+#stadiumOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1000; /* Sits behind the modal but above the dashboard */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    background: radial-gradient(circle at center, rgba(46, 90, 46, 0.8) 0%, rgba(11, 13, 15, 1) 100%);
+}
+
+/* Background image for the stadium */
+#stadiumOverlay::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=2000&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.3;
+    filter: blur(15px);
+}
+
+/* Active state triggered by JS */
+body.is-viewing-match #stadiumOverlay {
+    opacity: 1;
+}
+
+/* Dim the dashboard when viewing a match */
+body.is-viewing-match .app {
+    filter: blur(4px) grayscale(0.5);
+    opacity: 0.3;
+    transition: all 0.6s ease;
+}
+
+/* Make the modal cards extra "Glassy" */
+body.is-viewing-match .modal-card {
+    background: rgba(20, 22, 25, 0.7) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+}
  
 </style>
 </head>
 <body>
 
+<div id="stadiumOverlay"></div>
+ 
 <div class="app">
   <div class="main">
     <div class="left-card" id="left"></div>
@@ -2321,6 +2376,7 @@ function openModal(m){
       
       // SHOW MODAL FIRST
       document.getElementById("matchModal").classList.add("active");
+      document.body.classList.add("is-viewing-match");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
       const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
@@ -2567,14 +2623,24 @@ function openTable(){
     });
     document.getElementById("tableModal").classList.add("active");
 }
-function closeModal(id){document.getElementById(id).classList.remove("active")}
+function closeModal(id) {
+    // 1. Remove the active class from the modal so it slides away
+    document.getElementById(id).classList.remove("active");
+    
+    // 2. If the user is closing the Match Modal, remove the stadium background effect
+    if (id === 'matchModal') {
+        document.body.classList.remove("is-viewing-match");
+    }
+}
+
+// --- INITIALIZATION & EVENT LISTENERS ---
 
 renderSkeletons(); 
 loadData(); 
-setInterval(loadData,REFRESH_MS);
+setInterval(loadData, REFRESH_MS);
 
-document.getElementById("rankingCard").onclick=()=>{
-    // NEW: Open Modal instead of toggle
+document.getElementById("rankingCard").onclick = () => {
+    // Open History Modal instead of toggle
     vibe();
     drawHistoryChart("matches");
     document.getElementById("historyModal").classList.add("active");

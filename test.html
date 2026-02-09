@@ -1335,65 +1335,28 @@ img[alt="AVI"] {
     opacity: 0.8;
 }
 
-@media (max-width: 768px) {
-  /* Stack the main cards vertically */
-  .main {
-    flex-direction: column;
-    padding: 10px;
-    gap: 0;
-  }
+/* THE HEAT MAP SHADING */
+.column-leader-bg {
+    position: relative;
+    transition: background 0.5s ease;
+}
 
-  /* Make the left card (matches) and right card (bets) look like one row */
-  .left-card, .right-card {
-    width: 100% !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-  }
+/* Vertical glow effect */
+.column-leader-bg::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, 
+        rgba(74, 222, 128, 0.08) 0%, 
+        rgba(74, 222, 128, 0.02) 100%);
+    pointer-events: none;
+    z-index: -1;
+}
 
-  /* Create the Timeline grouping */
-  .timeline-group-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: var(--accent-orange);
-    color: #000;
-    font-weight: 900;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    width: fit-content;
-    margin: 15px 0 10px 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  }
-
-  /* Combine Left Row + Right Row into a single card */
-  .left-row {
-    background: var(--bg-card);
-    border: var(--border-light);
-    border-bottom: none;
-    border-radius: var(--rad-lg) var(--rad-lg) 0 0;
-    padding: 8px;
-    margin-top: 10px;
-  }
-
-  .right-card .row {
-    background: var(--bg-card);
-    border: var(--border-light);
-    border-top: none;
-    border-radius: 0 0 var(--rad-lg) var(--rad-lg);
-    padding: 10px;
-    margin-bottom: 5px;
-    overflow-x: auto; /* This allows horizontal swiping for players */
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Hide the headers that don't fit the mobile timeline */
-  .left-header, .header-row-sticky, .left-divider, .right-divider {
-    display: none !important;
-  }
+/* Optional: Slight border highlight for the header of the winner */
+.header-pill.leader-pill {
+    border: 1px solid var(--accent-green) !important;
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.2);
 }
  
 </style>
@@ -1788,12 +1751,26 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; // Store Win Prices
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
+        const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
+        const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+
+        // === 1. HEAT MAP LOGIC: FIND THE LEADING COLUMN ===
+        let winCounts = new Array(data.headers.length).fill(0);
+        data.matches.forEach(m => {
+            m.cells.forEach((c, i) => {
+                if (c && isWinningGreen(c.color)) winCounts[i]++;
+            });
+        });
+        const maxWins = Math.max(...winCounts);
+        const leaderIdx = maxWins > 0 ? winCounts.indexOf(maxWins) : -1;
+
+        // Header Status Counters
         let nLive = 0, nUpcoming = 0;
         data.matches.forEach(m => {
              const st = m.status;
@@ -1801,52 +1778,47 @@ function loadData(){
              else if(st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
         });
 
+        // Left Header
         const lh=document.createElement("div"); lh.className="left-header"; 
         let statusHtml = "";
         if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
         if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
         if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
-        
         lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text">${statusHtml}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
+        // Right Headers
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
-        const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
-        const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-
         data.headers.forEach((h,i)=>{
-           let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
-           const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
-           const p=document.createElement("div"); p.className="header-pill";
-           if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
-           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } }
-           else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
-           else if(h.status==='orange') p.classList.add("status-orange");
-           else if(h.status==='red') p.classList.add("status-red");
-           wrapper.appendChild(p); headerRow.appendChild(wrapper);
+            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
+            data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
+            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+            
+            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
+            const p=document.createElement("div"); p.className="header-pill";
+            
+            // Apply Leader Highlight to Pill
+            if(i === leaderIdx) p.classList.add("leader-pill");
+
+            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
+            
+            if(hasB&&!hasR&&allG&&pen===0){ 
+                p.classList.add("status-green"); 
+                if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } 
+                else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } 
+            }
+            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
+            else if(h.status==='orange') p.classList.add("status-orange");
+            else if(h.status==='red') p.classList.add("status-red");
+            
+            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
 
         const matchCount = data.matches.length;
-        
-        // 1. TRACKER FOR TIME HEADERS
-        let lastTime = null;
 
+        // Match Rows
         data.matches.forEach((m, idx)=>{
-          // 2. TIMELINE HEADER INJECTION (MOBILE ONLY)
-          const currentTime = m.status === "NS" ? (m.startTime || "NS") : m.status;
-          const isMobile = window.innerWidth <= 768;
-          
-          if (isMobile && currentTime !== lastTime) {
-              const timeHeader = document.createElement("div");
-              timeHeader.className = "timeline-group-header";
-              timeHeader.textContent = currentTime;
-              left.appendChild(timeHeader); 
-              lastTime = currentTime;
-          }
-
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; lr.setAttribute('data-status', getMatchStatusType(m));
@@ -1858,13 +1830,19 @@ function loadData(){
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
-          const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
+          const goldenClass = isGoldenScore ? "gold-active" : "";
+          
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
+
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div"); el.className=`bet ${hasChanged ? 'flash-active' : ''}`; el.setAttribute('data-col-idx', cellIndex);
+              
+              // === APPLY HEAT MAP CLASS TO WINNING PLAYER COLUMN ===
+              if (cellIndex === leaderIdx) el.classList.add("column-leader-bg");
+
               if(c.value){
                   el.textContent=c.value;
                   let color = c.color || '#262a30'; if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
@@ -1885,9 +1863,11 @@ function loadData(){
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
-        const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
+        
+        const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; 
+        right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // === SMART BUTTON LOGIC ===
+        // Smart Button Logic
         let allLocked = true;
         let activeColsFound = false;
         if(data.headers && window.winData) {
@@ -1904,7 +1884,6 @@ function loadData(){
         const btnDiv = document.createElement("button");
         if(allLocked) {
              btnDiv.className = "place-bets-btn disabled";
-             // UPDATE: CHANGED TEXT HERE
              btnDiv.innerHTML = "ALL BETS<br>ARE PLACED";
         } else {
              btnDiv.className = "place-bets-btn";
@@ -1921,54 +1900,44 @@ function loadData(){
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{ 
+              const el=document.createElement("div"); el.className="bet"; 
+              el.setAttribute('data-col-idx', cellIndex); 
+              el.textContent=formatGBP(c.value); 
+              el.style.setProperty('--bet-bg', c.color || '#2f343a'); 
+              el.style.backgroundColor = c.color; 
+              // Shading also for summary rows if you want consistency
+              if (cellIndex === leaderIdx) el.classList.add("column-leader-bg");
+              rr.appendChild(el); 
+          });
           right.appendChild(rr);
         });
 
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        // --- NEW PODIUM LOGIC ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Poop Included) ---
+        
+        // Podium Logic
         if (data.ranking && data.ranking.length >= 3) {
-            const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-    
-            // Sort just in case API isn't sorted
             const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
-            const p1 = sorted[0];
-            const p2 = sorted[1];
-            const p3 = sorted[2];
-
+            const p1 = sorted[0]; const p2 = sorted[1]; const p3 = sorted[2];
             ranking.innerHTML = `
             <div class="podium-container">
                 <div class="podium-place place-2">
                     <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p2.money)}</div>
-                        <div class="podium-stats">${p2.matchesRight} Bets</div>
-                    </div>
+                    <div class="podium-bar"><div class="podium-money">${formatGBP(p2.money)}</div><div class="podium-stats">${p2.matchesRight} Bets</div></div>
                 </div>
-
                 <div class="podium-place place-1">
                     <div class="crown-icon">👑</div>
                     <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
-                    </div>
+                    <div class="podium-bar"><div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div><div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div></div>
                 </div>
-
                 <div class="podium-place place-3">
                     <div class="poop-icon">💩</div>
                     <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p3.money)}</div>
-                        <div class="podium-stats">${p3.matchesRight} Bets</div>
-                    </div>
+                    <div class="podium-bar"><div class="podium-money">${formatGBP(p3.money)}</div><div class="podium-stats">${p3.matchesRight} Bets</div></div>
                 </div>
             </div>`;
         } else {
-            // Fallback
             ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
         }
         isFirstLoad = false;

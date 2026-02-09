@@ -1335,80 +1335,65 @@ img[alt="AVI"] {
     opacity: 0.8;
 }
 
-/* 1. Hide Timeline by default (Desktop) */
-.timeline-container { display: none; }
-
 @media (max-width: 768px) {
-  /* 2. Hide the old split cards on mobile */
-  .left-card, .right-card { display: none !important; }
-
-  /* 3. Show the Timeline */
-  .timeline-container { 
-    display: flex; 
-    flex-direction: column; 
-    width: 100%; 
+  /* Stack the main cards vertically */
+  .main {
+    flex-direction: column;
     padding: 10px;
-    gap: 20px;
+    gap: 0;
   }
 
-  .time-group {
-    position: relative;
-    border-left: 2px solid var(--bg-soft);
-    margin-left: 20px;
-    padding-left: 20px;
+  /* Make the left card (matches) and right card (bets) look like one row */
+  .left-card, .right-card {
+    width: 100% !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
   }
 
-  .time-sticky-header {
+  /* Create the Timeline grouping */
+  .timeline-group-header {
     position: sticky;
-    top: 10px;
-    left: -35px;
+    top: 0;
+    z-index: 100;
     background: var(--accent-orange);
     color: #000;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
     width: fit-content;
-    padding: 2px 10px;
-    border-radius: 10px;
-    font-weight: 800;
-    font-size: 12px;
-    z-index: 10;
-    margin-bottom: 10px;
-    transform: translateX(-35px);
+    margin: 15px 0 10px 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   }
 
-  .timeline-card {
+  /* Combine Left Row + Right Row into a single card */
+  .left-row {
     background: var(--bg-card);
     border: var(--border-light);
-    border-radius: var(--rad-lg);
-    margin-bottom: 12px;
-    overflow: hidden;
+    border-bottom: none;
+    border-radius: var(--rad-lg) var(--rad-lg) 0 0;
+    padding: 8px;
+    margin-top: 10px;
   }
 
-  .timeline-match-info {
+  .right-card .row {
+    background: var(--bg-card);
+    border: var(--border-light);
+    border-top: none;
+    border-radius: 0 0 var(--rad-lg) var(--rad-lg);
     padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--bg-row);
-  }
-
-  /* 4. Horizontal Bet Scroll */
-  .timeline-bet-row {
-    display: flex;
-    overflow-x: auto;
-    gap: 12px;
-    padding: 10px;
+    margin-bottom: 5px;
+    overflow-x: auto; /* This allows horizontal swiping for players */
     -webkit-overflow-scrolling: touch;
   }
-  .timeline-bet-row::-webkit-scrollbar { display: none; }
 
-  .player-bet-unit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    min-width: 80px;
+  /* Hide the headers that don't fit the mobile timeline */
+  .left-header, .header-row-sticky, .left-divider, .right-divider {
+    display: none !important;
   }
-
-  .unit-avatar { width: 30px; height: 30px; border-radius: 6px; }
 }
  
 </style>
@@ -1419,8 +1404,6 @@ img[alt="AVI"] {
   <div class="main">
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
-    
-    <div id="mobileTimeline" class="timeline-container"></div>
   </div>
 
   <footer class="summary">
@@ -1847,8 +1830,23 @@ function loadData(){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
 
         const matchCount = data.matches.length;
+        
+        // 1. TRACKER FOR TIME HEADERS
+        let lastTime = null;
 
         data.matches.forEach((m, idx)=>{
+          // 2. TIMELINE HEADER INJECTION (MOBILE ONLY)
+          const currentTime = m.status === "NS" ? (m.startTime || "NS") : m.status;
+          const isMobile = window.innerWidth <= 768;
+          
+          if (isMobile && currentTime !== lastTime) {
+              const timeHeader = document.createElement("div");
+              timeHeader.className = "timeline-group-header";
+              timeHeader.textContent = currentTime;
+              left.appendChild(timeHeader); 
+              lastTime = currentTime;
+          }
+
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; lr.setAttribute('data-status', getMatchStatusType(m));
@@ -1884,60 +1882,6 @@ function loadData(){
           right.appendChild(rr);
         });
 
-        // --- Inside loadData() fetch block ---
-
-        const timeline = document.getElementById("mobileTimeline");
-        timeline.innerHTML = "";
-
-        // Group matches by startTime
-        const groups = {};
-        data.matches.forEach(m => {
-            const time = m.startTime || "Live";
-            if (!groups[time]) groups[time] = [];
-            groups[time].push(m);
-        });
-
-        // Build the Timeline HTML
-        Object.keys(groups).forEach(time => {
-            const groupWrapper = document.createElement("div");
-            groupWrapper.className = "time-group";
-            groupWrapper.innerHTML = `<div class="time-sticky-header">${time}</div>`;
-
-            groups[time].forEach(m => {
-                const [h, a] = m.match.split("-").map(t => t.trim());
-                const card = document.createElement("div");
-                card.className = "timeline-card";
-        
-                // Generate the player bets for this specific match
-                let betsHtml = "";
-                data.headers.forEach((header, i) => {
-                    const betVal = m.cells[i].value;
-                    const color = m.cells[i].color || 'var(--bg-soft)';
-                    const avatars = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-            
-                    if(betVal) {
-                        betsHtml += `
-                            <div class="player-bet-unit">
-                                <img src="${avatars[header.name]}" class="unit-avatar">
-                                <div class="bet" style="background-color: ${color}; width: 100%; height: 35px;">${betVal}</div>
-                            </div>`;
-                    }
-                });
-
-                card.innerHTML = `
-                    <div class="timeline-match-info" onclick='openModal(${JSON.stringify(m)})'>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            ${renderTeam(h)} vs ${renderTeam(a)}
-                        </div>
-                        <div class="score-pill"><span>${m.status}</span> <b>${m.score}</b></div>
-                    </div>
-                    <div class="timeline-bet-row">${betsHtml}</div>
-                `;
-               groupWrapper.appendChild(card);
-            });
-            timeline.appendChild(groupWrapper);
-        });
-     
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";

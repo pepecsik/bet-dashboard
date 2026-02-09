@@ -1335,38 +1335,46 @@ img[alt="AVI"] {
     opacity: 0.8;
 }
 
-/* --- LIVE MATCH HIGHLIGHTING --- */
+/* --- UNIFIED LIVE MATCH BORDER --- */
 
-/* Add a glowing border to the score pill when live */
-.left-row[data-status="live"] .score-pill {
-    border: 1px solid var(--accent-green) !important;
-    box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
-    position: relative;
-    background: rgba(74, 222, 128, 0.05) !important;
-}
-
-/* Optional: Add a subtle pulse to the entire left card row if it's live */
 .left-row[data-status="live"] {
-    border-left: 3px solid var(--accent-green);
-    border-radius: 12px;
-    background: linear-gradient(90deg, rgba(74, 222, 128, 0.05) 0%, transparent 100%);
+    /* Create the unified border around the whole row */
+    border: 1px solid var(--accent-green) !important;
+    background: rgba(74, 222, 128, 0.03) !important;
+    
+    /* Smooth out the look */
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+    transform: scale(1.02); /* Slightly pop it out */
+    z-index: 10;
+    transition: all 0.3s ease;
 }
 
-/* Ensure the live dot and status text look sharp */
+/* Remove internal styling from the score pill so it blends into the unified card */
+.left-row[data-status="live"] .score-pill {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Make the status (the "75'" or "HT") stand out inside the unified card */
 .left-row[data-status="live"] .score-pill span:first-child {
     background: var(--accent-green) !important;
     color: #000 !important;
-    font-weight: 900;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-/* Retro Theme Override for Live Borders */
+/* Retro Theme: Solid Neon Border */
 [data-theme="retro"] .left-row[data-status="live"] {
-    border: 2px dashed var(--accent-green) !important;
+    border: 2px solid var(--accent-green) !important;
+    background: #001100 !important;
+    transform: none; /* Retro stays flat */
 }
 
+/* Candy Theme: Thicker, softer glow */
 [data-theme="candy"] .left-row[data-status="live"] {
-    border: 2px solid #2dc653;
-    box-shadow: 0 4px 15px rgba(45, 198, 83, 0.2);
+    border: 2px solid #2dc653 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
 }
  
 </style>

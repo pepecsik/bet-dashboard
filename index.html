@@ -317,17 +317,32 @@ body {
   border: none !important;
 }
 
+/* --- LATE GAME SWEAT ANIMATION --- */
+/* --- LATE GAME SWEAT ANIMATION (ALL GREEN) --- */
 @keyframes sweatPulse {
-  0% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.05); filter: brightness(1.3); }
-  100% { transform: scale(1); filter: brightness(1); }
+  0% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 rgba(74, 222, 128, 0); 
+  }
+  50% { 
+    transform: scale(1.05); 
+    /* Green Glow */
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.6); 
+    background: rgba(74, 222, 128, 1) !important;
+    color: #000 !important;
+  }
+  100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 rgba(74, 222, 128, 0); 
+  }
 }
-.sweat-active {
-   animation: sweatPulse 1s ease-in-out infinite !important;
-   z-index: 10;
-   position: relative;
-   border: 1px solid rgba(255,255,255,0.4) !important;
-   box-shadow: 0 0 10px rgba(255,255,255,0.1);
+
+.sweat-clinch {
+  animation: sweatPulse 0.8s ease-in-out infinite !important;
+  z-index: 10;
+  position: relative;
+  /* CHANGED: Border is now Green */
+  border: 1.5px solid var(--accent-green) !important; 
 }
 
 @keyframes goldPulse {
@@ -1334,6 +1349,48 @@ img[alt="AVI"] {
     letter-spacing: 1px;
     opacity: 0.8;
 }
+
+/* --- UNIFIED LIVE MATCH BORDER --- */
+
+.left-row[data-status="live"] {
+    /* Create the unified border around the whole row */
+    border: 1px solid var(--accent-green) !important;
+    background: rgba(74, 222, 128, 0.03) !important;
+    
+    /* Smooth out the look */
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+    transform: scale(1.02); /* Slightly pop it out */
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+/* Remove internal styling from the score pill so it blends into the unified card */
+.left-row[data-status="live"] .score-pill {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Make the status (the "75'" or "HT") stand out inside the unified card */
+.left-row[data-status="live"] .score-pill span:first-child {
+    background: var(--accent-green) !important;
+    color: #000 !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Retro Theme: Solid Neon Border */
+[data-theme="retro"] .left-row[data-status="live"] {
+    border: 2px solid var(--accent-green) !important;
+    background: #001100 !important;
+    transform: none; /* Retro stays flat */
+}
+
+/* Candy Theme: Thicker, softer glow */
+[data-theme="candy"] .left-row[data-status="live"] {
+    border: 2px solid #2dc653 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
+}
  
 </style>
 </head>
@@ -1456,7 +1513,7 @@ img[alt="AVI"] {
     </div>
 </div>
  
-<div class="modal-overlay" id="modalPlayer" style="align-items:end;">
+<div class="modal-overlay" id="modalPlayer" style="align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
     <div class="picker-title">WHO ARE YOU?</div>
@@ -1474,7 +1531,7 @@ img[alt="AVI"] {
   </div>
 </div>
 
-<div class="modal-overlay" id="modalBetList" style="z-index: 2001; align-items:end;">
+<div class="modal-overlay" id="modalBetList" style="z-index: 2001; align-items:center;">
   <div class="modal-sheet" style="height: 85vh; position: relative;">
     
     <div class="success-overlay" id="successScreen">
@@ -1499,7 +1556,7 @@ img[alt="AVI"] {
   </div>
 </div>
 
-<div class="modal-overlay" id="modalPicker" style="z-index: 2002; align-items:end;">
+<div class="modal-overlay" id="modalPicker" style="z-index: 2002; align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPicker')">×</div>
     <div class="picker-title" id="pickerMatchTitle">MATCH</div>
@@ -1727,7 +1784,7 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; // Store Win Prices
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; 
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1773,32 +1830,73 @@ function loadData(){
         data.matches.forEach((m, idx)=>{
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-          const lr=document.createElement("div"); lr.className="left-row"; lr.style.gridTemplateColumns="1fr 90px"; lr.style.cursor="pointer"; lr.onclick = function() { openModal(m); }; lr.setAttribute('data-status', getMatchStatusType(m));
+          
+          const matchStatusType = getMatchStatusType(m);
+          const lr=document.createElement("div"); 
+          lr.className="left-row"; 
+          lr.style.gridTemplateColumns="1fr 90px"; 
+          lr.style.cursor="pointer"; 
+          lr.onclick = function() { openModal(m); }; 
+          lr.setAttribute('data-status', matchStatusType);
+          
           if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
+          
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
-          const live=m.status.includes("'")||["HT","1H","2H","LIVE"].includes(m.status);
+          const live = matchStatusType === 'live';
+          
+          // Determine if we are in the "Clinch" (85th minute or later)
+          const matchMinute = parseInt(m.status.replace("'", ""));
+          const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
+
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
+          
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
-          const goldenClass = isGoldenScore ? "gold-active" : ""; const liveDot = live ? '<div class="live-dot"></div>' : '';
+          const goldenClass = isGoldenScore ? "gold-active" : ""; 
+          
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
+
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
+          
           m.cells.forEach((c, cellIndex)=>{
-              const el=document.createElement("div"); el.className=`bet ${hasChanged ? 'flash-active' : ''}`; el.setAttribute('data-col-idx', cellIndex);
+              const el=document.createElement("div"); 
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; 
+              el.setAttribute('data-col-idx', cellIndex);
+              
               if(c.value){
                   el.textContent=c.value;
-                  let color = c.color || '#262a30'; if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  el.style.setProperty('--bet-bg', color); el.style.backgroundColor = color; 
-                  const headerInfo = data.headers[cellIndex]; const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+                  let color = c.color || '#262a30'; 
+                  if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
+                  el.style.setProperty('--bet-bg', color); 
+                  el.style.backgroundColor = color; 
+
+                  const headerInfo = data.headers[cellIndex]; 
+                  const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+                  
                   if(live && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase(); let isWinning = false;
-                      if(bet.includes("-")) { let [bH, bA] = bet.split("-").map(Number); if(bH === hScore && bA === aScore) isWinning = true; } 
-                      else { if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; }
-                      if(isWinning) el.classList.add("sweat-active");
+                      let bet = String(c.value).toUpperCase(); 
+                      let isWinning = false;
+                      if(bet.includes("-")) { 
+                          let [bH, bA] = bet.split("-").map(Number); 
+                          if(bH === hScore && bA === aScore) isWinning = true; 
+                      } else { 
+                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; 
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; 
+                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; 
+                      }
+                      
+                      if(isWinning) {
+                          // Apply sweat-clinch only if we are in the last 5+ mins
+                          if(isClinchTime) {
+                              el.classList.add("sweat-clinch");
+                          } else {
+                              el.classList.add("sweat-active");
+                          }
+                      }
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
@@ -1806,35 +1904,24 @@ function loadData(){
           right.appendChild(rr);
         });
 
+        // The rest of your function (filters, summary, podium) stays exactly as is
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
-        // === SMART BUTTON LOGIC ===
-        let allLocked = true;
-        let activeColsFound = false;
+        let allLocked = true; let activeColsFound = false;
         if(data.headers && window.winData) {
             data.headers.forEach((h, i) => {
-                if(h.status !== 'red') { 
-                    activeColsFound = true;
-                    if(!window.winData[i] || !window.winData[i].value) allLocked = false;
-                }
+                if(h.status !== 'red') { activeColsFound = true; if(!window.winData[i] || !window.winData[i].value) allLocked = false; }
             });
         } else { allLocked = false; }
         if(!activeColsFound) allLocked = false;
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
-        if(allLocked) {
-             btnDiv.className = "place-bets-btn disabled";
-             // UPDATE: CHANGED TEXT HERE
-             btnDiv.innerHTML = "ALL BETS<br>ARE PLACED";
-        } else {
-             btnDiv.className = "place-bets-btn";
-             btnDiv.innerHTML = "PLACE<br>BETS";
-             btnDiv.onclick = startBettingProcess;
-        }
+        if(allLocked) { btnDiv.className = "place-bets-btn disabled"; btnDiv.innerHTML = "ALL BETS<br>ARE PLACED"; } 
+        else { btnDiv.className = "place-bets-btn"; btnDiv.innerHTML = "PLACE<br>BETS"; btnDiv.onclick = startBettingProcess; }
         bottomGrid.appendChild(btnDiv);
 
         const labelCol = document.createElement("div"); labelCol.className = "stats-column";
@@ -1851,50 +1938,12 @@ function loadData(){
 
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        // --- NEW PODIUM LOGIC ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Matches Included) ---
-        // --- NEW PODIUM LOGIC (Square, No Names, Poop Included) ---
+        
         if (data.ranking && data.ranking.length >= 3) {
-            const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-    
-            // Sort just in case API isn't sorted
             const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
-            const p1 = sorted[0];
-            const p2 = sorted[1];
-            const p3 = sorted[2];
-
-            ranking.innerHTML = `
-            <div class="podium-container">
-                <div class="podium-place place-2">
-                    <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p2.money)}</div>
-                        <div class="podium-stats">${p2.matchesRight} Bets</div>
-                    </div>
-                </div>
-
-                <div class="podium-place place-1">
-                    <div class="crown-icon">👑</div>
-                    <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                        <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
-                    </div>
-                </div>
-
-                <div class="podium-place place-3">
-                    <div class="poop-icon">💩</div>
-                    <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-                    <div class="podium-bar">
-                        <div class="podium-money">${formatGBP(p3.money)}</div>
-                        <div class="podium-stats">${p3.matchesRight} Bets</div>
-                    </div>
-                </div>
-            </div>`;
-        } else {
-            // Fallback
-            ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
-        }
+            const p1 = sorted[0]; const p2 = sorted[1]; const p3 = sorted[2];
+            ranking.innerHTML = `<div class="podium-container"><div class="podium-place place-2"><img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p2.money)}</div><div class="podium-stats">${p2.matchesRight} Bets</div></div></div><div class="podium-place place-1"><div class="crown-icon">👑</div><img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div><div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div></div></div><div class="podium-place place-3"><div class="poop-icon">💩</div><img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p3.money)}</div><div class="podium-stats">${p3.matchesRight} Bets</div></div></div></div>`;
+        } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });

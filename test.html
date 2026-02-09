@@ -767,15 +767,7 @@ body {
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-.modal-overlay { 
-    position: fixed; 
-    top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(0, 0, 0, 0.4); /* Make overlay darker but transparent */
-    z-index: 2100; 
-    backdrop-filter: blur(4px); 
-    display: flex; align-items: center; justify-content: center; 
-    opacity: 0; pointer-events: none; transition: opacity 0.3s ease; 
-}
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); z-index: 2100; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-modal); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; border: var(--border-light); }
 .modal-overlay.active .modal-card { transform: translateY(0); }
@@ -831,17 +823,7 @@ body {
 .sum-player { font-weight: 700; color: var(--text-main); }
 .sum-detail { font-size: 9px; opacity: 0.6; }
 
-.pitch-container { 
-    width: 100%; 
-    aspect-ratio: 2/3; 
-    background: rgba(255, 255, 255, 0.03) !important; /* Transparent Glass */
-    border: 1px solid rgba(255,255,255,0.2); 
-    border-radius: 8px; 
-    position: relative; 
-    overflow: hidden; 
-    margin-bottom: 20px; 
-    backdrop-filter: blur(5px);
-}
+.pitch-container { width: 100%; aspect-ratio: 2/3; background: #2e5a2e; background: repeating-linear-gradient(0deg, #2e5a2e 0px, #2e5a2e 40px, #366336 40px, #366336 80px); border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 20px; transition: background 1s ease; }
 .pitch-line { position: absolute; border: 1px solid rgba(255,255,255,0.3); }
 .center-line { top: 50%; left: 0; right: 0; }
 .center-circle { top: 50%; left: 50%; width: 60px; height: 60px; border-radius: 50%; transform: translate(-50%, -50%); }
@@ -1409,55 +1391,11 @@ img[alt="AVI"] {
     background: rgba(255, 255, 255, 0.9) !important;
     box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
 }
-
-/* --- GLASS PITCH SYSTEM --- */
-#stadiumOverlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 50; /* Changed from 1000 to sit behind modals but above dashboard */
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.6s ease;
-    background: radial-gradient(circle at center, rgba(46, 90, 46, 0.4) 0%, rgba(11, 13, 15, 1) 100%);
-}
-
-#stadiumOverlay::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=2000&auto=format&fit=crop');
-    background-size: cover;
-    background-position: center;
-    opacity: 0.2; /* Lower opacity for more "moody" look */
-    filter: blur(10px);
-}
-
-/* Active state triggered by JS */
-body.is-viewing-match #stadiumOverlay {
-    opacity: 1;
-}
-
-/* Dim the dashboard when viewing a match */
-body.is-viewing-match .app {
-    filter: blur(4px) grayscale(0.5);
-    opacity: 0.3;
-    transition: all 0.6s ease;
-}
-
-/* Make the modal cards extra "Glassy" */
-body.is-viewing-match .modal-card {
-    background: rgba(20, 22, 25, 0.7) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-}
  
 </style>
 </head>
 <body>
 
-<div id="stadiumOverlay"></div>
- 
 <div class="app">
   <div class="main">
     <div class="left-card" id="left"></div>
@@ -2383,7 +2321,6 @@ function openModal(m){
       
       // SHOW MODAL FIRST
       document.getElementById("matchModal").classList.add("active");
-      document.body.classList.add("is-viewing-match");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
       const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
@@ -2630,23 +2567,14 @@ function openTable(){
     });
     document.getElementById("tableModal").classList.add("active");
 }
-function closeModal(id) {
-    document.getElementById(id).classList.remove("active");
-    
-    // This is the "Clean Up" - make sure it stays exactly like this
-    if (id === 'matchModal') {
-        document.body.classList.remove("is-viewing-match");
-    }
-}
-
-// --- INITIALIZATION & EVENT LISTENERS ---
+function closeModal(id){document.getElementById(id).classList.remove("active")}
 
 renderSkeletons(); 
 loadData(); 
-setInterval(loadData, REFRESH_MS);
+setInterval(loadData,REFRESH_MS);
 
-document.getElementById("rankingCard").onclick = () => {
-    // Open History Modal instead of toggle
+document.getElementById("rankingCard").onclick=()=>{
+    // NEW: Open Modal instead of toggle
     vibe();
     drawHistoryChart("matches");
     document.getElementById("historyModal").classList.add("active");
@@ -3024,11 +2952,7 @@ function openPreMatchStats(matchKey) {
     // 2. Open the standard modal
     openModal(m);
 
-    // 3. TRIGGER GLASS PITCH BACKGROUND
-    // This ensures the stadium shows up when opening from the betting list
-    document.body.classList.add("is-viewing-match");
-
-    // 4. FORCE H2H VIEW & HIDE OTHERS
+    // 3. FORCE H2H VIEW & HIDE OTHERS
     // Hide tabs that are irrelevant for pre-match
     document.getElementById('tabStats').style.display = 'none';
     document.getElementById('tabLineups').style.display = 'none';
@@ -3040,33 +2964,23 @@ function openPreMatchStats(matchKey) {
     // Switch to H2H tab programmatically
     switchTab('h2h');
 
-    // 5. CLEAN UP HANDLER
-    // Restores tabs and removes background when the modal is closed
+    // 4. Add a "clean up" listener to restore tabs when closing
+    // We modify the close button behavior temporarily
     const modal = document.getElementById('matchModal');
-    
     const onRestore = () => {
-        // Restore tab buttons for normal live match viewing
+        // Restore buttons
         document.getElementById('tabStats').style.display = 'block';
         document.getElementById('tabLineups').style.display = 'block';
         document.getElementById('tabSummary').style.display = 'block';
-        
-        // Remove the stadium background effect
-        document.body.classList.remove("is-viewing-match");
-        
-        // Clean up event listeners to prevent memory leaks
         modal.removeEventListener('click', checkClose);
     };
     
     const checkClose = (e) => {
-        // Detect if user clicked the background overlay or the "Back" button
-        const isOverlayClick = e.target === modal;
-        const isBackButtonClick = e.target.classList.contains('modal-back-btn');
-        
-        if(isOverlayClick || isBackButtonClick) {
-             setTimeout(onRestore, 300); // Sync with CSS transition
+        // If clicking overlay (outside card) or back button
+        if(e.target === modal || e.target.classList.contains('modal-back-btn')) {
+             setTimeout(onRestore, 300); // Wait for animation
         }
     };
-
     modal.addEventListener('click', checkClose);
 }
 

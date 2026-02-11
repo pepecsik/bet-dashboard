@@ -1460,7 +1460,6 @@ img[alt="AVI"] {
           </div>
        </div>
        <div id="viewSummary" style="display:none;">
-          <div id="aiSummaryWrapper"></div>
           <div id="summaryTimeline" class="sum-timeline"></div>
        </div>
        <div id="viewH2h" style="display:none;">
@@ -2213,107 +2212,6 @@ function switchTab(t){
      if(view) view.style.display = x===t ? 'block' : 'none';
   });
 }
-function generateStory(home, away, stats, score, status, startTime, date, matchData) {
-    const el = document.getElementById("aiSummaryWrapper");
-    let proTip = "";
-
-    // --- NEW: Pro Tip Logic ---
-    if (matchData.stats.h2h && matchData.stats.h2h.length >= 3) {
-        let hWins = 0;
-        const total = matchData.stats.h2h.length;
-        matchData.stats.h2h.forEach(prev => {
-            let hS = 0, aS = 0;
-            if(typeof prev.score === 'string') {
-                const p = prev.score.split("-");
-                hS = parseInt(p[0]); aS = parseInt(p[1]);
-            } else if(prev.score) {
-                hS = prev.score.home; aS = prev.score.away;
-            }
-            
-            const histHome = normalizeName(prev.home).toUpperCase();
-            const currHome = normalizeName(home).toUpperCase();
-            const isHomeInHist = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
-
-            if (hS > aS && isHomeInHist) hWins++;
-            else if (aS > hS && !isHomeInHist) hWins++;
-        });
-
-        const winPct = (hWins / total) * 100;
-        if (winPct >= 70) {
-            proTip = `<div style="background:rgba(251,191,36,0.1); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:10px; border-radius:10px; margin-bottom:15px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                <span style="font-size:16px;">⭐</span> <span>PRO TIP: ${home} has won ${Math.round(winPct)}% of recent meetings against ${away}.</span>
-            </div>`;
-        }
-    }
-
-    if(status === "NS") {
-        let matchDate = date ? new Date(date) : null;
-        let today = new Date();
-        let isToday = matchDate && matchDate.getDate() === today.getDate();
-        let hasLineups = stats.lineups && stats.lineups.h && stats.lineups.h.start;
-
-        let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div><b>📅 MATCH PREVIEW:</b> `;
-        if(isToday) {
-             story += `The stage is set at ${home}'s home ground for today's clash against ${away}. Kick-off is scheduled for ${startTime || 'later today'}. `;
-             if(hasLineups) story += `<br><br><b>📋 Tactical Setups:</b> The starting XIs are confirmed. Both managers have played their hands early. Check the Lineups tab for the tactical formations.`;
-             else story += `Lineups are expected roughly an hour before kick-off.`;
-        } else {
-             let dateStr = matchDate ? matchDate.toLocaleDateString() : "a future date";
-             story += `This fixture is scheduled for ${dateStr}. Check back on matchday for live coverage.`;
-        }
-        story += `</div>`;
-        el.innerHTML = proTip + story; // Added proTip
-        return;
-    }
-
-    const [hG, aG] = (score||"0-0").split("-").map(n=>parseInt(n)||0);
-    const time = parseInt(status) || (status==="FT"?90:0);
-    const hPoss = stats.h_poss || 50;
-    const hXG = stats.h_xg || 0;
-    const aXG = stats.a_xg || 0;
-
-    let story = `<div class="ai-story-box"><div class="ai-title">⚡ Match Story</div>`;
-
-    if(status === "FT") {
-       if(hG > aG) story += `<b>🏁 FULL TIME REPORT:</b> ${home} claim a massive victory against ${away}. `;
-       else if(aG > hG) story += `<b>🏁 FULL TIME REPORT:</b> ${away} snatch a brilliant win on the road. `;
-       else story += `<b>🏁 FULL TIME REPORT:</b> It ends in a stalemate. `;
-    } else if (status === "HT") {
-       story += `<b>⏸️ HALF TIME:</b> Score at the break is ${hG}-${aG}. `;
-    } else {
-       story += `<b>🔴 LIVE UPDATE (${time}'):</b> `;
-       if(hG > aG) story += `${home} are leading ${hG}-${aG}. `;
-       else if(aG > hG) story += `${away} are ahead ${aG}-${hG}. `;
-       else story += `It remains all square at ${hG}-${hG}. `;
-    }
-    story += "<br><br>";
-
-    if(hPoss > 55) story += `${home} control possession (${hPoss}%) `;
-    else if(hPoss < 45) story += `${away} control possession (${100-hPoss}%) `;
-    else story += `Possession is even `;
-
-    let xgDiff = (hXG - aXG);
-    if(xgDiff > 0.5) story += `and create better chances (xG ${hXG.toFixed(2)}). `;
-    else if(xgDiff < -0.5) story += `but ${away} look more dangerous (xG ${aXG.toFixed(2)}). `;
-    else story += `in a tight game. `;
-
-    if((stats.h_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> The game shifted completely after the red card for ${home}. `;
-    if((stats.a_red||0) > 0) story += `<br><br>🟥 <b>Red Card Drama:</b> ${away} are fighting an uphill battle with 10 men. `;
-
-    let bestPlayer = null, highestRat = 0;
-    if(stats.players && stats.players.h) {
-        [...stats.players.h, ...stats.players.a].forEach(p => {
-            if(p.rating > highestRat) { highestRat = p.rating; bestPlayer = p.name; }
-        });
-    }
-
-    if(bestPlayer && highestRat > 0) {
-        story += `<br><br>🌟 <b>MVP:</b> <b>${formatName(bestPlayer)}</b> is the standout performer (${highestRat.toFixed(1)} Rating). `;
-    }
-
-    story += `</div>`;
-    el.innerHTML = proTip + story; // Added proTip
-}
 
 function findPlayerStats(name, list) {
     if(!list) return null;
@@ -2375,7 +2273,6 @@ function openModal(m){
       const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
       document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
 
-      try { generateStory(hCode, aCode, s, m.score, m.status, m.startTime, m.date, m); } catch(e) { document.getElementById("aiSummaryWrapper").innerHTML = "Waiting for game analysis..."; }
 
       // PITCH PRESSURE GRADIENT
       const pitch = document.getElementById("pitch");

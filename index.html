@@ -1934,24 +1934,34 @@ function loadData(){
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         
         // ==========================================
-        // PODIUM TIE LOGIC
+        // PODIUM TIE LOGIC (V4 - MONEY + MATCHES RIGHT)
         // ==========================================
         if (data.ranking && data.ranking.length >= 3) {
-            const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
+            // Sort by Money FIRST, then Matches Right
+            const sorted = [...data.ranking].sort((a,b) => {
+                if(b.money !== a.money) return b.money - a.money;
+                return b.matchesRight - a.matchesRight;
+            });
+            
             const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
 
-            const is1stTie = (p1.money === p2.money);
-            const isLastTie = (p2.money === p3.money);
+            // A "True Tie" is when Money AND MatchesRight are identical
+            const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
+            const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
 
             let classL = "place-2", classC = "place-1", classR = "place-3";
             let iconL = "", iconC = "👑", iconR = "💩";
 
             if (is1stTie) {
-                classL = "place-1"; iconL = "👑"; // Shared first
+                classL = "place-1"; iconL = "👑"; // Shared first heights/crowns
                 iconR = "💩"; // Lone pooh
             } else if (isLastTie) {
-                classL = "place-3"; iconL = "💩"; // Shared pooh
+                classL = "place-3"; iconL = "💩"; // Shared pooh heights/icons
                 classR = "place-3"; iconR = "💩";
+            } else {
+                // Standard scenario: One winner, one middle, one pooh
+                iconL = ""; // 2nd place gets no icon
+                iconR = "💩"; 
             }
 
             ranking.innerHTML = `

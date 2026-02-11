@@ -1844,7 +1844,6 @@ function loadData(){
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live = matchStatusType === 'live';
           
-          // Determine if we are in the "Clinch" (85th minute or later)
           const matchMinute = parseInt(m.status.replace("'", ""));
           const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
 
@@ -1890,12 +1889,8 @@ function loadData(){
                       }
                       
                       if(isWinning) {
-                          // Apply sweat-clinch only if we are in the last 5+ mins
-                          if(isClinchTime) {
-                              el.classList.add("sweat-clinch");
-                          } else {
-                              el.classList.add("sweat-active");
-                          }
+                          if(isClinchTime) el.classList.add("sweat-clinch");
+                          else el.classList.add("sweat-active");
                       }
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
@@ -1904,7 +1899,6 @@ function loadData(){
           right.appendChild(rr);
         });
 
-        // The rest of your function (filters, summary, podium) stays exactly as is
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
@@ -1939,11 +1933,56 @@ function loadData(){
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         
+        // ==========================================
+        // PODIUM TIE LOGIC
+        // ==========================================
         if (data.ranking && data.ranking.length >= 3) {
             const sorted = [...data.ranking].sort((a,b) => b.money - a.money);
-            const p1 = sorted[0]; const p2 = sorted[1]; const p3 = sorted[2];
-            ranking.innerHTML = `<div class="podium-container"><div class="podium-place place-2"><img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p2.money)}</div><div class="podium-stats">${p2.matchesRight} Bets</div></div></div><div class="podium-place place-1"><div class="crown-icon">👑</div><img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div><div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div></div></div><div class="podium-place place-3"><div class="poop-icon">💩</div><img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar"><div class="podium-bar"><div class="podium-money">${formatGBP(p3.money)}</div><div class="podium-stats">${p3.matchesRight} Bets</div></div></div></div>`;
+            const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
+
+            const is1stTie = (p1.money === p2.money);
+            const isLastTie = (p2.money === p3.money);
+
+            let classL = "place-2", classC = "place-1", classR = "place-3";
+            let iconL = "", iconC = "👑", iconR = "💩";
+
+            if (is1stTie) {
+                classL = "place-1"; iconL = "👑"; // Shared first
+                iconR = "💩"; // Lone pooh
+            } else if (isLastTie) {
+                classL = "place-3"; iconL = "💩"; // Shared pooh
+                classR = "place-3"; iconR = "💩";
+            }
+
+            ranking.innerHTML = `
+                <div class="podium-container">
+                    <div class="podium-place ${classL}">
+                        ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
+                        <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
+                        <div class="podium-bar">
+                            <div class="podium-money">${formatGBP(p2.money)}</div>
+                            <div class="podium-stats">${p2.matchesRight} Bets</div>
+                        </div>
+                    </div>
+                    <div class="podium-place ${classC}">
+                        <div class="crown-icon">👑</div>
+                        <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
+                        <div class="podium-bar">
+                            <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
+                            <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
+                        </div>
+                    </div>
+                    <div class="podium-place ${classR}">
+                        ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
+                        <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
+                        <div class="podium-bar">
+                            <div class="podium-money">${formatGBP(p3.money)}</div>
+                            <div class="podium-stats">${p3.matchesRight} Bets</div>
+                        </div>
+                    </div>
+                </div>`;
         } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
+        
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });

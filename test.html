@@ -2260,19 +2260,22 @@ function openModal(m){
       vibe(); 
       document.getElementById('playerPopup').style.display='none';
       
-      // 1. THIS IS THE ONLY PLACE WE DEFINE hCode/aCode
-      const [hCode,aCode]=m.match.split("-").map(x=>x.trim());
+      const [hCode, aCode] = m.match.split("-").map(x => x.trim());
+      const s = m.stats || {};
       
-      const s=m.stats||{};
-      switchTab('stats'); 
+      // --- NEW: AUTO-TAB LOGIC ---
+      // If match hasn't started, open H2H. Otherwise, open STATS.
+      if (m.status === "NS" || m.status.includes(":")) {
+          switchTab('h2h');
+      } else {
+          switchTab('stats'); 
+      }
       
-      // SHOW MODAL FIRST
       document.getElementById("matchModal").classList.add("active");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
       const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
       document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
-
 
       // PITCH PRESSURE GRADIENT
       const pitch = document.getElementById("pitch");
@@ -2286,7 +2289,7 @@ function openModal(m){
         }
       }
 
-      // GROUP PREDICTIONS
+      // GROUP PREDICTIONS logic...
       let consensusHTML = "";
       if(m && m.cells) {
           let votes = { H: 0, D: 0, A: 0, Total: 0 };
@@ -2372,7 +2375,7 @@ function openModal(m){
       });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
 
-      // STATS
+      // STATS AREA logic...
       const sb = document.getElementById("statsArea"); 
       sb.innerHTML = "";
       if (m.status === "NS" || m.status === "PST") {
@@ -2402,10 +2405,9 @@ function openModal(m){
           }); 
       }, 50);
       
-      // CALL H2H RENDER (Use the variables defined at top of function)
       renderH2H(m.stats.h2h, hCode, aCode);
-   
-      // LINEUPS
+
+      // LINEUPS and SUBS logic...
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
       const subsCont = document.getElementById("subsArea"); subsCont.innerHTML="";
       
@@ -2414,57 +2416,57 @@ function openModal(m){
           const rows = { "G":0, "D":1, "M":2, "F":3 };
           let lines = [[],[],[],[]];
           team.start.forEach(p => {
-             let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
-             lines[r].push(p);
+              let r = rows[p.pos] !== undefined ? rows[p.pos] : 2; 
+              lines[r].push(p);
           });
 
           lines.forEach((line, rIdx) => {
-             let yPct = 0;
-             if(isHome) { 
-                 if(rIdx===0) yPct=5;        
-                 else if(rIdx===1) yPct=17.3; 
-                 else if(rIdx===2) yPct=29.6; 
-                 else yPct=42; 
-             } else { 
-                 if(rIdx===0) yPct=95;       
-                 else if(rIdx===1) yPct=82.7; 
-                 else if(rIdx===2) yPct=70.4; 
-                 else yPct=58; 
-             }
-             
-             line.forEach((p, i) => {
-                 let count = line.length;
-                 let segment = 100 / count;
-                 let xPct = (segment * i) + (segment / 2); 
-                 
-                 let pStats = findPlayerStats(p.name, playersFull);
-                 let rat = pStats ? pStats.rating.toFixed(1) : "-";
-                 let photoUrl = pStats ? pStats.photo : "";
-                 let rClass = "rat-mid";
-                 if(rat >= 7.0) rClass = "rat-high";
-                 if(rat < 6.0 && rat !== "-") rClass = "rat-low";
-                 
-                 let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
-                 let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
-                 
-                 let lastName = normalizeName(p.name.split(" ").pop());
-                 let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && normalizeName(e.player).includes(lastName));
-                 let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
+              let yPct = 0;
+              if(isHome) { 
+                  if(rIdx===0) yPct=5;         
+                  else if(rIdx===1) yPct=17.3; 
+                  else if(rIdx===2) yPct=29.6; 
+                  else yPct=42; 
+              } else { 
+                  if(rIdx===0) yPct=95;       
+                  else if(rIdx===1) yPct=82.7; 
+                  else if(rIdx===2) yPct=70.4; 
+                  else yPct=58; 
+              }
+              
+              line.forEach((p, i) => {
+                  let count = line.length;
+                  let segment = 100 / count;
+                  let xPct = (segment * i) + (segment / 2); 
+                  
+                  let pStats = findPlayerStats(p.name, playersFull);
+                  let rat = pStats ? pStats.rating.toFixed(1) : "-";
+                  let photoUrl = pStats ? pStats.photo : "";
+                  let rClass = "rat-mid";
+                  if(rat >= 7.0) rClass = "rat-high";
+                  if(rat < 6.0 && rat !== "-") rClass = "rat-low";
+                  
+                  let isSubbedOut = s.events && s.events.some(e => e.type === "subst" && e.detail.includes("Substitution") && e.player === p.name);
+                  let subBadge = isSubbedOut ? `<div class="sub-badge" style="content:'▼'">▼</div>` : "";
+                  
+                  let lastName = normalizeName(p.name.split(" ").pop());
+                  let hasRed = s.events && s.events.some(e => e.type === "Card" && e.detail === "Red Card" && normalizeName(e.player).includes(lastName));
+                  let rcBadge = hasRed ? `<div class="pitch-rc"></div>` : "";
 
-                 let el = document.createElement("div");
-                 el.className = "pitch-player";
-                 el.style.top = yPct + "%";
-                 el.style.left = xPct + "%";
-                 el.onclick = () => showPlayerStats(p.name, pStats, s.events);
-                 
-                 let content = `<div class="p-dot ${isHome?'home':'away'}">
-                     <span class="p-num-fallback">${p.number || p.num || ''}</span>`;
-                 if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
-                 content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
-                 
-                 el.innerHTML = content;
-                 pp.appendChild(el);
-             });
+                  let el = document.createElement("div");
+                  el.className = "pitch-player";
+                  el.style.top = yPct + "%";
+                  el.style.left = xPct + "%";
+                  el.onclick = () => showPlayerStats(p.name, pStats, s.events);
+                  
+                  let content = `<div class="p-dot ${isHome?'home':'away'}">
+                      <span class="p-num-fallback">${p.number || p.num || ''}</span>`;
+                  if(photoUrl) content += `<img src="${photoUrl}" class="p-img-dot" onerror="this.style.display='none'">`;
+                  content += `</div><div class="p-rat ${rClass}">${rat}</div>${subBadge}${rcBadge}<div class="p-name">${formatName(p.name)}</div>`;
+                  
+                  el.innerHTML = content;
+                  pp.appendChild(el);
+              });
           });
 
           if(team.sub && team.sub.length > 0) {
@@ -2496,7 +2498,7 @@ function openModal(m){
       console.error("Modal Error:", err);
   }
 }
-
+ 
 function openTable(){
     const b=document.getElementById("tableBody");
     b.innerHTML="";

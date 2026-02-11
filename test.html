@@ -2796,35 +2796,54 @@ function renderH2H(h2hData, currentHome, currentAway) {
     const aForm = findFormInTable(currentAway).split('');
 
     const getLogoUrl = (name) => {
-        if(!name) return "https://media.api-sports.io/football/leagues/39.png";
-        const norm = normalizeName(name).toUpperCase();
-        if(TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
-        for (const [code, url] of Object.entries(TEAM_LOGOS)) {
-            if (norm.startsWith(code) || code.includes(norm.substring(0,3))) return url;
-        }
-        return "https://media.api-sports.io/football/leagues/39.png"; 
+    if (!name) return "https://media.api-sports.io/football/leagues/39.png";
+    
+    const norm = normalizeName(name).toUpperCase();
+    
+    // 1. Create a reverse mapping to find the short code from a full name
+    const reverseMappings = {
+        "WEST HAM": "WHA",
+        "MANCHESTER CITY": "CTY",
+        "MANCHESTER UNITED": "MAN",
+        "NEWCASTLE": "NWC",
+        "NOTTINGHAM FOREST": "NOT",
+        "ASTON VILLA": "AVI",
+        "CRYSTAL PALACE": "CPA",
+        "CHELSEA": "CHE",
+        "ARSENAL": "ARS",
+        "LIVERPOOL": "LIV",
+        "TOTTENHAM": "TOT",
+        "BOURNEMOUTH": "BOU",
+        "BRENTFORD": "BRE",
+        "BRIGHTON": "BRI",
+        "BURNLEY": "BUR",
+        "EVERTON": "EVE",
+        "FULHAM": "FUL",
+        "WOLVES": "WOL",
+        "WOLVERHAMPTON": "WOL",
+        "SUNDERLAND": "SUN",
+        "LEEDS": "LEE"
     };
 
-    // Calculate H2H stats for the summary bar
-    let hWins = 0, draws = 0, aWins = 0, total = 0;
-    const historyGames = (h2hData || []).filter(m => m.score);
-    
-    historyGames.forEach(m => {
-        let hS = 0, aS = 0;
-        if(typeof m.score === 'string') { 
-            const parts = m.score.split("-");
-            hS = parseInt(parts[0]); aS = parseInt(parts[1]);
-        } else if (m.score) { hS = m.score.home || 0; aS = m.score.away || 0; }
+    // 2. Try to find the short code based on the full name provided by the API
+    let code = null;
+    for (const [fullName, shortCode] of Object.entries(reverseMappings)) {
+        if (norm.includes(fullName) || fullName.includes(norm)) {
+            code = shortCode;
+            break;
+        }
+    }
 
-        const histHome = normalizeName(m.home).toUpperCase();
-        const currHome = normalizeName(currentHome).toUpperCase();
-        const isHome = histHome.includes(currHome) || currHome.includes(histHome.substring(0,3));
-        
-        if (hS > aS) { isHome ? hWins++ : aWins++; }
-        else if (aS > hS) { isHome ? aWins++ : hWins++; }
-        else { draws++; }
-        total++;
-    });
+    // 3. Return the specific club logo if we found a code, otherwise default to PL logo
+    if (code && TEAM_LOGOS[code]) {
+        return TEAM_LOGOS[code];
+    }
+    
+    // Fallback if the name is already a short code
+    if (TEAM_LOGOS[norm]) return TEAM_LOGOS[norm];
+
+    return "https://media.api-sports.io/football/leagues/39.png"; 
+};
 
     let html = `
     <div class="h2h-section-title">Actual League Form</div>

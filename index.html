@@ -345,18 +345,24 @@ body {
   border: 1.5px solid var(--accent-green) !important; 
 }
 
+/* GOLDEN PILL FIXES */
 @keyframes goldPulse {
    0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
    50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); transform: scale(1.02); }
    100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
 }
-.gold-active {
+.gold-active,
+.left-row[data-status="live"] .score-pill.gold-active {
    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%) !important;
    animation: goldPulse 2s infinite !important;
    border: none !important;
 }
-.gold-active span { color: #000 !important; text-shadow: none !important; }
-.gold-active span:first-child {
+.gold-active span,
+.left-row[data-status="live"] .score-pill.gold-active span { 
+    color: #000 !important; text-shadow: none !important; 
+}
+.gold-active span:first-child,
+.left-row[data-status="live"] .score-pill.gold-active span:first-child {
    background: rgba(255,255,255,0.8) !important;
    color: #000 !important;
 }
@@ -419,7 +425,7 @@ body {
 /* === LEFT CARD (MATCHES) === */
 .left-card {
   flex-shrink: 0;
-  z-index: 60;    
+  z-index: 60;   
   width: var(--left-w); 
   background: var(--bg-card); 
   border-radius: var(--rad-lg);
@@ -534,7 +540,7 @@ body {
 
 /* === RIGHT CARD (BETS) === */
 .right-card {
-  overflow-x: auto;    
+  overflow-x: auto;   
   overflow-y: visible; 
   min-width: 0;        
   display: block;      
@@ -1851,7 +1857,18 @@ function loadData(){
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
           
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          let isGoldenScore = false; m.cells.forEach(c => { if(c.value && String(c.value).includes("-")) { if(String(c.value) === `${hScore}-${aScore}`) isGoldenScore = true; } });
+          
+          // ---- GOLDEN SCORE PILL FIX HERE ----
+          let isGoldenScore = false; 
+          // Only flag as golden if the match has actually started/has a score to avoid pre-match 0-0 golden pills
+          if(m.score && m.score.trim() !== "") {
+              m.cells.forEach(c => { 
+                  if(c.value && String(c.value).includes("-")) { 
+                      const cleanBet = String(c.value).replace(/\s/g, "");
+                      if(cleanBet === `${hScore}-${aScore}`) isGoldenScore = true; 
+                  } 
+              });
+          }
           const goldenClass = isGoldenScore ? "gold-active" : ""; 
           
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;

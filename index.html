@@ -1600,6 +1600,18 @@ img[alt="AVI"] {
     </div>
   </div>
 </div>
+
+<div class="modal-overlay" id="modalCombos" onclick="closeModal('modalCombos')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('modalCombos')">Back</button>
+      <div class="modal-title">Winning Combinations</div>
+      <div class="modal-sub">Bets that can win together</div>
+    </div>
+    <div class="modal-scroll-area" id="combosContent" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-modal);">
+      </div>
+  </div>
+</div>
  
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
@@ -1790,6 +1802,7 @@ function loadData(){
     try {
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; 
+        window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
 
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
@@ -1858,9 +1871,7 @@ function loadData(){
           
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
           
-          // ---- GOLDEN SCORE PILL FIX HERE ----
           let isGoldenScore = false; 
-          // Only flag as golden if the match has actually started/has a score to avoid pre-match 0-0 golden pills
           if(m.score && m.score.trim() !== "") {
               m.cells.forEach(c => { 
                   if(c.value && String(c.value).includes("-")) { 
@@ -1930,8 +1941,19 @@ function loadData(){
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
-        if(allLocked) { btnDiv.className = "place-bets-btn disabled"; btnDiv.innerHTML = "ALL BETS<br>ARE PLACED"; } 
-        else { btnDiv.className = "place-bets-btn"; btnDiv.innerHTML = "PLACE<br>BETS"; btnDiv.onclick = startBettingProcess; }
+        if(allLocked) { 
+            // CHANGED: Turn the button into the "Winning Combos" feature
+            btnDiv.className = "place-bets-btn"; 
+            btnDiv.style.background = "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"; // Cool Gold gradient
+            btnDiv.style.color = "#000";
+            btnDiv.innerHTML = "WINNING<br>COMBOS"; 
+            btnDiv.onclick = openCombosModal; 
+        } 
+        else { 
+            btnDiv.className = "place-bets-btn"; 
+            btnDiv.innerHTML = "PLACE<br>BETS"; 
+            btnDiv.onclick = startBettingProcess; 
+        }
         bottomGrid.appendChild(btnDiv);
 
         const labelCol = document.createElement("div"); labelCol.className = "stats-column";
@@ -1949,36 +1971,22 @@ function loadData(){
         window.globalHeaders = data.headers; applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
         
-        // ==========================================
-        // PODIUM TIE LOGIC (V4 - MONEY + MATCHES RIGHT)
-        // ==========================================
+        // PODIUM Tie Logic 
         if (data.ranking && data.ranking.length >= 3) {
-            // Sort by Money FIRST, then Matches Right
             const sorted = [...data.ranking].sort((a,b) => {
                 if(b.money !== a.money) return b.money - a.money;
                 return b.matchesRight - a.matchesRight;
             });
-            
             const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
-
-            // A "True Tie" is when Money AND MatchesRight are identical
             const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
             const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
 
             let classL = "place-2", classC = "place-1", classR = "place-3";
             let iconL = "", iconC = "👑", iconR = "💩";
 
-            if (is1stTie) {
-                classL = "place-1"; iconL = "👑"; // Shared first heights/crowns
-                iconR = "💩"; // Lone pooh
-            } else if (isLastTie) {
-                classL = "place-3"; iconL = "💩"; // Shared pooh heights/icons
-                classR = "place-3"; iconR = "💩";
-            } else {
-                // Standard scenario: One winner, one middle, one pooh
-                iconL = ""; // 2nd place gets no icon
-                iconR = "💩"; 
-            }
+            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; } 
+            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; } 
+            else { iconL = ""; iconR = "💩"; }
 
             ranking.innerHTML = `
                 <div class="podium-container">
@@ -2556,6 +2564,155 @@ let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
 let pendingBets = {}; 
 
+function openCombosModal() {
+    vibe();
+    const container = document.getElementById("combosContent");
+    container.innerHTML = "";
+    document.getElementById("modalCombos").classList.add("active");
+
+    if (!window.globalHeaders || !window.allMatches) {
+        container.innerHTML = "<div style='text-align:center; opacity:0.5;'>Data not fully loaded yet.</div>";
+        return;
+    }
+
+    const headers = window.globalHeaders;
+    const matches = window.allMatches;
+    let combosFound = [];
+
+    // Check if a column is mathematically dead
+    const isDead = (idx) => {
+        const h = headers[idx];
+        return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
+    };
+
+    // Check if a bet is an Over/Under Goals bet
+    const isGoalsBet = (bet) => {
+        let b = String(bet).toUpperCase();
+        return b.includes("GOAL") || b.includes("O ") || b.includes("U ");
+    };
+
+    // DYNAMIC AVATAR MAPPING: Automatically matches the name to the image and calculates if it's bet 1 or 2
+    const getPlayerDisplay = (idx) => {
+        const h = headers[idx];
+        const rawName = h ? h.name.trim() : "Bonus";
+        
+        // Count how many times this player's name has appeared up to this point in the sorted array
+        let count = 0;
+        for(let i = 0; i <= idx; i++) {
+            if(headers[i] && headers[i].name.trim() === rawName) {
+                count++;
+            }
+        }
+
+        // Match the correct image file based on the name
+        let imgUrl = './pepe.png'; 
+        if(rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
+        if(rawName.toLowerCase() === 'timbo') imgUrl = './timbo.png';
+
+        return { img: imgUrl, num: count };
+    };
+
+    // Find all combinations!
+    for (let i = 0; i < headers.length; i++) {
+        if (isDead(i)) continue; // Skip dead columns
+
+        for (let j = i + 1; j < headers.length; j++) {
+            if (isDead(j)) continue; // Skip dead columns
+
+            let compatible = true;
+
+            for (const m of matches) {
+                const bet1 = m.cells[i] ? m.cells[i].value : "";
+                const bet2 = m.cells[j] ? m.cells[j].value : "";
+
+                if (!bet1 || !bet2) continue; // Empty slots don't conflict
+
+                const b1 = String(bet1).toUpperCase().trim();
+                const b2 = String(bet2).toUpperCase().trim();
+
+                // If they predict the exact same thing, or one is a "Goals" bet, they are safe
+                if (b1 === b2) continue; 
+                if (isGoalsBet(b1) || isGoalsBet(b2)) continue; 
+
+                // If we get here, they picked different outcomes (e.g. ARS vs Draw)
+                compatible = false;
+                break;
+            }
+
+            if (compatible) {
+                let win1 = window.winData[i] ? (window.winData[i].value || 0) : 0;
+                let win2 = window.winData[j] ? (window.winData[j].value || 0) : 0;
+                let pp1 = window.ppData[i] ? (window.ppData[i].value || 0) : 0;
+                let pp2 = window.ppData[j] ? (window.ppData[j].value || 0) : 0;
+
+                combosFound.push({
+                    colIdx1: i,
+                    colIdx2: j,
+                    totalWin: win1 + win2,
+                    totalPP: pp1 + pp2
+                });
+            }
+        }
+    }
+
+    // Sort combinations by highest payout first
+    combosFound.sort((a, b) => b.totalWin - a.totalWin);
+
+    if (combosFound.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 10px; opacity:0.6;">
+            <div style="font-size:36px; margin-bottom:12px;">⚔️</div>
+            <div style="font-weight:800; font-size:14px;">No winning combos!</div>
+            <div style="font-size:11px; margin-top:6px;">Remaining columns all contradict each other.</div>
+        </div>`;
+        return;
+    }
+
+    // Build the UI cards for the winning combinations
+    combosFound.forEach((combo, index) => {
+        const p1 = getPlayerDisplay(combo.colIdx1);
+        const p2 = getPlayerDisplay(combo.colIdx2);
+
+        const card = document.createElement("div");
+        card.style.cssText = "background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;";
+        
+        card.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; position: relative; padding: 12px 0;">
+                ${index === 0 ? `<div style="position: absolute; top: -5px; right: -5px; background:var(--accent-green); color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:6px; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">BEST</div>` : ''}
+                
+                <div style="display: flex; align-items: center; gap: 25px;">
+                    <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                        <div style="position: relative;">
+                            <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15);">&</div>
+                    
+                    <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                        <div style="position: relative;">
+                            <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-row); border-radius: 8px; padding: 12px; margin-top: 2px;">
+                <div style="display: flex; flex-direction: column; align-items: center; border-right: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined Win</span>
+                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatGBP(combo.totalWin)}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined P.P.</span>
+                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatGBP(combo.totalPP)}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+ 
 function startBettingProcess() { 
   // 1. Check which players are fully finished (Both columns paid/locked)
   const players = ['Snackbar', 'Timbo', 'Pepe'];

@@ -1397,6 +1397,36 @@ img[alt="AVI"] {
     background: rgba(255, 255, 255, 0.9) !important;
     box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
 }
+
+/* === DAY HEADERS (Matchweek grouping) === */
+.day-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 0 0 0 6px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+.day-spacer {
+    height: 22px;
+    flex-shrink: 0;
+}
+[data-theme="retro"] .day-header {
+    color: var(--accent-green);
+    font-size: 14px;
+    letter-spacing: 1px;
+    opacity: 1;
+}
+[data-theme="candy"] .day-header {
+    color: var(--text-muted);
+    font-weight: 700;
+    opacity: 1;
+}
  
 </style>
 </head>
@@ -1842,10 +1872,24 @@ function loadData(){
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
-
         const matchCount = data.matches.length;
-
+        let currentDay = null;
         data.matches.forEach((m, idx)=>{
+          // Insert day label when the kickoff day changes (e.g. Saturday → Sunday)
+          if (m.startDay && m.startDay !== currentDay) {
+              currentDay = m.startDay;
+              const dh = document.createElement("div");
+              dh.className = "day-header";
+              dh.setAttribute("data-day", m.startDay);
+              dh.textContent = m.startDay;
+              if (isFirstLoad) { dh.classList.add("animate-enter"); dh.style.animationDelay = (idx * 0.05) + "s"; }
+              left.appendChild(dh);
+              const ds = document.createElement("div");
+              ds.className = "day-spacer";
+              ds.setAttribute("data-day", m.startDay);
+              if (isFirstLoad) { ds.classList.add("animate-enter"); ds.style.animationDelay = (idx * 0.05) + "s"; }
+              right.appendChild(ds);
+          }
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
           
@@ -2057,7 +2101,6 @@ function applyFilterLogic() {
     // 2. Row Filtering (Live)
     const leftRows = document.querySelectorAll('.left-row');
     const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
-
     leftRows.forEach((row, i) => {
         const status = row.getAttribute('data-status');
         let show = true;
@@ -2065,6 +2108,23 @@ function applyFilterLogic() {
         
         row.style.display = show ? 'grid' : 'none';
         if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
+    });
+
+    // 2b. Hide day headers whose following matches are all filtered out
+    const dayHeaders = document.querySelectorAll('#left .day-header');
+    const daySpacers = document.querySelectorAll('#right .day-spacer');
+    dayHeaders.forEach((dh, di) => {
+        let hasVisibleMatch = false;
+        let node = dh.nextElementSibling;
+        while (node && !node.classList.contains('day-header')) {
+            if (node.classList.contains('left-row') && node.style.display !== 'none') {
+                hasVisibleMatch = true;
+                break;
+            }
+            node = node.nextElementSibling;
+        }
+        dh.style.display = hasVisibleMatch ? 'flex' : 'none';
+        if (daySpacers[di]) daySpacers[di].style.display = hasVisibleMatch ? 'block' : 'none';
     });
 
     // 3. Column Filtering (Alive)

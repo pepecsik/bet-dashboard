@@ -1496,7 +1496,7 @@ img[alt="AVI"] {
 .ticker-track {
   display: flex;
   width: max-content;
-  animation: tickerScroll 60s linear infinite;
+  animation: tickerScroll 30s linear infinite;
   will-change: transform;
 }
 .ticker-track:hover { animation-play-state: paused; }
@@ -1957,7 +1957,9 @@ function loadData(){
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
         const lh = document.createElement("div"); lh.className = "left-header";
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span>></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        const remaining = data.matches.filter(m => getMatchStatusType(m) !== 'finished').length;
+        const subLabel = remaining === 0 ? 'Complete' : `${remaining} remaining`;
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
@@ -2304,7 +2306,7 @@ function buildTickerItems() {
     if (leader) {
       items.push({
         cls: 'leader',
-        html: `🏆 ${leader.name} leads · £${Number(leader.money || 0).toFixed(0)}`
+        html: `<strong>Leader:</strong> ${leader.name} · ${leader.matchesRight} pts`
       });
     }
   }

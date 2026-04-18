@@ -1474,11 +1474,87 @@ img[alt="AVI"] {
     font-weight: 700;
     opacity: 1;
 }
+
+/* ---------- Top broadcast ticker bar ---------- */
+#matchday-ticker-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #0a0a0a;
+  color: #f4f4f4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  z-index: 9999;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ticker-bar-label {
+  background: linear-gradient(90deg, #ffb400, #ff6b00);
+  color: #0a0a0a;
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+#matchday-ticker-bar #matchday-ticker {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-transform: uppercase;
+}
+#matchday-ticker-bar .ticker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 8px #ff3b30;
+  animation: tickerPulse 1.2s infinite;
+  flex-shrink: 0;
+}
+#matchday-ticker-bar .ticker-time {
+  color: #ffb400;
+  font-variant-numeric: tabular-nums;
+}
+#matchday-ticker-bar .ticker-live    { color: #ff6b6b; }
+#matchday-ticker-bar .ticker-complete{ color: #8a8a8a; font-style: italic; }
+
+/* push page content below the fixed bar */
+body { padding-top: 30px; }
+
+@media (max-width: 520px) {
+  #matchday-ticker-bar { font-size: 11px; padding: 0 8px; }
+  .ticker-bar-label    { font-size: 9.5px; padding: 3px 7px; margin-right: 8px; }
+} 
  
 </style>
 </head>
 <body>
 
+<div id="matchday-ticker-bar" role="status" aria-live="polite">
+  <span class="ticker-bar-label">JUICE BETS</span>
+  <span id="matchday-ticker" class="ticker">Loading matchweek…</span>
+</div>
+ 
 <div class="app">
   <div class="main">
     <div class="left-card" id="left"></div>
@@ -1886,7 +1962,7 @@ function loadData(){
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
         const lh = document.createElement("div"); lh.className = "left-header";
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text" id="matchday-ticker"></span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span>></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";

@@ -772,7 +772,54 @@ body {
     display: inline-block; margin-right: 6px; animation: blink 1.5s infinite ease-in-out;
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
+/* ── Matchday Ticker ──────────────────────────────────────── */
+.ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+.ticker-countdown {
+  color: var(--accent-orange);
+}
+.ticker-countdown .ticker-time {
+  color: var(--accent-green);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ticker-live {
+  color: #ef4444;
+  font-weight: 800;
+}
+.ticker-live .ticker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: tickerPulse 1.4s infinite;
+}
+.ticker-complete {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+@keyframes tickerPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0.7); }
+  70%  { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   }
+}
+/* Retro theme: green terminal vibe */
+[data-theme="retro"] .ticker-countdown { color: var(--accent-gold); }
+[data-theme="retro"] .ticker-countdown .ticker-time { color: var(--accent-green); }
+[data-theme="retro"] .ticker-live { color: #ff00ff; }
+[data-theme="retro"] .ticker-live .ticker-dot { background: #ff00ff; }
+/* Candy theme: softer colors */
+[data-theme="candy"] .ticker-countdown { color: #a4133c; }
+[data-theme="candy"] .ticker-countdown .ticker-time { color: #2dc653; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); z-index: 2100; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-modal); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; border: var(--border-light); }
@@ -1838,20 +1885,8 @@ function loadData(){
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
 
-        let nLive = 0, nUpcoming = 0;
-        data.matches.forEach(m => {
-             const st = m.status;
-             if(st.includes("'") || ["HT","1H","2H","LIVE"].includes(st)) nLive++;
-             else if(st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
-        });
-
-        const lh=document.createElement("div"); lh.className="left-header"; 
-        let statusHtml = "";
-        if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
-        if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
-        if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
-        
-        lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text">${statusHtml}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        const lh = document.createElement("div"); lh.className = "left-header";
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text" id="matchday-ticker"></span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
@@ -2060,7 +2095,8 @@ function loadData(){
                     </div>
                 </div>`;
         } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
-        
+        window.__lastMatches = data.matches;
+        updateTicker();
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
@@ -2073,7 +2109,61 @@ function getMatchStatusType(m) {
     if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
     return 'upcoming';
 }
+// ── Ticker ──────────────────────────────────────────────────
+function tickerShortMatch(name) {
+  if (!name) return '';
+  // m.match is already like "ARS - CHE" — just normalize spacing
+  return name.split('-').map(t => t.trim().toUpperCase()).join(' vs ');
+}
 
+function fmtCountdown(ms) {
+  if (ms < 60 * 1000) return '<1m';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function updateTicker() {
+  const el = document.getElementById('matchday-ticker');
+  if (!el || !window.__lastMatches) return;
+  const matches = window.__lastMatches;
+  const now = Date.now();
+
+  // 1) LIVE wins
+  const liveMatches = matches.filter(m => getMatchStatusType(m) === 'live');
+  if (liveMatches.length > 0) {
+    el.className = 'ticker ticker-live';
+    const label = liveMatches.length === 1 ? '1 match live now' : `${liveMatches.length} matches live now`;
+    el.innerHTML = `<span class="ticker-dot"></span><span>${label}</span>`;
+    return;
+  }
+
+  // 2) Upcoming countdown (needs kickoffTs from backend)
+  const upcoming = matches
+    .filter(m => getMatchStatusType(m) === 'upcoming' && m.kickoffTs && m.kickoffTs > now)
+    .sort((a, b) => a.kickoffTs - b.kickoffTs);
+
+  if (upcoming.length > 0) {
+    const nextTs = upcoming[0].kickoffTs;
+    const sameSlot = upcoming.filter(m => Math.abs(m.kickoffTs - nextTs) < 60 * 1000);
+    const countdownStr = fmtCountdown(nextTs - now);
+
+    let desc;
+    if (sameSlot.length === 1)      desc = tickerShortMatch(sameSlot[0].match);
+    else if (sameSlot.length === 2) desc = `${tickerShortMatch(sameSlot[0].match)} & ${tickerShortMatch(sameSlot[1].match)}`;
+    else                             desc = `${sameSlot.length} matches`;
+
+    el.className = 'ticker ticker-countdown';
+    el.innerHTML = `Next: <strong>${desc}</strong> in <span class="ticker-time">${countdownStr}</span>`;
+    return;
+  }
+
+  // 3) All finished
+  el.className = 'ticker ticker-complete';
+  el.innerHTML = 'Matchweek complete';
+}
 // MULTI-FILTER TOGGLE LOGIC
 function toggleFilter(type) {
     if (type === 'all') {
@@ -2605,6 +2695,7 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
 renderSkeletons(); 
 loadData(); 
 setInterval(loadData,REFRESH_MS);
+setInterval(updateTicker, 1000); // NEW: update countdown display every second
 
 document.getElementById("rankingCard").onclick=()=>{
     // NEW: Open Modal instead of toggle

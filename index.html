@@ -2939,6 +2939,12 @@ let pendingBets = {};
 // Keeps the "dead column" filter so killed bets are removed from combos.
 // =====================================================================
 
+// =====================================================================
+// Drop-in replacement for openCombosModal()
+// Matches the combo logic used in the Matchweek Preview email script.
+// Keeps the "dead column" filter so killed bets are removed from combos.
+// =====================================================================
+
 function openCombosModal() {
     vibe();
     const container = document.getElementById("combosContent");
@@ -3050,9 +3056,15 @@ function openCombosModal() {
         return;
     }
 
+    // Color per bet slot: bet 1 = blue, bet 2 = purple.
+    // (Avoiding green/red/orange so it doesn't clash with status colors.)
+    const slotColor = (num) => num === 1 ? '#3b82f6' : '#a855f7';
+
     combosFound.forEach((combo, index) => {
         const p1 = getPlayerDisplay(combo.colIdx1);
         const p2 = getPlayerDisplay(combo.colIdx2);
+        const c1 = slotColor(p1.num);
+        const c2 = slotColor(p2.num);
         const card = document.createElement("div");
         card.style.cssText = "background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;";
 
@@ -3063,8 +3075,8 @@ function openCombosModal() {
                 <div style="display: flex; align-items: center; gap: 25px;">
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
-                            <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
+                            <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c1}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: ${c1}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
                         </div>
                     </div>
 
@@ -3072,8 +3084,8 @@ function openCombosModal() {
 
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
-                            <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
+                            <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c2}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: ${c2}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
                         </div>
                     </div>
                 </div>

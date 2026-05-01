@@ -2933,6 +2933,12 @@ let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
 let pendingBets = {}; 
 
+// =====================================================================
+// Drop-in replacement for openCombosModal()
+// Matches the combo logic used in the Matchweek Preview email script.
+// Keeps the "dead column" filter so killed bets are removed from combos.
+// =====================================================================
+
 function openCombosModal() {
     vibe();
     const container = document.getElementById("combosContent");
@@ -2948,83 +2954,91 @@ function openCombosModal() {
     const matches = window.allMatches;
     let combosFound = [];
 
-    // Check if a column is mathematically dead
+    // ---- Helpers: identical to the matchweek preview ----
     const isDead = (idx) => {
         const h = headers[idx];
         return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
     };
 
-    // Check if a bet is an Over/Under Goals bet
-    const isGoalsBet = (bet) => {
-        let b = String(bet).toUpperCase();
-        return b.includes("GOAL") || b.includes("O ") || b.includes("U ");
+    const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());
+
+    const isOver = (v) => {
+        const s = String(v).toUpperCase().trim();
+        return s.indexOf('GOAL') !== -1 || /^O\s*\d/.test(s);
     };
 
-    // DYNAMIC AVATAR MAPPING: Automatically matches the name to the image and calculates if it's bet 1 or 2
+    const getOutcome = (raw, hC, aC) => {
+        const v = String(raw).toUpperCase().trim();
+        if (v === '1' || v === 'H' || v === 'HOME' || v === hC) return 'H';
+        if (v === '2' || v === 'A' || v === 'AWAY' || v === aC) return 'A';
+        if (v === 'X' || v === 'D' || v === 'DRAW') return 'X';
+        if (isScore(v)) {
+            const [h, a] = v.split(/[-:]/).map(x => parseInt(x.trim()));
+            return h > a ? 'H' : (a > h ? 'A' : 'X');
+        }
+        return null;
+    };
+
+    // Avatar/number used in the existing card UI
     const getPlayerDisplay = (idx) => {
         const h = headers[idx];
         const rawName = h ? h.name.trim() : "Bonus";
-        
-        // Count how many times this player's name has appeared up to this point in the sorted array
         let count = 0;
-        for(let i = 0; i <= idx; i++) {
-            if(headers[i] && headers[i].name.trim() === rawName) {
-                count++;
-            }
+        for (let i = 0; i <= idx; i++) {
+            if (headers[i] && headers[i].name.trim() === rawName) count++;
         }
-
-        // Match the correct image file based on the name
-        let imgUrl = './pepe.png'; 
-        if(rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
-        if(rawName.toLowerCase() === 'timbo') imgUrl = './timbo.png';
-
+        let imgUrl = './pepe.png';
+        if (rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
+        if (rawName.toLowerCase() === 'timbo')    imgUrl = './timbo.png';
         return { img: imgUrl, num: count };
     };
 
-    // Find all combinations!
+    // ---- Combo search: same rules as email ----
     for (let i = 0; i < headers.length; i++) {
-        if (isDead(i)) continue; // Skip dead columns
-
+        if (isDead(i)) continue;                       // keep dead-bet filter
         for (let j = i + 1; j < headers.length; j++) {
-            if (isDead(j)) continue; // Skip dead columns
+            if (isDead(j)) continue;                   // keep dead-bet filter
 
-            let compatible = true;
-
+            let compat = true;
             for (const m of matches) {
-                const bet1 = m.cells[i] ? m.cells[i].value : "";
-                const bet2 = m.cells[j] ? m.cells[j].value : "";
+                const v1 = m.cells[i] && m.cells[i].value;
+                const v2 = m.cells[j] && m.cells[j].value;
+                if (!v1 || !v2) continue;              // empty slot can't conflict
 
-                if (!bet1 || !bet2) continue; // Empty slots don't conflict
+                const s1 = String(v1).toUpperCase().trim();
+                const s2 = String(v2).toUpperCase().trim();
 
-                const b1 = String(bet1).toUpperCase().trim();
-                const b2 = String(bet2).toUpperCase().trim();
+                if (s1 === s2) continue;               // identical pick -> fine
+                if (isOver(s1) || isOver(s2)) continue; // over-goals -> never blocks
+                if (isScore(s1) && isScore(s2)) {       // two different correct scores -> conflict
+                    compat = false;
+                    break;
+                }
 
-                // If they predict the exact same thing, or one is a "Goals" bet, they are safe
-                if (b1 === b2) continue; 
-                if (isGoalsBet(b1) || isGoalsBet(b2)) continue; 
-
-                // If we get here, they picked different outcomes (e.g. ARS vs Draw)
-                compatible = false;
-                break;
+                const [hC, aC] = m.match.split('-').map(s => s.trim().toUpperCase());
+                const o1 = getOutcome(s1, hC, aC);
+                const o2 = getOutcome(s2, hC, aC);
+                if (o1 && o2 && o1 !== o2) {            // different H/X/A buckets
+                    compat = false;
+                    break;
+                }
             }
 
-            if (compatible) {
-                let win1 = window.winData[i] ? (window.winData[i].value || 0) : 0;
-                let win2 = window.winData[j] ? (window.winData[j].value || 0) : 0;
-                let pp1 = window.ppData[i] ? (window.ppData[i].value || 0) : 0;
-                let pp2 = window.ppData[j] ? (window.ppData[j].value || 0) : 0;
-
+            if (compat) {
+                const win1 = window.winData[i] ? (window.winData[i].value || 0) : 0;
+                const win2 = window.winData[j] ? (window.winData[j].value || 0) : 0;
+                const pp1  = window.ppData[i]  ? (window.ppData[i].value  || 0) : 0;
+                const pp2  = window.ppData[j]  ? (window.ppData[j].value  || 0) : 0;
                 combosFound.push({
                     colIdx1: i,
                     colIdx2: j,
                     totalWin: win1 + win2,
-                    totalPP: pp1 + pp2
+                    totalPP:  pp1  + pp2
                 });
             }
         }
     }
 
-    // Sort combinations by highest payout first
     combosFound.sort((a, b) => b.totalWin - a.totalWin);
 
     if (combosFound.length === 0) {
@@ -3036,18 +3050,16 @@ function openCombosModal() {
         return;
     }
 
-    // Build the UI cards for the winning combinations
     combosFound.forEach((combo, index) => {
         const p1 = getPlayerDisplay(combo.colIdx1);
         const p2 = getPlayerDisplay(combo.colIdx2);
-
         const card = document.createElement("div");
         card.style.cssText = "background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;";
-        
+
         card.innerHTML = `
             <div style="display: flex; justify-content: center; align-items: center; position: relative; padding: 12px 0;">
                 ${index === 0 ? `<div style="position: absolute; top: -5px; right: -5px; background:var(--accent-green); color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:6px; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">BEST</div>` : ''}
-                
+
                 <div style="display: flex; align-items: center; gap: 25px;">
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
@@ -3055,9 +3067,9 @@ function openCombosModal() {
                             <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
                         </div>
                     </div>
-                    
+
                     <div style="font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15);">&</div>
-                    
+
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
                             <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
@@ -3066,7 +3078,7 @@ function openCombosModal() {
                     </div>
                 </div>
             </div>
-            
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-row); border-radius: 8px; padding: 12px; margin-top: 2px;">
                 <div style="display: flex; flex-direction: column; align-items: center; border-right: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined Win</span>

@@ -1948,23 +1948,20 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; 
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
-
+        window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
-
         const lh = document.createElement("div"); lh.className = "left-header";
         const remaining = data.matches.filter(m => getMatchStatusType(m) !== 'finished').length;
         const subLabel = remaining === 0 ? 'Complete' : `${remaining} remaining`;
         lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
-
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
@@ -1978,7 +1975,7 @@ function loadData(){
            else if(h.status==='red') p.classList.add("status-red");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
-        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
+        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
         data.matches.forEach((m, idx)=>{
@@ -1999,73 +1996,70 @@ function loadData(){
           }
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-          
+
           const matchStatusType = getMatchStatusType(m);
-          const lr=document.createElement("div"); 
-          lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; 
-          lr.style.cursor="pointer"; 
-          lr.onclick = function() { openModal(m); }; 
+          const lr=document.createElement("div");
+          lr.className="left-row";
+          lr.style.gridTemplateColumns="1fr 90px";
+          lr.style.cursor="pointer";
+          lr.onclick = function() { openModal(m); };
           lr.setAttribute('data-status', matchStatusType);
-          
+
           if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
-          
+
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live = matchStatusType === 'live';
-          
+
           const matchMinute = parseInt(m.status.replace("'", ""));
           const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
-
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
-          
+
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          
-          let isGoldenScore = false; 
+
+          let isGoldenScore = false;
           if(m.score && m.score.trim() !== "") {
-              m.cells.forEach(c => { 
-                  if(c.value && String(c.value).includes("-")) { 
+              m.cells.forEach(c => {
+                  if(c.value && String(c.value).includes("-")) {
                       const cleanBet = String(c.value).replace(/\s/g, "");
-                      if(cleanBet === `${hScore}-${aScore}`) isGoldenScore = true; 
-                  } 
+                      if(cleanBet === `${hScore}-${aScore}`) isGoldenScore = true;
+                  }
               });
           }
-          const goldenClass = isGoldenScore ? "gold-active" : ""; 
-          
+          const goldenClass = isGoldenScore ? "gold-active" : "";
+
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
-
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
-          
+
           m.cells.forEach((c, cellIndex)=>{
-              const el=document.createElement("div"); 
-              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; 
+              const el=document.createElement("div");
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               el.setAttribute('data-col-idx', cellIndex);
-              
+
               if(c.value){
                   el.textContent=c.value;
-                  let color = c.color || '#262a30'; 
+                  let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  el.style.setProperty('--bet-bg', color); 
-                  el.style.backgroundColor = color; 
-
-                  const headerInfo = data.headers[cellIndex]; 
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+                  const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-                  
+
                   if(live && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase(); 
+                      let bet = String(c.value).toUpperCase();
                       let isWinning = false;
-                      if(bet.includes("-")) { 
-                          let [bH, bA] = bet.split("-").map(Number); 
-                          if(bH === hScore && bA === aScore) isWinning = true; 
-                      } else { 
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; 
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; 
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; 
+                      if(bet.includes("-")) {
+                          let [bH, bA] = bet.split("-").map(Number);
+                          if(bH === hScore && bA === aScore) isWinning = true;
+                      } else {
+                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
                       }
-                      
+
                       if(isWinning) {
                           if(isClinchTime) el.classList.add("sweat-clinch");
                           else el.classList.add("sweat-active");
@@ -2076,12 +2070,12 @@ function loadData(){
           });
           right.appendChild(rr);
         });
-
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
+        // -------- Bottom action button: PLACE BETS / WINNING COMBOS / NO COMBOS POSSIBLE --------
         let allLocked = true; let activeColsFound = false;
         if(data.headers && window.winData) {
             data.headers.forEach((h, i) => {
@@ -2092,37 +2086,44 @@ function loadData(){
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
-        if(allLocked) { 
-            // CHANGED: Turn the button into the "Winning Combos" feature
-            btnDiv.className = "place-bets-btn"; 
-            btnDiv.style.background = "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"; // Cool Gold gradient
-            btnDiv.style.color = "#000";
-            btnDiv.innerHTML = "WINNING<br>COMBOS"; 
-            btnDiv.onclick = openCombosModal; 
-        } 
-        else { 
-            btnDiv.className = "place-bets-btn"; 
-            btnDiv.innerHTML = "PLACE<br>BETS"; 
-            btnDiv.onclick = startBettingProcess; 
+        btnDiv.className = "place-bets-btn";
+
+        if(allLocked) {
+            if(hasAnyCombos()) {
+                // Blue — same hue as the bet-1 avatar in the combos modal
+                btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "WINNING<br>COMBOS";
+                btnDiv.onclick = openCombosModal;
+            } else {
+                // Purple — same hue as the bet-2 avatar in the combos modal
+                btnDiv.style.background = "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "NO COMBOS<br>POSSIBLE";
+                btnDiv.onclick = openCombosModal; // still opens, modal already handles the empty state
+            }
+        } else {
+            // Default green PLACE BETS — keeps original .place-bets-btn styling
+            btnDiv.innerHTML = "PLACE<br>BETS";
+            btnDiv.onclick = startBettingProcess;
         }
         bottomGrid.appendChild(btnDiv);
+        // ----------------------------------------------------------------------------------------
 
         const labelCol = document.createElement("div"); labelCol.className = "stats-column";
         ["BET","WIN","WIN PP"].forEach(l => { const lab = document.createElement("div"); lab.className = "left-label"; lab.textContent = l; labelCol.appendChild(lab); });
         bottomGrid.appendChild(labelCol);
         left.appendChild(bottomGrid);
-
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
           right.appendChild(rr);
         });
-
-        window.globalHeaders = data.headers; applyFilterLogic();
+        applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        
-        // PODIUM Tie Logic 
+
+        // PODIUM Tie Logic
         if (data.ranking && data.ranking.length >= 3) {
             const sorted = [...data.ranking].sort((a,b) => {
                 if(b.money !== a.money) return b.money - a.money;
@@ -2131,14 +2132,11 @@ function loadData(){
             const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
             const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
             const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
-
             let classL = "place-2", classC = "place-1", classR = "place-3";
             let iconL = "", iconC = "👑", iconR = "💩";
-
-            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; } 
-            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; } 
+            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
+            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
             else { iconL = ""; iconR = "💩"; }
-
             ranking.innerHTML = `
                 <div class="podium-container">
                     <div class="podium-place ${classL}">
@@ -2933,6 +2931,61 @@ let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
 let pendingBets = {}; 
 
+// =====================================================================
+// 1) Helper — paste this anywhere alongside openCombosModal().
+//    Returns true the moment it finds one compatible pair, otherwise false.
+// =====================================================================
+function hasAnyCombos() {
+    if (!window.globalHeaders || !window.allMatches) return false;
+    const headers = window.globalHeaders;
+    const matches = window.allMatches;
+ 
+    const isDead = (idx) => {
+        const h = headers[idx];
+        return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
+    };
+    const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());
+    const isOver  = (v) => {
+        const s = String(v).toUpperCase().trim();
+        return s.indexOf('GOAL') !== -1 || /^O\s*\d/.test(s);
+    };
+    const getOutcome = (raw, hC, aC) => {
+        const v = String(raw).toUpperCase().trim();
+        if (v === '1' || v === 'H' || v === 'HOME' || v === hC) return 'H';
+        if (v === '2' || v === 'A' || v === 'AWAY' || v === aC) return 'A';
+        if (v === 'X' || v === 'D' || v === 'DRAW') return 'X';
+        if (isScore(v)) {
+            const [h, a] = v.split(/[-:]/).map(x => parseInt(x.trim()));
+            return h > a ? 'H' : (a > h ? 'A' : 'X');
+        }
+        return null;
+    };
+ 
+    for (let i = 0; i < headers.length; i++) {
+        if (isDead(i)) continue;
+        for (let j = i + 1; j < headers.length; j++) {
+            if (isDead(j)) continue;
+            let compat = true;
+            for (const m of matches) {
+                const v1 = m.cells[i] && m.cells[i].value;
+                const v2 = m.cells[j] && m.cells[j].value;
+                if (!v1 || !v2) continue;
+                const s1 = String(v1).toUpperCase().trim();
+                const s2 = String(v2).toUpperCase().trim();
+                if (s1 === s2) continue;
+                if (isOver(s1) || isOver(s2)) continue;
+                if (isScore(s1) && isScore(s2)) { compat = false; break; }
+                const [hC, aC] = m.match.split('-').map(s => s.trim().toUpperCase());
+                const o1 = getOutcome(s1, hC, aC);
+                const o2 = getOutcome(s2, hC, aC);
+                if (o1 && o2 && o1 !== o2) { compat = false; break; }
+            }
+            if (compat) return true; // early exit — at least one combo exists
+        }
+    }
+    return false;
+}
+ 
 // =====================================================================
 // Drop-in replacement for openCombosModal()
 // Matches the combo logic used in the Matchweek Preview email script.

@@ -1579,6 +1579,29 @@ img[alt="AVI"] {
   #matchday-ticker-bar { font-size: 11px; }
   .ticker-content { gap: 28px; padding-right: 36px; }
 } 
+
+/* ===== Modal skeleton (brief loading shimmer) ===== */
+.modal-skeleton {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+}
+.modal-skeleton .ms-block {
+  background: var(--bg-soft);
+  border-radius: 8px;
+  animation: darkBreathing 1.5s infinite ease-in-out;
+  width: 100%;
+}
+.modal-card.is-loading .modal-skeleton {
+  display: flex;
+}
+.modal-card.is-loading #viewStats,
+.modal-card.is-loading #viewLineups,
+.modal-card.is-loading #viewSummary,
+.modal-card.is-loading #viewH2h {
+  display: none !important;
+}
  
 </style>
 </head>
@@ -1631,6 +1654,14 @@ img[alt="AVI"] {
       <button class="tab-btn" id="tabH2h" onclick="switchTab('h2h')">H2H</button>
     </div>
     <div class="modal-scroll-area">
+       <div class="modal-skeleton">
+         <div class="ms-block" style="height: 50px;"></div>
+         <div class="ms-block" style="height: 24px; width: 60%;"></div>
+         <div class="ms-block" style="height: 24px; width: 50%;"></div>
+         <div class="ms-block" style="height: 80px;"></div>
+         <div class="ms-block" style="height: 40px;"></div>
+         <div class="ms-block" style="height: 40px;"></div>
+       </div>
        <div id="viewStats">
          <div id="consensusArea"></div>
          <div class="event-list-row" id="goalsArea"></div>
@@ -2691,6 +2722,13 @@ function openModal(m){
   try {
       vibe(); 
       document.getElementById('playerPopup').style.display='none';
+
+      // Brief skeleton state — hides stale content during the slide-up
+      const _modalCard = document.querySelector('#matchModal .modal-card');
+      if (_modalCard) {
+        _modalCard.classList.add('is-loading');
+        setTimeout(() => _modalCard.classList.remove('is-loading'), 200);
+      }
       
       const [hCode, aCode] = m.match.split("-").map(x => x.trim());
       const s = m.stats || {};

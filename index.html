@@ -1105,13 +1105,54 @@ img[alt="AVI"] {
     transform: scale(1.0) !important; 
 }
 
-/* DOTS */
-.form-dots-row { display: flex; gap: 5px; margin-top: 12px;}
+/* DOTS + form game stack (logo + score above dot) */
+.form-dots-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  align-items: flex-end;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.form-game-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;       /* let it shrink to content */
+  flex-shrink: 1;
+}
+.form-opp-logo {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+.form-score {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.form-score {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.form-opp-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
 .big-dot { width: 10px; height: 10px; border-radius: 50%; }
-.dot-W { background: var(--accent-green); } 
-.dot-D { background: #aaa; } 
+.dot-W { background: var(--accent-green); }
+.dot-D { background: #aaa; }
 .dot-L { background: #ff4d4d; }
-.dot-\? { background: #2b3038; border: 1px solid #444; box-shadow: inset 0 0 2px #000; } 
+.dot-\? { background: #2b3038; border: 1px solid #444; box-shadow: inset 0 0 2px #000; }
 
 /* 2. SUMMARY BAR (Orange Draw) */
 .h2h-summary-box { background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
@@ -2796,7 +2837,7 @@ function openModal(m){
           }); 
       }, 50);
       
-      renderH2H(m.stats.h2h, hCode, aCode);
+      renderH2H(m.stats.h2h, hCode, aCode, m.stats.form);
 
       // LINEUPS and SUBS logic...
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
@@ -3368,9 +3409,9 @@ function submitAllBets() {
   });
 }
 
-function renderH2H(h2hData, currentHome, currentAway) {
+function renderH2H(h2hData, currentHome, currentAway, formData) {
     const el = document.getElementById("h2hList");
-    
+
     const findFormInTable = (code) => {
         if(!tableCache || !code) return "??????";
         const cleanCode = code.trim().toUpperCase();
@@ -3391,8 +3432,33 @@ function renderH2H(h2hData, currentHome, currentAway) {
         return found ? found.form : "?????";
     };
 
-    const hForm = findFormInTable(currentHome).split('');
-    const aForm = findFormInTable(currentAway).split('');
+    // Detailed form (with opponents + scores) comes from the API via the script.
+    // Fall back to plain W/L/D dots from the league table if not available yet.
+    const detailedHForm = (formData && formData.home) ? formData.home : [];
+    const detailedAForm = (formData && formData.away) ? formData.away : [];
+    const hFormFallback = detailedHForm.length === 0 ? findFormInTable(currentHome).split('') : null;
+    const aFormFallback = detailedAForm.length === 0 ? findFormInTable(currentAway).split('') : null;
+
+    const renderFormStack = (detailed, fallback) => {
+        if (detailed && detailed.length > 0) {
+            // API returns newest-first; reverse so oldest is leftmost, newest is rightmost.
+            return [...detailed].reverse().map(f => `
+                <div class="form-game-stack" title="${f.isHome ? 'H' : 'A'} vs ${f.opponent} (${f.score})">
+                    <div class="form-score">${f.score}</div>
+                    <img src="${f.opponentLogo}" class="form-opp-logo" alt="${f.opponent}" onerror="this.style.visibility='hidden'">
+                    <div class="big-dot dot-${f.result}"></div>
+                </div>
+            `).join('');
+        }
+        // Fallback: same vertical layout but with the logo/score hidden so spacing matches
+        return (fallback || []).map(c => `
+            <div class="form-game-stack">
+                <div class="form-score" style="visibility:hidden;">-</div>
+                <div class="form-opp-logo" style="visibility:hidden;"></div>
+                <div class="big-dot dot-${c}"></div>
+            </div>
+        `).join('');
+    };
 
     // --- FIXED LOGO LOGIC WITH SPECIAL STYLING ---
     const getLogoHtml = (name) => {
@@ -3455,12 +3521,12 @@ function renderH2H(h2hData, currentHome, currentAway) {
     <div class="form-container">
         <div class="form-team-col">
             <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentHome)}</div>
-            <div class="form-dots-row">${hForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
+            <div class="form-dots-row">${renderFormStack(detailedHForm, hFormFallback)}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 10px;"></div>
         <div class="form-team-col">
             <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentAway)}</div>
-            <div class="form-dots-row">${aForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
+            <div class="form-dots-row">${renderFormStack(detailedAForm, aFormFallback)}</div>
         </div>
     </div>`;
 

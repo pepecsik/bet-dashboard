@@ -2687,6 +2687,55 @@ function showPlayerStats(name, stats, events) {
     pop.style.display = "block";
 }
 
+// === Live win probability heuristic (score + minute + xG) ===
+function calculateLiveProbability(m) {
+  if (!m || !m.status) return null;
+  const isLive = m.status.includes("'") || m.status === "HT";
+  if (!isLive) return null;
+
+  let minute;
+  if (m.status === "HT") minute = 45;
+  else minute = parseInt(m.status.replace("'", "")) || 0;
+
+  const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x) || 0);
+  const goalDiff = hScore - aScore;
+  const timeProgress = Math.min(minute / 90, 1);
+
+  let h, d, a;
+  if (goalDiff > 0) {
+    const lock = Math.min(0.5, goalDiff * 0.20 + timeProgress * 0.35);
+    h = Math.min(0.95, 0.50 + lock);
+    a = Math.max(0.02, 0.20 - lock * 0.5);
+    d = Math.max(0.03, 1 - h - a);
+  } else if (goalDiff < 0) {
+    const lock = Math.min(0.5, (-goalDiff) * 0.20 + timeProgress * 0.35);
+    a = Math.min(0.95, 0.50 + lock);
+    h = Math.max(0.02, 0.20 - lock * 0.5);
+    d = Math.max(0.03, 1 - h - a);
+  } else {
+    // Tied — draw probability climbs with time, slight home edge
+    d = Math.min(0.60, 0.25 + timeProgress * 0.35);
+    h = (1 - d) / 2 + 0.03;
+    a = (1 - d) / 2 - 0.03;
+  }
+
+  // xG nudges the result up to ±10%
+  const xgH = parseFloat(m.stats && m.stats.h_xg) || 0;
+  const xgA = parseFloat(m.stats && m.stats.a_xg) || 0;
+  if (xgH > 0 || xgA > 0) {
+    const adj = Math.max(-0.10, Math.min(0.10, (xgH - xgA) * 0.05));
+    h += adj;
+    a -= adj;
+  }
+
+  // Normalise to sum to 1
+  h = Math.max(0.01, h);
+  d = Math.max(0.01, d);
+  a = Math.max(0.01, a);
+  const total = h + d + a;
+  return { home: h / total, draw: d / total, away: a / total };
+}
+ 
 function openModal(m){
   try {
       vibe(); 
@@ -2783,7 +2832,31 @@ function openModal(m){
               </div>`;
           }
       }
-      document.getElementById("consensusArea").innerHTML = consensusHTML;
+      // Live win probability bar (live matches only)
+      let liveProbHTML = "";
+      const liveProbs = calculateLiveProbability(m);
+      if (liveProbs) {
+        const hP = Math.round(liveProbs.home * 100);
+        const dP = Math.round(liveProbs.draw * 100);
+        const aP = Math.round(liveProbs.away * 100);
+        liveProbHTML = `
+          <div style="margin-bottom:15px; background:rgba(74,222,128,0.06); padding:10px; border-radius:8px; border:1px solid rgba(74,222,128,0.25);">
+            <div style="font-size:9px; font-weight:800; color:var(--accent-green); text-transform:uppercase; margin-bottom:6px; letter-spacing:1px; display:flex; align-items:center; gap:6px;">
+              <span class="live-dot"></span> Live Win Probability
+            </div>
+            <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#222; margin-bottom:6px;">
+              <div class="animate-bar" style="width:0%; background:var(--accent-green);" data-width="${hP}%"></div>
+              <div class="animate-bar" style="width:0%; background:var(--accent-orange);" data-width="${dP}%"></div>
+              <div class="animate-bar" style="width:0%; background:#ff4d4d;" data-width="${aP}%"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; opacity:0.85;">
+              <span style="color:var(--accent-green)">${hP}% ${hCode}</span>
+              <span style="color:var(--accent-orange)">${dP}% Draw</span>
+              <span style="color:#ff4d4d">${aP}% ${aCode}</span>
+            </div>
+          </div>`;
+      }
+      document.getElementById("consensusArea").innerHTML = liveProbHTML + consensusHTML;
       
       let hG=[], aG=[];
       let goalsMap = {}; 

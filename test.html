@@ -1579,29 +1579,6 @@ img[alt="AVI"] {
   #matchday-ticker-bar { font-size: 11px; }
   .ticker-content { gap: 28px; padding-right: 36px; }
 } 
-
-/* ===== Modal skeleton (brief loading shimmer) ===== */
-.modal-skeleton {
-  display: none;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0;
-}
-.modal-skeleton .ms-block {
-  background: var(--bg-soft);
-  border-radius: 8px;
-  animation: darkBreathing 1.5s infinite ease-in-out;
-  width: 100%;
-}
-.modal-card.is-loading .modal-skeleton {
-  display: flex;
-}
-.modal-card.is-loading #viewStats,
-.modal-card.is-loading #viewLineups,
-.modal-card.is-loading #viewSummary,
-.modal-card.is-loading #viewH2h {
-  display: none !important;
-}
  
 </style>
 </head>
@@ -1654,14 +1631,6 @@ img[alt="AVI"] {
       <button class="tab-btn" id="tabH2h" onclick="switchTab('h2h')">H2H</button>
     </div>
     <div class="modal-scroll-area">
-       <div class="modal-skeleton">
-         <div class="ms-block" style="height: 50px;"></div>
-         <div class="ms-block" style="height: 24px; width: 60%;"></div>
-         <div class="ms-block" style="height: 24px; width: 50%;"></div>
-         <div class="ms-block" style="height: 80px;"></div>
-         <div class="ms-block" style="height: 40px;"></div>
-         <div class="ms-block" style="height: 40px;"></div>
-       </div>
        <div id="viewStats">
          <div id="consensusArea"></div>
          <div class="event-list-row" id="goalsArea"></div>
@@ -2723,13 +2692,6 @@ function openModal(m){
       vibe(); 
       document.getElementById('playerPopup').style.display='none';
 
-      // Brief skeleton state — hides stale content during the slide-up
-      const _modalCard = document.querySelector('#matchModal .modal-card');
-      if (_modalCard) {
-        _modalCard.classList.add('is-loading');
-        setTimeout(() => _modalCard.classList.remove('is-loading'), 200);
-      }
-
       // Reset tab visibility (in case openPreMatchStats hid some earlier)
       ['tabStats','tabLineups','tabSummary','tabH2h'].forEach(id => {
         const el = document.getElementById(id);
@@ -2996,35 +2958,95 @@ function openTable(){
 }
 function closeModal(id){document.getElementById(id).classList.remove("active")}
  
-// === Swipe between matches in the modal ===
+// === Swipe between matches in the modal (carousel-style) ===
 (function setupModalSwipe() {
   const card = document.querySelector('#matchModal .modal-card');
   if (!card) return;
-  let startX = 0, startY = 0, tracking = false;
-  const SWIPE_THRESHOLD = 60;       // min horizontal px
-  const VERTICAL_LIMIT  = 1.5;      // dx must be 1.5× dy to count as horizontal
+
+  let startX = 0, startY = 0;
+  let currentDx = 0;
+  let mode = null;                         // null | 'horizontal' | 'vertical'
+  const ACTIVATE_PX = 10;                  // movement before we commit to a direction
+  const SWIPE_RATIO = 0.3;                 // fraction of card width to trigger swap
+  const SLIDE_MS = 220;
+
+  const setX = (px) => {
+    card.style.transform = `translate3d(${px}px, 0, 0)`;
+  };
+  const reset = () => {
+    card.style.transition = `transform ${SLIDE_MS}ms ease`;
+    card.style.transform = '';             // CSS rule restores translateY(0)
+  };
 
   card.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
-    tracking = true;
+    if (!document.getElementById('matchModal').classList.contains('active')) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    currentDx = 0;
+    mode = null;
   }, { passive: true });
 
-  card.addEventListener('touchend', (e) => {
-    if (!tracking) return;
-    tracking = false;
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < SWIPE_THRESHOLD) return;             // not far enough
-    if (Math.abs(dx) < Math.abs(dy) * VERTICAL_LIMIT) return; // mostly vertical → ignore
+  card.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+
+    if (mode === null) {
+      if (Math.abs(dx) > ACTIVATE_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        mode = 'horizontal';
+        card.style.transition = 'none';     // follow the finger 1:1
+      } else if (Math.abs(dy) > ACTIVATE_PX) {
+        mode = 'vertical';                  // give up — normal scroll
+      }
+    }
+
+    if (mode === 'horizontal') {
+      currentDx = dx;
+      setX(dx);
+    }
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    if (mode !== 'horizontal') { mode = null; return; }
+    mode = null;
+
+    const cardW = card.offsetWidth;
+    const triggerPx = cardW * SWIPE_RATIO;
     const matches = window.allMatches || [];
     const cur = window._currentMatchIndex;
-    if (cur === undefined || cur < 0) return;
-    const next = dx < 0 ? cur + 1 : cur - 1;
-    if (next < 0 || next >= matches.length) return;
-    vibe();
-    openModal(matches[next]);
+    const dir = currentDx < 0 ? 1 : -1;
+    const target = (cur === undefined || cur < 0) ? -1 : cur + dir;
+    const canMove = Math.abs(currentDx) >= triggerPx
+                 && target >= 0 && target < matches.length;
+
+    if (!canMove) {
+      reset();                              // bounce back
+      return;
+    }
+
+    // Slide the card off-screen in the swipe direction
+    card.style.transition = `transform ${SLIDE_MS}ms ease`;
+    setX(currentDx < 0 ? -cardW : cardW);
+
+    setTimeout(() => {
+      // Render the new match's content (card is off-screen, user sees nothing)
+      openModal(matches[target]);
+      // Jump to the opposite side without animation
+      card.style.transition = 'none';
+      setX(currentDx < 0 ? cardW : -cardW);
+      // Force reflow so the next transition actually animates
+      void card.offsetWidth;
+      // Slide to centre
+      card.style.transition = `transform ${SLIDE_MS}ms ease`;
+      card.style.transform = '';
+      vibe();
+    }, SLIDE_MS);
+  }, { passive: true });
+
+  card.addEventListener('touchcancel', () => {
+    if (mode === 'horizontal') reset();
+    mode = null;
   }, { passive: true });
 })();
  

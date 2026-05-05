@@ -772,7 +772,54 @@ body {
     display: inline-block; margin-right: 6px; animation: blink 1.5s infinite ease-in-out;
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
+/* ── Matchday Ticker ──────────────────────────────────────── */
+.ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+.ticker-countdown {
+  color: var(--accent-orange);
+}
+.ticker-countdown .ticker-time {
+  color: var(--accent-green);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ticker-live {
+  color: #ef4444;
+  font-weight: 800;
+}
+.ticker-live .ticker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: tickerPulse 1.4s infinite;
+}
+.ticker-complete {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+@keyframes tickerPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0.7); }
+  70%  { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   }
+}
+/* Retro theme: green terminal vibe */
+[data-theme="retro"] .ticker-countdown { color: var(--accent-gold); }
+[data-theme="retro"] .ticker-countdown .ticker-time { color: var(--accent-green); }
+[data-theme="retro"] .ticker-live { color: #ff00ff; }
+[data-theme="retro"] .ticker-live .ticker-dot { background: #ff00ff; }
+/* Candy theme: softer colors */
+[data-theme="candy"] .ticker-countdown { color: #a4133c; }
+[data-theme="candy"] .ticker-countdown .ticker-time { color: #2dc653; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); z-index: 2100; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-overlay.active { opacity: 1; pointer-events: all; }
 .modal-card { width: 90%; max-width: 400px; background: var(--bg-modal); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; display: flex; flex-direction: column; max-height: 85vh; border: var(--border-light); }
@@ -1055,16 +1102,42 @@ img[alt="TOT"] {
 }
 img[alt="AVI"] { 
     /* Increased from 1.6 to 2.2 to fix the size issue */
-    transform: scale(2.2) !important; 
+    transform: scale(1.0) !important; 
 }
 
-/* DOTS */
-.form-dots-row { display: flex; gap: 5px; margin-top: 12px;}
+/* DOTS + form game stack (logo + score above dot) */
+.form-dots-row {
+  display: flex;
+  gap: 10px;                /* dots are now further apart */
+  margin-top: 12px;
+  align-items: flex-end;
+  justify-content: center;
+}
+.form-game-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 22px;
+}
+.form-score {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.form-opp-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
 .big-dot { width: 10px; height: 10px; border-radius: 50%; }
-.dot-W { background: var(--accent-green); } 
-.dot-D { background: #aaa; } 
+.dot-W { background: var(--accent-green); }
+.dot-D { background: #aaa; }
 .dot-L { background: #ff4d4d; }
-.dot-\? { background: #2b3038; border: 1px solid #444; box-shadow: inset 0 0 2px #000; } 
+.dot-\? { background: #2b3038; border: 1px solid #444; box-shadow: inset 0 0 2px #000; }
 
 /* 2. SUMMARY BAR (Orange Draw) */
 .h2h-summary-box { background: var(--bg-soft); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
@@ -1397,11 +1470,112 @@ img[alt="AVI"] {
     background: rgba(255, 255, 255, 0.9) !important;
     box-shadow: 0 8px 20px rgba(45, 198, 83, 0.25);
 }
+
+/* === DAY HEADERS (Matchweek grouping) === */
+.day-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 0 0 0 6px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+.day-spacer {
+    height: 22px;
+    flex-shrink: 0;
+}
+[data-theme="retro"] .day-header {
+    color: var(--accent-green);
+    font-size: 14px;
+    letter-spacing: 1px;
+    opacity: 1;
+}
+[data-theme="candy"] .day-header {
+    color: var(--text-muted);
+    font-weight: 700;
+    opacity: 1;
+}
+
+/* ---------- Top broadcast ticker bar (scrolling marquee) ---------- */
+#matchday-ticker-bar {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  background: #0a0a0a;
+  color: #f4f4f4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 100;
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: tickerScroll 20s linear infinite;
+  will-change: transform;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-content {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 48px;
+  gap: 36px;
+  text-transform: uppercase;
+}
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ticker-item .ticker-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 8px #ff3b30;
+  animation: tickerPulse 1.2s infinite;
+  flex-shrink: 0;
+}
+.ticker-item .ticker-time { color: #ffb400; font-variant-numeric: tabular-nums; font-weight: 800; }
+.ticker-item.live      { color: #ff6b6b; font-weight: 800; }
+.ticker-item.leader    { color: #ffd166; }
+.ticker-item.streak    { color: #ff8c42; }
+.ticker-item.bust      { color: #9aa0a6; }
+.ticker-item.accuracy  { color: #64dfdf; }
+.ticker-item.today     { color: #f4f4f4; }
+.ticker-item.complete  { color: #8a8a8a; font-style: italic; }
+.ticker-sep { opacity: 0.3; font-weight: 800; color: #f4f4f4; }
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (max-width: 520px) {
+  #matchday-ticker-bar { font-size: 11px; }
+  .ticker-content { gap: 28px; padding-right: 36px; }
+} 
  
 </style>
 </head>
 <body>
 
+<div id="matchday-ticker-bar" role="status" aria-live="polite">
+  <div class="ticker-track">
+    <div class="ticker-content" id="matchday-ticker">Loading matchweek…</div>
+    <div class="ticker-content" id="matchday-ticker-clone" aria-hidden="true"></div>
+  </div>
+</div>
+ 
 <div class="app">
   <div class="main">
     <div class="left-card" id="left"></div>
@@ -1676,27 +1850,27 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-const TEAM_LOGOS={
- ARS:"https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/200px-Arsenal_FC.svg.png",
- AVI:"https://1000logos.net/wp-content/uploads/2022/05/Aston-Villa-Logo.png",
- BOU:"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/AFC_Bournemouth_%282013%29.svg/200px-AFC_Bournemouth_%282013%29.svg.png",
- BRE:"https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Brentford_FC_crest.svg/200px-Brentford_FC_crest.svg.png",
- BRI:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_logo.svg/200px-Brighton_%26_Hove_Albion_logo.svg.png",
- BUR:"https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Burnley_FC_Logo.svg/200px-Burnley_FC_Logo.svg.png",
- CHE:"https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/200px-Chelsea_FC.svg.png",
- CPA:"https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/Crystal_Palace_FC_logo_%282022%29.svg/200px-Crystal_Palace_FC_logo_%282022%29.svg.png",
- EVE:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/200px-Everton_FC_logo.svg.png",
- FUL:"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Fulham_FC_%28shield%29.svg/200px-Fulham_FC_%28shield%29.svg.png",
- LEE:"https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Leeds_United_F.C._logo.svg/200px-Leeds_United_F.C._logo.svg.png",
- LIV:"https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/200px-Liverpool_FC.svg.png",
- CTY:"https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/200px-Manchester_City_FC_badge.svg.png",
- MAN:"https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/200px-Manchester_United_FC_crest.svg.png",
- NWC:"https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Newcastle_United_Logo.svg/200px-Newcastle_United_Logo.svg.png",
- NOT:"https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/Nottingham_Forest_F.C._logo.svg/960px-Nottingham_Forest_F.C._logo.svg.png",
- SUN:"https://1000logos.net/wp-content/uploads/2020/09/Sunderland-logo.png",
- TOT:"https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/200px-Tottenham_Hotspur.svg.png",
- WHA:"https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/West_Ham_United_FC_logo.svg/200px-West_Ham_United_FC_logo.svg.png",
- WOL:"https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/200px-Wolverhampton_Wanderers.svg.png"
+const TEAM_LOGOS = {
+  ARS: "https://media.api-sports.io/football/teams/42.png",
+  AVI: "https://media.api-sports.io/football/teams/66.png",
+  BOU: "https://media.api-sports.io/football/teams/35.png",
+  BRE: "https://media.api-sports.io/football/teams/55.png",
+  BRI: "https://media.api-sports.io/football/teams/51.png",
+  BUR: "https://media.api-sports.io/football/teams/44.png",
+  CHE: "https://media.api-sports.io/football/teams/49.png",
+  CPA: "https://media.api-sports.io/football/teams/52.png",
+  EVE: "https://media.api-sports.io/football/teams/45.png",
+  FUL: "https://media.api-sports.io/football/teams/36.png",
+  LEE: "https://media.api-sports.io/football/teams/63.png",
+  LIV: "https://media.api-sports.io/football/teams/40.png",
+  CTY: "https://media.api-sports.io/football/teams/50.png",
+  MAN: "https://media.api-sports.io/football/teams/33.png",
+  NWC: "https://media.api-sports.io/football/teams/34.png",
+  NOT: "https://media.api-sports.io/football/teams/65.png",
+  SUN: "https://media.api-sports.io/football/teams/746.png",
+  TOT: "https://media.api-sports.io/football/teams/47.png",
+  WHA: "https://media.api-sports.io/football/teams/48.png",
+  WOL: "https://media.api-sports.io/football/teams/39.png"
 };
 
 // HELPER: GET TEAM RANK FROM TABLE CACHE
@@ -1750,7 +1924,6 @@ function renderTeam(raw){
       let style=""; 
       if(code==="TOT") style="background:white;border-radius:50%;padding:3px;"; 
       if(code==="SUN") style="transform:scale(1.35);"; 
-      if(code==="AVI") style="transform:scale(1.3);"; 
       imgHtml = `<img src="${logo}" alt="${code}" class="team-logo" style="${style}" onerror="this.outerHTML='<span class=team-fallback>${code}</span>'">`;
   }
   
@@ -1801,33 +1974,20 @@ function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try {
         window.allMatches = data.matches || [];
-        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : []; 
+        window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
-
+        window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
-
-        let nLive = 0, nUpcoming = 0;
-        data.matches.forEach(m => {
-             const st = m.status;
-             if(st.includes("'") || ["HT","1H","2H","LIVE"].includes(st)) nLive++;
-             else if(st !== "FT" && st !== "AET" && st !== "PEN") nUpcoming++;
-        });
-
-        const lh=document.createElement("div"); lh.className="left-header"; 
-        let statusHtml = "";
-        if(nLive > 0) statusHtml += `<span style="color:var(--accent-green)">${nLive} LIVE</span>`;
-        if(nLive > 0 && nUpcoming > 0) statusHtml += ` <span style="opacity:0.3">|</span> `;
-        if(nUpcoming > 0) statusHtml += `${nUpcoming} UPCOMING`;
-        
-        lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span><span class="header-sub-text">${statusHtml}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        const lh = document.createElement("div"); lh.className = "left-header";
+        const remaining = data.matches.filter(m => getMatchStatusType(m) !== 'finished').length;
+        const subLabel = remaining === 0 ? 'Complete' : `${remaining} remaining`;
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
-
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
            data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
@@ -1841,80 +2001,91 @@ function loadData(){
            else if(h.status==='red') p.classList.add("status-red");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
-        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider"; 
-
+        right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
-
+        let currentDay = null;
         data.matches.forEach((m, idx)=>{
+          // Insert day label when the kickoff day changes (e.g. Saturday → Sunday)
+          if (m.startDay && m.startDay !== currentDay) {
+              currentDay = m.startDay;
+              const dh = document.createElement("div");
+              dh.className = "day-header";
+              dh.setAttribute("data-day", m.startDay);
+              dh.textContent = m.startDay;
+              if (isFirstLoad) { dh.classList.add("animate-enter"); dh.style.animationDelay = (idx * 0.05) + "s"; }
+              left.appendChild(dh);
+              const ds = document.createElement("div");
+              ds.className = "day-spacer";
+              ds.setAttribute("data-day", m.startDay);
+              if (isFirstLoad) { ds.classList.add("animate-enter"); ds.style.animationDelay = (idx * 0.05) + "s"; }
+              right.appendChild(ds);
+          }
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
-          
+
           const matchStatusType = getMatchStatusType(m);
-          const lr=document.createElement("div"); 
-          lr.className="left-row"; 
-          lr.style.gridTemplateColumns="1fr 90px"; 
-          lr.style.cursor="pointer"; 
-          lr.onclick = function() { openModal(m); }; 
+          const lr=document.createElement("div");
+          lr.className="left-row";
+          lr.style.gridTemplateColumns="1fr 90px";
+          lr.style.cursor="pointer";
+          lr.onclick = function() { openModal(m); };
           lr.setAttribute('data-status', matchStatusType);
-          
+
           if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
-          
+
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live = matchStatusType === 'live';
-          
+
           const matchMinute = parseInt(m.status.replace("'", ""));
           const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
-
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
           let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
           if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
-          
+
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
-          
-          let isGoldenScore = false; 
+
+          let isGoldenScore = false;
           if(m.score && m.score.trim() !== "") {
-              m.cells.forEach(c => { 
-                  if(c.value && String(c.value).includes("-")) { 
+              m.cells.forEach(c => {
+                  if(c.value && String(c.value).includes("-")) {
                       const cleanBet = String(c.value).replace(/\s/g, "");
-                      if(cleanBet === `${hScore}-${aScore}`) isGoldenScore = true; 
-                  } 
+                      if(cleanBet === `${hScore}-${aScore}`) isGoldenScore = true;
+                  }
               });
           }
-          const goldenClass = isGoldenScore ? "gold-active" : ""; 
-          
+          const goldenClass = isGoldenScore ? "gold-active" : "";
+
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
           left.appendChild(lr);
-
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
-          
+
           m.cells.forEach((c, cellIndex)=>{
-              const el=document.createElement("div"); 
-              el.className=`bet ${hasChanged ? 'flash-active' : ''}`; 
+              const el=document.createElement("div");
+              el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
               el.setAttribute('data-col-idx', cellIndex);
-              
+
               if(c.value){
                   el.textContent=c.value;
-                  let color = c.color || '#262a30'; 
+                  let color = c.color || '#262a30';
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  el.style.setProperty('--bet-bg', color); 
-                  el.style.backgroundColor = color; 
-
-                  const headerInfo = data.headers[cellIndex]; 
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+                  const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-                  
+
                   if(live && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase(); 
+                      let bet = String(c.value).toUpperCase();
                       let isWinning = false;
-                      if(bet.includes("-")) { 
-                          let [bH, bA] = bet.split("-").map(Number); 
-                          if(bH === hScore && bA === aScore) isWinning = true; 
-                      } else { 
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true; 
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true; 
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true; 
+                      if(bet.includes("-")) {
+                          let [bH, bA] = bet.split("-").map(Number);
+                          if(bH === hScore && bA === aScore) isWinning = true;
+                      } else {
+                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
+                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
                       }
-                      
+
                       if(isWinning) {
                           if(isClinchTime) el.classList.add("sweat-clinch");
                           else el.classList.add("sweat-active");
@@ -1925,12 +2096,12 @@ function loadData(){
           });
           right.appendChild(rr);
         });
-
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
         filterSection.innerHTML = `<div class="filter-title">Filters</div><div class="filter-actions"><button class="filter-btn" onclick="toggleFilter('all')">ALL</button><button class="filter-btn" id="btn-alive" onclick="toggleFilter('alive')">ALIVE</button><button class="filter-btn" id="btn-live" onclick="toggleFilter('live')">LIVE</button></div>`;
         left.appendChild(filterSection); left.appendChild(document.createElement("div")).className="left-divider";
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
+        // -------- Bottom action button: PLACE BETS / WINNING COMBOS / NO COMBOS POSSIBLE --------
         let allLocked = true; let activeColsFound = false;
         if(data.headers && window.winData) {
             data.headers.forEach((h, i) => {
@@ -1941,37 +2112,44 @@ function loadData(){
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
-        if(allLocked) { 
-            // CHANGED: Turn the button into the "Winning Combos" feature
-            btnDiv.className = "place-bets-btn"; 
-            btnDiv.style.background = "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"; // Cool Gold gradient
-            btnDiv.style.color = "#000";
-            btnDiv.innerHTML = "WINNING<br>COMBOS"; 
-            btnDiv.onclick = openCombosModal; 
-        } 
-        else { 
-            btnDiv.className = "place-bets-btn"; 
-            btnDiv.innerHTML = "PLACE<br>BETS"; 
-            btnDiv.onclick = startBettingProcess; 
+        btnDiv.className = "place-bets-btn";
+
+        if(allLocked) {
+            if(hasAnyCombos()) {
+                // Blue — same hue as the bet-1 avatar in the combos modal
+                btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "WINNING<br>COMBOS";
+                btnDiv.onclick = openCombosModal;
+            } else {
+                // Purple — same hue as the bet-2 avatar in the combos modal
+                btnDiv.style.background = "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "NO COMBOS<br>POSSIBLE";
+                btnDiv.onclick = openCombosModal; // still opens, modal already handles the empty state
+            }
+        } else {
+            // Default green PLACE BETS — keeps original .place-bets-btn styling
+            btnDiv.innerHTML = "PLACE<br>BETS";
+            btnDiv.onclick = startBettingProcess;
         }
         bottomGrid.appendChild(btnDiv);
+        // ----------------------------------------------------------------------------------------
 
         const labelCol = document.createElement("div"); labelCol.className = "stats-column";
         ["BET","WIN","WIN PP"].forEach(l => { const lab = document.createElement("div"); lab.className = "left-label"; lab.textContent = l; labelCol.appendChild(lab); });
         bottomGrid.appendChild(labelCol);
         left.appendChild(bottomGrid);
-
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
           right.appendChild(rr);
         });
-
-        window.globalHeaders = data.headers; applyFilterLogic();
+        applyFilterLogic();
         data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
-        
-        // PODIUM Tie Logic 
+
+        // PODIUM Tie Logic
         if (data.ranking && data.ranking.length >= 3) {
             const sorted = [...data.ranking].sort((a,b) => {
                 if(b.money !== a.money) return b.money - a.money;
@@ -1980,14 +2158,11 @@ function loadData(){
             const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
             const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
             const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
-
             let classL = "place-2", classC = "place-1", classR = "place-3";
             let iconL = "", iconC = "👑", iconR = "💩";
-
-            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; } 
-            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; } 
+            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
+            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
             else { iconL = ""; iconR = "💩"; }
-
             ranking.innerHTML = `
                 <div class="podium-container">
                     <div class="podium-place ${classL}">
@@ -2016,7 +2191,9 @@ function loadData(){
                     </div>
                 </div>`;
         } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
-        
+       window.__lastMatches = data.matches;
+       window.__lastDashboard = data;
+       updateTicker();
         isFirstLoad = false;
     } catch(e){ console.error(e); }
   });
@@ -2028,6 +2205,205 @@ function getMatchStatusType(m) {
     if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
     if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
     return 'upcoming';
+}
+// ── Ticker ──────────────────────────────────────────────────
+function tickerShortMatch(name) {
+  if (!name) return '';
+  // m.match is already like "ARS - CHE" — just normalize spacing
+  return name.split('-').map(t => t.trim().toUpperCase()).join(' vs ');
+}
+
+function fmtCountdown(ms) {
+  if (ms < 60 * 1000) return '<1m';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+// ── Ticker classification (mirrors loadData's isWinningGreen) ───
+function isCorrectColor(hex) {
+  if (!hex) return false;
+  return ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3']
+    .includes(hex.toLowerCase());
+}
+function isWrongColor(hex) {
+  if (!hex) return false;
+  const h = hex.toLowerCase();
+  return ['#ff0000','#ff4d4d','red'].includes(h);
+}
+function isToday(ts) {
+  const d = new Date(ts), n = new Date();
+  return d.getFullYear() === n.getFullYear()
+      && d.getMonth() === n.getMonth()
+      && d.getDate() === n.getDate();
+}
+function getPlayerColIndices(player) {
+  const headers = (window.__lastDashboard && window.__lastDashboard.headers)
+                || window.globalHeaders || [];
+  const out = [];
+  headers.forEach((h, i) => { if (h.name === player) out.push(i); });
+  return out;
+}
+
+// ── Build the rotating ticker items ─────────────────────────────
+function buildTickerItems() {
+  const matches   = window.__lastMatches || [];
+  const dashboard = window.__lastDashboard || {};
+  const players   = ['Snackbar','Timbo','Pepe'];
+  const items     = [];
+  const now       = Date.now();
+
+  // 1. Live OR next kickoff
+  const live = matches.filter(m => getMatchStatusType(m) === 'live');
+  if (live.length) {
+    const lbl = live.length === 1 ? '1 match live now' : `${live.length} matches live now`;
+    items.push({ cls: 'live', html: `<span class="ticker-dot"></span>${lbl}` });
+  } else {
+    const upcoming = matches
+      .filter(m => getMatchStatusType(m) === 'upcoming' && m.kickoffTs && m.kickoffTs > now)
+      .sort((a, b) => a.kickoffTs - b.kickoffTs);
+    if (upcoming.length) {
+      const nextTs   = upcoming[0].kickoffTs;
+      const sameSlot = upcoming.filter(m => Math.abs(m.kickoffTs - nextTs) < 60000);
+      let desc;
+      if (sameSlot.length === 1)      desc = tickerShortMatch(sameSlot[0].match);
+      else if (sameSlot.length === 2) desc = `${tickerShortMatch(sameSlot[0].match)} & ${tickerShortMatch(sameSlot[1].match)}`;
+      else                             desc = `${sameSlot.length} matches`;
+      items.push({
+        cls: 'countdown',
+        html: `Next: <strong>${desc}</strong> in <span class="ticker-time">${fmtCountdown(nextTs - now)}</span>`
+      });
+    }
+  }
+
+  // 2. Today's slate
+  const todays = matches.filter(m => m.kickoffTs && isToday(m.kickoffTs));
+  if (todays.length) {
+    const stillToPlay = todays.filter(m => getMatchStatusType(m) !== 'finished').length;
+    const word = todays.length === 1 ? 'match' : 'matches';
+    items.push({
+      cls: 'today',
+      html: `📅 ${todays.length} ${word} today · ${stillToPlay} still to play`
+    });
+  }
+
+  // 3. Streak — current MW, FT only, trailing run, ≥2
+  const ftAsc = matches
+    .filter(m => getMatchStatusType(m) === 'finished' && m.kickoffTs)
+    .sort((a, b) => a.kickoffTs - b.kickoffTs);
+  let bestStreak = { player: null, count: 0 };
+  for (const player of players) {
+    const idxs = getPlayerColIndices(player);
+    if (!idxs.length) continue;
+    let trailing = 0;
+    for (let i = ftAsc.length - 1; i >= 0; i--) {
+      const m = ftAsc[i];
+      let hadCorrect = false, hadWrong = false;
+      for (const idx of idxs) {
+        const c = m.cells[idx];
+        if (!c || !c.value) continue;
+        if (isCorrectColor(c.color)) hadCorrect = true;
+        else if (isWrongColor(c.color)) hadWrong = true;
+      }
+      if (hadWrong) break;            // streak broken
+      if (hadCorrect) trailing++;     // streak extends
+      // empty pick → skip silently
+    }
+    if (trailing > bestStreak.count) bestStreak = { player, count: trailing };
+  }
+  if (bestStreak.count >= 2) {
+    items.push({
+      cls: 'streak',
+      html: `🔥 ${bestStreak.player} on a ${bestStreak.count}-correct streak`
+    });
+  }
+
+  // 4. Current leader (from RANKING sheet)
+  if (dashboard.ranking && dashboard.ranking.length) {
+    const leader = [...dashboard.ranking].sort((a, b) => {
+      if (b.money !== a.money) return b.money - a.money;
+      return b.matchesRight - a.matchesRight;
+    })[0];
+    if (leader) {
+      items.push({
+        cls: 'leader',
+        html: `<strong>Leader:</strong> ${leader.name} · ${leader.matchesRight} pts`
+      });
+    }
+  }
+
+  // 5. MW accuracy (this matchweek's FT cells only)
+  let bestAcc = { player: null, pct: 0 };
+  for (const player of players) {
+    const idxs = getPlayerColIndices(player);
+    if (!idxs.length) continue;
+    let total = 0, correct = 0;
+    for (const m of ftAsc) {
+      for (const idx of idxs) {
+        const c = m.cells[idx];
+        if (!c || !c.value) continue;
+        if (isCorrectColor(c.color))    { correct++; total++; }
+        else if (isWrongColor(c.color)) { total++; }
+      }
+    }
+    if (!total) continue;
+    const pct = Math.round((correct / total) * 100);
+    if (pct > bestAcc.pct) bestAcc = { player, pct };
+  }
+  if (bestAcc.pct > 0 && bestAcc.player) {
+    items.push({
+      cls: 'accuracy',
+      html: `🎯 MW accuracy: ${bestAcc.player} · ${bestAcc.pct}%`
+    });
+  }
+
+  // 6. Bust of the week — most recent FT where all 3 missed everything
+  const ftDesc = [...ftAsc].sort((a, b) => b.kickoffTs - a.kickoffTs);
+  for (const m of ftDesc) {
+    let everybodyBet = true, everybodyMissed = true;
+    for (const player of players) {
+      const idxs = getPlayerColIndices(player);
+      let bet = false, anyCorrect = false;
+      for (const idx of idxs) {
+        const c = m.cells[idx];
+        if (!c || !c.value) continue;
+        bet = true;
+        if (isCorrectColor(c.color)) { anyCorrect = true; break; }
+      }
+      if (!bet)        { everybodyBet = false;   break; }
+      if (anyCorrect)  { everybodyMissed = false; break; }
+    }
+    if (everybodyBet && everybodyMissed) {
+      items.push({
+        cls: 'bust',
+        html: `💀 All 3 missed: ${tickerShortMatch(m.match)}`
+      });
+      break;
+    }
+  }
+
+  return items;
+}
+
+// ── Render (called every 1s; only writes DOM when text actually changes) ──
+function updateTicker() {
+  const track = document.getElementById('matchday-ticker');
+  const clone = document.getElementById('matchday-ticker-clone');
+  if (!track || !clone || !window.__lastMatches) return;
+
+  const items = buildTickerItems();
+  const html = items.length === 0
+    ? `<span class="ticker-item complete">Matchweek complete</span>`
+    : items
+        .map(i => `<span class="ticker-item ${i.cls}">${i.html}</span>`)
+        .join(`<span class="ticker-sep">·</span>`);
+
+  if (track.innerHTML !== html) {
+    track.innerHTML = html;
+    clone.innerHTML = html;
+  }
 }
 
 // MULTI-FILTER TOGGLE LOGIC
@@ -2057,7 +2433,6 @@ function applyFilterLogic() {
     // 2. Row Filtering (Live)
     const leftRows = document.querySelectorAll('.left-row');
     const rightRows = document.querySelectorAll('#right .row:not(.header-row-sticky)'); 
-
     leftRows.forEach((row, i) => {
         const status = row.getAttribute('data-status');
         let show = true;
@@ -2065,6 +2440,23 @@ function applyFilterLogic() {
         
         row.style.display = show ? 'grid' : 'none';
         if(rightRows[i]) rightRows[i].style.display = show ? 'flex' : 'none';
+    });
+
+    // 2b. Hide day headers whose following matches are all filtered out
+    const dayHeaders = document.querySelectorAll('#left .day-header');
+    const daySpacers = document.querySelectorAll('#right .day-spacer');
+    dayHeaders.forEach((dh, di) => {
+        let hasVisibleMatch = false;
+        let node = dh.nextElementSibling;
+        while (node && !node.classList.contains('day-header')) {
+            if (node.classList.contains('left-row') && node.style.display !== 'none') {
+                hasVisibleMatch = true;
+                break;
+            }
+            node = node.nextElementSibling;
+        }
+        dh.style.display = hasVisibleMatch ? 'flex' : 'none';
+        if (daySpacers[di]) daySpacers[di].style.display = hasVisibleMatch ? 'block' : 'none';
     });
 
     // 3. Column Filtering (Alive)
@@ -2430,7 +2822,7 @@ function openModal(m){
           }); 
       }, 50);
       
-      renderH2H(m.stats.h2h, hCode, aCode);
+      renderH2H(m.stats.h2h, hCode, aCode, m.stats.form);
 
       // LINEUPS and SUBS logic...
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
@@ -2545,6 +2937,7 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
 renderSkeletons(); 
 loadData(); 
 setInterval(loadData,REFRESH_MS);
+setInterval(updateTicker, 1000); // NEW: update countdown display every second
 
 document.getElementById("rankingCard").onclick=()=>{
     // NEW: Open Modal instead of toggle
@@ -2564,6 +2957,73 @@ let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
 let pendingBets = {}; 
 
+// =====================================================================
+// 1) Helper — paste this anywhere alongside openCombosModal().
+//    Returns true the moment it finds one compatible pair, otherwise false.
+// =====================================================================
+function hasAnyCombos() {
+    if (!window.globalHeaders || !window.allMatches) return false;
+    const headers = window.globalHeaders;
+    const matches = window.allMatches;
+ 
+    const isDead = (idx) => {
+        const h = headers[idx];
+        return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
+    };
+    const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());
+    const isOver  = (v) => {
+        const s = String(v).toUpperCase().trim();
+        return s.indexOf('GOAL') !== -1 || /^O\s*\d/.test(s);
+    };
+    const getOutcome = (raw, hC, aC) => {
+        const v = String(raw).toUpperCase().trim();
+        if (v === '1' || v === 'H' || v === 'HOME' || v === hC) return 'H';
+        if (v === '2' || v === 'A' || v === 'AWAY' || v === aC) return 'A';
+        if (v === 'X' || v === 'D' || v === 'DRAW') return 'X';
+        if (isScore(v)) {
+            const [h, a] = v.split(/[-:]/).map(x => parseInt(x.trim()));
+            return h > a ? 'H' : (a > h ? 'A' : 'X');
+        }
+        return null;
+    };
+ 
+    for (let i = 0; i < headers.length; i++) {
+        if (isDead(i)) continue;
+        for (let j = i + 1; j < headers.length; j++) {
+            if (isDead(j)) continue;
+            let compat = true;
+            for (const m of matches) {
+                const v1 = m.cells[i] && m.cells[i].value;
+                const v2 = m.cells[j] && m.cells[j].value;
+                if (!v1 || !v2) continue;
+                const s1 = String(v1).toUpperCase().trim();
+                const s2 = String(v2).toUpperCase().trim();
+                if (s1 === s2) continue;
+                if (isOver(s1) || isOver(s2)) continue;
+                if (isScore(s1) && isScore(s2)) { compat = false; break; }
+                const [hC, aC] = m.match.split('-').map(s => s.trim().toUpperCase());
+                const o1 = getOutcome(s1, hC, aC);
+                const o2 = getOutcome(s2, hC, aC);
+                if (o1 && o2 && o1 !== o2) { compat = false; break; }
+            }
+            if (compat) return true; // early exit — at least one combo exists
+        }
+    }
+    return false;
+}
+ 
+// =====================================================================
+// Drop-in replacement for openCombosModal()
+// Matches the combo logic used in the Matchweek Preview email script.
+// Keeps the "dead column" filter so killed bets are removed from combos.
+// =====================================================================
+
+// =====================================================================
+// Drop-in replacement for openCombosModal()
+// Matches the combo logic used in the Matchweek Preview email script.
+// Keeps the "dead column" filter so killed bets are removed from combos.
+// =====================================================================
+
 function openCombosModal() {
     vibe();
     const container = document.getElementById("combosContent");
@@ -2579,83 +3039,91 @@ function openCombosModal() {
     const matches = window.allMatches;
     let combosFound = [];
 
-    // Check if a column is mathematically dead
+    // ---- Helpers: identical to the matchweek preview ----
     const isDead = (idx) => {
         const h = headers[idx];
         return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
     };
 
-    // Check if a bet is an Over/Under Goals bet
-    const isGoalsBet = (bet) => {
-        let b = String(bet).toUpperCase();
-        return b.includes("GOAL") || b.includes("O ") || b.includes("U ");
+    const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());
+
+    const isOver = (v) => {
+        const s = String(v).toUpperCase().trim();
+        return s.indexOf('GOAL') !== -1 || /^O\s*\d/.test(s);
     };
 
-    // DYNAMIC AVATAR MAPPING: Automatically matches the name to the image and calculates if it's bet 1 or 2
+    const getOutcome = (raw, hC, aC) => {
+        const v = String(raw).toUpperCase().trim();
+        if (v === '1' || v === 'H' || v === 'HOME' || v === hC) return 'H';
+        if (v === '2' || v === 'A' || v === 'AWAY' || v === aC) return 'A';
+        if (v === 'X' || v === 'D' || v === 'DRAW') return 'X';
+        if (isScore(v)) {
+            const [h, a] = v.split(/[-:]/).map(x => parseInt(x.trim()));
+            return h > a ? 'H' : (a > h ? 'A' : 'X');
+        }
+        return null;
+    };
+
+    // Avatar/number used in the existing card UI
     const getPlayerDisplay = (idx) => {
         const h = headers[idx];
         const rawName = h ? h.name.trim() : "Bonus";
-        
-        // Count how many times this player's name has appeared up to this point in the sorted array
         let count = 0;
-        for(let i = 0; i <= idx; i++) {
-            if(headers[i] && headers[i].name.trim() === rawName) {
-                count++;
-            }
+        for (let i = 0; i <= idx; i++) {
+            if (headers[i] && headers[i].name.trim() === rawName) count++;
         }
-
-        // Match the correct image file based on the name
-        let imgUrl = './pepe.png'; 
-        if(rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
-        if(rawName.toLowerCase() === 'timbo') imgUrl = './timbo.png';
-
+        let imgUrl = './pepe.png';
+        if (rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
+        if (rawName.toLowerCase() === 'timbo')    imgUrl = './timbo.png';
         return { img: imgUrl, num: count };
     };
 
-    // Find all combinations!
+    // ---- Combo search: same rules as email ----
     for (let i = 0; i < headers.length; i++) {
-        if (isDead(i)) continue; // Skip dead columns
-
+        if (isDead(i)) continue;                       // keep dead-bet filter
         for (let j = i + 1; j < headers.length; j++) {
-            if (isDead(j)) continue; // Skip dead columns
+            if (isDead(j)) continue;                   // keep dead-bet filter
 
-            let compatible = true;
-
+            let compat = true;
             for (const m of matches) {
-                const bet1 = m.cells[i] ? m.cells[i].value : "";
-                const bet2 = m.cells[j] ? m.cells[j].value : "";
+                const v1 = m.cells[i] && m.cells[i].value;
+                const v2 = m.cells[j] && m.cells[j].value;
+                if (!v1 || !v2) continue;              // empty slot can't conflict
 
-                if (!bet1 || !bet2) continue; // Empty slots don't conflict
+                const s1 = String(v1).toUpperCase().trim();
+                const s2 = String(v2).toUpperCase().trim();
 
-                const b1 = String(bet1).toUpperCase().trim();
-                const b2 = String(bet2).toUpperCase().trim();
+                if (s1 === s2) continue;               // identical pick -> fine
+                if (isOver(s1) || isOver(s2)) continue; // over-goals -> never blocks
+                if (isScore(s1) && isScore(s2)) {       // two different correct scores -> conflict
+                    compat = false;
+                    break;
+                }
 
-                // If they predict the exact same thing, or one is a "Goals" bet, they are safe
-                if (b1 === b2) continue; 
-                if (isGoalsBet(b1) || isGoalsBet(b2)) continue; 
-
-                // If we get here, they picked different outcomes (e.g. ARS vs Draw)
-                compatible = false;
-                break;
+                const [hC, aC] = m.match.split('-').map(s => s.trim().toUpperCase());
+                const o1 = getOutcome(s1, hC, aC);
+                const o2 = getOutcome(s2, hC, aC);
+                if (o1 && o2 && o1 !== o2) {            // different H/X/A buckets
+                    compat = false;
+                    break;
+                }
             }
 
-            if (compatible) {
-                let win1 = window.winData[i] ? (window.winData[i].value || 0) : 0;
-                let win2 = window.winData[j] ? (window.winData[j].value || 0) : 0;
-                let pp1 = window.ppData[i] ? (window.ppData[i].value || 0) : 0;
-                let pp2 = window.ppData[j] ? (window.ppData[j].value || 0) : 0;
-
+            if (compat) {
+                const win1 = window.winData[i] ? (window.winData[i].value || 0) : 0;
+                const win2 = window.winData[j] ? (window.winData[j].value || 0) : 0;
+                const pp1  = window.ppData[i]  ? (window.ppData[i].value  || 0) : 0;
+                const pp2  = window.ppData[j]  ? (window.ppData[j].value  || 0) : 0;
                 combosFound.push({
                     colIdx1: i,
                     colIdx2: j,
                     totalWin: win1 + win2,
-                    totalPP: pp1 + pp2
+                    totalPP:  pp1  + pp2
                 });
             }
         }
     }
 
-    // Sort combinations by highest payout first
     combosFound.sort((a, b) => b.totalWin - a.totalWin);
 
     if (combosFound.length === 0) {
@@ -2667,37 +3135,41 @@ function openCombosModal() {
         return;
     }
 
-    // Build the UI cards for the winning combinations
+    // Color per bet slot: bet 1 = blue, bet 2 = purple.
+    // (Avoiding green/red/orange so it doesn't clash with status colors.)
+    const slotColor = (num) => num === 1 ? '#3b82f6' : '#a855f7';
+
     combosFound.forEach((combo, index) => {
         const p1 = getPlayerDisplay(combo.colIdx1);
         const p2 = getPlayerDisplay(combo.colIdx2);
-
+        const c1 = slotColor(p1.num);
+        const c2 = slotColor(p2.num);
         const card = document.createElement("div");
         card.style.cssText = "background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;";
-        
+
         card.innerHTML = `
             <div style="display: flex; justify-content: center; align-items: center; position: relative; padding: 12px 0;">
                 ${index === 0 ? `<div style="position: absolute; top: -5px; right: -5px; background:var(--accent-green); color:#000; font-size:9px; font-weight:900; padding:3px 6px; border-radius:6px; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">BEST</div>` : ''}
-                
+
                 <div style="display: flex; align-items: center; gap: 25px;">
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
-                            <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
+                            <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c1}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: ${c1}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
                         </div>
                     </div>
-                    
+
                     <div style="font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15);">&</div>
-                    
+
                     <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                         <div style="position: relative;">
-                            <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--accent-orange); object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="position: absolute; top: -6px; right: -6px; background: var(--accent-orange); color: #000; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
+                            <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c2}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="position: absolute; top: -6px; right: -6px; background: ${c2}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-row); border-radius: 8px; padding: 12px; margin-top: 2px;">
                 <div style="display: flex; flex-direction: column; align-items: center; border-right: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined Win</span>
@@ -2922,9 +3394,9 @@ function submitAllBets() {
   });
 }
 
-function renderH2H(h2hData, currentHome, currentAway) {
+function renderH2H(h2hData, currentHome, currentAway, formData) {
     const el = document.getElementById("h2hList");
-    
+
     const findFormInTable = (code) => {
         if(!tableCache || !code) return "??????";
         const cleanCode = code.trim().toUpperCase();
@@ -2945,8 +3417,33 @@ function renderH2H(h2hData, currentHome, currentAway) {
         return found ? found.form : "?????";
     };
 
-    const hForm = findFormInTable(currentHome).split('');
-    const aForm = findFormInTable(currentAway).split('');
+    // Detailed form (with opponents + scores) comes from the API via the script.
+    // Fall back to plain W/L/D dots from the league table if not available yet.
+    const detailedHForm = (formData && formData.home) ? formData.home : [];
+    const detailedAForm = (formData && formData.away) ? formData.away : [];
+    const hFormFallback = detailedHForm.length === 0 ? findFormInTable(currentHome).split('') : null;
+    const aFormFallback = detailedAForm.length === 0 ? findFormInTable(currentAway).split('') : null;
+
+    const renderFormStack = (detailed, fallback) => {
+        if (detailed && detailed.length > 0) {
+            // API returns newest-first; reverse so oldest is leftmost, newest is rightmost.
+            return [...detailed].reverse().map(f => `
+                <div class="form-game-stack" title="${f.isHome ? 'H' : 'A'} vs ${f.opponent} (${f.score})">
+                    <div class="form-score">${f.score}</div>
+                    <img src="${f.opponentLogo}" class="form-opp-logo" alt="${f.opponent}" onerror="this.style.visibility='hidden'">
+                    <div class="big-dot dot-${f.result}"></div>
+                </div>
+            `).join('');
+        }
+        // Fallback: same vertical layout but with the logo/score hidden so spacing matches
+        return (fallback || []).map(c => `
+            <div class="form-game-stack">
+                <div class="form-score" style="visibility:hidden;">-</div>
+                <div class="form-opp-logo" style="visibility:hidden;"></div>
+                <div class="big-dot dot-${c}"></div>
+            </div>
+        `).join('');
+    };
 
     // --- FIXED LOGO LOGIC WITH SPECIAL STYLING ---
     const getLogoHtml = (name) => {
@@ -3009,12 +3506,12 @@ function renderH2H(h2hData, currentHome, currentAway) {
     <div class="form-container">
         <div class="form-team-col">
             <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentHome)}</div>
-            <div class="form-dots-row">${hForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
+            <div class="form-dots-row">${renderFormStack(detailedHForm, hFormFallback)}</div>
         </div>
         <div style="width:1px; background:rgba(255,255,255,0.1); margin:0 10px;"></div>
         <div class="form-team-col">
             <div style="height:40px; display:flex; align-items:center; justify-content:center;">${renderTeam(currentAway)}</div>
-            <div class="form-dots-row">${aForm.map(c => `<div class="big-dot dot-${c}"></div>`).join('')}</div>
+            <div class="form-dots-row">${renderFormStack(detailedAForm, aFormFallback)}</div>
         </div>
     </div>`;
 

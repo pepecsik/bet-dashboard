@@ -4163,6 +4163,15 @@ function openPicker(matchId, home, away, colNum) {
   document.getElementById('manualScore').value = "";
   document.getElementById('modalPicker').classList.add('active');
 }
+
+// === Service worker: instant load + offline cache ===
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/bet-dashboard/sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
  
 </script>
 </body>

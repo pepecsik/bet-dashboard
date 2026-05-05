@@ -2729,6 +2729,15 @@ function openModal(m){
         _modalCard.classList.add('is-loading');
         setTimeout(() => _modalCard.classList.remove('is-loading'), 200);
       }
+
+      // Reset tab visibility (in case openPreMatchStats hid some earlier)
+      ['tabStats','tabLineups','tabSummary','tabH2h'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+
+      // Track current match index for swipe navigation
+      window._currentMatchIndex = (window.allMatches || []).findIndex(x => x.match === m.match);
       
       const [hCode, aCode] = m.match.split("-").map(x => x.trim());
       const s = m.stats || {};
@@ -2986,7 +2995,39 @@ function openTable(){
     document.getElementById("tableModal").classList.add("active");
 }
 function closeModal(id){document.getElementById(id).classList.remove("active")}
+ 
+// === Swipe between matches in the modal ===
+(function setupModalSwipe() {
+  const card = document.querySelector('#matchModal .modal-card');
+  if (!card) return;
+  let startX = 0, startY = 0, tracking = false;
+  const SWIPE_THRESHOLD = 60;       // min horizontal px
+  const VERTICAL_LIMIT  = 1.5;      // dx must be 1.5× dy to count as horizontal
 
+  card.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    tracking = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  card.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < SWIPE_THRESHOLD) return;             // not far enough
+    if (Math.abs(dx) < Math.abs(dy) * VERTICAL_LIMIT) return; // mostly vertical → ignore
+    const matches = window.allMatches || [];
+    const cur = window._currentMatchIndex;
+    if (cur === undefined || cur < 0) return;
+    const next = dx < 0 ? cur + 1 : cur - 1;
+    if (next < 0 || next >= matches.length) return;
+    vibe();
+    openModal(matches[next]);
+  }, { passive: true });
+})();
+ 
 renderSkeletons(); 
 loadData(); 
 setInterval(loadData,REFRESH_MS);

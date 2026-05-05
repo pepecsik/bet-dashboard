@@ -1108,17 +1108,32 @@ img[alt="AVI"] {
 /* DOTS + form game stack (logo + score above dot) */
 .form-dots-row {
   display: flex;
-  gap: 10px;                /* dots are now further apart */
+  gap: 6px;
   margin-top: 12px;
   align-items: flex-end;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 .form-game-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 22px;
+  min-width: 0;       /* let it shrink to content */
+  flex-shrink: 1;
+}
+.form-opp-logo {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+.form-score {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
 }
 .form-score {
   font-size: 9px;

@@ -2735,6 +2735,116 @@ function calculateLiveProbability(m) {
   const total = h + d + a;
   return { home: h / total, draw: d / total, away: a / total };
 }
+
+// === Smart match tips (static rules over existing data) ===
+function smartMatchTips(m, hCode, aCode) {
+  const tips = [];
+  const homeForm = (m && m.stats && m.stats.form && m.stats.form.home) || [];
+  const awayForm = (m && m.stats && m.stats.form && m.stats.form.away) || [];
+  const h2h     = (m && m.stats && m.stats.h2h) || [];
+
+  const parseScore = (s) => {
+    if (!s) return [0, 0];
+    if (typeof s === 'object') return [s.home || 0, s.away || 0];
+    const parts = String(s).split('-').map(x => parseInt(String(x).trim()) || 0);
+    return [parts[0] || 0, parts[1] || 0];
+  };
+
+  // ---- Per-team form analysis ----
+  const analyseForm = (form, code) => {
+    if (!form.length) return;
+    const wins   = form.filter(f => f.result === 'W').length;
+    const losses = form.filter(f => f.result === 'L').length;
+    const scored = form.filter(f => parseScore(f.score)[0] > 0).length;
+    const clean  = form.filter(f => parseScore(f.score)[1] === 0).length;
+
+    if (form.length === 5) {
+      if (wins === 5)        tips.push({ s: 95, t: `🔥 ${code} on a perfect 5-game winning run` });
+      else if (wins >= 4)    tips.push({ s: 80, t: `${code} won ${wins} of last 5` });
+      else if (losses === 5) tips.push({ s: 90, t: `❄️ ${code} lost all of last 5` });
+      else if (losses >= 4)  tips.push({ s: 75, t: `${code} lost ${losses} of last 5` });
+
+      if (scored === 5) tips.push({ s: 60, t: `${code} have scored in all of last 5` });
+      if (clean  >= 3)  tips.push({ s: 65, t: `${code} kept ${clean} clean sheets in last 5` });
+    }
+
+    // Recent 3-game streaks (more recency weight)
+    const last3W = form.slice(0, 3).filter(f => f.result === 'W').length;
+    const last3L = form.slice(0, 3).filter(f => f.result === 'L').length;
+    if (last3W === 3) tips.push({ s: 70, t: `${code} won their last 3 in a row` });
+    if (last3L === 3) tips.push({ s: 65, t: `${code} lost 3 in a row` });
+  };
+  analyseForm(homeForm, hCode);
+  analyseForm(awayForm, aCode);
+
+  // ---- H2H trends ----
+  if (h2h.length >= 3) {
+    const recent = h2h.slice(0, Math.min(5, h2h.length));
+    let curHomeWins = 0, curAwayWins = 0, both = 0, total = 0;
+    const currHomeNorm = normalizeName(hCode).toUpperCase();
+    recent.forEach(g => {
+      const [hS, aS] = parseScore(g.score);
+      total += hS + aS;
+      if (hS > 0 && aS > 0) both++;
+      const histHome = normalizeName(g.home || '').toUpperCase();
+      const homeIsCurrHome = histHome.includes(currHomeNorm) || currHomeNorm.includes(histHome.substring(0,3));
+      if (hS > aS) homeIsCurrHome ? curHomeWins++ : curAwayWins++;
+      else if (aS > hS) homeIsCurrHome ? curAwayWins++ : curHomeWins++;
+    });
+
+    if (curHomeWins === recent.length)      tips.push({ s: 85, t: `${hCode} won all ${recent.length} recent meetings` });
+    else if (curHomeWins >= recent.length-1) tips.push({ s: 70, t: `${hCode} won ${curHomeWins} of last ${recent.length} H2H` });
+    if (curAwayWins === recent.length)      tips.push({ s: 85, t: `${aCode} won all ${recent.length} recent meetings` });
+    else if (curAwayWins >= recent.length-1) tips.push({ s: 70, t: `${aCode} won ${curAwayWins} of last ${recent.length} H2H` });
+
+    if (both === recent.length && recent.length >= 4) {
+      tips.push({ s: 60, t: `Both teams scored in last ${recent.length} meetings` });
+    }
+    const avg = total / recent.length;
+    if (avg >= 3.5) tips.push({ s: 55, t: `H2H average ${avg.toFixed(1)} goals — high-scoring fixture` });
+    if (avg <= 1.0 && recent.length >= 3) tips.push({ s: 55, t: `H2H average ${avg.toFixed(1)} goals — tight games` });
+  }
+
+  // ---- Bookies ----
+  if (m && m.odds) {
+    const oH = parseFloat(m.odds.home) || 0;
+    const oA = parseFloat(m.odds.away) || 0;
+    if (oH && oA) {
+      if (oH < 1.5)      tips.push({ s: 50, t: `Bookies favour ${hCode} heavily (${oH})` });
+      else if (oA < 1.5) tips.push({ s: 50, t: `Bookies favour ${aCode} heavily (${oA})` });
+    }
+  }
+
+  // ---- League table gap ----
+  if (typeof tableCache !== 'undefined' && tableCache && tableCache.length) {
+    const codeMap = {
+      WHA:"West Ham", CTY:"Manchester City", MAN:"Manchester United",
+      NWC:"Newcastle", NOT:"Nottingham Forest", AVI:"Aston Villa",
+      CPA:"Crystal Palace", CHE:"Chelsea", ARS:"Arsenal",
+      LIV:"Liverpool", TOT:"Tottenham", BOU:"Bournemouth",
+      BRE:"Brentford", BRI:"Brighton", BUR:"Burnley",
+      EVE:"Everton", FUL:"Fulham", WOL:"Wolves",
+      SUN:"Sunderland", LEE:"Leeds"
+    };
+    const findRow = (code) => {
+      const target = codeMap[code] ? normalizeName(codeMap[code]) : normalizeName(code);
+      return tableCache.find(r => {
+        const t = normalizeName(r.team);
+        return t === target || t.includes(target) || target.includes(t);
+      });
+    };
+    const hRow = findRow(hCode), aRow = findRow(aCode);
+    if (hRow && aRow) {
+      const gap = Math.abs(hRow.rank - aRow.rank);
+      const top = Math.min(hRow.rank, aRow.rank);
+      const bot = Math.max(hRow.rank, aRow.rank);
+      if (top <= 4 && bot >= 14) tips.push({ s: 50, t: `Top-4 vs bottom-half clash (#${hRow.rank} vs #${aRow.rank})` });
+      else if (gap >= 12)        tips.push({ s: 45, t: `Big table gap: #${hRow.rank} vs #${aRow.rank}` });
+    }
+  }
+
+  return tips.sort((a, b) => b.s - a.s);
+}
  
 function openModal(m){
   try {
@@ -2919,7 +3029,7 @@ function openModal(m){
           }); 
       }, 50);
       
-      renderH2H(m.stats.h2h, hCode, aCode, m.stats.form);
+      renderH2H(m.stats.h2h, hCode, aCode, m.stats.form, m);
 
       // LINEUPS and SUBS logic...
       const pp=document.getElementById("pitchPlayers"); pp.innerHTML="";
@@ -3583,7 +3693,7 @@ function submitAllBets() {
   });
 }
 
-function renderH2H(h2hData, currentHome, currentAway, formData) {
+function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
     const el = document.getElementById("h2hList");
 
     const findFormInTable = (code) => {
@@ -3690,7 +3800,19 @@ function renderH2H(h2hData, currentHome, currentAway, formData) {
         total++;
     });
 
+    // Smart tips (top 3) — only if we have something interesting to say
+    const tips = smartMatchTips(matchObj, currentHome, currentAway);
+    let smartTipsHtml = "";
+    if (tips.length > 0) {
+        smartTipsHtml = `
+        <div class="ai-story-box" style="margin-bottom: 0;">
+          <div class="ai-title">💡 Smart Tips</div>
+          ${tips.slice(0, 3).map(t => `<div style="font-size:12px; font-weight:600; line-height:1.5; margin-top:3px;">• ${t.t}</div>`).join('')}
+        </div>`;
+    }
+
     let html = `
+    ${smartTipsHtml}
     <div class="h2h-section-title">Actual League Form</div>
     <div class="form-container">
         <div class="form-team-col">

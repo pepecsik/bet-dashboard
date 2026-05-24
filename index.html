@@ -1047,7 +1047,42 @@ body {
   cursor: default;
   border: 1px solid rgba(255,255,255,0.05);
 }
-.place-bets-btn.disabled:active { transform: none; } 
+.place-bets-btn.disabled:active { transform: none; }
+
+/* === LOCK FEATURE STYLES === */
+.bet.locked-bet {
+  background: rgba(249, 115, 22, 0.1) !important;
+  border: 1px solid rgba(249, 115, 22, 0.25) !important;
+  color: var(--text-muted) !important;
+  font-size: 16px !important;
+  box-shadow: none !important;
+}
+.lock-badge-pill {
+  position: absolute; bottom: -5px; right: -5px;
+  width: 18px; height: 18px;
+  background: #f97316; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; z-index: 20;
+  border: 1px solid rgba(0,0,0,0.4);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+.lock-in-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff; border: none;
+  border-radius: var(--rad-md);
+  padding: 15px; font-weight: 800; font-size: 14px;
+  text-transform: uppercase; letter-spacing: 1px;
+  cursor: pointer; width: 100%; margin-top: 8px;
+  font-family: var(--font-main);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+  transition: transform 0.1s;
+}
+.lock-in-btn:active { transform: scale(0.97); }
+.lock-in-btn.locked {
+  background: var(--accent-green) !important; color: #000 !important;
+  box-shadow: none; cursor: default;
+}
+.lock-in-btn.locked:active { transform: none; }
 
 /* ========================================================= */
 /* === H2H & FORM STYLES (CLEANED & MERGED) === */
@@ -1801,6 +1836,7 @@ img[alt="AVI"] {
     <div id="betListContainer" class="scroll-y"></div>
 
     <button class="action-btn" onclick="submitAllBets()">CONFIRM & SEND</button>
+    <button class="lock-in-btn" id="lockBtn" onclick="lockInBets()">🔒 LOCK IN BETS</button>
   </div>
 </div>
 
@@ -2046,6 +2082,9 @@ function loadData(){
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
+        window.lockStatus = data.lockStatus || {};
+        const _pNames = [...new Set((data.headers||[]).map(h=>h.name).filter(Boolean))];
+        window.allBetsLocked = _pNames.length > 0 && _pNames.every(n => window.lockStatus[n] === true);
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
@@ -2068,6 +2107,10 @@ function loadData(){
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
+           if(window.lockStatus && window.lockStatus[h.name] && !window.allBetsLocked) {
+           const lb = document.createElement('div'); lb.className='lock-badge-pill'; lb.textContent='🔒';
+           p.style.position = 'relative'; p.style.overflow = 'visible'; p.appendChild(lb);
+           }
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
@@ -2135,29 +2178,41 @@ function loadData(){
               el.setAttribute('data-col-idx', cellIndex);
 
               if(c.value){
-                  el.textContent=c.value;
-                  let color = c.color || '#262a30';
-                  if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                  el.style.setProperty('--bet-bg', color);
-                  el.style.backgroundColor = color;
                   const headerInfo = data.headers[cellIndex];
+                  const cellPlayerName = headerInfo ? headerInfo.name : null;
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
-                  if(live && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase();
-                      let isWinning = false;
-                      if(bet.includes("-")) {
-                          let [bH, bA] = bet.split("-").map(Number);
-                          if(bH === hScore && bA === aScore) isWinning = true;
+                  if(!window.allBetsLocked) {
+                      const isPlayerLocked = window.lockStatus && cellPlayerName && window.lockStatus[cellPlayerName];
+                      if(isPlayerLocked) {
+                          el.textContent = '🔒';
+                          el.classList.add('locked-bet');
                       } else {
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
+                          el.style.setProperty('--bet-bg', 'transparent');
+                          el.classList.add('empty');
                       }
+                  } else {
+                      el.textContent=c.value;
+                      let color = c.color || '#262a30';
+                      if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
+                      el.style.setProperty('--bet-bg', color);
+                      el.style.backgroundColor = color;
 
-                      if(isWinning) {
-                          if(isClinchTime) el.classList.add("sweat-clinch");
-                          else el.classList.add("sweat-active");
+                      if(live && !isColumnDead) {
+                          let bet = String(c.value).toUpperCase();
+                          let isWinning = false;
+                          if(bet.includes("-")) {
+                              let [bH, bA] = bet.split("-").map(Number);
+                              if(bH === hScore && bA === aScore) isWinning = true;
+                          } else {
+                              if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
+                              else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
+                              else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
+                          }
+                          if(isWinning) {
+                              if(isClinchTime) el.classList.add("sweat-clinch");
+                              else el.classList.add("sweat-active");
+                          }
                       }
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
@@ -2212,7 +2267,18 @@ function loadData(){
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{
+            const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex);
+            if(!window.allBetsLocked) {
+              const hdr = data.headers[cellIndex]; const pName = hdr ? hdr.name : null;
+              const isPlocked = window.lockStatus && pName && window.lockStatus[pName];
+              if(isPlocked) { el.textContent='🔒'; el.classList.add('locked-bet'); }
+              else { el.classList.add('empty'); }
+            } else {
+              el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color;
+            }
+            rr.appendChild(el);
+          });
           right.appendChild(rr);
         });
         applyFilterLogic();
@@ -3420,7 +3486,53 @@ if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");
 
 Chart.register(ChartDataLabels);
 
-/* === NEW BETTING LOGIC (Pro V2 - Locked Columns) === */
+// === LOCK IN BETS FEATURE ===
+function lockInBets() {
+    if(!selectedPlayer) return;
+    if(window.lockStatus && window.lockStatus[selectedPlayer]) {
+        alert("You've already locked in your bets!"); return;
+    }
+    const btn = document.getElementById('lockBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = "LOCKING..."; btn.disabled = true; btn.style.opacity = "0.7";
+
+    const betsToSend = [];
+    for(const [match, d] of Object.entries(pendingBets)) {
+        if(d.col1 !== undefined || d.col2 !== undefined)
+            betsToSend.push({ match, col1: d.col1, col2: d.col2 });
+    }
+
+    fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ player: selectedPlayer, bets: betsToSend, action: "lock" })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if(res.status === "success") {
+            document.querySelectorAll('#betListContainer .bet-input-slot:not(.locked)').forEach(slot => {
+                slot.classList.add('locked'); slot.style.pointerEvents = 'none';
+            });
+            const confirmBtn = document.querySelector('#modalBetList .action-btn');
+            if(confirmBtn) confirmBtn.style.display = 'none';
+            btn.innerHTML = "✅ LOCKED IN!"; btn.classList.add('locked');
+            btn.style.opacity = "1"; btn.disabled = true;
+            if(typeof confetti !== 'undefined') {
+                confetti({ particleCount: 80, spread: 90, origin: { y: 0.6 },
+                    colors: ['#f97316','#ffffff','#4ade80'] });
+            }
+            setTimeout(() => { closeModal('modalBetList'); loadData(); }, 1800);
+        } else {
+            alert("Error: " + (res.message || "Unknown error"));
+            btn.innerHTML = orig; btn.disabled = false; btn.style.opacity = "1";
+        }
+    })
+    .catch(() => {
+        alert("Network error. Please try again.");
+        btn.innerHTML = orig; btn.disabled = false; btn.style.opacity = "1";
+    });
+}
+
+// === NEW BETTING LOGIC (Pro V2 - Locked Columns) ===
 
 let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
@@ -3760,6 +3872,23 @@ function selectPlayer(name) {
   });
   
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
+
+  const _alreadyLocked = window.lockStatus && window.lockStatus[name];
+  const _lockBtn = document.getElementById('lockBtn');
+  const _confirmBtn = document.querySelector('#modalBetList .action-btn');
+  if(_alreadyLocked) {
+      _lockBtn.innerHTML = "✅ LOCKED IN"; _lockBtn.classList.add('locked'); _lockBtn.disabled = true;
+      if(_confirmBtn) _confirmBtn.style.display = 'none';
+      setTimeout(() => {
+          document.querySelectorAll('#betListContainer .bet-input-slot:not(.locked)').forEach(slot => {
+              slot.classList.add('locked'); slot.style.pointerEvents = 'none';
+          });
+      }, 50);
+  } else {
+      _lockBtn.innerHTML = "🔒 LOCK IN BETS"; _lockBtn.classList.remove('locked'); _lockBtn.disabled = false;
+      if(_confirmBtn) _confirmBtn.style.display = '';
+  }
+
   document.getElementById('modalBetList').classList.add('active');
 }
 function openPicker(matchId, home, away, colNum) {

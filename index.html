@@ -227,73 +227,123 @@
     font-size: 1.3em;
 }
 
-/* 4. WORLD CUP (Stadium Night - Default) */
+/* 4. WORLD CUP (NED + AUS) */
 [data-theme="worldcup"] {
   --font-main: 'Inter', system-ui, sans-serif;
   --base-size: 12px;
 
-  --bg-grad: radial-gradient(ellipse at 50% -10%, #1a3a2a 0%, #0d1f2d 45%, #080e1a 100%);
-  --bg-card: rgba(8, 20, 35, 0.75);
-  --bg-soft: rgba(255, 255, 255, 0.05);
-  --bg-row:  rgba(255, 255, 255, 0.03);
-  --bg-modal: rgba(8, 20, 35, 0.96);
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #1a2f5e 0%, #0d1a3a 40%, #060d1f 100%);
+  --bg-card:  rgba(10, 20, 50, 0.72);
+  --bg-soft:  rgba(255, 255, 255, 0.06);
+  --bg-row:   rgba(255, 255, 255, 0.03);
+  --bg-modal: rgba(8, 16, 40, 0.97);
 
-  --text-main: #eef2ff;
-  --text-muted: #7a8faa;
+  --text-main:  #ffffff;
+  --text-muted: #7a90bb;
 
-  --accent-orange: #f5c518;
-  --accent-gold:   #f5c518;
-  --accent-green:  #00e676;
+  --accent-orange: #ff6d00;   /* Dutch orange */
+  --accent-gold:   #ffcd00;   /* Australian gold */
+  --accent-green:  #00b04f;   /* Australian green */
 
-  --border-light:  1px solid rgba(245, 197, 24, 0.18);
-  --shadow-card:   0 8px 32px rgba(0,0,0,0.85), 0 0 0 1px rgba(245,197,24,0.06);
+  --border-light:  1px solid rgba(255, 109, 0, 0.3);
+  --shadow-card:   0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,109,0,0.08);
 
   --rad-sm: 6px;
   --rad-md: 10px;
   --rad-lg: 16px;
 
   --logo-filter: none;
-  --modal-overlay: rgba(0, 5, 20, 0.88);
+  --modal-overlay: rgba(4, 10, 30, 0.9);
 }
-/* World Cup overrides */
+
+/* Header: Dutch navy + orange stripe */
 [data-theme="worldcup"] .left-header {
-  background: linear-gradient(135deg, rgba(8,20,35,0.95) 0%, rgba(15,35,25,0.95) 100%);
-  border-bottom: 1px solid rgba(245,197,24,0.25);
+  background: linear-gradient(135deg, #0d1a3a 60%, #1a2f5e 100%);
+  border-bottom: 2px solid #ff6d00;
 }
-[data-theme="worldcup"] .header-sub-text {
-  color: var(--accent-gold);
-  letter-spacing: 1.5px;
+[data-theme="worldcup"] .header-main-text { color: #ffffff; }
+[data-theme="worldcup"] .header-sub-text  { color: #ffcd00; letter-spacing: 2px; }
+
+/* Cards: deep navy glass with orange rim */
+[data-theme="worldcup"] .left-card,
+[data-theme="worldcup"] .right-card,
+[data-theme="worldcup"] .summary,
+[data-theme="worldcup"] .modal-card,
+[data-theme="worldcup"] .ranking-card {
+  border: 1px solid rgba(255, 109, 0, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7), inset 0 0 60px rgba(255,109,0,0.03);
 }
-[data-theme="worldcup"] #matchday-ticker-bar {
-  background: #06111f;
-  border-bottom: 1px solid rgba(245,197,24,0.2);
+
+/* Orange active filter */
+[data-theme="worldcup"] .filter-btn.active,
+[data-theme="worldcup"] .toggle-btn.active {
+  background: #ff6d00;
+  color: #fff;
+  border-color: #ff6d00;
+  box-shadow: 0 3px 12px rgba(255,109,0,0.4);
 }
-[data-theme="worldcup"] .status-green {
-  background: linear-gradient(135deg, #00e676 0%, #00c853 100%) !important;
-  color: #003018 !important;
-  box-shadow: 0 0 20px rgba(0,230,118,0.5);
-}
+
+/* Live row: orange glow (Dutch!) */
 [data-theme="worldcup"] .left-row[data-status="live"] {
-  border: 1px solid var(--accent-gold) !important;
-  background: rgba(245,197,24,0.04) !important;
-  box-shadow: 0 0 14px rgba(245,197,24,0.12);
+  border: 1px solid #ff6d00 !important;
+  background: rgba(255,109,0,0.06) !important;
+  box-shadow: 0 0 16px rgba(255,109,0,0.2);
 }
 [data-theme="worldcup"] .left-row[data-status="live"] .score-pill span:first-child {
-  background: var(--accent-gold) !important;
-  color: #000 !important;
+  background: #ff6d00 !important;
+  color: #fff !important;
 }
-[data-theme="worldcup"] .filter-btn.active {
-  background: var(--accent-gold);
-  color: #000;
-  border-color: var(--accent-gold);
+
+/* Win state: Australian green */
+[data-theme="worldcup"] .status-green {
+  background: linear-gradient(135deg, #00b04f, #00843d) !important;
+  color: #fff !important;
+  box-shadow: 0 0 20px rgba(0,176,79,0.5);
 }
+
+/* Ticker bar: dark navy + orange dot */
+[data-theme="worldcup"] #matchday-ticker-bar {
+  background: #070f25;
+  border-bottom: 1px solid rgba(255,109,0,0.3);
+}
+[data-theme="worldcup"] .ticker-countdown        { color: #ffcd00; }
+[data-theme="worldcup"] .ticker-countdown .ticker-time { color: #00b04f; }
+[data-theme="worldcup"] .ticker-live             { color: #ff6d00; }
+[data-theme="worldcup"] .ticker-live .ticker-dot { background: #ff6d00; box-shadow: 0 0 8px #ff6d00; }
+
+/* Modal tabs: orange underline */
 [data-theme="worldcup"] .tab-btn.active {
-  color: var(--accent-gold);
-  border-bottom-color: var(--accent-gold);
+  color: #ff6d00;
+  border-bottom-color: #ff6d00;
 }
-[data-theme="worldcup"] .week-gbp.red { color: #ff5252; opacity: 1; }
-[data-theme="worldcup"] .ticker-countdown { color: var(--accent-gold); }
-[data-theme="worldcup"] .ticker-countdown .ticker-time { color: var(--accent-green); }
+
+/* Bet pills get a subtle navy bg */
+[data-theme="worldcup"] .bet {
+  border-color: rgba(255,109,0,0.15);
+}
+
+/* Scores/money */
+[data-theme="worldcup"] .week-gbp.green  { color: #00b04f; }
+[data-theme="worldcup"] .week-gbp.red    { color: #ff4444; }
+[data-theme="worldcup"] .rank-money      { color: #00b04f; }
+[data-theme="worldcup"] .txt-green       { color: #00b04f !important; }
+
+/* Action button: Dutch orange */
+[data-theme="worldcup"] .place-bets-btn {
+  background: linear-gradient(135deg, #ff6d00, #e65000);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(255,109,0,0.35);
+}
+[data-theme="worldcup"] .action-btn {
+  background: linear-gradient(135deg, #ff6d00, #e65000);
+  color: #fff;
+}
+
+/* Summary toggle */
+[data-theme="worldcup"] .summary-toggle { background: rgba(255,109,0,0.08); }
+
+/* Day headers */
+[data-theme="worldcup"] .day-header { color: #ff6d00; opacity: 1; }
  
 /* =========================================
    CORE STYLES

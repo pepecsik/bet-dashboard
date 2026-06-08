@@ -1,5 +1,5 @@
 // sw.js — Juice Bets service worker
-const CACHE_NAME = 'juicebets-v1';
+const CACHE_NAME = 'juicebets-v2';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [
@@ -54,32 +54,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ---- Same-origin assets (HTML, images, manifest): cache-first ----
-  if (url.host === APP_HOST) {
+if (url.host === APP_HOST) {
+  // Network-first for HTML — always get fresh markup
+  if (req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     event.respondWith(
-      caches.match(req).then(cached =>
-        cached || fetch(req).then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-          }
-          return response;
-        })
-      )
-    );
-    return;
-  }
-
-  // ---- Cross-origin CDN libs (chart.js, confetti, fonts): cache-first ----
-  event.respondWith(
-    caches.match(req).then(cached =>
-      cached || fetch(req).then(response => {
-        if (response && response.status === 200) {
+      fetch(req).then(response => {
+        if (response && response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
         }
         return response;
-      }).catch(() => cached)
+      }).catch(() => caches.match(req)) // fall back to cache only when offline
+    );
+    return;
+  }
+  // Cache-first for everything else (images, icons, manifest)
+  event.respondWith(
+    caches.match(req).then(cached =>
+      cached || fetch(req).then(response => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        }
+        return response;
+      })
     )
   );
-});
+  return;
+}

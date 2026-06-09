@@ -486,7 +486,15 @@ body {
 }
 
 .score-pill, .bet { transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease; }
-
+@keyframes goalFlash {
+  0%   { transform: scale(1.3); background: #ffd700 !important; color: #000 !important; box-shadow: 0 0 0 3px #ffd700, 0 0 30px rgba(255,215,0,0.9); }
+  40%  { transform: scale(1.08); background: var(--accent-orange) !important; box-shadow: 0 0 15px rgba(255,150,0,0.5); }
+  100% { transform: scale(1); }
+}
+.flash-active {
+  animation: goalFlash 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+ 
 /* === DARK SKELETON === */
 .skeleton {
   background-color: var(--bg-soft);
@@ -1844,12 +1852,21 @@ img[alt="AVI"] {
       <div class="modal-sub">Live Standings</div>
       <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
     </div>
-    <div class="tbl-header tbl-grid">
-      <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
-      <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
+    <div id="tableTabs" class="modal-tabs" style="display:none;">
+      <button class="tab-btn active" id="tabStandings" onclick="switchTableTab('standings')">GROUPS</button>
+      <button class="tab-btn" id="tabBracket" onclick="switchTableTab('bracket')">BRACKET</button>
     </div>
-    <div class="tab-content active scroll-fix" style="padding-top:0;">
-      <div id="tableBody"></div>
+    <div id="standingsView">
+      <div class="tbl-header tbl-grid">
+        <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
+        <div class="ta-c">Pts</div><div class="ta-c">GD</div><div class="ta-r">Form</div>
+      </div>
+      <div class="tab-content active scroll-fix" style="padding-top:0;">
+        <div id="tableBody"></div>
+      </div>
+    </div>
+    <div id="bracketView" style="display:none; overflow-y:auto; flex:1; padding:15px;">
+      <div id="bracketBody"></div>
     </div>
   </div>
 </div>
@@ -2166,7 +2183,7 @@ function loadData(){
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
-        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
+        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
         // Build dynamic logo map from API data (works for WC national teams + any league)
         window.DYNAMIC_LOGOS = {};
         window.leagueMode = data.leagueId || 39;
@@ -3435,13 +3452,15 @@ function openTable(){
   if (headerLogo) headerLogo.src = isWC
     ? 'https://media.api-sports.io/football/leagues/1.png'
     : 'https://media.api-sports.io/football/leagues/39.png';
+
+  // Show tabs only in WC mode
+  document.getElementById('tableTabs').style.display = isWC ? 'flex' : 'none';
+  switchTableTab('standings');
+
   const b = document.getElementById("tableBody");
   b.innerHTML = "";
-  if (!tableCache) {
-    b.innerHTML = "Loading...";
-    document.getElementById("tableModal").classList.add("active");
-    return;
-  }
+  if (!tableCache) { b.innerHTML = "Loading..."; document.getElementById("tableModal").classList.add("active"); return; }
+
   const useGroups = isWC && tableCache[0] && tableCache[0].group;
   let currentGroup = null;
   tableCache.forEach(t => {
@@ -3450,12 +3469,7 @@ function openTable(){
       b.innerHTML += `<div style="padding:10px 15px 4px; font-size:10px; font-weight:800; color:var(--accent-orange); text-transform:uppercase; letter-spacing:1px; background:var(--bg-row); margin-top:4px;">${t.group}</div>`;
     }
     let formHtml = "";
-    if (t.form) {
-      t.form.split('').forEach(char => {
-        const colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
-        formHtml += `<div class="form-dot ${colorClass}"></div>`;
-      });
-    }
+    if (t.form) t.form.split('').forEach(char => { formHtml += `<div class="form-dot ${char==='W'?'dot-W':char==='L'?'dot-L':'dot-D'}"></div>`; });
     b.innerHTML += `<div class="tbl-row tbl-grid">
       <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
       <div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div>
@@ -3467,6 +3481,79 @@ function openTable(){
   });
   document.getElementById("tableModal").classList.add("active");
 }
+
+function switchTableTab(tab) {
+  document.getElementById('standingsView').style.display = tab === 'standings' ? 'block' : 'none';
+  document.getElementById('bracketView').style.display   = tab === 'bracket'   ? 'flex'  : 'none';
+  document.querySelectorAll('#tableTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tab === 'standings' ? 'tabStandings' : 'tabBracket').classList.add('active');
+  if (tab === 'bracket') renderBracket();
+}
+
+function renderBracket() {
+  const el = document.getElementById("bracketBody");
+  const data = window.knockoutCache || [];
+  if (!data.length) {
+    el.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5;">
+      <div style="font-size:36px; margin-bottom:10px;">🏆</div>
+      <div style="font-weight:800; font-size:13px;">Bracket not available yet</div>
+      <div style="font-size:11px; margin-top:6px; opacity:0.7;">Check back when the group stage ends</div>
+    </div>`;
+    return;
+  }
+  const roundOrder = ['Round of 32','Round of 16','Quarter-finals','Semi-finals','3rd Place Final','Final'];
+  const roundEmoji = { 'Final':'🏆', '3rd Place Final':'🥉', 'Semi-finals':'🔜', 'Quarter-finals':'⚔️', 'Round of 16':'1️⃣6️⃣', 'Round of 32':'3️⃣2️⃣' };
+  const byRound = {};
+  data.forEach(m => { if (!byRound[m.round]) byRound[m.round] = []; byRound[m.round].push(m); });
+
+  let html = '';
+  roundOrder.forEach(round => {
+    const matches = byRound[round];
+    if (!matches || !matches.length) return;
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-size:10px; font-weight:800; color:var(--accent-orange); text-transform:uppercase; letter-spacing:1px; padding-bottom:6px; margin-bottom:8px; border-bottom:1px solid rgba(255,109,0,0.25);">
+        ${roundEmoji[round] || ''} ${round}
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">`;
+
+    matches.forEach(m => {
+      const isFinished = ['FT','AET','PEN'].includes(m.status);
+      const isLive     = m.status && (m.status.includes("'") || m.status === 'HT');
+      const hG = m.homeGoals; const aG = m.awayGoals;
+      const hasScore = hG !== null && aG !== null;
+      const hWin = isFinished && hasScore && hG > aG;
+      const aWin = isFinished && hasScore && aG > hG;
+
+      const teamRow = (name, logo, goals, winner) => {
+        const shortName = (name || 'TBD').length > 16 ? (name || 'TBD').substring(0,15) + '…' : (name || 'TBD');
+        return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; ${winner ? 'background:rgba(74,222,128,0.08);' : ''}">
+          ${logo ? `<img src="${logo}" style="width:20px; height:20px; object-fit:contain; flex-shrink:0;">` : `<div style="width:20px; height:20px; background:rgba(255,255,255,0.08); border-radius:50%; flex-shrink:0;"></div>`}
+          <span style="flex:1; font-size:12px; font-weight:${winner ? '800' : '600'}; color:${winner ? 'var(--text-main)' : 'var(--text-muted)'};">${shortName}</span>
+          <span style="font-size:14px; font-weight:800; min-width:18px; text-align:right; color:${winner ? 'var(--accent-green)' : (hasScore ? 'var(--text-main)' : 'transparent')};">${hasScore ? goals : '–'}</span>
+        </div>`;
+      };
+
+      const statusBadge = isLive
+        ? `<span style="color:#ef4444; font-size:9px; font-weight:800;">${m.status}</span>`
+        : isFinished
+          ? `<span style="color:var(--text-muted); font-size:9px;">FT</span>`
+          : m.date
+            ? `<span style="color:var(--text-muted); font-size:9px;">${new Date(m.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`
+            : `<span style="color:var(--text-muted); font-size:9px;">TBD</span>`;
+
+      html += `<div style="background:var(--bg-soft); border-radius:8px; border:1px solid ${isLive ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.05)'}; overflow:hidden;">
+        ${teamRow(m.home, m.homeLogo, hG, hWin)}
+        <div style="height:1px; background:rgba(255,255,255,0.05); margin:0 10px;"></div>
+        ${teamRow(m.away, m.awayLogo, aG, aWin)}
+        <div style="padding:2px 10px 5px; display:flex; justify-content:flex-end;">${statusBadge}</div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
 function closeModal(id){document.getElementById(id).classList.remove("active")}
  
 // === Swipe between matches in the modal (carousel-style) ===

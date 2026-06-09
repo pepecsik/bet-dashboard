@@ -1848,24 +1848,22 @@ img[alt="AVI"] {
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
-      <div class="modal-title">Premier League</div>
+      <div class="modal-title">Standings</div>
       <div class="modal-sub">Live Standings</div>
-      <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
+      <img src="" class="modal-header-logo" id="tableModalLogo">
     </div>
     <div id="tableTabs" class="modal-tabs" style="display:none;">
       <button class="tab-btn active" id="tabStandings" onclick="switchTableTab('standings')">GROUPS</button>
       <button class="tab-btn" id="tabBracket" onclick="switchTableTab('bracket')">BRACKET</button>
     </div>
-    <div id="standingsView" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
-      <div class="tbl-header tbl-grid">
-        <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
-        <div class="ta-c">Pts</div><div class="ta-c">GD</div><div class="ta-r">Form</div>
-      </div>
-      <div style="flex:1; overflow-y:auto; min-height:0;">
-        <div id="tableBody"></div>
-      </div>
+    <div class="tbl-header tbl-grid" id="standingsHeader">
+      <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
+      <div class="ta-c">Pts</div><div class="ta-c">GD</div><div class="ta-r">Form</div>
     </div>
-    <div id="bracketView" style="display:none; flex:1; overflow-y:auto; min-height:0; padding:15px;">
+    <div class="tab-content active scroll-fix" id="standingsContent" style="padding-top:0;">
+      <div id="tableBody"></div>
+    </div>
+    <div id="bracketView" class="scroll-fix" style="display:none; padding:15px;">
       <div id="bracketBody"></div>
     </div>
   </div>
@@ -3483,10 +3481,12 @@ function openTable(){
 }
 
 function switchTableTab(tab) {
-  document.getElementById('standingsView').style.display = tab === 'standings' ? 'block' : 'none';
-  document.getElementById('bracketView').style.display   = tab === 'bracket'   ? 'flex'  : 'none';
+  const showStandings = tab === 'standings';
+  document.getElementById('standingsHeader').style.display = showStandings ? '' : 'none';
+  document.getElementById('standingsContent').style.display = showStandings ? '' : 'none';
+  document.getElementById('bracketView').style.display = showStandings ? 'none' : '';
   document.querySelectorAll('#tableTabs .tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tab === 'standings' ? 'tabStandings' : 'tabBracket').classList.add('active');
+  document.getElementById(showStandings ? 'tabStandings' : 'tabBracket').classList.add('active');
   if (tab === 'bracket') renderBracket();
 }
 

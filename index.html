@@ -2176,7 +2176,7 @@ function loadData(){
           : 'https://media.api-sports.io/football/leagues/39.png';
         (data.matches || []).forEach(m => {
           if (!m.match) return;
-          const parts = m.match.split('-').map(x => x.trim().toUpperCase());
+          const parts = m.match.split('-').map(x => x.trim().toUpperCase().replace(/[^A-Z]/g,''));
           if (parts[0] && m.homeLogoUrl) window.DYNAMIC_LOGOS[parts[0]] = m.homeLogoUrl;
           if (parts[1] && m.awayLogoUrl) window.DYNAMIC_LOGOS[parts[1]] = m.awayLogoUrl;
         });
@@ -3435,7 +3435,6 @@ function openTable(){
   if (headerLogo) headerLogo.src = isWC
     ? 'https://media.api-sports.io/football/leagues/1.png'
     : 'https://media.api-sports.io/football/leagues/39.png';
-
   const b = document.getElementById("tableBody");
   b.innerHTML = "";
   if (!tableCache) {
@@ -3443,11 +3442,17 @@ function openTable(){
     document.getElementById("tableModal").classList.add("active");
     return;
   }
+  const useGroups = isWC && tableCache[0] && tableCache[0].group;
+  let currentGroup = null;
   tableCache.forEach(t => {
+    if (useGroups && t.group !== currentGroup) {
+      currentGroup = t.group;
+      b.innerHTML += `<div style="padding:10px 15px 4px; font-size:10px; font-weight:800; color:var(--accent-orange); text-transform:uppercase; letter-spacing:1px; background:var(--bg-row); margin-top:4px;">${t.group}</div>`;
+    }
     let formHtml = "";
     if (t.form) {
       t.form.split('').forEach(char => {
-        let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
+        const colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
         formHtml += `<div class="form-dot ${colorClass}"></div>`;
       });
     }
@@ -4043,6 +4048,16 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
     // Fall back to plain W/L/D dots from the league table if not available yet.
     const detailedHForm = (formData && formData.home) ? formData.home : [];
     const detailedAForm = (formData && formData.away) ? formData.away : [];
+    // Build name → logo map from form opponents + DYNAMIC_LOGOS
+    const nameToLogo = {};
+    [...detailedHForm, ...detailedAForm].forEach(f => {
+      if (f.opponent && f.opponentLogo) {
+        nameToLogo[normalizeName(f.opponent).toUpperCase().replace(/[^A-Z]/g,'')] = f.opponentLogo;
+      }
+    });
+    if (window.DYNAMIC_LOGOS) {
+      Object.entries(window.DYNAMIC_LOGOS).forEach(([k,v]) => { nameToLogo[k] = v; });
+    }
     const hFormFallback = detailedHForm.length === 0 ? findFormInTable(currentHome).split('') : null;
     const aFormFallback = detailedAForm.length === 0 ? findFormInTable(currentAway).split('') : null;
 
@@ -4069,38 +4084,28 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
 
     // --- FIXED LOGO LOGIC WITH SPECIAL STYLING ---
     const getLogoHtml = (name) => {
-        if (!name) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
-        const norm = normalizeName(name).toUpperCase();
-        
-        // Reverse mapping for full names back to shortcodes
-        const reverseMappings = {
-            "WEST HAM": "WHA", "MANCHESTER CITY": "CTY", "MANCHESTER UNITED": "MAN",
-            "NEWCASTLE": "NWC", "NOTTINGHAM FOREST": "NOT", "ASTON VILLA": "AVI",
-            "CRYSTAL PALACE": "CPA", "CHELSEA": "CHE", "ARSENAL": "ARS",
-            "LIVERPOOL": "LIV", "TOTTENHAM": "TOT", "BOURNEMOUTH": "BOU",
-            "BRENTFORD": "BRE", "BRIGHTON": "BRI", "BURNLEY": "BUR",
-            "EVERTON": "EVE", "FULHAM": "FUL", "WOLVES": "WOL",
-            "WOLVERHAMPTON": "WOL", "SUNDERLAND": "SUN", "LEEDS": "LEE"
-        };
-
-        let code = norm; 
-        for (const [fullName, shortCode] of Object.entries(reverseMappings)) {
-            if (norm.includes(fullName) || fullName.includes(norm)) {
-                code = shortCode;
-                break;
-            }
+      if (!name) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
+      const norm = normalizeName(name).toUpperCase().replace(/[^A-Z]/g,'');
+  
+      // 1. Exact match (PL short code or normalized full name)
+      let logo = TEAM_LOGOS[norm] || nameToLogo[norm];
+  
+      // 2. startsWith match — "NETHERLANDS" startsWith "NED", "TURKEY" startsWith "TUR"
+      if (!logo) {
+        for (const [k, v] of Object.entries(nameToLogo)) {
+          if (k.length >= 3 && norm.startsWith(k)) { logo = v; break; }
         }
+      }
+  
+      // 3. Substring match — catches edge cases like "TURKIYE" ↔ "TUR"  
+      if (!logo) {
+        for (const [k, v] of Object.entries(nameToLogo)) {
+          if (k.length >= 3 && (norm.includes(k) || k.includes(norm.substring(0,4)))) { logo = v; break; }
+        }
+      }
 
-        const logo = TEAM_LOGOS[code] || (window.DYNAMIC_LOGOS && window.DYNAMIC_LOGOS[code]);
-        if (!logo) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
-
-        // Apply your original special size/background rules
-        let style = "";
-        if (code === "TOT") style = "background:white; border-radius:50%; padding:2px;";
-        if (code === "SUN") style = "transform:scale(1.35);";
-        if (code === "AVI") style = "transform:scale(1.3);";
-
-        return `<img src="${logo}" alt="${code}" class="ls-logo" style="${style}">`;
+      if (!logo) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
+      return `<img src="${logo}" alt="${name}" class="ls-logo">`;
     };
 
     let hWins = 0, draws = 0, aWins = 0, total = 0;

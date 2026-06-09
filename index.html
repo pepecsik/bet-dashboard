@@ -1907,7 +1907,7 @@ img[alt="AVI"] {
     </div>
 
     <div class="pl-btn" onclick="openTable()" style="position: absolute; top: 15px; left: 15px; transform: none; z-index: 20;">
-      <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      <img id="betModalLeagueLogo" src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
     </div>
     <div class="close-btn" onclick="closeModal('modalBetList')">×</div>
     <div class="picker-title" id="lblPlayerName">BETTING</div>
@@ -2101,7 +2101,7 @@ function getTeamRank(teamName) {
 function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
-  const logo = TEAM_LOGOS[code];
+  const logo = TEAM_LOGOS[code] || (window.DYNAMIC_LOGOS && window.DYNAMIC_LOGOS[code]);
   const rank = getTeamRank(code); 
   
   let imgHtml = "";
@@ -2167,10 +2167,26 @@ function loadData(){
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
+        // Build dynamic logo map from API data (works for WC national teams + any league)
+        window.DYNAMIC_LOGOS = {};
+        window.leagueMode = data.leagueId || 39;
+        const betLogo = document.getElementById('betModalLeagueLogo');
+        if (betLogo) betLogo.src = (data.leagueId === 1)
+          ? 'https://media.api-sports.io/football/leagues/1.png'
+          : 'https://media.api-sports.io/football/leagues/39.png';
+        (data.matches || []).forEach(m => {
+          if (!m.match) return;
+          const parts = m.match.split('-').map(x => x.trim().toUpperCase());
+          if (parts[0] && m.homeLogoUrl) window.DYNAMIC_LOGOS[parts[0]] = m.homeLogoUrl;
+          if (parts[1] && m.awayLogoUrl) window.DYNAMIC_LOGOS[parts[1]] = m.awayLogoUrl;
+        });
         const lh = document.createElement("div"); lh.className = "left-header";
         const remaining = data.matches.filter(m => getMatchStatusType(m) !== 'finished').length;
         const subLabel = remaining === 0 ? 'Complete' : `${remaining} remaining`;
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        const leagueLogo = (data.leagueId === 1)
+          ? 'https://media.api-sports.io/football/leagues/1.png'
+          : 'https://media.api-sports.io/football/leagues/39.png';
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
@@ -3412,20 +3428,39 @@ function openModal(m){
 }
  
 function openTable(){
-    const b=document.getElementById("tableBody");
-    b.innerHTML="";
-    if(!tableCache) b.innerHTML="Loading...";
-    else tableCache.forEach(t=>{
-        let formHtml = "";
-        if(t.form) {
-            t.form.split('').forEach(char => {
-                let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
-                formHtml += `<div class="form-dot ${colorClass}"></div>`;
-            });
-        }
-        b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap">${formHtml}</div></div>`
-    });
+  const isWC = window.leagueMode === 1;
+  document.querySelector('#tableModal .modal-title').textContent = isWC ? 'World Cup 2026' : 'Premier League';
+  document.querySelector('#tableModal .modal-sub').textContent   = isWC ? 'Group Stage' : 'Live Standings';
+  const headerLogo = document.querySelector('#tableModal .modal-header-logo');
+  if (headerLogo) headerLogo.src = isWC
+    ? 'https://media.api-sports.io/football/leagues/1.png'
+    : 'https://media.api-sports.io/football/leagues/39.png';
+
+  const b = document.getElementById("tableBody");
+  b.innerHTML = "";
+  if (!tableCache) {
+    b.innerHTML = "Loading...";
     document.getElementById("tableModal").classList.add("active");
+    return;
+  }
+  tableCache.forEach(t => {
+    let formHtml = "";
+    if (t.form) {
+      t.form.split('').forEach(char => {
+        let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
+        formHtml += `<div class="form-dot ${colorClass}"></div>`;
+      });
+    }
+    b.innerHTML += `<div class="tbl-row tbl-grid">
+      <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
+      <div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div>
+      <div class="ta-c">${t.mp}</div>
+      <div class="ta-c txt-green">${t.pts}</div>
+      <div class="ta-c" style="color:#9aa0a6">${t.gd}</div>
+      <div class="tbl-form-wrap">${formHtml}</div>
+    </div>`;
+  });
+  document.getElementById("tableModal").classList.add("active");
 }
 function closeModal(id){document.getElementById(id).classList.remove("active")}
  
@@ -4056,7 +4091,7 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
             }
         }
 
-        const logo = TEAM_LOGOS[code];
+        const logo = TEAM_LOGOS[code] || (window.DYNAMIC_LOGOS && window.DYNAMIC_LOGOS[code]);
         if (!logo) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
 
         // Apply your original special size/background rules

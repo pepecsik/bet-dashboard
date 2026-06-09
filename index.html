@@ -1856,21 +1856,21 @@ img[alt="AVI"] {
       <button class="tab-btn active" id="tabStandings" onclick="switchTableTab('standings')">GROUPS</button>
       <button class="tab-btn" id="tabBracket" onclick="switchTableTab('bracket')">BRACKET</button>
     </div>
-    <div id="standingsView" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+    <div id="standingsView" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
       <div class="tbl-header tbl-grid">
         <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
         <div class="ta-c">Pts</div><div class="ta-c">GD</div><div class="ta-r">Form</div>
       </div>
-      <div class="tab-content active scroll-fix" style="padding-top:0;">
+      <div style="flex:1; overflow-y:auto; min-height:0;">
         <div id="tableBody"></div>
       </div>
     </div>
-    <div id="bracketView" style="display:none; overflow-y:auto; flex:1; padding:15px;">
+    <div id="bracketView" style="display:none; flex:1; overflow-y:auto; min-height:0; padding:15px;">
       <div id="bracketBody"></div>
     </div>
   </div>
 </div>
-
+ 
 <div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
     <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
       <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">

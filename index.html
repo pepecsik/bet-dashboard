@@ -2022,24 +2022,92 @@ function renderHallOfFame(slips) {
     wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px;">No winning bets yet — keep playing!</p>';
     return;
   }
-  wrap.innerHTML = slips.map((slip, idx) => `
-    <div style="background:var(--bg-soft);border-radius:12px;padding:14px;border-left:4px solid var(--accent-gold);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="color:var(--accent-gold);font-weight:800;font-size:12px;">📅 ${slip.date}</span>
-        <span style="color:var(--accent-green);font-weight:900;font-size:14px;">+£${Number(slip.win).toFixed(2)}</span>
-      </div>
-      ${slip.matches.map(m => `
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:12px;">
-          <span style="color:var(--text-muted)">${m.match}</span>
-          <span style="color:var(--text-main);font-weight:700">${m.bet}</span>
+
+  const AVATAR = { snackbar: './snackbar.png', timbo: './timbo.png', pepe: './pepe.png' };
+  const PERSON_NAME = { snackbar: 'Snackbar', timbo: 'Timbo', pepe: 'Pepe' };
+
+  const COUNTRIES = {
+    ARG:{name:'Argentina',flag:'🇦🇷'}, AUS:{name:'Australia',flag:'🇦🇺'}, AUT:{name:'Austria',flag:'🇦🇹'},
+    BEL:{name:'Belgium',flag:'🇧🇪'}, BOL:{name:'Bolivia',flag:'🇧🇴'}, BOS:{name:'Bosnia',flag:'🇧🇦'},
+    BRA:{name:'Brazil',flag:'🇧🇷'}, BFA:{name:'Burkina Faso',flag:'🇧🇫'}, CMR:{name:'Cameroon',flag:'🇨🇲'},
+    CAN:{name:'Canada',flag:'🇨🇦'}, CAP:{name:'Cape Verde',flag:'🇨🇻'}, CHI:{name:'Chile',flag:'🇨🇱'},
+    CHN:{name:'China',flag:'🇨🇳'}, COL:{name:'Colombia',flag:'🇨🇴'}, COS:{name:'Costa Rica',flag:'🇨🇷'},
+    CRO:{name:'Croatia',flag:'🇭🇷'}, CZE:{name:'Czech Republic',flag:'🇨🇿'}, DEN:{name:'Denmark',flag:'🇩🇰'},
+    ECU:{name:'Ecuador',flag:'🇪🇨'}, EGY:{name:'Egypt',flag:'🇪🇬'}, ENG:{name:'England',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+    FRA:{name:'France',flag:'🇫🇷'}, GER:{name:'Germany',flag:'🇩🇪'}, GHA:{name:'Ghana',flag:'🇬🇭'},
+    GRE:{name:'Greece',flag:'🇬🇷'}, GUA:{name:'Guatemala',flag:'🇬🇹'}, HON:{name:'Honduras',flag:'🇭🇳'},
+    HUN:{name:'Hungary',flag:'🇭🇺'}, IDN:{name:'Indonesia',flag:'🇮🇩'}, IND:{name:'India',flag:'🇮🇳'},
+    IRN:{name:'Iran',flag:'🇮🇷'}, IRQ:{name:'Iraq',flag:'🇮🇶'}, IRL:{name:'Ireland',flag:'🇮🇪'},
+    ITA:{name:'Italy',flag:'🇮🇹'}, JAM:{name:'Jamaica',flag:'🇯🇲'}, JPN:{name:'Japan',flag:'🇯🇵'},
+    JOR:{name:'Jordan',flag:'🇯🇴'}, KEN:{name:'Kenya',flag:'🇰🇪'}, KOR:{name:'South Korea',flag:'🇰🇷'},
+    MAR:{name:'Morocco',flag:'🇲🇦'}, MEX:{name:'Mexico',flag:'🇲🇽'}, MLI:{name:'Mali',flag:'🇲🇱'},
+    NED:{name:'Netherlands',flag:'🇳🇱'}, NGA:{name:'Nigeria',flag:'🇳🇬'}, NIR:{name:'N. Ireland',flag:'🏴󠁧󠁢󠁮󠁩󠁲󠁿'},
+    NOR:{name:'Norway',flag:'🇳🇴'}, OMA:{name:'Oman',flag:'🇴🇲'}, PAN:{name:'Panama',flag:'🇵🇦'},
+    PAR:{name:'Paraguay',flag:'🇵🇾'}, PER:{name:'Peru',flag:'🇵🇪'}, POL:{name:'Poland',flag:'🇵🇱'},
+    POR:{name:'Portugal',flag:'🇵🇹'}, QAT:{name:'Qatar',flag:'🇶🇦'}, ROM:{name:'Romania',flag:'🇷🇴'},
+    SAU:{name:'Saudi Arabia',flag:'🇸🇦'}, SCO:{name:'Scotland',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'}, SEN:{name:'Senegal',flag:'🇸🇳'},
+    SPA:{name:'Spain',flag:'🇪🇸'}, SRB:{name:'Serbia',flag:'🇷🇸'}, SUI:{name:'Switzerland',flag:'🇨🇭'},
+    SWE:{name:'Sweden',flag:'🇸🇪'}, THA:{name:'Thailand',flag:'🇹🇭'}, TRI:{name:'Trinidad',flag:'🇹🇹'},
+    TUN:{name:'Tunisia',flag:'🇹🇳'}, TUR:{name:'Turkey',flag:'🇹🇷'}, UKR:{name:'Ukraine',flag:'🇺🇦'},
+    URU:{name:'Uruguay',flag:'🇺🇾'}, USA:{name:'USA',flag:'🇺🇸'}, VEN:{name:'Venezuela',flag:'🇻🇪'},
+    WAL:{name:'Wales',flag:'🏴󠁧󠁢󠁷󠁬󠁳󠁿'}, CIV:{name:'Ivory Coast',flag:'🇨🇮'}, COD:{name:'DR Congo',flag:'🇨🇩'},
+    ALG:{name:'Algeria',flag:'🇩🇿'}, SVK:{name:'Slovakia',flag:'🇸🇰'}, SVN:{name:'Slovenia',flag:'🇸🇮'},
+    FIN:{name:'Finland',flag:'🇫🇮'}, ALB:{name:'Albania',flag:'🇦🇱'}, ZAM:{name:'Zambia',flag:'🇿🇲'}
+  };
+
+  function teamHtml(code) {
+    const c = COUNTRIES[code] || { name: code, flag: '🏳️' };
+    return `<span>${c.flag} ${c.name}</span>`;
+  }
+
+  wrap.innerHTML = slips.map(slip => {
+    const avatar = AVATAR[slip.person] || '';
+    const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
+
+    const matchRows = slip.matches.map(m => {
+      const [home, away] = (m.match || '').split('-');
+      const betCode = m.bet;
+      const homeC = COUNTRIES[home] || { name: home, flag: '🏳️' };
+      const awayC = COUNTRIES[away] || { name: away, flag: '🏳️' };
+      const betC = COUNTRIES[betCode] || { name: betCode, flag: '🏳️' };
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:12px;gap:8px;">
+          <div style="flex:1;color:var(--text-muted);">${homeC.flag} ${homeC.name} <span style="color:rgba(255,255,255,0.3);margin:0 4px;">vs</span> ${awayC.flag} ${awayC.name}</div>
+          <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 10px;color:var(--accent-gold);font-weight:800;white-space:nowrap;">${betC.flag} ${betC.name}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);">
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,rgba(246,201,14,0.12),rgba(246,201,14,0.04));padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(246,201,14,0.2);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${avatar ? `<img src="${avatar}" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--accent-gold);object-fit:cover;">` : ''}
+            <span style="color:var(--text-main);font-weight:800;font-size:14px;">${personName}</span>
+          </div>
+          <span style="color:var(--text-muted);font-size:11px;">📅 ${slip.date}</span>
         </div>
-      `).join('')}
-      <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--text-muted);">
-        <span>Stake: £${Number(slip.bet).toFixed(2)}</span>
-        <span>Win PP: £${Number(slip.winPP).toFixed(2)}</span>
-      </div>
-    </div>
-  `).join('');
+        <!-- Matches -->
+        <div style="padding:4px 14px 8px;">
+          ${matchRows}
+        </div>
+        <!-- Footer -->
+        <div style="background:rgba(0,176,79,0.08);border-top:1px solid rgba(0,176,79,0.2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:11px;color:var(--text-muted);">
+            <div>Stake</div>
+            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.bet).toFixed(2)}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-muted);">WIN</div>
+            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">£${Number(slip.win).toFixed(2)}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);text-align:right;">
+            <div>Win PP</div>
+            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.winPP).toFixed(2)}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
 }
 const REFRESH_MS=30000;
 

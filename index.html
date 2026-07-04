@@ -2065,30 +2065,34 @@ function renderHallOfFame(slips) {
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
 
     const matchRows = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 38px auto;gap:6px;padding:4px 0 2px;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:2px;">
-      <div>Home</div><div>Away</div><div style="text-align:center;">Score</div><div style="text-align:center;">Bet</div>
-    </div>
-    ${slip.matches.map(m => {
-      const [home, away] = (m.match || '').split('-');
-      const betCode = m.bet;
-      const homeC = COUNTRIES[home] || { name: home, flag: '🏳️' };
-      const awayC = COUNTRIES[away] || { name: away, flag: '🏳️' };
-      const betC  = COUNTRIES[betCode] || { name: betCode, flag: '🏳️' };
-      return `
-        <div style="display:grid;grid-template-columns:1fr 1fr 38px auto;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
-          <div style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
-          <div style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
-          <div style="text-align:center;font-size:11px;font-weight:800;color:var(--text-main);white-space:nowrap;">${m.score || '–'}</div>
-          <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 8px;color:var(--accent-gold);font-weight:800;white-space:nowrap;text-align:center;font-size:11px;">${betC.flag} ${betC.name}</div>
-        </div>`;
-    }).join('')}`;
+    <div style="display:grid;grid-template-columns:1fr 1fr 42px auto;gap:0;">
+      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 4px 6px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Home</div>
+      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 4px 6px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Away</div>
+      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 6px 0;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Score</div>
+      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 6px 4px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Bet</div>
+      ${slip.matches.map(m => {
+        const [home, away] = (m.match || '').split('-');
+        const betCode = m.bet;
+        const homeC = COUNTRIES[home]   || { name: home,    flag: '🏳️' };
+        const awayC = COUNTRIES[away]   || { name: away,    flag: '🏳️' };
+        const betC  = COUNTRIES[betCode]|| { name: betCode, flag: '🏳️' };
+        const border = 'border-bottom:1px solid rgba(255,255,255,0.06);';
+        return `
+          <div style="font-size:12px;color:var(--text-muted);padding:7px 4px 7px 0;${border}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);padding:7px 4px 7px 0;${border}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
+          <div style="font-size:12px;font-weight:800;color:var(--text-main);padding:7px 0;${border}text-align:center;white-space:nowrap;">${m.score || '–'}</div>
+          <div style="padding:4px 0 4px 6px;${border}">
+            <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 7px;color:var(--accent-gold);font-weight:800;font-size:11px;white-space:nowrap;text-align:center;">${betC.flag} ${betC.name}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
 
     return `
       <div style="background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);">
         <!-- Header -->
         <div style="background:linear-gradient(135deg,rgba(246,201,14,0.12),rgba(246,201,14,0.04));padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(246,201,14,0.2);">
           <div style="display:flex;align-items:center;gap:10px;">
-            ${avatar ? `<img src="${avatar}" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--accent-gold);object-fit:cover;">` : ''}
+            ${avatar ? `<img src="${avatar}" style="width:40px;height:40px;border-radius:8px;border:2px solid var(--accent-gold);object-fit:contain;background:#000;">` : ''}
             <span style="color:var(--text-main);font-weight:800;font-size:14px;">${personName}</span>
           </div>
           <span style="color:var(--text-muted);font-size:11px;">📅 ${slip.date}</span>

@@ -2064,18 +2064,24 @@ function renderHallOfFame(slips) {
     const avatar = AVATAR[slip.person] || '';
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
 
-    const matchRows = slip.matches.map(m => {
+    const matchRows = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 38px auto;gap:6px;padding:4px 0 2px;font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:2px;">
+      <div>Home</div><div>Away</div><div style="text-align:center;">Score</div><div style="text-align:center;">Bet</div>
+    </div>
+    ${slip.matches.map(m => {
       const [home, away] = (m.match || '').split('-');
       const betCode = m.bet;
       const homeC = COUNTRIES[home] || { name: home, flag: '🏳️' };
       const awayC = COUNTRIES[away] || { name: away, flag: '🏳️' };
-      const betC = COUNTRIES[betCode] || { name: betCode, flag: '🏳️' };
+      const betC  = COUNTRIES[betCode] || { name: betCode, flag: '🏳️' };
       return `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:12px;gap:8px;">
-          <div style="flex:1;color:var(--text-muted);">${homeC.flag} ${homeC.name} <span style="color:rgba(255,255,255,0.3);margin:0 4px;">vs</span> ${awayC.flag} ${awayC.name}</div>
-          <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 10px;color:var(--accent-gold);font-weight:800;white-space:nowrap;">${betC.flag} ${betC.name}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 38px auto;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
+          <div style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
+          <div style="color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
+          <div style="text-align:center;font-size:11px;font-weight:800;color:var(--text-main);white-space:nowrap;">${m.score || '–'}</div>
+          <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 8px;color:var(--accent-gold);font-weight:800;white-space:nowrap;text-align:center;font-size:11px;">${betC.flag} ${betC.name}</div>
         </div>`;
-    }).join('');
+    }).join('')}`;
 
     return `
       <div style="background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);">

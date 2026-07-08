@@ -2002,10 +2002,10 @@ img[alt="AVI"] {
       <div class="modal-title">Hall of Fame</div>
       <div class="modal-sub" style="color:var(--accent-gold)">Winning Bets</div>
     </div>
-    <div class="modal-scroll-area" id="hofContent" style="display:flex; flex-direction:column; gap:12px; background:var(--bg-modal);">
-    </div>
+        <div id="hofContent" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:15px 10px 15px 15px;background:var(--bg-modal);flex:1;min-height:0;"></div>
+    <div id="hofDots" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 14px;background:var(--bg-modal);border-radius:0 0 16px 16px;"></div>
   </div>
-</div> 
+</div>
  
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
@@ -2017,22 +2017,23 @@ function openHallOfFame() {
 
 function renderHallOfFame(slips) {
   const wrap = document.getElementById('hofContent');
+  const dotsEl = document.getElementById('hofDots');
   if (!wrap) return;
   if (!slips || slips.length === 0) {
     wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px;">No winning bets yet — keep playing!</p>';
+    if (dotsEl) dotsEl.innerHTML = '';
     return;
   }
 
-  const AVATAR = { snackbar: './snackbar.png', timbo: './timbo.png', pepe: './pepe.png' };
+  const AVATAR      = { snackbar: './snackbar.png', timbo: './timbo.png', pepe: './pepe.png' };
   const PERSON_NAME = { snackbar: 'Snackbar', timbo: 'Timbo', pepe: 'Pepe' };
-
-  const COUNTRIES = {
+  const COUNTRIES   = {
     ARG:{name:'Argentina',flag:'🇦🇷'}, AUS:{name:'Australia',flag:'🇦🇺'}, AUT:{name:'Austria',flag:'🇦🇹'},
     BEL:{name:'Belgium',flag:'🇧🇪'}, BOL:{name:'Bolivia',flag:'🇧🇴'}, BOS:{name:'Bosnia',flag:'🇧🇦'},
     BRA:{name:'Brazil',flag:'🇧🇷'}, BFA:{name:'Burkina Faso',flag:'🇧🇫'}, CMR:{name:'Cameroon',flag:'🇨🇲'},
     CAN:{name:'Canada',flag:'🇨🇦'}, CAP:{name:'Cape Verde',flag:'🇨🇻'}, CHI:{name:'Chile',flag:'🇨🇱'},
     CHN:{name:'China',flag:'🇨🇳'}, COL:{name:'Colombia',flag:'🇨🇴'}, COS:{name:'Costa Rica',flag:'🇨🇷'},
-    CRO:{name:'Croatia',flag:'🇭🇷'}, CZE:{name:'Czech Republic',flag:'🇨🇿'}, DEN:{name:'Denmark',flag:'🇩🇰'},
+    CRO:{name:'Croatia',flag:'🇭🇷'}, CZE:{name:'Czechia',flag:'🇨🇿'}, DEN:{name:'Denmark',flag:'🇩🇰'},
     ECU:{name:'Ecuador',flag:'🇪🇨'}, EGY:{name:'Egypt',flag:'🇪🇬'}, ENG:{name:'England',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
     FRA:{name:'France',flag:'🇫🇷'}, GER:{name:'Germany',flag:'🇩🇪'}, GHA:{name:'Ghana',flag:'🇬🇭'},
     GRE:{name:'Greece',flag:'🇬🇷'}, GUA:{name:'Guatemala',flag:'🇬🇹'}, HON:{name:'Honduras',flag:'🇭🇳'},
@@ -2055,53 +2056,50 @@ function renderHallOfFame(slips) {
     FIN:{name:'Finland',flag:'🇫🇮'}, ALB:{name:'Albania',flag:'🇦🇱'}, ZAM:{name:'Zambia',flag:'🇿🇲'}
   };
 
-  function teamHtml(code) {
-    const c = COUNTRIES[code] || { name: code, flag: '🏳️' };
-    return `<span>${c.flag} ${c.name}</span>`;
-  }
+  const reversed = [...slips].reverse();
 
-  wrap.innerHTML = slips.map(slip => {
-    const avatar = AVATAR[slip.person] || '';
+  wrap.innerHTML = reversed.map((slip, idx) => {
+    const avatar     = AVATAR[slip.person] || '';
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
+    const total      = reversed.length;
 
-    const matchRows = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 42px auto;gap:0;">
-      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 4px 6px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Home</div>
-      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 4px 6px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Away</div>
-      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 6px 0;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Score</div>
-      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 6px 4px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Bet</div>
-      ${slip.matches.map(m => {
-        const [home, away] = (m.match || '').split('-');
-        const betCode = m.bet;
-        const homeC = COUNTRIES[home]   || { name: home,    flag: '🏳️' };
-        const awayC = COUNTRIES[away]   || { name: away,    flag: '🏳️' };
-        const betC  = COUNTRIES[betCode]|| { name: betCode, flag: '🏳️' };
-        const border = 'border-bottom:1px solid rgba(255,255,255,0.06);';
-        return `
-          <div style="font-size:12px;color:var(--text-muted);padding:7px 4px 7px 0;${border}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
-          <div style="font-size:12px;color:var(--text-muted);padding:7px 4px 7px 0;${border}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
-          <div style="font-size:12px;font-weight:800;color:var(--text-main);padding:7px 0;${border}text-align:center;white-space:nowrap;">${m.score || '–'}</div>
-          <div style="padding:4px 0 4px 6px;${border}">
-            <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:3px 7px;color:var(--accent-gold);font-weight:800;font-size:11px;white-space:nowrap;text-align:center;">${betC.flag} ${betC.name}</div>
-          </div>`;
-      }).join('')}
-    </div>`;
+    const matchGrid = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 42px auto;gap:0;margin-top:2px;">
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 4px 5px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Home</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 4px 5px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Away</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 0 5px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Score</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 0 5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Bet</div>
+        ${slip.matches.map(m => {
+          const [home, away] = (m.match || '').split('-');
+          const homeC = COUNTRIES[home]    || { name: home,    flag: '🏳️' };
+          const awayC = COUNTRIES[away]    || { name: away,    flag: '🏳️' };
+          const betC  = COUNTRIES[m.bet]   || { name: m.bet,   flag: '🏳️' };
+          const b = 'border-bottom:1px solid rgba(255,255,255,0.06);';
+          return `
+            <div style="font-size:11px;color:var(--text-muted);padding:6px 4px 6px 0;${b}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);padding:6px 4px 6px 0;${b}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-main);padding:6px 0;${b}text-align:center;white-space:nowrap;">${m.score || '–'}</div>
+            <div style="padding:4px 0 4px 6px;${b}">
+              <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:2px 6px;color:var(--accent-gold);font-weight:800;font-size:10px;white-space:nowrap;text-align:center;">${betC.flag} ${betC.name}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
 
     return `
-      <div style="background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);">
-        <!-- Header -->
+      <div style="min-width:calc(100% - 20px);flex-shrink:0;scroll-snap-align:start;background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);display:flex;flex-direction:column;">
         <div style="background:linear-gradient(135deg,rgba(246,201,14,0.12),rgba(246,201,14,0.04));padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(246,201,14,0.2);">
           <div style="display:flex;align-items:center;gap:10px;">
             ${avatar ? `<img src="${avatar}" style="width:40px;height:40px;border-radius:8px;border:2px solid var(--accent-gold);object-fit:contain;background:#000;">` : ''}
             <span style="color:var(--text-main);font-weight:800;font-size:14px;">${personName}</span>
           </div>
-          <span style="color:var(--text-muted);font-size:11px;">📅 ${slip.date}</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+            <span style="color:var(--text-muted);font-size:10px;">📅 ${slip.date}</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:9px;font-weight:700;">${idx + 1} / ${total}</span>
+          </div>
         </div>
-        <!-- Matches -->
-        <div style="padding:4px 14px 8px;">
-          ${matchRows}
+        <div style="padding:4px 14px 10px;flex:1;overflow:hidden;">
+          ${matchGrid}
         </div>
-        <!-- Footer -->
         <div style="background:rgba(0,176,79,0.08);border-top:1px solid rgba(0,176,79,0.2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:11px;color:var(--text-muted);">
             <div>Stake</div>
@@ -2118,7 +2116,30 @@ function renderHallOfFame(slips) {
         </div>
       </div>`;
   }).join('');
+
+  // Dot indicators
+  if (dotsEl) {
+    dotsEl.innerHTML = reversed.map((_, i) =>
+      `<span data-dot="${i}" style="height:6px;width:${i===0?'18px':'6px'};border-radius:3px;background:${i===0?'var(--accent-gold)':'rgba(255,255,255,0.2)'};transition:all 0.3s;display:inline-block;cursor:pointer;"></span>`
+    ).join('');
+    dotsEl.querySelectorAll('span').forEach(dot => {
+      dot.onclick = () => {
+        const i = parseInt(dot.dataset.dot);
+        wrap.scrollTo({ left: i * wrap.offsetWidth, behavior: 'smooth' });
+      };
+    });
+  }
+
+  // Update dots on scroll
+  wrap.onscroll = () => {
+    const idx = Math.round(wrap.scrollLeft / (wrap.scrollWidth / reversed.length));
+    if (dotsEl) dotsEl.querySelectorAll('span').forEach((d, i) => {
+      d.style.width  = i === idx ? '18px' : '6px';
+      d.style.background = i === idx ? 'var(--accent-gold)' : 'rgba(255,255,255,0.2)';
+    });
+  };
 }
+ 
 const REFRESH_MS=30000;
 
 // GLOBAL VARIABLES

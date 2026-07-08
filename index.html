@@ -2000,7 +2000,11 @@ img[alt="AVI"] {
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('hofModal')">Back</button>
       <div class="modal-title">Hall of Fame</div>
-      <div class="modal-sub" style="color:var(--accent-gold)">Winning Bets</div>
+            <div class="modal-sub" style="color:var(--accent-gold)">Winning Bets</div>
+      <div id="hofTotalWin" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);text-align:right;">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Won</div>
+        <div style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">£0.00</div>
+      </div>
     </div>
         <div id="hofContent" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:15px 10px 15px 15px;background:var(--bg-modal);flex:1;min-height:0;"></div>
     <div id="hofDots" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 14px;background:var(--bg-modal);border-radius:0 0 16px 16px;"></div>
@@ -2057,7 +2061,9 @@ function renderHallOfFame(slips) {
   };
 
   const reversed = [...slips].reverse();
-
+  const totalWon = slips.reduce((sum, s) => sum + Number(s.win || 0), 0);
+  const totalEl = document.getElementById('hofTotalWin');
+  if (totalEl) totalEl.querySelector('div:last-child').textContent = '£' + totalWon.toFixed(2);
   wrap.innerHTML = reversed.map((slip, idx) => {
     const avatar     = AVATAR[slip.person] || '';
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';

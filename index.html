@@ -3146,6 +3146,13 @@ function evaluateLeg(leg, m) {
       if (hCards === aCards) return 'MISSED';
       return (hCards > aCards ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
     }
+    case 'SHOTS_ON_TARGET_2PLUS': {
+      const players = (m.stats && m.stats.players) || { h: [], a: [] };
+      const findPlayer = (name) => [...(players.h || []), ...(players.a || [])].find(p => nameIs(p.name || '', name));
+      const p = findPlayer(leg.target);
+      if (p && (p.shots_on || 0) >= 2) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    }
     default:
       return 'PENDING';
   }
@@ -3192,6 +3199,7 @@ function openSpecialBetModal(betId, matchId) {
       case 'CORNERS_MOST': return `Most Corners: ${leg.target}`;
       case 'SHOTS_ON_TARGET_MOST': return `Most Shots On Target: ${leg.target}`;
       case 'CARDS_MOST': return `Most Cards: ${leg.target}`;
+      case 'SHOTS_ON_TARGET_2PLUS': return `2+ Shots On Target: ${leg.target}`;
       default: return `${leg.type}: ${leg.target}`;
     }
   };

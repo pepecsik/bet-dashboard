@@ -1107,10 +1107,11 @@ body {
 .player-card:active { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.1); }
 .player-avatar { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; display: block; }
 .player-name-text { display: none; }
-.bet-row { display:grid; grid-template-columns: 1fr repeat(var(--bet-slots, 2), 60px); gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; align-items:center; }
-.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); }
-.vs-tag { opacity:0.4; font-size:10px; }
-.bet-input-slot { height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
+.bet-row { display:flex; align-items:center; gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; overflow-x:auto; scrollbar-width:none; }
+.bet-row::-webkit-scrollbar { display:none; }
+.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); flex:0 0 auto; min-width:118px; position:sticky; left:0; z-index:1; background:var(--bg-soft); padding-right:4px; }
+.vs-tag { opacity:0.4; font-size:10px; flex:0 0 auto; }
+.bet-input-slot { flex:0 0 48px; width:48px; height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
 .bet-input-slot.filled { color: #000; border-color: var(--accent-green); background: var(--accent-green); }
 .picker-title { text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 10px; color: var(--accent-orange); }
 .picker-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -1124,7 +1125,7 @@ body {
 .action-btn { background: var(--accent-green); color: #000; padding: 15px; border-radius: 12px; font-weight: 800; text-align: center; border: none; cursor: pointer; width: 100%; font-size: 14px; }
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
-.bet-header-row { display: grid !important; grid-template-columns: 1fr repeat(var(--bet-slots, 2), 60px) !important; gap: 8px; padding: 0 8px 8px 8px; align-items: center; }
+.bet-header-row { padding: 0 8px 8px 8px; }
 .success-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-card); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .success-overlay.active { opacity: 1; pointer-events: all; }
 .success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
@@ -1934,7 +1935,7 @@ img[alt="AVI"] {
     <div class="picker-title" id="lblPlayerName">BETTING</div>
     
     <div class="bet-header-row" style="font-size:10px; font-weight:800; color:var(--text-muted);">
-      <div>MATCH</div> <div></div> <div></div>
+      <div>MATCH</div>
     </div>
 
     <div id="betListContainer" class="scroll-y"></div>
@@ -4099,15 +4100,8 @@ function selectPlayer(name) {
   if(window.globalHeaders) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
-  const slotCount = pIndices.length || 2;
-
   // Check locks per slot
   const isLocked = pIndices.map(idx => !!(window.winData && window.winData[idx] && window.winData[idx].value));
-
-  // Match the header row's column layout to the number of bet slots this player has
-  document.getElementById('modalBetList').style.setProperty('--bet-slots', slotCount);
-  const headerRowEl = document.querySelector('#modalBetList .bet-header-row');
-  if(headerRowEl) headerRowEl.innerHTML = '<div>MATCH</div>' + pIndices.map(() => '<div></div>').join('');
 
   // 3. Filter Upcoming
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];

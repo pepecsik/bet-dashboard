@@ -2000,7 +2000,19 @@ img[alt="AVI"] {
       </div>
   </div>
 </div>
- 
+
+<div class="modal-overlay" id="modalSpecialBet" onclick="closeModal('modalSpecialBet')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('modalSpecialBet')">Back</button>
+      <div class="modal-title" id="specialBetTitle">Combo Bet</div>
+      <div class="modal-sub" id="specialBetMatchSub"></div>
+    </div>
+    <div class="modal-scroll-area" id="specialBetLegs" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-modal);">
+      </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="hofModal" onclick="closeModal('hofModal')">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -2339,6 +2351,17 @@ function loadData(){
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
+        window.specialBets = data.specialBets || [];
+        window.specialBetsEnabled = !!data.specialBetsEnabled;
+        // Group consecutive same-name header columns per player, so a special-bet
+        // pill can be inserted right after that player's own regular bet pills.
+        const playerColGroups = [];
+        (data.headers || []).forEach((h, i) => {
+            const last = playerColGroups[playerColGroups.length - 1];
+            if (last && last.name === h.name) last.lastIdx = i;
+            else playerColGroups.push({ name: h.name, lastIdx: i });
+        });
+        window.playerColGroups = playerColGroups;
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
@@ -2472,6 +2495,35 @@ function loadData(){
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
+
+          // Special-bet ("Bet Builder" multi) pills — inserted right after each
+          // player's own regular pills, not part of the sheet's real columns.
+          if (window.specialBetsEnabled && window.specialBets && window.specialBets.length && window.playerColGroups) {
+              const insertions = [];
+              window.playerColGroups.forEach(group => {
+                  const betsHere = window.specialBets.filter(b => b.player === group.name && b.legs.some(l => l.match === m.match));
+                  betsHere.forEach(bet => {
+                      const legsHere = bet.legs.filter(l => l.match === m.match);
+                      const status = evaluateLegsSummary(legsHere, m);
+                      const pillEl = document.createElement('div');
+                      pillEl.className = 'bet special-bet';
+                      const color = specialBetPillColor(status);
+                      pillEl.style.setProperty('--bet-bg', color);
+                      pillEl.style.backgroundColor = color;
+                      if (legsHere.length > 1) {
+                          pillEl.textContent = 'COMBO';
+                          pillEl.style.cursor = 'pointer';
+                          pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
+                      } else {
+                          pillEl.textContent = legsHere[0].target;
+                      }
+                      const refNode = rr.children[group.lastIdx + 1] || null;
+                      insertions.push({ refNode, pillEl });
+                  });
+              });
+              insertions.forEach(({ refNode, pillEl }) => rr.insertBefore(pillEl, refNode));
+          }
+
           right.appendChild(rr);
         });
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
@@ -2996,6 +3048,131 @@ function normalizeName(str) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 function formatName(n){return n||""}
+
+// Evaluates one special-bet leg against a match's already-fetched data.
+// Returns 'HIT' | 'MISSED' | 'PENDING'. MISSED only once the match is final
+// and the condition never happened \u2014 mirrors how the rest of the app treats
+// match status (nothing is a permanent loss while the match is still live).
+function evaluateLeg(leg, m) {
+  if (!m) return 'PENDING';
+  const isFinal = m.status === 'FT';
+  const events = (m.stats && m.stats.events) || [];
+  const scoreParts = (m.score || '').split('-').map(x => parseInt(x, 10));
+  const hScore = scoreParts[0], aScore = scoreParts[1];
+  const hasScore = !isNaN(hScore) && !isNaN(aScore);
+  const [homeCode, awayCode] = m.match.split('-').map(s => s.trim().toUpperCase());
+
+  const nameIs = (a, b) => normalizeName(a).trim() === normalizeName(b).trim();
+  const playerScored = (name) => events.some(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name));
+  const playerAssisted = (name) => events.some(e => e.type === 'Goal' && nameIs(e.assist || '', name));
+  const playerGoalCount = (name) => events.filter(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name)).length;
+  const playerCarded = (name) => events.some(e => e.type === 'Card' && nameIs(e.player || '', name));
+  const totalCards = () => events.filter(e => e.type === 'Card').length;
+
+  switch (leg.type) {
+    case 'GOALS_OVER': {
+      if (!hasScore) return 'PENDING';
+      if ((hScore + aScore) > parseFloat(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    }
+    case 'BTTS': {
+      if (!hasScore) return 'PENDING';
+      const bothScored = hScore > 0 && aScore > 0;
+      const wantYes = String(leg.target).trim().toUpperCase() !== 'NO';
+      if (wantYes) return bothScored ? 'HIT' : (isFinal ? 'MISSED' : 'PENDING');
+      return bothScored ? 'MISSED' : (isFinal ? 'HIT' : 'PENDING');
+    }
+    case 'CORRECT_SCORE': {
+      if (!isFinal) return 'PENDING'; // score can still change until full-time
+      if (!hasScore) return 'PENDING';
+      return (`${hScore}-${aScore}` === String(leg.target).replace(/\s/g, '')) ? 'HIT' : 'MISSED';
+    }
+    case 'GOALSCORER':
+      if (playerScored(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'SCORE_OR_ASSIST':
+      if (playerScored(leg.target) || playerAssisted(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'SCORE_2PLUS':
+      if (playerGoalCount(leg.target) >= 2) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'CARD':
+      if (playerCarded(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'CARDS_OVER':
+      if (totalCards() > parseFloat(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'WINNER_METHOD': {
+      if (!isFinal) return 'PENDING';
+      const parsed = String(leg.target).trim().toUpperCase().match(/^([A-Z]+)_(ET|PEN)$/);
+      if (!parsed) return 'PENDING';
+      const [, teamCode, method] = parsed;
+      let winnerCode = null;
+      if (hasScore && hScore > aScore) winnerCode = homeCode;
+      else if (hasScore && aScore > hScore) winnerCode = awayCode;
+      else if (m.penaltyWinner === 'HOME') winnerCode = homeCode;
+      else if (m.penaltyWinner === 'AWAY') winnerCode = awayCode;
+      if (winnerCode !== teamCode) return 'MISSED';
+      if (method === 'PEN') return m.penaltyWinner ? 'HIT' : 'MISSED';
+      return (m.wasAET && !m.penaltyWinner) ? 'HIT' : 'MISSED'; // ET win, not decided by pens
+    }
+    default:
+      return 'PENDING';
+  }
+}
+
+// Overall status for one match's slice of a special bet: red beats orange
+// beats green \u2014 any single missed leg fails the whole match-pill immediately.
+function evaluateLegsSummary(legs, m) {
+  const statuses = legs.map(l => evaluateLeg(l, m));
+  if (statuses.includes('MISSED')) return 'MISSED';
+  if (statuses.every(s => s === 'HIT')) return 'HIT';
+  return 'PENDING';
+}
+
+function specialBetPillColor(status) {
+  if (status === 'HIT') return 'var(--accent-green)';
+  if (status === 'MISSED') return '#ff4d4d';
+  return '#ff9900';
+}
+
+function openSpecialBetModal(betId, matchId) {
+  vibe();
+  const bet = (window.specialBets || []).find(b => b.id === betId);
+  const m = (window.allMatches || []).find(mm => mm.match === matchId);
+  const legs = bet ? bet.legs.filter(l => l.match === matchId) : [];
+
+  document.getElementById('specialBetTitle').textContent = bet ? (bet.player.toUpperCase() + ' \u2014 COMBO') : 'COMBO';
+  document.getElementById('specialBetMatchSub').textContent = matchId;
+
+  const container = document.getElementById('specialBetLegs');
+  container.innerHTML = '';
+  const legLabel = (leg) => {
+    switch (leg.type) {
+      case 'GOALS_OVER': return `Over ${leg.target} Goals`;
+      case 'BTTS': return `Both Teams To Score: ${leg.target}`;
+      case 'CORRECT_SCORE': return `Correct Score: ${leg.target}`;
+      case 'GOALSCORER': return `Anytime Goalscorer: ${leg.target}`;
+      case 'SCORE_OR_ASSIST': return `To Score Or Assist: ${leg.target}`;
+      case 'SCORE_2PLUS': return `To Score 2+ Goals: ${leg.target}`;
+      case 'CARD': return `Shown A Card: ${leg.target}`;
+      case 'CARDS_OVER': return `Over ${leg.target} Cards`;
+      case 'WINNER_METHOD': return `Method Of Victory: ${leg.target}`;
+      default: return `${leg.type}: ${leg.target}`;
+    }
+  };
+  const dotClass = (status) => status === 'HIT' ? 'dot-W' : status === 'MISSED' ? 'dot-L' : 'dot-D';
+
+  legs.forEach(leg => {
+    const status = evaluateLeg(leg, m);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+    row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
+    container.appendChild(row);
+  });
+
+  document.getElementById('modalSpecialBet').classList.add('active');
+}
 function switchTab(t){
   vibe();
   // Update button active states

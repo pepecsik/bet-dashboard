@@ -2353,14 +2353,12 @@ function loadData(){
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         window.specialBets = data.specialBets || [];
         window.specialBetsEnabled = !!data.specialBetsEnabled;
-        // Players who have at least one special bet anywhere this round. Each such
-        // player gets exactly one fixed extra column APPENDED after all the real
-        // bet columns (same canonical order in the header and every row) — not
-        // slotted in next to their regular columns, since those aren't necessarily
-        // contiguous in the sheet (players' 4 slots can be scattered anywhere).
-        window.specialBetPlayers = window.specialBetsEnabled
-            ? [...new Set((window.specialBets || []).map(b => b.player))]
-            : [];
+        // Every special bet gets its own fixed extra column APPENDED after all the
+        // real bet columns (same order in the header and every row) — one avatar
+        // and one pill per BET, not per player, so a player with 3 special bets
+        // gets 3 separate slots (mirroring the regular 4-avatars-per-player look),
+        // and a single-match bet correctly shows blank on its other match's row.
+        window.specialBetOrder = window.specialBetsEnabled ? (window.specialBets || []) : [];
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
@@ -2402,17 +2400,17 @@ function loadData(){
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 
-        // One extra avatar per player with special bets, appended after all the
-        // real columns (fixed order, same as every row below) — a "Special Bets"
-        // section rather than trying to slot into that player's scattered columns.
-        if (window.specialBetPlayers && window.specialBetPlayers.length) {
-            window.specialBetPlayers.forEach(name => {
+        // One avatar per special BET (not per player), appended after all the real
+        // columns in the same fixed order every row below uses — a "Special Bets"
+        // section, so a player with 3 special bets gets 3 separate avatar slots.
+        if (window.specialBetOrder && window.specialBetOrder.length) {
+            window.specialBetOrder.forEach(bet => {
                 const wrapper = document.createElement("div");
                 wrapper.className = "header-pill-wrapper special-bet-header";
                 const p = document.createElement("div");
                 p.className = "header-pill";
-                if (AVATARS[name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[name]}" class="avatar-img" alt="${name}">`; }
-                else { p.textContent = name; }
+                if (AVATARS[bet.player]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[bet.player]}" class="avatar-img" alt="${bet.player}">`; }
+                else { p.textContent = bet.player; }
                 wrapper.appendChild(p);
                 headerRow.appendChild(wrapper);
             });
@@ -2511,14 +2509,13 @@ function loadData(){
               rr.appendChild(el);
           });
 
-          // Special-bet ("Bet Builder" multi) pills — one fixed column per player
-          // with special bets, appended after all real columns in the same order
-          // as the header's special-bet avatars (not slotted next to that player's
-          // regular columns, which aren't necessarily contiguous in the sheet).
-          if (window.specialBetsEnabled && window.specialBetPlayers && window.specialBetPlayers.length) {
-              window.specialBetPlayers.forEach(name => {
-                  const betsHere = window.specialBets.filter(b => b.player === name && b.legs.some(l => l.match === m.match));
-                  const legsHere = betsHere.flatMap(bet => bet.legs.filter(l => l.match === m.match).map(l => ({ ...l, betId: bet.id })));
+          // Special-bet ("Bet Builder" multi) pills — one fixed column per BET,
+          // appended after all real columns in the same order as the header's
+          // special-bet avatars. Blank on any match that particular bet doesn't
+          // touch, so single-match bets show exactly one pill, not two.
+          if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
+              window.specialBetOrder.forEach(bet => {
+                  const legsHere = bet.legs.filter(l => l.match === m.match);
 
                   const pillEl = document.createElement('div');
                   pillEl.className = 'bet special-bet';
@@ -2533,7 +2530,7 @@ function loadData(){
                       if (legsHere.length > 1) {
                           pillEl.textContent = 'COMBO';
                           pillEl.style.cursor = 'pointer';
-                          pillEl.onclick = () => openSpecialBetModal(name, m.match);
+                          pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
                       } else {
                           pillEl.textContent = legsHere[0].target;
                       }
@@ -2592,6 +2589,24 @@ function loadData(){
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
+
+          // Same stake/win/potential figures for each special bet, one cell per
+          // bet matching the avatar/pill columns appended above.
+          if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
+              window.specialBetOrder.forEach(bet => {
+                  const status = evaluateBetOverallStatus(bet);
+                  const el = document.createElement("div"); el.className = "bet";
+                  let value = 0, color = '#2f343a';
+                  if (l === "BET") { value = bet.stake || 0; color = '#ff4d4d'; }
+                  else if (l === "WIN") { value = status === 'HIT' ? (bet.potentialWin || 0) : 0; color = status === 'HIT' ? 'var(--accent-green)' : '#ff4d4d'; }
+                  else { value = status !== 'MISSED' ? (bet.potentialWin || 0) : 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; }
+                  el.textContent = formatGBP(value);
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+                  rr.appendChild(el);
+              });
+          }
+
           right.appendChild(rr);
         });
         applyFilterLogic();
@@ -3191,12 +3206,25 @@ function specialBetPillColor(status) {
   return '#ff9900';
 }
 
-function openSpecialBetModal(player, matchId) {
-  vibe();
-  const m = (window.allMatches || []).find(mm => mm.match === matchId);
-  const bets = (window.specialBets || []).filter(b => b.player === player && b.legs.some(l => l.match === matchId));
+// Overall status for a whole special bet, across every leg on every match it
+// touches (not scoped to one match) — used to settle the BET/WIN/WIN PP rows.
+function evaluateBetOverallStatus(bet) {
+  const statuses = bet.legs.map(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return evaluateLeg(leg, m);
+  });
+  if (statuses.includes('MISSED')) return 'MISSED';
+  if (statuses.every(s => s === 'HIT')) return 'HIT';
+  return 'PENDING';
+}
 
-  document.getElementById('specialBetTitle').textContent = player.toUpperCase() + ' \u2014 COMBO';
+function openSpecialBetModal(betId, matchId) {
+  vibe();
+  const bet = (window.specialBets || []).find(b => b.id === betId);
+  const m = (window.allMatches || []).find(mm => mm.match === matchId);
+  const legs = bet ? bet.legs.filter(l => l.match === matchId) : [];
+
+  document.getElementById('specialBetTitle').textContent = bet ? (bet.player.toUpperCase() + ' \u2014 COMBO') : 'COMBO';
   document.getElementById('specialBetMatchSub').textContent = matchId;
 
   const container = document.getElementById('specialBetLegs');
@@ -3222,20 +3250,12 @@ function openSpecialBetModal(player, matchId) {
   };
   const dotClass = (status) => status === 'HIT' ? 'dot-W' : status === 'MISSED' ? 'dot-L' : 'dot-D';
 
-  bets.forEach(bet => {
-    if (bets.length > 1) {
-      const heading = document.createElement('div');
-      heading.style.cssText = 'font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:8px;';
-      heading.textContent = bet.id;
-      container.appendChild(heading);
-    }
-    bet.legs.filter(l => l.match === matchId).forEach(leg => {
-      const status = evaluateLeg(leg, m);
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
-      row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
-      container.appendChild(row);
-    });
+  legs.forEach(leg => {
+    const status = evaluateLeg(leg, m);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+    row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
+    container.appendChild(row);
   });
 
   document.getElementById('modalSpecialBet').classList.add('active');

@@ -1107,7 +1107,7 @@ body {
 .player-card:active { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.1); }
 .player-avatar { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; display: block; }
 .player-name-text { display: none; }
-.bet-row { display:grid; grid-template-columns: 1fr 60px 60px; gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; align-items:center; }
+.bet-row { display:grid; grid-template-columns: 1fr repeat(var(--bet-slots, 2), 60px); gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; align-items:center; }
 .match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); }
 .vs-tag { opacity:0.4; font-size:10px; }
 .bet-input-slot { height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
@@ -1124,7 +1124,7 @@ body {
 .action-btn { background: var(--accent-green); color: #000; padding: 15px; border-radius: 12px; font-weight: 800; text-align: center; border: none; cursor: pointer; width: 100%; font-size: 14px; }
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
-.bet-header-row { display: grid !important; grid-template-columns: 1fr 60px 60px !important; gap: 8px; padding: 0 8px 8px 8px; align-items: center; }
+.bet-header-row { display: grid !important; grid-template-columns: 1fr repeat(var(--bet-slots, 2), 60px) !important; gap: 8px; padding: 0 8px 8px 8px; align-items: center; }
 .success-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-card); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .success-overlay.active { opacity: 1; pointer-events: all; }
 .success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
@@ -4066,14 +4066,13 @@ function startBettingProcess() {
       }
 
       // Check if locked (Value exists in Row 18 / winData)
-      // We check for truthy value (e.g. 8, "£8", etc). 
-      let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
-      let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
+      // We check for truthy value (e.g. 8, "£8", etc).
+      const allLocked = pIndices.length > 0 && pIndices.every(idx => window.winData && window.winData[idx] && window.winData[idx].value);
 
       const card = document.getElementById('card-' + name);
       if(card) {
-          // If BOTH are locked, hide the player card entirely
-          if(isLocked1 && isLocked2) {
+          // If ALL bet columns are locked, hide the player card entirely
+          if(allLocked) {
               card.style.display = 'none';
           } else {
               card.style.display = 'flex';
@@ -4095,70 +4094,60 @@ function selectPlayer(name) {
   const savedData = localStorage.getItem('jb_saved_' + name);
   pendingBets = savedData ? JSON.parse(savedData) : {};
 
-  // 2. Identify Player Columns & Locks
+  // 2. Identify Player Columns & Locks (however many bet columns this player has)
   let pIndices = [];
   if(window.globalHeaders) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
-  
-  // Check locks
-  let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
-  let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
+  const slotCount = pIndices.length || 2;
+
+  // Check locks per slot
+  const isLocked = pIndices.map(idx => !!(window.winData && window.winData[idx] && window.winData[idx].value));
+
+  // Match the header row's column layout to the number of bet slots this player has
+  document.getElementById('modalBetList').style.setProperty('--bet-slots', slotCount);
+  const headerRowEl = document.querySelector('#modalBetList .bet-header-row');
+  if(headerRowEl) headerRowEl.innerHTML = '<div>MATCH</div>' + pIndices.map(() => '<div></div>').join('');
 
   // 3. Filter Upcoming
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];
-  
-  if(upcoming.length === 0) { 
-    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No upcoming games.</div>`; 
+
+  if(upcoming.length === 0) {
+    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No upcoming games.</div>`;
     document.getElementById('modalBetList').classList.add('active');
-    return; 
+    return;
   }
 
   upcoming.forEach(m => {
     const [h, a] = m.match.split("-").map(s => s.trim());
     if(!pendingBets[m.match]) pendingBets[m.match] = {};
 
-    // Get Existing Sheet Bets
-    let sheetVal1 = (pIndices[0] !== undefined && m.cells[pIndices[0]]) ? m.cells[pIndices[0]].value : "";
-    let sheetVal2 = (pIndices[1] !== undefined && m.cells[pIndices[1]]) ? m.cells[pIndices[1]].value : "";
+    // --- HTML GENERATION: one slot per bet column this player has ---
+    const slotsHtml = pIndices.map((idx, i) => {
+        const colNum = i + 1;
+        const sheetVal = m.cells[idx] ? m.cells[idx].value : "";
 
-    // If pending is empty, adopt sheet value
-    if(pendingBets[m.match].col1 === undefined) pendingBets[m.match].col1 = sheetVal1;
-    if(pendingBets[m.match].col2 === undefined) pendingBets[m.match].col2 = sheetVal2;
+        // If pending is empty, adopt sheet value
+        if(pendingBets[m.match][`col${colNum}`] === undefined) pendingBets[m.match][`col${colNum}`] = sheetVal;
+        const val = pendingBets[m.match][`col${colNum}`];
 
-    const val1 = pendingBets[m.match].col1;
-    const val2 = pendingBets[m.match].col2;
+        if (isLocked[i]) {
+            return `<div class="bet-input-slot locked">${sheetVal || "-"}</div>`;
+        }
+        return `<div class="bet-input-slot ${val ? 'filled' : ''}" id="slot-${m.match}-${colNum}" onclick="openPicker('${m.match}', '${h}', '${a}', ${colNum})">${val || ''}</div>`;
+    }).join('');
 
-    // --- HTML GENERATION (Cleaner) ---
-    // Change: Removed "BET 1" / "BET 2" fallback text. Now it defaults to empty string.
-    
-    let htmlBtn1 = "";
-    if (isLocked1) {
-        htmlBtn1 = `<div class="bet-input-slot locked">${sheetVal1 || "-"}</div>`;
-    } else {
-        htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || ''}</div>`;
-    }
-
-    let htmlBtn2 = "";
-    if (isLocked2) {
-        htmlBtn2 = `<div class="bet-input-slot locked">${sheetVal2 || "-"}</div>`;
-    } else {
-        htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || ''}</div>`;
-    }
-
-    const div = document.createElement('div'); 
+    const div = document.createElement('div');
     div.className = 'bet-row';
-    // In selectPlayer function, replace the div.innerHTML part with this:
     div.innerHTML = `
       <div class="match-info" onclick="openPreMatchStats('${m.match}')" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;">
           ${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}
       </div>
-      ${htmlBtn1}
-      ${htmlBtn2}
+      ${slotsHtml}
     `;
     container.appendChild(div);
   });
-  
+
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
   document.getElementById('modalBetList').classList.add('active');
 }
@@ -4201,9 +4190,8 @@ function pickValue(val) {
 function submitAllBets() {
   const betsToSend = [];
   for (const [match, data] of Object.entries(pendingBets)) {
-    let v1 = data.col1; let v2 = data.col2;
-    if (v1 !== undefined || v2 !== undefined) {
-        betsToSend.push({ match: match, col1: v1, col2: v2 });
+    if (Object.keys(data).some(k => /^col\d+$/.test(k) && data[k] !== undefined)) {
+        betsToSend.push({ match: match, ...data });
     }
   }
   
@@ -4232,14 +4220,12 @@ function submitAllBets() {
                 const rows = document.querySelectorAll('.right-card .row:not(.header-row-sticky)');
                 const targetRow = rows[matchIndex];
                 if(targetRow) {
-                   if(playerIndices[0] !== undefined && bet.col1 !== undefined) {
-                       const cell = targetRow.children[playerIndices[0]];
-                       if(cell) { cell.textContent = bet.col1; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
-                   }
-                   if(playerIndices[1] !== undefined && bet.col2 !== undefined) {
-                       const cell = targetRow.children[playerIndices[1]];
-                       if(cell) { cell.textContent = bet.col2; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
-                   }
+                   playerIndices.forEach((colIdx, i) => {
+                       const val = bet[`col${i + 1}`];
+                       if(val === undefined) return;
+                       const cell = targetRow.children[colIdx];
+                       if(cell) { cell.textContent = val; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
+                   });
                 }
             }
         });

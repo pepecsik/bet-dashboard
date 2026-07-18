@@ -2353,19 +2353,11 @@ function loadData(){
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         window.specialBets = data.specialBets || [];
         window.specialBetsEnabled = !!data.specialBetsEnabled;
-        // Group consecutive same-name header columns per player, so a special-bet
-        // pill can be inserted right after that player's own regular bet pills.
-        const playerColGroups = [];
-        (data.headers || []).forEach((h, i) => {
-            const last = playerColGroups[playerColGroups.length - 1];
-            if (last && last.name === h.name) last.lastIdx = i;
-            else playerColGroups.push({ name: h.name, lastIdx: i });
-        });
-        window.playerColGroups = playerColGroups;
-        // Players who have at least one special bet anywhere this round — each such
-        // player gets exactly one reserved extra pill-slot on EVERY row (and a
-        // matching blank filler in the header), so column positions never drift
-        // regardless of how many special bets a given match actually touches.
+        // Players who have at least one special bet anywhere this round. Each such
+        // player gets exactly one fixed extra column APPENDED after all the real
+        // bet columns (same canonical order in the header and every row) — not
+        // slotted in next to their regular columns, since those aren't necessarily
+        // contiguous in the sheet (players' 4 slots can be scattered anywhere).
         window.specialBetPlayers = window.specialBetsEnabled
             ? [...new Set((window.specialBets || []).map(b => b.player))]
             : [];
@@ -2410,20 +2402,20 @@ function loadData(){
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 
-        // Reserve one blank filler slot per player with special bets, matching the
-        // one reserved pill-slot every match row adds for that same player — keeps
-        // the header's avatar columns aligned with the rows below it.
+        // One extra avatar per player with special bets, appended after all the
+        // real columns (fixed order, same as every row below) — a "Special Bets"
+        // section rather than trying to slot into that player's scattered columns.
         if (window.specialBetPlayers && window.specialBetPlayers.length) {
-            const headerInsertions = [];
-            playerColGroups.forEach(group => {
-                if (!window.specialBetPlayers.includes(group.name)) return;
-                const filler = document.createElement('div');
-                filler.className = 'bet special-bet-filler';
-                filler.style.visibility = 'hidden';
-                const refNode = headerRow.children[group.lastIdx + 1] || null;
-                headerInsertions.push({ refNode, filler });
+            window.specialBetPlayers.forEach(name => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "header-pill-wrapper special-bet-header";
+                const p = document.createElement("div");
+                p.className = "header-pill";
+                if (AVATARS[name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[name]}" class="avatar-img" alt="${name}">`; }
+                else { p.textContent = name; }
+                wrapper.appendChild(p);
+                headerRow.appendChild(wrapper);
             });
-            headerInsertions.forEach(({ refNode, filler }) => headerRow.insertBefore(filler, refNode));
         }
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
@@ -2519,15 +2511,13 @@ function loadData(){
               rr.appendChild(el);
           });
 
-          // Special-bet ("Bet Builder" multi) pills — one reserved slot per player
-          // who has any special bet this round, inserted right after that player's
-          // own regular pills. Reserved on every row (even with no legs here) so
-          // column positions never drift out from under the header avatars.
-          if (window.specialBetsEnabled && window.specialBetPlayers && window.specialBetPlayers.length && window.playerColGroups) {
-              const insertions = [];
-              window.playerColGroups.forEach(group => {
-                  if (!window.specialBetPlayers.includes(group.name)) return;
-                  const betsHere = window.specialBets.filter(b => b.player === group.name && b.legs.some(l => l.match === m.match));
+          // Special-bet ("Bet Builder" multi) pills — one fixed column per player
+          // with special bets, appended after all real columns in the same order
+          // as the header's special-bet avatars (not slotted next to that player's
+          // regular columns, which aren't necessarily contiguous in the sheet).
+          if (window.specialBetsEnabled && window.specialBetPlayers && window.specialBetPlayers.length) {
+              window.specialBetPlayers.forEach(name => {
+                  const betsHere = window.specialBets.filter(b => b.player === name && b.legs.some(l => l.match === m.match));
                   const legsHere = betsHere.flatMap(bet => bet.legs.filter(l => l.match === m.match).map(l => ({ ...l, betId: bet.id })));
 
                   const pillEl = document.createElement('div');
@@ -2543,15 +2533,13 @@ function loadData(){
                       if (legsHere.length > 1) {
                           pillEl.textContent = 'COMBO';
                           pillEl.style.cursor = 'pointer';
-                          pillEl.onclick = () => openSpecialBetModal(group.name, m.match);
+                          pillEl.onclick = () => openSpecialBetModal(name, m.match);
                       } else {
                           pillEl.textContent = legsHere[0].target;
                       }
                   }
-                  const refNode = rr.children[group.lastIdx + 1] || null;
-                  insertions.push({ refNode, pillEl });
+                  rr.appendChild(pillEl);
               });
-              insertions.forEach(({ refNode, pillEl }) => rr.insertBefore(pillEl, refNode));
           }
 
           right.appendChild(rr);

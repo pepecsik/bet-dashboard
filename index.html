@@ -3116,6 +3116,36 @@ function evaluateLeg(leg, m) {
       if (method === 'PEN') return m.penaltyWinner ? 'HIT' : 'MISSED';
       return (m.wasAET && !m.penaltyWinner) ? 'HIT' : 'MISSED'; // ET win, not decided by pens
     }
+    case 'MATCH_WINNER': {
+      if (!isFinal || !hasScore) return 'PENDING';
+      const winnerCode = hScore > aScore ? homeCode : (aScore > hScore ? awayCode : 'DRAW');
+      return winnerCode === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'CORNERS_MOST': {
+      if (!isFinal) return 'PENDING';
+      const hC = (m.stats && m.stats.h_corners) || 0, aC = (m.stats && m.stats.a_corners) || 0;
+      if (hC === aC) return 'MISSED';
+      return (hC > aC ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'SHOTS_ON_TARGET_MOST': {
+      if (!isFinal) return 'PENDING';
+      const hS = (m.stats && m.stats.h_shots) || 0, aS = (m.stats && m.stats.a_shots) || 0;
+      if (hS === aS) return 'MISSED';
+      return (hS > aS ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'CARDS_MOST': {
+      if (!isFinal) return 'PENDING';
+      const lineups = (m.stats && m.stats.lineups) || { h: {}, a: {} };
+      const inRoster = (roster, name) => roster && ((roster.start || []).some(p => nameIs(p.name, name)) || (roster.sub || []).some(p => nameIs(p.name, name)));
+      const sideOf = (name) => inRoster(lineups.h, name) ? 'H' : (inRoster(lineups.a, name) ? 'A' : null);
+      let hCards = 0, aCards = 0;
+      events.filter(e => e.type === 'Card').forEach(e => {
+        const side = sideOf(e.player || '');
+        if (side === 'H') hCards++; else if (side === 'A') aCards++;
+      });
+      if (hCards === aCards) return 'MISSED';
+      return (hCards > aCards ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
     default:
       return 'PENDING';
   }
@@ -3158,6 +3188,10 @@ function openSpecialBetModal(betId, matchId) {
       case 'CARD': return `Shown A Card: ${leg.target}`;
       case 'CARDS_OVER': return `Over ${leg.target} Cards`;
       case 'WINNER_METHOD': return `Method Of Victory: ${leg.target}`;
+      case 'MATCH_WINNER': return `Match Winner: ${leg.target}`;
+      case 'CORNERS_MOST': return `Most Corners: ${leg.target}`;
+      case 'SHOTS_ON_TARGET_MOST': return `Most Shots On Target: ${leg.target}`;
+      case 'CARDS_MOST': return `Most Cards: ${leg.target}`;
       default: return `${leg.type}: ${leg.target}`;
     }
   };

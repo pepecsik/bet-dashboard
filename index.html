@@ -2362,6 +2362,13 @@ function loadData(){
             else playerColGroups.push({ name: h.name, lastIdx: i });
         });
         window.playerColGroups = playerColGroups;
+        // Players who have at least one special bet anywhere this round — each such
+        // player gets exactly one reserved extra pill-slot on EVERY row (and a
+        // matching blank filler in the header), so column positions never drift
+        // regardless of how many special bets a given match actually touches.
+        window.specialBetPlayers = window.specialBetsEnabled
+            ? [...new Set((window.specialBets || []).map(b => b.player))]
+            : [];
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
@@ -2402,6 +2409,22 @@ function loadData(){
            else if(h.status==='red') p.classList.add("status-red");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
+
+        // Reserve one blank filler slot per player with special bets, matching the
+        // one reserved pill-slot every match row adds for that same player — keeps
+        // the header's avatar columns aligned with the rows below it.
+        if (window.specialBetPlayers && window.specialBetPlayers.length) {
+            const headerInsertions = [];
+            playerColGroups.forEach(group => {
+                if (!window.specialBetPlayers.includes(group.name)) return;
+                const filler = document.createElement('div');
+                filler.className = 'bet special-bet-filler';
+                filler.style.visibility = 'hidden';
+                const refNode = headerRow.children[group.lastIdx + 1] || null;
+                headerInsertions.push({ refNode, filler });
+            });
+            headerInsertions.forEach(({ refNode, filler }) => headerRow.insertBefore(filler, refNode));
+        }
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
@@ -2496,30 +2519,37 @@ function loadData(){
               rr.appendChild(el);
           });
 
-          // Special-bet ("Bet Builder" multi) pills — inserted right after each
-          // player's own regular pills, not part of the sheet's real columns.
-          if (window.specialBetsEnabled && window.specialBets && window.specialBets.length && window.playerColGroups) {
+          // Special-bet ("Bet Builder" multi) pills — one reserved slot per player
+          // who has any special bet this round, inserted right after that player's
+          // own regular pills. Reserved on every row (even with no legs here) so
+          // column positions never drift out from under the header avatars.
+          if (window.specialBetsEnabled && window.specialBetPlayers && window.specialBetPlayers.length && window.playerColGroups) {
               const insertions = [];
               window.playerColGroups.forEach(group => {
+                  if (!window.specialBetPlayers.includes(group.name)) return;
                   const betsHere = window.specialBets.filter(b => b.player === group.name && b.legs.some(l => l.match === m.match));
-                  betsHere.forEach(bet => {
-                      const legsHere = bet.legs.filter(l => l.match === m.match);
+                  const legsHere = betsHere.flatMap(bet => bet.legs.filter(l => l.match === m.match).map(l => ({ ...l, betId: bet.id })));
+
+                  const pillEl = document.createElement('div');
+                  pillEl.className = 'bet special-bet';
+                  if (legsHere.length === 0) {
+                      pillEl.style.setProperty('--bet-bg', 'transparent');
+                      pillEl.classList.add('empty');
+                  } else {
                       const status = evaluateLegsSummary(legsHere, m);
-                      const pillEl = document.createElement('div');
-                      pillEl.className = 'bet special-bet';
                       const color = specialBetPillColor(status);
                       pillEl.style.setProperty('--bet-bg', color);
                       pillEl.style.backgroundColor = color;
                       if (legsHere.length > 1) {
                           pillEl.textContent = 'COMBO';
                           pillEl.style.cursor = 'pointer';
-                          pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
+                          pillEl.onclick = () => openSpecialBetModal(group.name, m.match);
                       } else {
                           pillEl.textContent = legsHere[0].target;
                       }
-                      const refNode = rr.children[group.lastIdx + 1] || null;
-                      insertions.push({ refNode, pillEl });
-                  });
+                  }
+                  const refNode = rr.children[group.lastIdx + 1] || null;
+                  insertions.push({ refNode, pillEl });
               });
               insertions.forEach(({ refNode, pillEl }) => rr.insertBefore(pillEl, refNode));
           }
@@ -3173,13 +3203,12 @@ function specialBetPillColor(status) {
   return '#ff9900';
 }
 
-function openSpecialBetModal(betId, matchId) {
+function openSpecialBetModal(player, matchId) {
   vibe();
-  const bet = (window.specialBets || []).find(b => b.id === betId);
   const m = (window.allMatches || []).find(mm => mm.match === matchId);
-  const legs = bet ? bet.legs.filter(l => l.match === matchId) : [];
+  const bets = (window.specialBets || []).filter(b => b.player === player && b.legs.some(l => l.match === matchId));
 
-  document.getElementById('specialBetTitle').textContent = bet ? (bet.player.toUpperCase() + ' \u2014 COMBO') : 'COMBO';
+  document.getElementById('specialBetTitle').textContent = player.toUpperCase() + ' \u2014 COMBO';
   document.getElementById('specialBetMatchSub').textContent = matchId;
 
   const container = document.getElementById('specialBetLegs');
@@ -3205,12 +3234,20 @@ function openSpecialBetModal(betId, matchId) {
   };
   const dotClass = (status) => status === 'HIT' ? 'dot-W' : status === 'MISSED' ? 'dot-L' : 'dot-D';
 
-  legs.forEach(leg => {
-    const status = evaluateLeg(leg, m);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
-    row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
-    container.appendChild(row);
+  bets.forEach(bet => {
+    if (bets.length > 1) {
+      const heading = document.createElement('div');
+      heading.style.cssText = 'font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:8px;';
+      heading.textContent = bet.id;
+      container.appendChild(heading);
+    }
+    bet.legs.filter(l => l.match === matchId).forEach(leg => {
+      const status = evaluateLeg(leg, m);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+      row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
+      container.appendChild(row);
+    });
   });
 
   document.getElementById('modalSpecialBet').classList.add('active');

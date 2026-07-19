@@ -2428,6 +2428,14 @@ function loadData(){
                     p.classList.add('status-green-live');
                 } else if (status === 'MISSED') {
                     p.classList.add('status-red');
+                } else {
+                    // Still alive, nothing missed yet: if only 1-2 legs are left
+                    // unresolved, it's close enough to winning to shiver orange.
+                    const remaining = bet.legs.filter(leg => {
+                        const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+                        return evaluateLeg(leg, m) === 'PENDING';
+                    }).length;
+                    if (remaining >= 1 && remaining <= 2) p.classList.add('status-orange');
                 }
 
                 wrapper.appendChild(p);

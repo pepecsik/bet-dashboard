@@ -2412,6 +2412,24 @@ function loadData(){
                 p.className = "header-pill";
                 if (AVATARS[bet.player]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[bet.player]}" class="avatar-img" alt="${bet.player}">`; }
                 else { p.textContent = bet.player; }
+
+                // Same status coloring + celebration as the regular headers above,
+                // driven by the bet's own computed status instead of a sheet color.
+                const status = evaluateBetOverallStatus(bet);
+                const allMatchesFinal = bet.legs.every(leg => {
+                    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+                    return m && m.status === 'FT';
+                });
+                if (status === 'HIT' && allMatchesFinal) {
+                    p.classList.add('status-green');
+                    if (isFirstLoad) { setTimeout(() => { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }, 1500); }
+                    else { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }
+                } else if (status === 'HIT') {
+                    p.classList.add('status-green-live');
+                } else if (status === 'MISSED') {
+                    p.classList.add('status-red');
+                }
+
                 wrapper.appendChild(p);
                 headerRow.appendChild(wrapper);
             });

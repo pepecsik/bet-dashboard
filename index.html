@@ -2636,7 +2636,7 @@ function loadData(){
                   const alive = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
                   gbp = alive.length ? alive.reduce((sum, b) => sum + (b.potentialWin || 0), 0) / alive.length : 0;
               }
-              eur = gbp * window.eurRate;
+              eur = window.eurRate ? gbp / window.eurRate : gbp; // eurRate is GBP-per-1-EUR (ECB convention)
           }
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });

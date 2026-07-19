@@ -2639,8 +2639,8 @@ function loadData(){
                   const el = document.createElement("div"); el.className = "bet";
                   let value = 0, color = '#2f343a';
                   if (l === "BET") { value = bet.stake || 0; color = '#ff4d4d'; }
-                  else if (l === "WIN") { value = status !== 'MISSED' ? (bet.potentialWin || 0) : 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // potential win while still alive
-                  else { value = status !== 'MISSED' ? (bet.potentialWin || 0) / 3 : 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // WIN PP = WIN ÷ 3
+                  else if (l === "WIN") { value = bet.potentialWin || 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // potential win, shown even when dead
+                  else { value = (bet.potentialWin || 0) / 3; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // WIN PP = WIN ÷ 3, shown even when dead
                   el.textContent = formatGBP(value);
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color;

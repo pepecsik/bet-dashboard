@@ -2360,6 +2360,7 @@ function loadData(){
         // gets 3 separate slots (mirroring the regular 4-avatars-per-player look),
         // and a single-match bet correctly shows blank on its other match's row.
         window.specialBetOrder = window.specialBetsEnabled ? (window.specialBets || []) : [];
+        window.specialBetOrder.sort((a, b) => specialBetSortKey(a) - specialBetSortKey(b));
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
@@ -3283,6 +3284,28 @@ function evaluateBetOverallStatus(bet) {
   if (statuses.includes('MISSED')) return 'MISSED';
   if (statuses.every(s => s === 'HIT')) return 'HIT';
   return 'PENDING';
+}
+
+// Left-to-right ordering key for the special-bet columns, mirroring the same
+// tiers used for the header avatar colors: confirmed win first, then a live
+// bet that's already fully correct, then "1-2 legs away" (orange), then
+// further-away pendings (fewer remaining legs = closer to the front), then
+// dead bets last. Recomputed on every loadData() poll so the row reorders
+// itself live as the matches play out.
+function specialBetSortKey(bet) {
+  const status = evaluateBetOverallStatus(bet);
+  if (status === 'MISSED') return 5000;
+  const allMatchesFinal = bet.legs.every(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return m && m.status === 'FT';
+  });
+  if (status === 'HIT' && allMatchesFinal) return 0;
+  if (status === 'HIT') return 1000;
+  const remaining = bet.legs.filter(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return evaluateLeg(leg, m) === 'PENDING';
+  }).length;
+  return 2000 + remaining;
 }
 
 // Maps an outcome-determining leg to a team-code-or-DRAW result, so two bets

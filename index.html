@@ -2353,6 +2353,7 @@ function loadData(){
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         window.specialBets = data.specialBets || [];
         window.specialBetsEnabled = !!data.specialBetsEnabled;
+        window.eurRate = (typeof data.eurRate === 'number' && data.eurRate > 0) ? data.eurRate : 1;
         // Every special bet gets its own fixed extra column APPENDED after all the
         // real bet columns (same order in the header and every row) — one avatar
         // and one pill per BET, not per player, so a player with 3 special bets
@@ -2623,7 +2624,22 @@ function loadData(){
           right.appendChild(rr);
         });
         applyFilterLogic();
-        data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; if(t.label === "HIGH. POS. WIN" && window.specialBetsEnabled) { gbp = bestSpecialCombo().total; eur = gbp; } weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
+        data.totals.forEach(t=>{
+          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          if (window.specialBetsEnabled && ["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label)) {
+              const combo = bestSpecialCombo();
+              if (t.label === "TOTAL WIN" || t.label === "HIGH. POS. WIN") gbp = combo.total;
+              else if (t.label === "TOTAL WIN PP") gbp = combo.total / 3;
+              else { // AVG. WIN — average potentialWin across still-alive special bets
+                  const alive = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
+                  gbp = alive.length ? alive.reduce((sum, b) => sum + (b.potentialWin || 0), 0) / alive.length : 0;
+              }
+              eur = gbp * window.eurRate;
+          }
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+        });
 
         // PODIUM Tie Logic
         if (data.ranking && data.ranking.length >= 3) {

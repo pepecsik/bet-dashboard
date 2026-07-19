@@ -3095,7 +3095,19 @@ function evaluateLeg(leg, m) {
   const hasScore = !isNaN(hScore) && !isNaN(aScore);
   const [homeCode, awayCode] = m.match.split('-').map(s => s.trim().toUpperCase());
 
-  const nameIs = (a, b) => normalizeName(a).trim() === normalizeName(b).trim();
+  // Matches on surname (+ optional first-initial), not exact full-name equality —
+  // bet sheets mix "Kylian Mbappe", "K. Mbappe", and "Mbappe" for the same player,
+  // and API-Football always spells the full accented name.
+  const nameIs = (apiName, target) => {
+    const tokenize = (s) => normalizeName(s || '').replace(/[.\-']/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const apiTokens = tokenize(apiName);
+    const targetTokens = tokenize(target);
+    if (!apiTokens.length || !targetTokens.length) return false;
+    if (apiTokens[apiTokens.length - 1] !== targetTokens[targetTokens.length - 1]) return false;
+    if (targetTokens.length === 1) return true;
+    const apiFirst = apiTokens[0], targetFirst = targetTokens[0];
+    return apiFirst === targetFirst || apiFirst[0] === targetFirst[0];
+  };
   const playerScored = (name) => events.some(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name));
   const playerAssisted = (name) => events.some(e => e.type === 'Goal' && nameIs(e.assist || '', name));
   const playerGoalCount = (name) => events.filter(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name)).length;

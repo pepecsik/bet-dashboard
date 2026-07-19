@@ -2559,7 +2559,20 @@ function loadData(){
         const btnDiv = document.createElement("button");
         btnDiv.className = "place-bets-btn";
 
-        if(allLocked) {
+        if(window.specialBetsEnabled) {
+            // Special bets replace the regular Place Bets / Combos flow entirely.
+            if(hasAnySpecialCombos()) {
+                btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "WINNING<br>COMBOS";
+                btnDiv.onclick = openSpecialCombosModal;
+            } else {
+                btnDiv.style.background = "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "NO COMBOS<br>POSSIBLE";
+                btnDiv.onclick = openSpecialCombosModal;
+            }
+        } else if(allLocked) {
             if(hasAnyCombos()) {
                 // Blue — same hue as the bet-1 avatar in the combos modal
                 btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
@@ -2610,7 +2623,7 @@ function loadData(){
           right.appendChild(rr);
         });
         applyFilterLogic();
-        data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
+        data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; if(t.label === "HIGH. POS. WIN" && window.specialBetsEnabled) { gbp = bestSpecialCombo().total; eur = gbp; } weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
 
         // PODIUM Tie Logic
         if (data.ranking && data.ranking.length >= 3) {
@@ -3228,6 +3241,104 @@ function evaluateBetOverallStatus(bet) {
   if (statuses.includes('MISSED')) return 'MISSED';
   if (statuses.every(s => s === 'HIT')) return 'HIT';
   return 'PENDING';
+}
+
+// Maps an outcome-determining leg to a team-code-or-DRAW result, so two bets
+// can be checked for a direct contradiction. Only Match Winner / Method Of
+// Victory / Correct Score legs actually pin down a match result — every other
+// leg type (goalscorer, cards, corners, shots-on-target, BTTS, etc.) is an
+// independent condition that never blocks a combo.
+function impliedOutcome(leg) {
+  const parts = String(leg.match || '').split('-').map(s => s.trim().toUpperCase());
+  const [homeCode, awayCode] = parts;
+  if (leg.type === 'MATCH_WINNER') return String(leg.target).trim().toUpperCase();
+  if (leg.type === 'WINNER_METHOD') {
+    const m = String(leg.target).trim().toUpperCase().match(/^([A-Z]+)_(ET|PEN)$/);
+    return m ? m[1] : null;
+  }
+  if (leg.type === 'CORRECT_SCORE') {
+    const scoreParts = String(leg.target).replace(/\s/g, '').split('-').map(Number);
+    if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+    const [h, a] = scoreParts;
+    return h > a ? homeCode : (a > h ? awayCode : 'DRAW');
+  }
+  return null;
+}
+
+// Two special bets can win together unless they pin down a different result
+// for the same match.
+function specialBetsConflict(betA, betB) {
+  for (const legA of betA.legs) {
+    const outcomeA = impliedOutcome(legA);
+    if (!outcomeA) continue;
+    for (const legB of betB.legs) {
+      if (legA.match !== legB.match) continue;
+      const outcomeB = impliedOutcome(legB);
+      if (outcomeB && outcomeA !== outcomeB) return true;
+    }
+  }
+  return false;
+}
+
+// Best (max total potentialWin) set of still-alive, mutually compatible
+// special bets — small recursive skip/include search, plenty fast for the
+// handful of bets this group places.
+function bestSpecialCombo() {
+  const aliveBets = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
+  let best = { total: 0, bets: [] };
+  function search(idx, chosen, total) {
+    if (idx === aliveBets.length) {
+      if (total > best.total) best = { total, bets: chosen.slice() };
+      return;
+    }
+    search(idx + 1, chosen, total);
+    const candidate = aliveBets[idx];
+    if (chosen.every(b => !specialBetsConflict(b, candidate))) {
+      chosen.push(candidate);
+      search(idx + 1, chosen, total + (candidate.potentialWin || 0));
+      chosen.pop();
+    }
+  }
+  search(0, [], 0);
+  return best;
+}
+
+function hasAnySpecialCombos() {
+  return bestSpecialCombo().bets.length >= 2;
+}
+
+function openSpecialCombosModal() {
+  vibe();
+  const container = document.getElementById('combosContent');
+  container.innerHTML = '';
+  document.getElementById('modalCombos').classList.add('active');
+
+  const { total, bets } = bestSpecialCombo();
+  if (bets.length < 2) {
+    container.innerHTML = "<div style='text-align:center; padding:40px 10px; opacity:0.6;'>No combos possible right now — keep playing!</div>";
+    return;
+  }
+
+  const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+  const header = document.createElement('div');
+  header.style.cssText = 'text-align:center;padding:10px 0 4px;';
+  header.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Highest Possible Win</div><div style="font-size:22px;font-weight:900;color:var(--accent-green);">${formatGBP(total)}</div>`;
+  container.appendChild(header);
+
+  bets.forEach(bet => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+    const avatarSrc = AVATARS[bet.player] || '';
+    row.innerHTML = `
+      ${avatarSrc ? `<img src="${avatarSrc}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">` : ''}
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:var(--text-main);">${bet.id}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${bet.player}</div>
+      </div>
+      <div style="font-weight:800;color:var(--accent-green);">${formatGBP(bet.potentialWin || 0)}</div>
+    `;
+    container.appendChild(row);
+  });
 }
 
 function openSpecialBetModal(betId, matchId) {

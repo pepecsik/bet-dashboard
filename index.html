@@ -2088,13 +2088,19 @@ function renderSeasonHistory(seasons) {
   wrap.innerHTML = reversed.map((season, idx) => {
     const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : { Snackbar: 0, Timbo: 0, Pepe: 0 };
     const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : { Snackbar: 0, Timbo: 0, Pepe: 0 };
-    // Rank by points (matches right), not money — some seasons (e.g. a PL
-    // season without a "combo win" recorded) have money sitting at 0 all
-    // year, which would otherwise produce a meaningless podium order.
+    // Money is the winning factor if this season actually paid out anything;
+    // otherwise (e.g. a season with no recorded combo win, money sitting at
+    // 0 all year) points are what decided it, so those lead instead. Stash
+    // the choice on the season object so the default-chart pass below and
+    // the toggle buttons can agree on it.
+    const moneyIsPrimary = (finalMoney.Snackbar || 0) + (finalMoney.Timbo || 0) + (finalMoney.Pepe || 0) > 0;
+    season._moneyIsPrimary = moneyIsPrimary;
     const players = ['Snackbar', 'Timbo', 'Pepe']
       .map(p => ({ name: p, money: finalMoney[p] || 0, matches: finalMatches[p] || 0 }))
-      .sort((a, b) => b.matches - a.matches || b.money - a.money);
+      .sort((a, b) => moneyIsPrimary ? (b.money - a.money || b.matches - a.matches) : (b.matches - a.matches || b.money - a.money));
     const [p1, p2, p3] = players;
+    const primary = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matches} pts`;
+    const secondary = p => moneyIsPrimary ? `${p.matches} pts` : formatGBP(p.money);
     const hasChart = (season.matches && season.matches.length > 0) || (season.money && season.money.length > 0);
 
     return `
@@ -2105,23 +2111,23 @@ function renderSeasonHistory(seasons) {
         <div class="podium-container" style="padding:16px 10px 8px;">
           <div class="podium-place place-2">
             <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-            <div class="podium-bar"><div class="podium-money">${p2.matches} pts</div><div class="podium-stats">${formatGBP(p2.money)}</div></div>
+            <div class="podium-bar"><div class="podium-money">${primary(p2)}</div><div class="podium-stats">${secondary(p2)}</div></div>
           </div>
           <div class="podium-place place-1">
             <div class="crown-icon">👑</div>
             <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-            <div class="podium-bar"><div class="podium-money" style="font-size:15px;">${p1.matches} pts</div><div class="podium-stats" style="color:#fff;">${formatGBP(p1.money)}</div></div>
+            <div class="podium-bar"><div class="podium-money" style="font-size:15px;">${primary(p1)}</div><div class="podium-stats" style="color:#fff;">${secondary(p1)}</div></div>
           </div>
           <div class="podium-place place-3">
             <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-            <div class="podium-bar"><div class="podium-money">${p3.matches} pts</div><div class="podium-stats">${formatGBP(p3.money)}</div></div>
+            <div class="podium-bar"><div class="podium-money">${primary(p3)}</div><div class="podium-stats">${secondary(p3)}</div></div>
           </div>
         </div>
         ${hasChart ? `
         <div style="display:flex;justify-content:flex-end;padding:0 12px;">
           <div class="toggle-group">
-            <button id="seasonBtnPts${idx}" class="toggle-btn active" onclick="drawSeasonChart(${idx},'matches')">Points</button>
-            <button id="seasonBtnMoney${idx}" class="toggle-btn" onclick="drawSeasonChart(${idx},'money')">Money</button>
+            <button id="seasonBtnPts${idx}" class="toggle-btn${moneyIsPrimary ? '' : ' active'}" onclick="drawSeasonChart(${idx},'matches')">Points</button>
+            <button id="seasonBtnMoney${idx}" class="toggle-btn${moneyIsPrimary ? ' active' : ''}" onclick="drawSeasonChart(${idx},'money')">Money</button>
           </div>
         </div>
         <div style="padding:6px 12px 14px;height:140px;"><canvas id="seasonChart${idx}"></canvas></div>` : ''}
@@ -2130,7 +2136,7 @@ function renderSeasonHistory(seasons) {
 
   reversed.forEach((season, idx) => {
     if ((season.matches && season.matches.length) || (season.money && season.money.length)) {
-      drawSeasonChart(idx, 'matches');
+      drawSeasonChart(idx, season._moneyIsPrimary ? 'money' : 'matches');
     }
   });
 

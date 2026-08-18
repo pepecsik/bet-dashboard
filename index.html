@@ -2522,6 +2522,36 @@ const TEAM_LOGOS = {
   WOL: "https://media.api-sports.io/football/teams/39.png"
 };
 
+// Same logos as TEAM_LOGOS, keyed by normalized full club name instead of
+// short code — H2H history entries come back from the API as full names
+// ("Arsenal", "Nottingham Forest"), which never matched the code-keyed map
+// above, so any opponent that hadn't shown up in the last-5-form list fell
+// through to a generic competition-logo placeholder. Merged into nameToLogo
+// in renderH2H() so the existing exact/startsWith/substring matching passes
+// all apply to it too.
+const TEAM_LOGOS_FULLNAME = {
+  ARSENAL: TEAM_LOGOS.ARS,
+  ASTONVILLA: TEAM_LOGOS.AVI,
+  BOURNEMOUTH: TEAM_LOGOS.BOU,
+  BRENTFORD: TEAM_LOGOS.BRE,
+  BRIGHTONHOVEALBION: TEAM_LOGOS.BRI, BRIGHTON: TEAM_LOGOS.BRI,
+  BURNLEY: TEAM_LOGOS.BUR,
+  CHELSEA: TEAM_LOGOS.CHE,
+  CRYSTALPALACE: TEAM_LOGOS.CPA,
+  EVERTON: TEAM_LOGOS.EVE,
+  FULHAM: TEAM_LOGOS.FUL,
+  LEEDSUNITED: TEAM_LOGOS.LEE, LEEDS: TEAM_LOGOS.LEE,
+  LIVERPOOL: TEAM_LOGOS.LIV,
+  MANCHESTERCITY: TEAM_LOGOS.CTY, MANCITY: TEAM_LOGOS.CTY,
+  MANCHESTERUNITED: TEAM_LOGOS.MAN, MANUNITED: TEAM_LOGOS.MAN,
+  NEWCASTLEUNITED: TEAM_LOGOS.NWC, NEWCASTLE: TEAM_LOGOS.NWC,
+  NOTTINGHAMFOREST: TEAM_LOGOS.NOT, NOTTMFOREST: TEAM_LOGOS.NOT,
+  SUNDERLAND: TEAM_LOGOS.SUN,
+  TOTTENHAMHOTSPUR: TEAM_LOGOS.TOT, TOTTENHAM: TEAM_LOGOS.TOT, SPURS: TEAM_LOGOS.TOT,
+  WESTHAMUNITED: TEAM_LOGOS.WHA, WESTHAM: TEAM_LOGOS.WHA,
+  WOLVERHAMPTONWANDERERS: TEAM_LOGOS.WOL, WOLVERHAMPTON: TEAM_LOGOS.WOL, WOLVES: TEAM_LOGOS.WOL
+};
+
 // HELPER: GET TEAM RANK FROM TABLE CACHE
 function getTeamRank(teamName) {
     if(!tableCache || !teamName) return "";
@@ -5027,6 +5057,7 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
     if (window.DYNAMIC_LOGOS) {
       Object.entries(window.DYNAMIC_LOGOS).forEach(([k,v]) => { nameToLogo[k] = v; });
     }
+    Object.entries(TEAM_LOGOS_FULLNAME).forEach(([k,v]) => { if (!nameToLogo[k]) nameToLogo[k] = v; });
     const hFormFallback = detailedHForm.length === 0 ? findFormInTable(currentHome).split('') : null;
     const aFormFallback = detailedAForm.length === 0 ? findFormInTable(currentAway).split('') : null;
 

@@ -1898,14 +1898,37 @@ img[alt="AVI"] {
          </div>
 
          <div class="history-stats-row" id="historyScoreboard"></div>
-         
+
          <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
          </div>
       </div>
     </div>
 </div>
- 
+
+<div class="modal-overlay" id="seasonChartModal" onclick="closeModal('seasonChartModal')" style="z-index:2200;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
+        <button class="modal-back-btn" onclick="closeModal('seasonChartModal')">Back</button>
+        <div class="modal-title" id="seasonChartModalTitle">Season History</div>
+        <div class="modal-sub">Full progression</div>
+      </div>
+
+      <div class="history-card-inner">
+         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+             <div class="toggle-group">
+                 <button id="seasonModalBtnPts" class="toggle-btn" onclick="drawSeasonChartModal('matches')">Points</button>
+                 <button id="seasonModalBtnMoney" class="toggle-btn" onclick="drawSeasonChartModal('money')">Money</button>
+             </div>
+         </div>
+
+         <div style="position: relative; height: 260px; width: 100%;">
+            <canvas id="seasonChartModalCanvas"></canvas>
+         </div>
+      </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalPlayer" style="align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -2130,7 +2153,10 @@ function renderSeasonHistory(seasons) {
             <button id="seasonBtnMoney${idx}" class="toggle-btn${moneyIsPrimary ? ' active' : ''}" onclick="drawSeasonChart(${idx},'money')">Money</button>
           </div>
         </div>
-        <div style="padding:6px 12px 14px;height:140px;"><canvas id="seasonChart${idx}"></canvas></div>` : ''}
+        <div style="padding:6px 12px 14px;height:140px;position:relative;cursor:pointer;" onclick="openSeasonChartModal(${idx})">
+          <div style="position:absolute;top:2px;right:8px;font-size:14px;opacity:0.4;z-index:1;">⤢</div>
+          <canvas id="seasonChart${idx}"></canvas>
+        </div>` : ''}
       </div>`;
   }).join('');
 
@@ -2198,6 +2224,70 @@ function drawSeasonChart(idx, type) {
       scales: { x: { display: false }, y: { display: false } },
       plugins: {
         legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          enabled: true, mode: 'index', intersect: false,
+          backgroundColor: 'rgba(20, 22, 25, 0.95)', titleFont: { size: 11, weight: '800' }, bodyFont: { size: 10, weight: '600' },
+          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatGBP(c.parsed.y) : c.parsed.y}` }
+        }
+      }
+    }
+  });
+}
+
+// Enlarged season chart, opened by tapping any small season-history chart.
+let seasonChartModalInstance = null;
+let seasonChartModalIdx = null;
+
+function openSeasonChartModal(idx) {
+  vibe();
+  const season = (window.seasonHistoryData || [])[idx];
+  if (!season) return;
+  seasonChartModalIdx = idx;
+  document.getElementById('seasonChartModalTitle').textContent = season.season;
+  document.getElementById('seasonChartModal').classList.add('active');
+  drawSeasonChartModal(season._moneyIsPrimary ? 'money' : 'matches');
+}
+
+function drawSeasonChartModal(type) {
+  const season = (window.seasonHistoryData || [])[seasonChartModalIdx];
+  if (!season) return;
+  const series = season[type] || [];
+  const canvas = document.getElementById('seasonChartModalCanvas');
+  if (!canvas || series.length === 0) return;
+
+  document.getElementById('seasonModalBtnPts').classList.toggle('active', type === 'matches');
+  document.getElementById('seasonModalBtnMoney').classList.toggle('active', type === 'money');
+
+  if (seasonChartModalInstance) { seasonChartModalInstance.destroy(); seasonChartModalInstance = null; }
+
+  const ctx = canvas.getContext('2d');
+  const COLS = { Snackbar: '#4ade80', Timbo: '#4DA3FF', Pepe: '#FF5BC4' };
+  const ps = ['Snackbar', 'Timbo', 'Pepe'];
+  const datasets = ps.map(p => {
+    const c = COLS[p];
+    const grad = ctx.createLinearGradient(0, 0, 0, 260);
+    grad.addColorStop(0, hexToRgba(c, 0.25));
+    grad.addColorStop(1, hexToRgba(c, 0));
+    return { label: p, data: series.map(r => r[p] || 0), borderColor: c, backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 2, borderWidth: 3 };
+  });
+  seasonChartModalInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels: series.map(r => r.date), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 10, right: 10, left: 5, bottom: 0 } },
+      scales: {
+        x: { display: true, grid: { display: false }, ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, maxRotation: 0, autoSkip: true } },
+        y: {
+          display: true, position: 'right',
+          grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
+          ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, callback: (val) => type === 'money' ? '£' + val : val }
+        }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: 'var(--text-main)', boxWidth: 10, font: { size: 10, weight: '700' } } },
         datalabels: { display: false },
         tooltip: {
           enabled: true, mode: 'index', intersect: false,

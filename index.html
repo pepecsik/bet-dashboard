@@ -242,7 +242,7 @@
   --text-muted: #b79ecf;
 
   --accent-orange: #ff2882;   /* PL magenta */
-  --accent-gold:   #ff7ac6;   /* PL soft pink highlight */
+  --accent-gold:   #f6c90e;   /* real gold — Hall of Fame / winner accents, not brand-themed */
   --accent-green:  #00ff85;   /* PL lime */
 
   --border-light:  1px solid rgba(255, 40, 130, 0.3);
@@ -299,6 +299,14 @@
   background: linear-gradient(135deg, #00ff85, #00c46a) !important;
   color: #04150a !important;
   box-shadow: 0 0 20px rgba(0,255,133,0.5);
+}
+
+/* Near-win state stays true orange — .status-orange normally reads
+   var(--accent-orange), which this theme repoints to PL magenta for
+   branding elsewhere; the live green/orange/red bet-status language
+   itself needs to stay universal regardless of theme. */
+[data-theme="premierleague"] .status-orange {
+  background-color: #fb923c !important;
 }
 
 /* Ticker bar: dark purple + magenta dot */

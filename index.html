@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="worldcup">
+<html lang="en" data-theme="premierleague">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -228,122 +228,122 @@
 }
 
 /* 4. WORLD CUP (NED + AUS) */
-[data-theme="worldcup"] {
+[data-theme="premierleague"] {
   --font-main: 'Inter', system-ui, sans-serif;
   --base-size: 12px;
 
-  --bg-grad: radial-gradient(ellipse at 30% 0%, #1a2f5e 0%, #0d1a3a 40%, #060d1f 100%);
-  --bg-card:  rgba(10, 20, 50, 0.72);
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #3d1350 0%, #24082e 40%, #12040d 100%);
+  --bg-card:  rgba(45, 10, 58, 0.72);
   --bg-soft:  rgba(255, 255, 255, 0.06);
   --bg-row:   rgba(255, 255, 255, 0.03);
-  --bg-modal: rgba(8, 16, 40, 0.97);
+  --bg-modal: rgba(20, 4, 26, 0.97);
 
   --text-main:  #ffffff;
-  --text-muted: #7a90bb;
+  --text-muted: #b79ecf;
 
-  --accent-orange: #ff6d00;   /* Dutch orange */
-  --accent-gold:   #ffcd00;   /* Australian gold */
-  --accent-green:  #00b04f;   /* Australian green */
+  --accent-orange: #ff2882;   /* PL magenta */
+  --accent-gold:   #ff7ac6;   /* PL soft pink highlight */
+  --accent-green:  #00ff85;   /* PL lime */
 
-  --border-light:  1px solid rgba(255, 109, 0, 0.3);
-  --shadow-card:   0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,109,0,0.08);
+  --border-light:  1px solid rgba(255, 40, 130, 0.3);
+  --shadow-card:   0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,40,130,0.08);
 
   --rad-sm: 6px;
   --rad-md: 10px;
   --rad-lg: 16px;
 
   --logo-filter: none;
-  --modal-overlay: rgba(4, 10, 30, 0.9);
+  --modal-overlay: rgba(10, 2, 14, 0.9);
 }
 
-/* Header: Dutch navy + orange stripe */
-[data-theme="worldcup"] .left-header {
-  background: linear-gradient(135deg, #0d1a3a 60%, #1a2f5e 100%);
-  border-bottom: 2px solid #ff6d00;
+/* Header: PL purple + magenta stripe */
+[data-theme="premierleague"] .left-header {
+  background: linear-gradient(135deg, #24082e 60%, #3d1350 100%);
+  border-bottom: 2px solid #ff2882;
 }
-[data-theme="worldcup"] .header-main-text { color: #ffffff; }
-[data-theme="worldcup"] .header-sub-text  { color: #ffcd00; letter-spacing: 2px; }
+[data-theme="premierleague"] .header-main-text { color: #ffffff; }
+[data-theme="premierleague"] .header-sub-text  { color: #ff7ac6; letter-spacing: 2px; }
 
-/* Cards: deep navy glass with orange rim */
-[data-theme="worldcup"] .left-card,
-[data-theme="worldcup"] .right-card,
-[data-theme="worldcup"] .summary,
-[data-theme="worldcup"] .modal-card,
-[data-theme="worldcup"] .ranking-card {
-  border: 1px solid rgba(255, 109, 0, 0.25) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.7), inset 0 0 60px rgba(255,109,0,0.03);
+/* Cards: deep purple glass with magenta rim */
+[data-theme="premierleague"] .left-card,
+[data-theme="premierleague"] .right-card,
+[data-theme="premierleague"] .summary,
+[data-theme="premierleague"] .modal-card,
+[data-theme="premierleague"] .ranking-card {
+  border: 1px solid rgba(255, 40, 130, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7), inset 0 0 60px rgba(255,40,130,0.03);
 }
 
-/* Orange active filter */
-[data-theme="worldcup"] .filter-btn.active,
-[data-theme="worldcup"] .toggle-btn.active {
-  background: #ff6d00;
+/* Magenta active filter */
+[data-theme="premierleague"] .filter-btn.active,
+[data-theme="premierleague"] .toggle-btn.active {
+  background: #ff2882;
   color: #fff;
-  border-color: #ff6d00;
-  box-shadow: 0 3px 12px rgba(255,109,0,0.4);
+  border-color: #ff2882;
+  box-shadow: 0 3px 12px rgba(255,40,130,0.4);
 }
 
-/* Live row: orange glow (Dutch!) */
-[data-theme="worldcup"] .left-row[data-status="live"] {
-  border: 1px solid #ff6d00 !important;
-  background: rgba(255,109,0,0.06) !important;
-  box-shadow: 0 0 16px rgba(255,109,0,0.2);
+/* Live row: magenta glow */
+[data-theme="premierleague"] .left-row[data-status="live"] {
+  border: 1px solid #ff2882 !important;
+  background: rgba(255,40,130,0.06) !important;
+  box-shadow: 0 0 16px rgba(255,40,130,0.2);
 }
-[data-theme="worldcup"] .left-row[data-status="live"] .score-pill span:first-child {
-  background: #ff6d00 !important;
+[data-theme="premierleague"] .left-row[data-status="live"] .score-pill span:first-child {
+  background: #ff2882 !important;
   color: #fff !important;
 }
 
-/* Win state: Australian green */
-[data-theme="worldcup"] .status-green {
-  background: linear-gradient(135deg, #00b04f, #00843d) !important;
-  color: #fff !important;
-  box-shadow: 0 0 20px rgba(0,176,79,0.5);
+/* Win state: PL lime */
+[data-theme="premierleague"] .status-green {
+  background: linear-gradient(135deg, #00ff85, #00c46a) !important;
+  color: #04150a !important;
+  box-shadow: 0 0 20px rgba(0,255,133,0.5);
 }
 
-/* Ticker bar: dark navy + orange dot */
-[data-theme="worldcup"] #matchday-ticker-bar {
-  background: #070f25;
-  border-bottom: 1px solid rgba(255,109,0,0.3);
+/* Ticker bar: dark purple + magenta dot */
+[data-theme="premierleague"] #matchday-ticker-bar {
+  background: #12040d;
+  border-bottom: 1px solid rgba(255,40,130,0.3);
 }
-[data-theme="worldcup"] .ticker-countdown        { color: #ffcd00; }
-[data-theme="worldcup"] .ticker-countdown .ticker-time { color: #00b04f; }
-[data-theme="worldcup"] .ticker-live             { color: #ff6d00; }
-[data-theme="worldcup"] .ticker-live .ticker-dot { background: #ff6d00; box-shadow: 0 0 8px #ff6d00; }
+[data-theme="premierleague"] .ticker-countdown        { color: #ff7ac6; }
+[data-theme="premierleague"] .ticker-countdown .ticker-time { color: #00ff85; }
+[data-theme="premierleague"] .ticker-live             { color: #ff2882; }
+[data-theme="premierleague"] .ticker-live .ticker-dot { background: #ff2882; box-shadow: 0 0 8px #ff2882; }
 
-/* Modal tabs: orange underline */
-[data-theme="worldcup"] .tab-btn.active {
-  color: #ff6d00;
-  border-bottom-color: #ff6d00;
+/* Modal tabs: magenta underline */
+[data-theme="premierleague"] .tab-btn.active {
+  color: #ff2882;
+  border-bottom-color: #ff2882;
 }
 
-/* Bet pills get a subtle navy bg */
-[data-theme="worldcup"] .bet {
-  border-color: rgba(255,109,0,0.15);
+/* Bet pills get a subtle purple bg */
+[data-theme="premierleague"] .bet {
+  border-color: rgba(255,40,130,0.15);
 }
 
 /* Scores/money */
-[data-theme="worldcup"] .week-gbp.green  { color: #00b04f; }
-[data-theme="worldcup"] .week-gbp.red    { color: #ff4444; }
-[data-theme="worldcup"] .rank-money      { color: #00b04f; }
-[data-theme="worldcup"] .txt-green       { color: #00b04f !important; }
+[data-theme="premierleague"] .week-gbp.green  { color: #00ff85; }
+[data-theme="premierleague"] .week-gbp.red    { color: #ff4444; }
+[data-theme="premierleague"] .rank-money      { color: #00ff85; }
+[data-theme="premierleague"] .txt-green       { color: #00ff85 !important; }
 
-/* Action button: Dutch orange */
-[data-theme="worldcup"] .place-bets-btn {
-  background: linear-gradient(135deg, #ff6d00, #e65000);
+/* Action button: PL magenta */
+[data-theme="premierleague"] .place-bets-btn {
+  background: linear-gradient(135deg, #ff2882, #c81466);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(255,109,0,0.35);
+  box-shadow: 0 6px 20px rgba(255,40,130,0.35);
 }
-[data-theme="worldcup"] .action-btn {
-  background: linear-gradient(135deg, #ff6d00, #e65000);
+[data-theme="premierleague"] .action-btn {
+  background: linear-gradient(135deg, #ff2882, #c81466);
   color: #fff;
 }
 
 /* Summary toggle */
-[data-theme="worldcup"] .summary-toggle { background: rgba(255,109,0,0.08); }
+[data-theme="premierleague"] .summary-toggle { background: rgba(255,40,130,0.08); }
 
 /* Day headers */
-[data-theme="worldcup"] .day-header { color: #ff6d00; opacity: 1; }
+[data-theme="premierleague"] .day-header { color: #ff2882; opacity: 1; }
  
 /* =========================================
    CORE STYLES
@@ -2173,7 +2173,7 @@ let chartDataCache=null, historyChart=null, tableCache=null;
 let activeFilters = { live: false, alive: false }; // MULTI-FILTER STATE
 
 // --- THEME LOGIC (SECRET TOGGLE) ---
-const themes = ['worldcup', 'carbon', 'candy', 'retro'];
+const themes = ['premierleague', 'carbon', 'candy', 'retro'];
 
 function setTheme(themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
@@ -2209,8 +2209,10 @@ function toggleTheme() {
 }
 
 // LOAD SAVED THEME
-const savedTheme = localStorage.getItem('jb_theme') || 'worldcup';
-setTheme(savedTheme);
+// 'worldcup' no longer exists (World Cup is over) — migrate anyone whose
+// phone still has that cached preference onto the new default.
+const savedTheme = localStorage.getItem('jb_theme') || 'premierleague';
+setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }

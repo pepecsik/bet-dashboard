@@ -2247,12 +2247,25 @@ function drawSeasonChart(idx, type) {
 let seasonChartModalInstance = null;
 let seasonChartModalIdx = null;
 
-// Hidden admin page — opened by long-pressing Pepe's avatar in the
-// Ranking podium (see bindLongPress call in loadData()). A real separate
-// page, not a modal, so it's not sitting in this page's DOM/source at all
-// until someone actually navigates there.
+// Hidden admin page — opened by 5 taps anywhere on the Weekly Summary
+// card (see handleAdminTap, bound once near the other init code below).
+// A real separate page, not a modal, so it's not sitting in this page's
+// DOM/source at all until someone actually navigates there.
 function openAdminPage() {
   window.location.href = 'admin.html';
+}
+
+let adminTapCount = 0;
+let adminTapTimer = null;
+function handleAdminTap() {
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 600);
+  if (adminTapCount >= 5) {
+    adminTapCount = 0;
+    if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
+    openAdminPage();
+  }
 }
 
 function openSeasonChartModal(idx) {
@@ -2498,22 +2511,6 @@ setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 
-// Press-and-hold detection, used for the hidden admin-page trigger. Cancels
-// on release/move so a normal tap or scroll never fires it.
-function bindLongPress(el, callback, duration) {
-  if (!el) return;
-  duration = duration || 1500;
-  let timer = null;
-  const start = () => { timer = setTimeout(() => { timer = null; if (navigator.vibrate) navigator.vibrate([20, 30, 20]); callback(); }, duration); };
-  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
-  el.addEventListener('touchstart', start, { passive: true });
-  el.addEventListener('touchend', cancel);
-  el.addEventListener('touchcancel', cancel);
-  el.addEventListener('touchmove', cancel);
-  el.addEventListener('mousedown', start);
-  el.addEventListener('mouseup', cancel);
-  el.addEventListener('mouseleave', cancel);
-}
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 function hexToRgba(hex, alpha) {
@@ -3107,9 +3104,6 @@ function loadData(){
                         </div>
                     </div>
                 </div>`;
-            // Hidden admin-page trigger: long-press Pepe's avatar specifically,
-            // wherever the podium has currently sorted him.
-            bindLongPress(ranking.querySelector('[data-player="Pepe"]'), openAdminPage);
         } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
        window.__lastMatches = data.matches;
        window.__lastDashboard = data;
@@ -4723,6 +4717,7 @@ document.getElementById("rankingCard").onclick=()=>{
     document.getElementById("historyModal").classList.add("active");
 };
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");};
+document.getElementById("weeklyCard").addEventListener("click", handleAdminTap);
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 

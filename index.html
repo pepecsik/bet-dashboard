@@ -2777,7 +2777,7 @@ function loadData(){
             p.className = "header-pill";
             p.textContent = "WHAT IF?";
             p.style.fontSize = "9px";
-            if (wi.allDone) { p.style.background = 'var(--accent-gold)'; p.style.color = '#000'; }
+            if (wi.allDone) { p.style.background = 'var(--accent-orange)'; p.style.color = '#111'; }
             wrapper.appendChild(p);
             headerRow.appendChild(wrapper);
         }
@@ -2922,9 +2922,8 @@ function loadData(){
               } else {
                   const label = whatIfResultLabel(m);
                   pillEl.textContent = label || '?';
-                  pillEl.style.setProperty('--bet-bg', 'var(--accent-gold)');
-                  pillEl.style.backgroundColor = 'var(--accent-gold)';
-                  pillEl.style.color = '#000';
+                  pillEl.style.setProperty('--bet-bg', 'var(--accent-orange)');
+                  pillEl.style.backgroundColor = 'var(--accent-orange)';
               }
               rr.appendChild(pillEl);
           }
@@ -3005,7 +3004,7 @@ function loadData(){
           // "What if?" money cell -- fixed £2 stake, and a running fold
           // total that fills in grey/blank until the first shared game
           // finishes, then multiplies in each game's odds as they land.
-          // No WIN PP: this isn't money any of you actually split.
+          // WIN PP is just WIN ÷ 3, same convention as the special bets.
           if (window.allLocked && getFirstBetGames().length > 0) {
               const wi = computeWhatIf();
               const el = document.createElement("div"); el.className = "bet";
@@ -3013,14 +3012,12 @@ function loadData(){
                   el.textContent = formatGBP(2);
                   el.style.setProperty('--bet-bg', '#ff4d4d');
                   el.style.backgroundColor = '#ff4d4d';
-              } else if (l === "WIN") {
-                  el.textContent = formatGBP(wi.total);
-                  const color = wi.finishedCount > 0 ? 'var(--accent-gold)' : '#2f343a';
+              } else {
+                  const value = l === "WIN" ? wi.total : wi.total / 3;
+                  el.textContent = formatGBP(value);
+                  const color = wi.finishedCount > 0 ? 'var(--accent-orange)' : '#2f343a';
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color;
-              } else {
-                  el.style.setProperty('--bet-bg', 'transparent');
-                  el.classList.add('empty');
               }
               rr.appendChild(el);
           }

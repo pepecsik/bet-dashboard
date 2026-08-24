@@ -1798,7 +1798,7 @@ img[alt="AVI"] {
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
-          <div class="ranking-title">🏆 All-Time Ranking</div>
+          <div class="ranking-title">🏆 Ranking</div>
           <div id="rankingBody"></div>
           <div style="text-align:center; margin-top:10px;">
             <button onclick="event.stopPropagation(); openHallOfFame();"
@@ -1933,19 +1933,6 @@ img[alt="AVI"] {
          <div style="position: relative; height: 260px; width: 100%;">
             <canvas id="seasonChartModalCanvas"></canvas>
          </div>
-      </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="adminModal" onclick="closeModal('adminModal')" style="z-index:2200;">
-    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
-      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
-        <button class="modal-back-btn" onclick="closeModal('adminModal')">Back</button>
-        <div class="modal-title">Admin</div>
-        <div class="modal-sub">Hidden panel</div>
-      </div>
-      <div class="history-card-inner" id="adminContent" style="padding:20px;color:var(--text-muted);font-size:13px;">
-        Nothing here yet.
       </div>
     </div>
 </div>
@@ -2261,9 +2248,11 @@ let seasonChartModalInstance = null;
 let seasonChartModalIdx = null;
 
 // Hidden admin page — opened by long-pressing Pepe's avatar in the
-// All-Time Ranking podium (see bindLongPress call in loadData()).
+// Ranking podium (see bindLongPress call in loadData()). A real separate
+// page, not a modal, so it's not sitting in this page's DOM/source at all
+// until someone actually navigates there.
 function openAdminPage() {
-  document.getElementById('adminModal').classList.add('active');
+  window.location.href = 'admin.html';
 }
 
 function openSeasonChartModal(idx) {

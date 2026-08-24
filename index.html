@@ -2774,10 +2774,9 @@ function loadData(){
             const wrapper = document.createElement("div");
             wrapper.className = "header-pill-wrapper whatif-header";
             const p = document.createElement("div");
-            p.className = "header-pill";
-            p.textContent = "WHAT IF?";
-            p.style.fontSize = "9px";
-            if (wi.allDone) { p.style.background = 'var(--accent-orange)'; p.style.color = '#111'; }
+            p.className = "header-pill has-avatar";
+            p.innerHTML = `<img src="./what_if.png" class="avatar-img" alt="What if?">`;
+            if (wi.allDone) { p.style.background = 'var(--accent-orange)'; }
             wrapper.appendChild(p);
             headerRow.appendChild(wrapper);
         }

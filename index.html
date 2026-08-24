@@ -2691,6 +2691,22 @@ function loadData(){
           : 'https://media.api-sports.io/football/leagues/39.png';
         lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+
+        // Whether every regular bet column is fully resolved: a dead (red)
+        // column doesn't need a WIN value to count as "locked" -- only a
+        // still-active column missing one means a bet genuinely hasn't been
+        // placed yet. Computed up front (not just for the bottom button)
+        // since the "What if?" column also gates on this same signal.
+        window.allLocked = true;
+        const totalCols = (data.headers || []).length;
+        if (totalCols === 0 || !window.winData) {
+            window.allLocked = false;
+        } else {
+            data.headers.forEach((h, i) => {
+                if (h.status !== 'red' && (!window.winData[i] || !window.winData[i].value)) window.allLocked = false;
+            });
+        }
+
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
@@ -2749,6 +2765,23 @@ function loadData(){
                 headerRow.appendChild(wrapper);
             });
         }
+
+        // "What if?" column — only once every regular bet is fully placed
+        // (same moment the bottom button flips to WINNING COMBOS), and only
+        // if the sheet actually has a shared first-bet game set this week.
+        if (window.allLocked && getFirstBetGames().length > 0) {
+            const wi = computeWhatIf();
+            const wrapper = document.createElement("div");
+            wrapper.className = "header-pill-wrapper whatif-header";
+            const p = document.createElement("div");
+            p.className = "header-pill";
+            p.textContent = "WHAT IF?";
+            p.style.fontSize = "9px";
+            if (wi.allDone) { p.style.background = 'var(--accent-gold)'; p.style.color = '#000'; }
+            wrapper.appendChild(p);
+            headerRow.appendChild(wrapper);
+        }
+
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
@@ -2873,6 +2906,29 @@ function loadData(){
               });
           }
 
+          // "What if?" pill — outline until this shared first-bet game
+          // finishes, then fills in with the actual result. Blank on any
+          // row that isn't one of the 3 shared games.
+          if (window.allLocked && getFirstBetGames().length > 0) {
+              const pillEl = document.createElement('div');
+              pillEl.className = 'bet whatif-pill';
+              if (!m.isFirstBetGame) {
+                  pillEl.style.setProperty('--bet-bg', 'transparent');
+                  pillEl.classList.add('empty');
+              } else if (m.status !== 'FT') {
+                  pillEl.style.setProperty('--bet-bg', 'transparent');
+                  pillEl.style.border = '1px dashed rgba(255,255,255,0.35)';
+                  pillEl.textContent = '?';
+              } else {
+                  const label = whatIfResultLabel(m);
+                  pillEl.textContent = label || '?';
+                  pillEl.style.setProperty('--bet-bg', 'var(--accent-gold)');
+                  pillEl.style.backgroundColor = 'var(--accent-gold)';
+                  pillEl.style.color = '#000';
+              }
+              rr.appendChild(pillEl);
+          }
+
           right.appendChild(rr);
         });
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
@@ -2881,24 +2937,6 @@ function loadData(){
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
         // -------- Bottom action button: PLACE BETS / WINNING COMBOS / NO COMBOS POSSIBLE --------
-        // A dead (red) column is fully resolved either way and doesn't need
-        // a WIN value to count as "locked" -- only a still-active column
-        // without one means a bet genuinely hasn't been placed yet. Once
-        // every column has gone red, this must stay locked (showing "no
-        // combos possible") rather than falling back to "place bets", which
-        // used to happen because the old check only counted non-red columns
-        // as "found" at all, so an all-dead week looked identical to an
-        // empty one.
-        let allLocked = true;
-        const totalCols = (data.headers || []).length;
-        if (totalCols === 0 || !window.winData) {
-            allLocked = false;
-        } else {
-            data.headers.forEach((h, i) => {
-                if (h.status !== 'red' && (!window.winData[i] || !window.winData[i].value)) allLocked = false;
-            });
-        }
-
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
         btnDiv.className = "place-bets-btn";
@@ -2916,7 +2954,7 @@ function loadData(){
                 btnDiv.innerHTML = "NO COMBOS<br>POSSIBLE";
                 btnDiv.onclick = openSpecialCombosModal;
             }
-        } else if(allLocked) {
+        } else if(window.allLocked) {
             if(hasAnyCombos()) {
                 // Blue — same hue as the bet-1 avatar in the combos modal
                 btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
@@ -2962,6 +3000,29 @@ function loadData(){
                   el.style.backgroundColor = color;
                   rr.appendChild(el);
               });
+          }
+
+          // "What if?" money cell -- fixed £2 stake, and a running fold
+          // total that fills in grey/blank until the first shared game
+          // finishes, then multiplies in each game's odds as they land.
+          // No WIN PP: this isn't money any of you actually split.
+          if (window.allLocked && getFirstBetGames().length > 0) {
+              const wi = computeWhatIf();
+              const el = document.createElement("div"); el.className = "bet";
+              if (l === "BET") {
+                  el.textContent = formatGBP(2);
+                  el.style.setProperty('--bet-bg', '#ff4d4d');
+                  el.style.backgroundColor = '#ff4d4d';
+              } else if (l === "WIN") {
+                  el.textContent = formatGBP(wi.total);
+                  const color = wi.finishedCount > 0 ? 'var(--accent-gold)' : '#2f343a';
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+              } else {
+                  el.style.setProperty('--bet-bg', 'transparent');
+                  el.classList.add('empty');
+              }
+              rr.appendChild(el);
           }
 
           right.appendChild(rr);
@@ -3686,6 +3747,55 @@ function bestSpecialCombo() {
 
 function hasAnySpecialCombos() {
   return bestSpecialCombo().bets.length >= 2;
+}
+
+// "What if?" — a hypothetical fold across the 3 shared first-bet games
+// (win/draw only, backend-flagged via m.isFirstBetGame), always using
+// whichever outcome actually happened in each game. It's never "wrong" by
+// definition, so there's no red/dead state — just empty until a game
+// finishes, then it fills in and compounds.
+function getFirstBetGames() {
+  return (window.allMatches || []).filter(m => m.isFirstBetGame);
+}
+
+function whatIfResultLabel(m) {
+  const scoreParts = (m.score || '').split('-').map(Number);
+  if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+  const [hCode, aCode] = m.match.split('-').map(s => s.trim().toUpperCase());
+  const [hS, aS] = scoreParts;
+  if (hS > aS) return hCode;
+  if (aS > hS) return aCode;
+  return 'DRAW';
+}
+
+function whatIfResultOdds(m) {
+  if (!m.odds) return null;
+  const scoreParts = (m.score || '').split('-').map(Number);
+  if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+  const [hS, aS] = scoreParts;
+  const odd = hS > aS ? m.odds.home : (aS > hS ? m.odds.away : m.odds.draw);
+  const n = parseFloat(odd);
+  return isNaN(n) ? null : n;
+}
+
+// Multiplies in each finished game's actual-result odds as it completes --
+// a real fold at a fixed £2 stake, not a sum of singles.
+function computeWhatIf() {
+  const games = getFirstBetGames();
+  const finished = games.filter(m => m.status === 'FT');
+  const stake = 2;
+  let total = stake;
+  finished.forEach(m => {
+    const odds = whatIfResultOdds(m);
+    if (odds) total *= odds;
+  });
+  return {
+    games: games,
+    finishedCount: finished.length,
+    totalGames: games.length,
+    allDone: games.length > 0 && finished.length === games.length,
+    total: finished.length > 0 ? total : 0
+  };
 }
 
 function openSpecialCombosModal() {

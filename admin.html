@@ -105,15 +105,22 @@
       </div>
 
       <div class="step-card">
-        <div class="step-title">2. Get Fixture IDs</div>
-        <div class="step-desc">Fetches the fixtures for whatever matchweek DATA!B2 falls in and writes them into DATA!A3:C. Check the list below looks right before running step 3.</div>
+        <div class="step-title">2. Clear Bets</div>
+        <div class="step-desc">Clears everyone's picks: cells B3:E22 on the Snackbar, Timbo and Pepe sheets.</div>
+        <button class="action" id="btnClearBets" onclick="runClearBets()">Clear Bets</button>
+        <div class="status-msg" id="msgClearBets" style="display:none;"></div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-title">3. Get Fixture IDs</div>
+        <div class="step-desc">Fetches the fixtures for whatever matchweek DATA!B2 falls in and writes them into DATA!A3:C. Check the list below looks right before running step 4.</div>
         <button class="action" id="btnFixtures" onclick="runGetFixtureIds()">Get Fixture IDs</button>
         <div class="status-msg" id="msgFixtures" style="display:none;"></div>
         <div id="fixturesList"></div>
       </div>
 
       <div class="step-card">
-        <div class="step-title">3. Update All Data</div>
+        <div class="step-title">4. Update All Data</div>
         <div class="step-desc">Runs updateAllData() to pull scores, stats, odds etc. for the new fixtures. Can take up to a minute or so.</div>
         <button class="action" id="btnUpdate" onclick="runUpdateAllData()">Update All Data</button>
         <div class="status-msg" id="msgUpdate" style="display:none;"></div>
@@ -166,6 +173,17 @@ function runClearAndSetDate() {
     .finally(() => { btn.disabled = false; btn.textContent = 'Clear & Set Date'; });
 }
 
+function runClearBets() {
+  if (!confirm('Are you sure? This clears B3:E22 on the Snackbar, Timbo and Pepe sheets — every current pick.')) return;
+
+  const btn = document.getElementById('btnClearBets');
+  btn.disabled = true; btn.textContent = 'Working...';
+  postAdmin('adminClearBets')
+    .then(res => showStatus('msgClearBets', res.status === 'success', res.message))
+    .catch(err => showStatus('msgClearBets', false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Clear Bets'; });
+}
+
 function runGetFixtureIds() {
   const btn = document.getElementById('btnFixtures');
   btn.disabled = true; btn.textContent = 'Fetching...';
@@ -174,9 +192,9 @@ function runGetFixtureIds() {
     .then(res => {
       showStatus('msgFixtures', res.status === 'success', res.message);
       if (res.fixtures && res.fixtures.length) {
-        const rows = res.fixtures.map(f => `<tr><td>${f[0]}</td><td>${f[1]}</td><td>${f[2]}</td></tr>`).join('');
+        const rows = res.fixtures.map(f => `<tr><td>${f[0]}</td><td>${f[3] || ''}</td><td>${f[1]}</td><td>${f[2]}</td></tr>`).join('');
         document.getElementById('fixturesList').innerHTML =
-          `<table class="fixtures"><tr><th>Fixture ID</th><th>Home</th><th>Away</th></tr>${rows}</table>`;
+          `<table class="fixtures"><tr><th>Fixture ID</th><th>When</th><th>Home</th><th>Away</th></tr>${rows}</table>`;
       }
     })
     .catch(err => showStatus('msgFixtures', false, 'Request failed: ' + err))

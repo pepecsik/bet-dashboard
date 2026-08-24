@@ -1937,6 +1937,19 @@ img[alt="AVI"] {
     </div>
 </div>
 
+<div class="modal-overlay" id="adminModal" onclick="closeModal('adminModal')" style="z-index:2200;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
+        <button class="modal-back-btn" onclick="closeModal('adminModal')">Back</button>
+        <div class="modal-title">Admin</div>
+        <div class="modal-sub">Hidden panel</div>
+      </div>
+      <div class="history-card-inner" id="adminContent" style="padding:20px;color:var(--text-muted);font-size:13px;">
+        Nothing here yet.
+      </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalPlayer" style="align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -2247,6 +2260,12 @@ function drawSeasonChart(idx, type) {
 let seasonChartModalInstance = null;
 let seasonChartModalIdx = null;
 
+// Hidden admin page — opened by long-pressing Pepe's avatar in the
+// All-Time Ranking podium (see bindLongPress call in loadData()).
+function openAdminPage() {
+  document.getElementById('adminModal').classList.add('active');
+}
+
 function openSeasonChartModal(idx) {
   vibe();
   const season = (window.seasonHistoryData || [])[idx];
@@ -2489,6 +2508,23 @@ setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
+
+// Press-and-hold detection, used for the hidden admin-page trigger. Cancels
+// on release/move so a normal tap or scroll never fires it.
+function bindLongPress(el, callback, duration) {
+  if (!el) return;
+  duration = duration || 1500;
+  let timer = null;
+  const start = () => { timer = setTimeout(() => { timer = null; if (navigator.vibrate) navigator.vibrate([20, 30, 20]); callback(); }, duration); };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  el.addEventListener('touchstart', start, { passive: true });
+  el.addEventListener('touchend', cancel);
+  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('touchmove', cancel);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', cancel);
+  el.addEventListener('mouseleave', cancel);
+}
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
 function hexToRgba(hex, alpha) {
@@ -3059,7 +3095,7 @@ function loadData(){
                 <div class="podium-container">
                     <div class="podium-place ${classL}">
                         ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
-                        <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
+                        <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
                         <div class="podium-bar">
                             <div class="podium-money">${formatGBP(p2.money)}</div>
                             <div class="podium-stats">${p2.matchesRight} Bets</div>
@@ -3067,7 +3103,7 @@ function loadData(){
                     </div>
                     <div class="podium-place ${classC}">
                         <div class="crown-icon">👑</div>
-                        <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
+                        <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
                         <div class="podium-bar">
                             <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
                             <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
@@ -3075,13 +3111,16 @@ function loadData(){
                     </div>
                     <div class="podium-place ${classR}">
                         ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
-                        <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
+                        <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
                         <div class="podium-bar">
                             <div class="podium-money">${formatGBP(p3.money)}</div>
                             <div class="podium-stats">${p3.matchesRight} Bets</div>
                         </div>
                     </div>
                 </div>`;
+            // Hidden admin-page trigger: long-press Pepe's avatar specifically,
+            // wherever the podium has currently sorted him.
+            bindLongPress(ranking.querySelector('[data-player="Pepe"]'), openAdminPage);
         } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
        window.__lastMatches = data.matches;
        window.__lastDashboard = data;

@@ -36,11 +36,47 @@
   }
   h1 { font-size: 16px; margin: 0; font-weight: 800; }
   .sub { font-size: 10px; color: #ff7ac6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 2px; }
-  main {
-    padding: 24px 18px;
-    color: #b79ecf;
-    font-size: 13px;
+
+  .tabs { display: flex; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .tab-btn {
+    flex: 1; padding: 12px; text-align: center; font-size: 11px; font-weight: 700;
+    color: #b79ecf; background: transparent; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
   }
+  .tab-btn.active { color: #fff; border-bottom-color: #ff2882; }
+
+  main { padding: 18px; max-width: 480px; margin: 0 auto; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .step-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .step-title { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+  .step-desc { font-size: 11px; color: #b79ecf; margin-bottom: 12px; line-height: 1.4; }
+  input[type="date"] {
+    width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; margin-bottom: 10px; font-family: inherit;
+  }
+  button.action {
+    width: 100%; padding: 12px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, #ff2882, #c81466); color: #fff;
+    font-weight: 800; font-size: 13px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  button.action:disabled { opacity: 0.6; cursor: default; }
+  .status-msg { margin-top: 10px; font-size: 12px; padding: 8px 10px; border-radius: 8px; line-height: 1.4; }
+  .status-msg.ok { background: rgba(0,255,133,0.12); color: #00ff85; border: 1px solid rgba(0,255,133,0.25); }
+  .status-msg.err { background: rgba(255,77,77,0.12); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.25); }
+
+  table.fixtures { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  table.fixtures th, table.fixtures td { padding: 6px 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  table.fixtures th { color: #b79ecf; font-weight: 700; text-transform: uppercase; font-size: 10px; }
+
+  .placeholder { text-align: center; color: #b79ecf; padding: 40px 0; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -51,8 +87,110 @@
       <div class="sub">Hidden panel</div>
     </div>
   </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">Matchweek</button>
+    <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
+    <button class="tab-btn" id="tabBtnBalance" onclick="switchTab('balance')">Balance</button>
+  </div>
+
   <main>
-    Nothing here yet.
+    <div class="tab-pane active" id="paneMatchweek">
+      <div class="step-card">
+        <div class="step-title">1. Clear &amp; Set Date</div>
+        <div class="step-desc">Clears DATA!A3:AT22 (columns I and J are left alone) and sets DATA!B2 to the first game date of the next matchweek.</div>
+        <input type="date" id="mwDate">
+        <button class="action" id="btnClear" onclick="runClearAndSetDate()">Clear &amp; Set Date</button>
+        <div class="status-msg" id="msgClear" style="display:none;"></div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-title">2. Get Fixture IDs</div>
+        <div class="step-desc">Fetches the fixtures for whatever matchweek DATA!B2 falls in and writes them into DATA!A3:C. Check the list below looks right before running step 3.</div>
+        <button class="action" id="btnFixtures" onclick="runGetFixtureIds()">Get Fixture IDs</button>
+        <div class="status-msg" id="msgFixtures" style="display:none;"></div>
+        <div id="fixturesList"></div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-title">3. Update All Data</div>
+        <div class="step-desc">Runs updateAllData() to pull scores, stats, odds etc. for the new fixtures. Can take up to a minute or so.</div>
+        <button class="action" id="btnUpdate" onclick="runUpdateAllData()">Update All Data</button>
+        <div class="status-msg" id="msgUpdate" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="paneScoreboard">
+      <div class="placeholder">Coming soon.</div>
+    </div>
+
+    <div class="tab-pane" id="paneBalance">
+      <div class="placeholder">Coming soon.</div>
+    </div>
   </main>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  document.getElementById('pane' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+}
+
+function showStatus(elId, ok, text) {
+  const el = document.getElementById(elId);
+  el.style.display = 'block';
+  el.className = 'status-msg ' + (ok ? 'ok' : 'err');
+  el.textContent = text;
+}
+
+function postAdmin(action, extra) {
+  return fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(Object.assign({ action: action }, extra || {}))
+  }).then(r => r.json());
+}
+
+function runClearAndSetDate() {
+  const date = document.getElementById('mwDate').value;
+  if (!date) { showStatus('msgClear', false, 'Pick a date first.'); return; }
+  if (!confirm('Are you sure? This clears last week\'s data in DATA!A3:AT22 (keeping columns I/J) and sets B2 to ' + date + '.')) return;
+
+  const btn = document.getElementById('btnClear');
+  btn.disabled = true; btn.textContent = 'Working...';
+  postAdmin('adminClearAndSetDate', { date: date })
+    .then(res => showStatus('msgClear', res.status === 'success', res.message))
+    .catch(err => showStatus('msgClear', false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Clear & Set Date'; });
+}
+
+function runGetFixtureIds() {
+  const btn = document.getElementById('btnFixtures');
+  btn.disabled = true; btn.textContent = 'Fetching...';
+  document.getElementById('fixturesList').innerHTML = '';
+  postAdmin('adminGetFixtureIds')
+    .then(res => {
+      showStatus('msgFixtures', res.status === 'success', res.message);
+      if (res.fixtures && res.fixtures.length) {
+        const rows = res.fixtures.map(f => `<tr><td>${f[0]}</td><td>${f[1]}</td><td>${f[2]}</td></tr>`).join('');
+        document.getElementById('fixturesList').innerHTML =
+          `<table class="fixtures"><tr><th>Fixture ID</th><th>Home</th><th>Away</th></tr>${rows}</table>`;
+      }
+    })
+    .catch(err => showStatus('msgFixtures', false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Get Fixture IDs'; });
+}
+
+function runUpdateAllData() {
+  const btn = document.getElementById('btnUpdate');
+  btn.disabled = true; btn.textContent = 'Updating...';
+  postAdmin('adminUpdateAllData')
+    .then(res => showStatus('msgUpdate', res.status === 'success', res.message))
+    .catch(err => showStatus('msgUpdate', false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Update All Data'; });
+}
+</script>
 </body>
 </html>

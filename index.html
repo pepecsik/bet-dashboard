@@ -2881,13 +2881,23 @@ function loadData(){
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
         // -------- Bottom action button: PLACE BETS / WINNING COMBOS / NO COMBOS POSSIBLE --------
-        let allLocked = true; let activeColsFound = false;
-        if(data.headers && window.winData) {
+        // A dead (red) column is fully resolved either way and doesn't need
+        // a WIN value to count as "locked" -- only a still-active column
+        // without one means a bet genuinely hasn't been placed yet. Once
+        // every column has gone red, this must stay locked (showing "no
+        // combos possible") rather than falling back to "place bets", which
+        // used to happen because the old check only counted non-red columns
+        // as "found" at all, so an all-dead week looked identical to an
+        // empty one.
+        let allLocked = true;
+        const totalCols = (data.headers || []).length;
+        if (totalCols === 0 || !window.winData) {
+            allLocked = false;
+        } else {
             data.headers.forEach((h, i) => {
-                if(h.status !== 'red') { activeColsFound = true; if(!window.winData[i] || !window.winData[i].value) allLocked = false; }
+                if (h.status !== 'red' && (!window.winData[i] || !window.winData[i].value)) allLocked = false;
             });
-        } else { allLocked = false; }
-        if(!activeColsFound) allLocked = false;
+        }
 
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");

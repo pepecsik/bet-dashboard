@@ -213,6 +213,24 @@ function postAdmin(action, extra) {
   }).then(r => r.json());
 }
 
+// Pre-fills the date picker with the next scheduled league fixture, so
+// the admin doesn't have to go look it up. Only fills it if the field is
+// still empty, and stays silent on failure -- worst case the admin just
+// picks the date manually like before.
+function suggestNextMatchweekDate() {
+  const input = document.getElementById('mwDate');
+  if (input.value) return;
+  postAdmin('adminSuggestNextDate', {})
+    .then(res => {
+      if (res.status === 'success' && res.date && !input.value) {
+        input.value = res.date;
+        showStatus('msgClear', true, 'Pre-filled from the next scheduled fixture — check it looks right before running.');
+      }
+    })
+    .catch(() => {});
+}
+suggestNextMatchweekDate();
+
 function runClearAndSetDate() {
   const date = document.getElementById('mwDate').value;
   if (!date) { showStatus('msgClear', false, 'Pick a date first.'); return; }

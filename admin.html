@@ -282,8 +282,8 @@ let sbLastMatches = null;
 let sbHistoryByRow = {};
 
 // Live points + money for each player, computed the same way the backend's
-// syncCurrentMatchweekToHistory does: 1pt per correct FT bet, 3pt if it was
-// an exact correct-score pick; money summed off the WIN row by header name.
+// syncCurrentMatchweekToHistory does: 1pt per correct FT bet; money only
+// counted once a whole header column has actually won (see below).
 function computeLiveSummary(data) {
   const summary = {};
   SB_PLAYERS.forEach(p => { summary[p] = { points: 0, money: 0 }; });
@@ -300,8 +300,25 @@ function computeLiveSummary(data) {
     });
   });
 
+  // Money -- the WIN row (data.betSummary[1]) is a single combo value per
+  // header column, covering every match assigned to that column. It's only
+  // real, won money once every one of those matches is FT and correct, with
+  // no misses -- exactly the condition the main dashboard uses to trigger
+  // its own "big win" celebration for that column. Anything still live, or
+  // with a wrong pick anywhere in the column, is just a potential figure.
   (data.headers || []).forEach((h, i) => {
-    if (SB_PLAYERS.includes(h.name) && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+    if (!SB_PLAYERS.includes(h.name)) return;
+    let hasBet = false, hasRed = false, allGreen = true, pending = 0;
+    (data.matches || []).forEach(m => {
+      const c = m.cells && m.cells[i];
+      if (!c || !c.value) return;
+      hasBet = true;
+      if (!sbIsGreen(c.color)) allGreen = false;
+      if (sbIsRed(c.color)) hasRed = true;
+      if (m.status !== 'FT') pending++;
+    });
+    if (!hasBet || hasRed || !allGreen || pending > 0) return;
+    if (data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
       summary[h.name].money += (data.betSummary[1].cells[i].value || 0);
     }
   });

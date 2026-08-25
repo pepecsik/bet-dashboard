@@ -3787,11 +3787,16 @@ function whatIfResultLabel(m) {
 }
 
 function whatIfResultOdds(m) {
-  if (!m.odds) return null;
+  // Prefer the frozen snapshot taken by the backend the moment bets locked
+  // in this week (see Code.gs buildDashboard) -- it doesn't move once set.
+  // Falls back to the live, continuously-refreshing odds only for the brief
+  // window before that snapshot has landed.
+  const source = m.whatIfOdds || m.odds;
+  if (!source) return null;
   const scoreParts = (m.score || '').split('-').map(Number);
   if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
   const [hS, aS] = scoreParts;
-  const odd = hS > aS ? m.odds.home : (aS > hS ? m.odds.away : m.odds.draw);
+  const odd = hS > aS ? source.home : (aS > hS ? source.away : source.draw);
   const n = parseFloat(odd);
   return isNaN(n) ? null : n;
 }

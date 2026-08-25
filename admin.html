@@ -165,17 +165,24 @@
   .mw-player-cell { flex: 1; display: flex; gap: 3px; }
   .mw-player-cell .sb-pill { flex: 1; min-width: 0; }
 
-  .bets-col-card { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
-  .bets-col-title { font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-  .bets-col-card .mw-match-row { background: rgba(0,0,0,0.2); }
-  .bets-col-card .mw-player-cell { flex: 0 0 72px; }
-  .bets-win-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .bets-win-label { font-size: 11px; font-weight: 800; color: #b79ecf; }
+  .bets-col-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  .bets-col-top { display: flex; align-items: center; gap: 6px; }
+  .bets-col-title { font-size: 11px; font-weight: 800; color: #fff; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bets-win-label { font-size: 10px; font-weight: 800; color: #b79ecf; }
   .bets-win-input {
-    flex: 1; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-family: inherit;
+    width: 56px; flex: none; padding: 5px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: inherit; margin-bottom: 0;
   }
-  .bets-win-save { width: auto; padding: 8px 16px; margin: 0; }
+  .bets-win-save { width: auto !important; flex: none; padding: 6px 12px; margin: 0; font-size: 10px; transition: background 0.2s; }
+  .bets-win-save.saved { background: linear-gradient(135deg, #00e676, #00b359) !important; }
+  .bets-picks { margin-top: 4px; }
+  .bets-pick-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
+  .bets-pick-match { font-size: 10px; color: rgba(255,255,255,0.55); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bets-pick-val { font-size: 10px; font-weight: 800; flex: none; }
+  .bets-pick-val.pv-green { color: #4ade80; }
+  .bets-pick-val.pv-red { color: #ef4444; }
+  .bets-pick-val.pv-grey { color: #b79ecf; }
+  .bets-picks .placeholder { padding: 4px 0; font-size: 10px; }
 </style>
 </head>
 <body>
@@ -374,15 +381,14 @@ function renderBetsGrid(data) {
   if (!headers.length) return '<div class="placeholder">No active bets yet.</div>';
 
   return headers.map((h, i) => {
-    const rows = matches.map(m => {
+    const picks = matches.map(m => {
       const c = (m.cells && m.cells[i]) || {};
       if (!c.value) return '';
-      const cls = sbIsGreen(c.color) ? 'sb-green' : (sbIsRed(c.color) ? 'sb-red' : 'sb-grey');
-      const scoreLabel = m.status === 'FT' ? m.score : m.status;
+      const cls = sbIsGreen(c.color) ? 'pv-green' : (sbIsRed(c.color) ? 'pv-red' : 'pv-grey');
       return `
-        <div class="mw-match-row">
-          <div class="mw-match-label">${m.match}<span class="mw-match-score">${scoreLabel}</span></div>
-          <div class="mw-player-cell"><div class="sb-pill ${cls}">${c.value}</div></div>
+        <div class="bets-pick-row">
+          <span class="bets-pick-match">${m.match}</span>
+          <span class="bets-pick-val ${cls}">${c.value}</span>
         </div>`;
     }).join('');
 
@@ -390,14 +396,13 @@ function renderBetsGrid(data) {
 
     return `
       <div class="bets-col-card">
-        <div class="bets-col-title">${h.name}</div>
-        ${rows || '<div class="placeholder">No picks yet.</div>'}
-        <div class="bets-win-row">
-          <span class="bets-win-label">WIN £</span>
+        <div class="bets-col-top">
+          <div class="bets-col-title">${h.name}</div>
+          <span class="bets-win-label">£</span>
           <input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}">
           <button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button>
         </div>
-        <div class="status-msg" id="msgWin_${h.idx}" style="display:none;"></div>
+        <div class="bets-picks">${picks || '<div class="placeholder">No picks yet.</div>'}</div>
       </div>`;
   }).join('');
 }
@@ -410,14 +415,30 @@ function loadBetsGrid() {
   });
 }
 
+// Feedback lives on the button itself (a brief "Saved" pulse) instead of a
+// permanent status box under every card -- with up to a dozen cards on
+// screen, a fixed message slot per card added a lot of dead space once
+// nothing had been saved yet.
 function saveWinValue(colIdx, btn) {
   const input = document.getElementById('winInput_' + colIdx);
   const value = parseFloat(input.value) || 0;
-  btn.disabled = true; btn.textContent = 'Saving...';
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
   postAdmin('adminSetWinValue', { colIdx: colIdx, value: value })
-    .then(res => showStatus('msgWin_' + colIdx, res.status === 'success', res.message))
-    .catch(err => showStatus('msgWin_' + colIdx, false, 'Request failed: ' + err))
-    .finally(() => { btn.disabled = false; btn.textContent = 'Save'; });
+    .then(res => {
+      if (res.status === 'success') {
+        btn.textContent = 'Saved';
+        btn.classList.add('saved');
+      } else {
+        btn.textContent = original;
+        alert(res.message || 'Save failed.');
+      }
+    })
+    .catch(err => { btn.textContent = original; alert('Request failed: ' + err); })
+    .finally(() => {
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('saved'); }, 1200);
+    });
 }
 
 /* ===== SCOREBOARD TAB ===== */

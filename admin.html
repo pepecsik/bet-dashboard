@@ -165,24 +165,34 @@
   .mw-player-cell { flex: 1; display: flex; gap: 3px; }
   .mw-player-cell .sb-pill { flex: 1; min-width: 0; }
 
-  .bets-col-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
-  .bets-col-top { display: flex; align-items: center; gap: 6px; }
-  .bets-col-title { font-size: 11px; font-weight: 800; color: #fff; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bets-win-label { font-size: 10px; font-weight: 800; color: #b79ecf; }
-  .bets-win-input {
-    width: 56px; flex: none; padding: 5px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-family: inherit; margin-bottom: 0;
+  /* Bets grid -- matches down the left (sticky), one bet column per
+     player/special-bet, all side by side. Scrolls horizontally if more
+     columns than fit, with the match-label column pinned in place. */
+  .bets-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; margin-bottom: 4px; }
+  .bets-grid { display: grid; background: rgba(255,255,255,0.03); border-radius: 10px; }
+  .bets-g-cell {
+    padding: 7px 4px; font-size: 10px; display: flex; align-items: center; justify-content: center;
+    text-align: center; border-bottom: 1px solid rgba(255,255,255,0.06); overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis;
   }
-  .bets-win-save { width: auto !important; flex: none; padding: 6px 12px; margin: 0; font-size: 10px; transition: background 0.2s; }
+  .bets-g-head { font-weight: 800; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .bets-g-label {
+    justify-content: flex-start; text-align: left; color: rgba(255,255,255,0.6); font-size: 9px;
+    position: sticky; left: 0; z-index: 2; background: #1c0925;
+  }
+  .bets-g-corner { position: sticky; left: 0; z-index: 3; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .bets-g-pick { font-weight: 800; }
+  .bets-g-win { padding: 6px 3px; }
+  .bets-g-save { padding: 5px 3px; border-bottom: none; }
+  .bets-win-input {
+    width: 100%; text-align: center; padding: 5px 2px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.35); color: #fff; font-size: 10px; font-family: inherit; margin: 0;
+  }
+  .bets-win-save { width: 100% !important; padding: 6px 2px !important; margin: 0; font-size: 9px; transition: background 0.2s; }
   .bets-win-save.saved { background: linear-gradient(135deg, #00e676, #00b359) !important; }
-  .bets-picks { margin-top: 4px; }
-  .bets-pick-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
-  .bets-pick-match { font-size: 10px; color: rgba(255,255,255,0.55); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bets-pick-val { font-size: 10px; font-weight: 800; flex: none; }
-  .bets-pick-val.pv-green { color: #4ade80; }
-  .bets-pick-val.pv-red { color: #ef4444; }
-  .bets-pick-val.pv-grey { color: #b79ecf; }
-  .bets-picks .placeholder { padding: 4px 0; font-size: 10px; }
+  .pv-green { color: #4ade80; }
+  .pv-red { color: #ef4444; }
+  .pv-grey { color: #b79ecf; }
 </style>
 </head>
 <body>
@@ -379,32 +389,45 @@ function renderBetsGrid(data) {
   const winCells = (data.betSummary && data.betSummary[1] && data.betSummary[1].cells) || [];
 
   if (!headers.length) return '<div class="placeholder">No active bets yet.</div>';
+  if (!matches.length) return '<div class="placeholder">No matches yet.</div>';
 
-  return headers.map((h, i) => {
-    const picks = matches.map(m => {
+  // A CSS grid, built row-major in DOM order: the match-label column is
+  // sticky (frozen while scrolling sideways) so the bet columns can sit
+  // side by side -- exactly like the DASHBOARD sheet itself -- instead of
+  // stacking one full-width card per column.
+  const colTemplate = `92px repeat(${headers.length}, 62px)`;
+
+  const headerRow = `<div class="bets-g-cell bets-g-corner"></div>` +
+    headers.map(h => `<div class="bets-g-cell bets-g-head" title="${h.name}">${h.name}</div>`).join('');
+
+  const matchRows = matches.map(m => {
+    const cells = headers.map((h, i) => {
       const c = (m.cells && m.cells[i]) || {};
-      if (!c.value) return '';
+      if (!c.value) return `<div class="bets-g-cell bets-g-pick pv-grey">-</div>`;
       const cls = sbIsGreen(c.color) ? 'pv-green' : (sbIsRed(c.color) ? 'pv-red' : 'pv-grey');
-      return `
-        <div class="bets-pick-row">
-          <span class="bets-pick-match">${m.match}</span>
-          <span class="bets-pick-val ${cls}">${c.value}</span>
-        </div>`;
+      return `<div class="bets-g-cell bets-g-pick ${cls}" title="${c.value}">${c.value}</div>`;
+    }).join('');
+    return `<div class="bets-g-cell bets-g-label" title="${m.match}">${m.match}</div>${cells}`;
+  }).join('');
+
+  const winInputRow = `<div class="bets-g-cell bets-g-label">WIN £</div>` +
+    headers.map((h, i) => {
+      const currentWin = (winCells[i] && winCells[i].value) || 0;
+      return `<div class="bets-g-cell bets-g-win"><input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}"></div>`;
     }).join('');
 
-    const currentWin = (winCells[i] && winCells[i].value) || 0;
+  const saveRow = `<div class="bets-g-cell bets-g-label"></div>` +
+    headers.map(h => `<div class="bets-g-cell bets-g-save"><button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button></div>`).join('');
 
-    return `
-      <div class="bets-col-card">
-        <div class="bets-col-top">
-          <div class="bets-col-title">${h.name}</div>
-          <span class="bets-win-label">£</span>
-          <input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}">
-          <button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button>
-        </div>
-        <div class="bets-picks">${picks || '<div class="placeholder">No picks yet.</div>'}</div>
-      </div>`;
-  }).join('');
+  return `
+    <div class="bets-grid-wrap">
+      <div class="bets-grid" style="grid-template-columns:${colTemplate};">
+        ${headerRow}
+        ${matchRows}
+        ${winInputRow}
+        ${saveRow}
+      </div>
+    </div>`;
 }
 
 function loadBetsGrid() {

@@ -3038,8 +3038,12 @@ function loadData(){
               const el = document.createElement("div"); el.className = "bet";
               if (l === "BET") {
                   el.textContent = formatGBP(2);
-                  el.style.setProperty('--bet-bg', '#ff4d4d');
-                  el.style.backgroundColor = '#ff4d4d';
+                  // Same red as every other stake pill in this row -- read it
+                  // straight off a real BET cell instead of guessing the exact
+                  // shade, so it's always pixel-identical to the sheet's own.
+                  const betColor = (data.betSummary[0].cells[0] && data.betSummary[0].cells[0].color) || '#ff4d4d';
+                  el.style.setProperty('--bet-bg', betColor);
+                  el.style.backgroundColor = betColor;
               } else {
                   const value = l === "WIN" ? wi.total : wi.total / 3;
                   el.textContent = formatGBP(value);
@@ -3084,30 +3088,38 @@ function loadData(){
             if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
             else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
             else { iconL = ""; iconR = "💩"; }
+            // Ranking position/tie-breaks always stay money-first (see the
+            // sort above) -- this only decides which number is shown large
+            // on the podium. Until anyone's actually won money, points are
+            // the more meaningful number, so they lead; the moment real
+            // money shows up, money takes back the spotlight.
+            const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
+            const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+            const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatGBP(p.money);
             ranking.innerHTML = `
                 <div class="podium-container">
                     <div class="podium-place ${classL}">
                         ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
                         <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
                         <div class="podium-bar">
-                            <div class="podium-money">${formatGBP(p2.money)}</div>
-                            <div class="podium-stats">${p2.matchesRight} Bets</div>
+                            <div class="podium-money">${primaryStat(p2)}</div>
+                            <div class="podium-stats">${secondaryStat(p2)}</div>
                         </div>
                     </div>
                     <div class="podium-place ${classC}">
                         <div class="crown-icon">👑</div>
                         <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
                         <div class="podium-bar">
-                            <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                            <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
+                            <div class="podium-money" style="font-size:15px;">${primaryStat(p1)}</div>
+                            <div class="podium-stats" style="color:#fff;">${secondaryStat(p1)}</div>
                         </div>
                     </div>
                     <div class="podium-place ${classR}">
                         ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
                         <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
                         <div class="podium-bar">
-                            <div class="podium-money">${formatGBP(p3.money)}</div>
-                            <div class="podium-stats">${p3.matchesRight} Bets</div>
+                            <div class="podium-money">${primaryStat(p3)}</div>
+                            <div class="podium-stats">${secondaryStat(p3)}</div>
                         </div>
                     </div>
                 </div>`;

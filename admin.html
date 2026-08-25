@@ -281,20 +281,23 @@ let sbLastMatches = null;
 let sbHistoryByRow = {};
 
 // Live points + money for each player, computed the same way the backend's
-// syncCurrentMatchweekToHistory does: 1pt per correct FT bet; money only
-// counted once a whole header column has actually won (see below).
+// syncCurrentMatchweekToHistory does: 1pt per correct FT bet, 3pt if it was
+// an exact correct-score pick; money only counted once a whole header
+// column has actually won (see below).
 function computeLiveSummary(data) {
   const summary = {};
   SB_PLAYERS.forEach(p => { summary[p] = { points: 0, money: 0 }; });
 
-  // Matches right -- 1 per correct FT bet, same as HISTORY/RANKING count it.
+  // Matches right -- 1 per correct FT bet, 3 if that correct bet was an
+  // exact correct-score pick (e.g. "2-1"), same as HISTORY/RANKING count it.
   (data.matches || []).forEach(m => {
     if (m.status !== 'FT') return;
     SB_PLAYERS.forEach(p => {
       const cells = (m.scoreboardCells && m.scoreboardCells[p]) || [];
       cells.forEach(c => {
         if (!c.value || !sbIsGreen(c.color)) return;
-        summary[p].points += 1;
+        const isScore = /^\d+\s*-\s*\d+$/.test(String(c.value).trim());
+        summary[p].points += isScore ? 3 : 1;
       });
     });
   });

@@ -288,14 +288,14 @@ function computeLiveSummary(data) {
   const summary = {};
   SB_PLAYERS.forEach(p => { summary[p] = { points: 0, money: 0 }; });
 
+  // Matches right -- 1 per correct FT bet, same as HISTORY/RANKING count it.
   (data.matches || []).forEach(m => {
     if (m.status !== 'FT') return;
     SB_PLAYERS.forEach(p => {
       const cells = (m.scoreboardCells && m.scoreboardCells[p]) || [];
       cells.forEach(c => {
         if (!c.value || !sbIsGreen(c.color)) return;
-        const isScore = /^\d+\s*-\s*\d+$/.test(String(c.value).trim());
-        summary[p].points += isScore ? 3 : 1;
+        summary[p].points += 1;
       });
     });
   });

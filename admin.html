@@ -77,6 +77,25 @@
   table.fixtures th { color: #b79ecf; font-weight: 700; text-transform: uppercase; font-size: 10px; }
 
   .placeholder { text-align: center; color: #b79ecf; padding: 40px 0; font-size: 13px; }
+
+  .sb-board { display: flex; gap: 10px; margin-bottom: 16px; }
+  .sb-col {
+    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center;
+  }
+  .sb-avatar { width: 44px; height: 44px; border-radius: 8px; object-fit: contain; background: #000; margin-bottom: 6px; }
+  .sb-name { font-size: 12px; font-weight: 800; text-align: center; margin-bottom: 8px; }
+  .sb-money { display: block; color: #00ff85; font-size: 11px; font-weight: 800; margin-top: 2px; }
+  .sb-pills { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-bottom: 10px; }
+  .sb-pill {
+    width: 100%; text-align: center; padding: 6px 4px; border-radius: 6px;
+    font-size: 11px; font-weight: 800; color: #111;
+  }
+  .sb-green { background: #4ade80; }
+  .sb-red { background: #ef4444; color: #fff; }
+  .sb-grey { background: rgba(255,255,255,0.08); color: #b79ecf; }
+  .sb-points { font-size: 15px; font-weight: 900; color: #fff; }
+  .sb-points span { font-size: 10px; font-weight: 700; color: #b79ecf; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -128,7 +147,7 @@
     </div>
 
     <div class="tab-pane" id="paneScoreboard">
-      <div class="placeholder">Coming soon.</div>
+      <div id="scoreboardContent"><div class="placeholder">Loading…</div></div>
     </div>
 
     <div class="tab-pane" id="paneBalance">
@@ -139,11 +158,18 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 
+let scoreboardTimer = null;
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
   document.getElementById('pane' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+
+  if (name === 'scoreboard' && !scoreboardTimer) {
+    loadScoreboard();
+    scoreboardTimer = setInterval(loadScoreboard, 30000);
+  }
 }
 
 function showStatus(elId, ok, text) {
@@ -208,6 +234,104 @@ function runUpdateAllData() {
     .then(res => showStatus('msgUpdate', res.status === 'success', res.message))
     .catch(err => showStatus('msgUpdate', false, 'Request failed: ' + err))
     .finally(() => { btn.disabled = false; btn.textContent = 'Update All Data'; });
+}
+
+/* ===== SCOREBOARD TAB ===== */
+
+const SB_PLAYERS = ['Snackbar', 'Timbo', 'Pepe'];
+const SB_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+// Same green/red hex lists the main page uses to read the sheet's own
+// conditional-formatting colors, so a bet counts as "correct" here exactly
+// when it would show green on the main dashboard.
+const SB_GREEN = ['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'];
+const SB_RED   = ['#ff0000','#ff4d4d','red'];
+
+function sbIsGreen(hex) { return !!hex && SB_GREEN.includes(hex.toLowerCase()); }
+function sbIsRed(hex)   { return !!hex && SB_RED.includes(hex.toLowerCase()); }
+
+let sbLastResults = null;
+
+function computePlayerScoreboard(data, player) {
+  const matches = data.matches || [];
+  let points = 0;
+  const pills = [];
+
+  matches.forEach(m => {
+    const cells = (m.scoreboardCells && m.scoreboardCells[player]) || [];
+    cells.forEach(c => {
+      if (!c.value) { pills.push(null); return; }
+      const isScore = /^\d+\s*-\s*\d+$/.test(String(c.value).trim());
+      const correct = sbIsGreen(c.color);
+      if (m.status === 'FT' && correct) points += isScore ? 3 : 1;
+      pills.push({ value: c.value, correct: correct, wrong: sbIsRed(c.color) });
+    });
+  });
+
+  // This week's win money: sum the WIN row across every header column
+  // belonging to this player (column order doesn't matter here, only
+  // matching by name -- same technique the main page's ticker uses).
+  let money = 0;
+  (data.headers || []).forEach((h, i) => {
+    if (h.name === player && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+      money += (data.betSummary[1].cells[i].value || 0);
+    }
+  });
+
+  return { points: points, money: money, pills: pills };
+}
+
+function renderScoreboard(data) {
+  const results = {};
+  SB_PLAYERS.forEach(p => { results[p] = computePlayerScoreboard(data, p); });
+  sbLastResults = results;
+
+  const cols = SB_PLAYERS.map(p => {
+    const r = results[p];
+    const moneyHtml = r.money > 0 ? `<span class="sb-money">+£${r.money.toFixed(2)}</span>` : '';
+    const pillsHtml = r.pills.map(pl => {
+      if (!pl) return `<div class="sb-pill sb-grey">-</div>`;
+      const cls = pl.correct ? 'sb-green' : (pl.wrong ? 'sb-red' : 'sb-grey');
+      return `<div class="sb-pill ${cls}">${pl.value}</div>`;
+    }).join('');
+    return `
+      <div class="sb-col">
+        <img src="${SB_AVATARS[p]}" class="sb-avatar">
+        <div class="sb-name">${p}${moneyHtml}</div>
+        <div class="sb-pills">${pillsHtml}</div>
+        <div class="sb-points">${r.points}<br><span>pts</span></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('scoreboardContent').innerHTML = `
+    <div class="sb-board">${cols}</div>
+    <button class="action" id="btnSaveMatchweek" onclick="runSaveMatchweek()">Save Matchweek</button>
+    <div class="status-msg" id="msgSaveMatchweek" style="display:none;"></div>
+  `;
+}
+
+function loadScoreboard() {
+  fetch(API_URL).then(r => r.json()).then(data => renderScoreboard(data))
+    .catch(() => { document.getElementById('scoreboardContent').innerHTML = '<div class="placeholder">Failed to load.</div>'; });
+}
+
+function runSaveMatchweek() {
+  if (!sbLastResults) return;
+  const winners = SB_PLAYERS.filter(p => sbLastResults[p].money > 0);
+  let msg = 'Are you sure you want to save this matchweek?';
+  if (winners.length) {
+    msg = winners.map(p => `${p} won £${sbLastResults[p].money.toFixed(2)}`).join(', ') + '. ' + msg;
+  }
+  if (!confirm(msg)) return;
+
+  const players = {};
+  SB_PLAYERS.forEach(p => { players[p] = { points: sbLastResults[p].points, money: sbLastResults[p].money }; });
+
+  const btn = document.getElementById('btnSaveMatchweek');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  postAdmin('adminSaveMatchweek', { players: players })
+    .then(res => showStatus('msgSaveMatchweek', res.status === 'success', res.message))
+    .catch(err => showStatus('msgSaveMatchweek', false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Save Matchweek'; });
 }
 </script>
 </body>

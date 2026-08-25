@@ -2873,6 +2873,13 @@ function loadData(){
                   if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color;
+
+                  // Same golden treatment as the match score pill above: this
+                  // specific pick is an exact correct-score bet on the actual result.
+                  if (isGoldenScore && String(c.value).includes("-") && String(c.value).replace(/\s/g, "") === `${hScore}-${aScore}`) {
+                      el.classList.add("gold-active");
+                  }
+
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 

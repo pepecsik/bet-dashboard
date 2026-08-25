@@ -164,6 +164,18 @@
   .mw-match-score { color: #b79ecf; font-weight: 800; display: block; font-size: 10px; }
   .mw-player-cell { flex: 1; display: flex; gap: 3px; }
   .mw-player-cell .sb-pill { flex: 1; min-width: 0; }
+
+  .bets-col-card { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .bets-col-title { font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+  .bets-col-card .mw-match-row { background: rgba(0,0,0,0.2); }
+  .bets-col-card .mw-player-cell { flex: 0 0 72px; }
+  .bets-win-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .bets-win-label { font-size: 11px; font-weight: 800; color: #b79ecf; }
+  .bets-win-input {
+    flex: 1; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-family: inherit;
+  }
+  .bets-win-save { width: auto; padding: 8px 16px; margin: 0; }
 </style>
 </head>
 <body>
@@ -186,41 +198,47 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">Matchweek</button>
+    <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
     <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
     <button class="tab-btn" id="tabBtnBalance" onclick="switchTab('balance')">Balance</button>
   </div>
 
   <main>
     <div class="tab-pane active" id="paneMatchweek">
-      <div class="step-card">
-        <div class="step-title">1. Clear &amp; Set Date</div>
-        <div class="step-desc">Clears DATA!A3:AT22 (columns I and J are left alone) and sets DATA!B2 to the first game date of the next matchweek.</div>
-        <input type="date" id="mwDate">
-        <button class="action" id="btnClear" onclick="runClearAndSetDate()">Clear &amp; Set Date</button>
-        <div class="status-msg" id="msgClear" style="display:none;"></div>
-      </div>
+      <div class="mw-section-title">Active Bets</div>
+      <div id="betsGridContent"><div class="placeholder">Loading…</div></div>
 
-      <div class="step-card">
-        <div class="step-title">2. Clear Bets</div>
-        <div class="step-desc">Clears everyone's picks: cells B3:E22 on the Snackbar, Timbo and Pepe sheets.</div>
-        <button class="action" id="btnClearBets" onclick="runClearBets()">Clear Bets</button>
-        <div class="status-msg" id="msgClearBets" style="display:none;"></div>
-      </div>
+      <div class="mw-pill" onclick="toggleMatchweekSteps()">MATCHWEEK</div>
+      <div class="mw-detail" id="matchweekStepsDetail" style="display:none;">
+        <div class="step-card">
+          <div class="step-title">1. Clear &amp; Set Date</div>
+          <div class="step-desc">Clears DATA!A3:AT22 (columns I and J are left alone) and sets DATA!B2 to the first game date of the next matchweek.</div>
+          <input type="date" id="mwDate">
+          <button class="action" id="btnClear" onclick="runClearAndSetDate()">Clear &amp; Set Date</button>
+          <div class="status-msg" id="msgClear" style="display:none;"></div>
+        </div>
 
-      <div class="step-card">
-        <div class="step-title">3. Get Fixture IDs</div>
-        <div class="step-desc">Fetches the fixtures for whatever matchweek DATA!B2 falls in and writes them into DATA!A3:C. Check the list below looks right before running step 4.</div>
-        <button class="action" id="btnFixtures" onclick="runGetFixtureIds()">Get Fixture IDs</button>
-        <div class="status-msg" id="msgFixtures" style="display:none;"></div>
-        <div id="fixturesList"></div>
-      </div>
+        <div class="step-card">
+          <div class="step-title">2. Clear Bets</div>
+          <div class="step-desc">Clears everyone's picks: cells B3:E22 on the Snackbar, Timbo and Pepe sheets.</div>
+          <button class="action" id="btnClearBets" onclick="runClearBets()">Clear Bets</button>
+          <div class="status-msg" id="msgClearBets" style="display:none;"></div>
+        </div>
 
-      <div class="step-card">
-        <div class="step-title">4. Update All Data</div>
-        <div class="step-desc">Runs updateAllData() to pull scores, stats, odds etc. for the new fixtures. Can take up to a minute or so.</div>
-        <button class="action" id="btnUpdate" onclick="runUpdateAllData()">Update All Data</button>
-        <div class="status-msg" id="msgUpdate" style="display:none;"></div>
+        <div class="step-card">
+          <div class="step-title">3. Get Fixture IDs</div>
+          <div class="step-desc">Fetches the fixtures for whatever matchweek DATA!B2 falls in and writes them into DATA!A3:C. Check the list below looks right before running step 4.</div>
+          <button class="action" id="btnFixtures" onclick="runGetFixtureIds()">Get Fixture IDs</button>
+          <div class="status-msg" id="msgFixtures" style="display:none;"></div>
+          <div id="fixturesList"></div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-title">4. Update All Data</div>
+          <div class="step-desc">Runs updateAllData() to pull scores, stats, odds etc. for the new fixtures. Can take up to a minute or so.</div>
+          <button class="action" id="btnUpdate" onclick="runUpdateAllData()">Update All Data</button>
+          <div class="status-msg" id="msgUpdate" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -245,6 +263,12 @@ function switchTab(name) {
   // No auto-refresh on the admin page — load once when the tab is opened.
   // Tap the tab again to pull fresh data manually.
   if (name === 'scoreboard') loadScoreboard();
+  if (name === 'matchweek') loadBetsGrid();
+}
+
+function toggleMatchweekSteps() {
+  const el = document.getElementById('matchweekStepsDetail');
+  el.style.display = (el.style.display === 'none') ? 'block' : 'none';
 }
 
 function showStatus(elId, ok, text) {
@@ -278,6 +302,11 @@ function suggestNextMatchweekDate() {
     .catch(() => {});
 }
 suggestNextMatchweekDate();
+
+// Matchweek/BETS is the default active tab, so it needs its own initial
+// load here too -- switchTab()'s "load once when opened" only fires on
+// clicks, not on the tab that's already showing at page load.
+loadBetsGrid();
 
 function runClearAndSetDate() {
   const date = document.getElementById('mwDate').value;
@@ -327,6 +356,68 @@ function runUpdateAllData() {
     .then(res => showStatus('msgUpdate', res.status === 'success', res.message))
     .catch(err => showStatus('msgUpdate', false, 'Request failed: ' + err))
     .finally(() => { btn.disabled = false; btn.textContent = 'Update All Data'; });
+}
+
+/* ===== BETS TAB (active bets + WIN entry) ===== */
+
+// One card per active bet column (the full dynamic set from data.headers --
+// not the fixed 2-per-player SCOREBOARD_COLS the Scoreboard tab uses, since
+// a matchweek can carry extra/special bet columns beyond the regular 2).
+// Each card lists that column's picks the same way the Scoreboard grid
+// does, then a WIN (£) figure the admin can type in and save -- writes
+// straight into DASHBOARD row 18 at that column via adminSetWinValue.
+function renderBetsGrid(data) {
+  const headers = data.headers || [];
+  const matches = data.matches || [];
+  const winCells = (data.betSummary && data.betSummary[1] && data.betSummary[1].cells) || [];
+
+  if (!headers.length) return '<div class="placeholder">No active bets yet.</div>';
+
+  return headers.map((h, i) => {
+    const rows = matches.map(m => {
+      const c = (m.cells && m.cells[i]) || {};
+      if (!c.value) return '';
+      const cls = sbIsGreen(c.color) ? 'sb-green' : (sbIsRed(c.color) ? 'sb-red' : 'sb-grey');
+      const scoreLabel = m.status === 'FT' ? m.score : m.status;
+      return `
+        <div class="mw-match-row">
+          <div class="mw-match-label">${m.match}<span class="mw-match-score">${scoreLabel}</span></div>
+          <div class="mw-player-cell"><div class="sb-pill ${cls}">${c.value}</div></div>
+        </div>`;
+    }).join('');
+
+    const currentWin = (winCells[i] && winCells[i].value) || 0;
+
+    return `
+      <div class="bets-col-card">
+        <div class="bets-col-title">${h.name}</div>
+        ${rows || '<div class="placeholder">No picks yet.</div>'}
+        <div class="bets-win-row">
+          <span class="bets-win-label">WIN £</span>
+          <input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}">
+          <button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button>
+        </div>
+        <div class="status-msg" id="msgWin_${h.idx}" style="display:none;"></div>
+      </div>`;
+  }).join('');
+}
+
+function loadBetsGrid() {
+  fetch(API_URL).then(r => r.json()).then(data => {
+    document.getElementById('betsGridContent').innerHTML = renderBetsGrid(data);
+  }).catch(() => {
+    document.getElementById('betsGridContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+  });
+}
+
+function saveWinValue(colIdx, btn) {
+  const input = document.getElementById('winInput_' + colIdx);
+  const value = parseFloat(input.value) || 0;
+  btn.disabled = true; btn.textContent = 'Saving...';
+  postAdmin('adminSetWinValue', { colIdx: colIdx, value: value })
+    .then(res => showStatus('msgWin_' + colIdx, res.status === 'success', res.message))
+    .catch(err => showStatus('msgWin_' + colIdx, false, 'Request failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Save'; });
 }
 
 /* ===== SCOREBOARD TAB ===== */

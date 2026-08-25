@@ -2595,7 +2595,50 @@ function setRankingScope(containerId, scope, btnEl) {
   const group = btnEl.parentElement;
   [...group.children].forEach(b => b.classList.remove('active'));
   btnEl.classList.add('active');
-  rerenderRankingContainer(containerId);
+  // The history modal's line chart needs to switch data too, not just its
+  // podium -- redrawing it also re-renders the podium along the way.
+  if (containerId === 'historyScoreboard' && document.getElementById('historyChart')) {
+    drawHistoryChart(window.currentHistoryChartType || 'matches');
+  } else {
+    rerenderRankingContainer(containerId);
+  }
+}
+
+// "All Time" line series -- each past season's week-by-week progression
+// (which resets to 0 at its own start) stacked end-to-end so the total
+// keeps climbing across season boundaries, then the current season's own
+// progression continues on top of that running total. Ends at the same
+// figure the All Time podium shows.
+function buildAllTimeSeries(t) {
+  const running = { Snackbar: 0, Timbo: 0, Pepe: 0 };
+  const combined = [];
+  (window.seasonHistory || []).forEach(season => {
+    const arr = season[t] || [];
+    arr.forEach(entry => {
+      combined.push({
+        date: entry.date,
+        Snackbar: running.Snackbar + (entry.Snackbar || 0),
+        Timbo: running.Timbo + (entry.Timbo || 0),
+        Pepe: running.Pepe + (entry.Pepe || 0)
+      });
+    });
+    const last = arr.length ? arr[arr.length - 1] : null;
+    if (last) {
+      running.Snackbar += last.Snackbar || 0;
+      running.Timbo += last.Timbo || 0;
+      running.Pepe += last.Pepe || 0;
+    }
+  });
+  const currentArr = (chartDataCache && chartDataCache[t]) || [];
+  currentArr.forEach(entry => {
+    combined.push({
+      date: entry.date,
+      Snackbar: running.Snackbar + (entry.Snackbar || 0),
+      Timbo: running.Timbo + (entry.Timbo || 0),
+      Pepe: running.Pepe + (entry.Pepe || 0)
+    });
+  });
+  return combined;
 }
 
 // Full podium (podium-container/podium-place/...) -- same tie-break and
@@ -3543,10 +3586,13 @@ function applyFilterLogic() {
 }
 
 function drawHistoryChart(t) {
+    window.currentHistoryChartType = t;
     const ctx = document.getElementById("historyChart").getContext("2d");
     if (historyChart) { historyChart.destroy(); historyChart = null; }
 
-    const d = chartDataCache ? chartDataCache[t] : null;
+    const d = window.rankingScopes.historyScoreboard === 'alltime'
+        ? buildAllTimeSeries(t)
+        : (chartDataCache ? chartDataCache[t] : null);
     if (!d || d.length === 0) return;
 
     const labs = d.map(r => new Date(r.date).toLocaleDateString());

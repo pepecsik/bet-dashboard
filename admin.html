@@ -78,40 +78,55 @@
 
   .placeholder { text-align: center; color: #b79ecf; padding: 40px 0; font-size: 13px; }
 
-  .sb-board { display: flex; gap: 10px; margin-bottom: 16px; }
-  .sb-col {
-    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center;
-  }
-  .sb-avatar { width: 44px; height: 44px; border-radius: 8px; object-fit: contain; background: #000; margin-bottom: 6px; }
-  .sb-name { font-size: 12px; font-weight: 800; text-align: center; margin-bottom: 8px; }
-  .sb-money { display: block; color: #00ff85; font-size: 11px; font-weight: 800; margin-top: 2px; }
-  .sb-pills { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-bottom: 10px; }
   .sb-pill {
-    width: 100%; text-align: center; padding: 6px 4px; border-radius: 6px;
-    font-size: 11px; font-weight: 800; color: #111;
+    text-align: center; padding: 5px 3px; border-radius: 6px;
+    font-size: 10px; font-weight: 800; color: #111;
   }
   .sb-green { background: #4ade80; }
   .sb-red { background: #ef4444; color: #fff; }
   .sb-grey { background: rgba(255,255,255,0.08); color: #b79ecf; }
-  .sb-points { font-size: 15px; font-weight: 900; color: #fff; }
-  .sb-points span { font-size: 10px; font-weight: 700; color: #b79ecf; text-transform: uppercase; }
 
-  .mw-section-title { font-size: 11px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
+  .mw-section-title { font-size: 11px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 10px; }
   .mw-pill {
     width: 100%; padding: 14px; border-radius: 10px; margin-bottom: 8px;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
     color: #fff; font-weight: 800; font-size: 13px; text-align: center;
     cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
   }
+  .mw-pill.mw-pill-current { border-color: rgba(255,40,130,0.5); color: #ff7ac6; }
   .mw-pill:active { background: rgba(255,255,255,0.12); }
   .mw-detail { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 12px; margin: -4px 0 12px; }
   .mw-date { font-size: 11px; color: #b79ecf; margin-bottom: 10px; text-align: center; }
-  .mw-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; }
+  .mw-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; }
+  .mw-row > span:not(.mw-player) { min-width: 52px; text-align: right; }
   .mw-row:last-of-type { border-bottom: none; }
   .mw-player { font-weight: 800; flex: 1; }
   .mw-input { width: 64px; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; margin-left: 6px; font-family: inherit; }
   .mw-edit-btn { margin-top: 10px; background: rgba(255,255,255,0.1) !important; }
+
+  .mw-summary { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mw-summary-col {
+    flex: 1; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px 4px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .mw-summary-avatar { width: 30px; height: 30px; border-radius: 6px; object-fit: contain; background: #000; margin-bottom: 4px; }
+  .mw-summary-name { font-size: 10px; font-weight: 800; }
+  .mw-summary-pts { font-size: 13px; font-weight: 900; margin-top: 2px; }
+  .mw-summary-money { font-size: 10px; font-weight: 700; color: #b79ecf; }
+  .mw-summary-money.won { color: #00ff85; }
+
+  .mw-grid-header { display: flex; align-items: center; gap: 4px; padding: 0 4px 6px; }
+  .mw-grid-header .mw-col-match { flex: 1.5; }
+  .mw-grid-header .mw-col-player {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 9px; font-weight: 800; color: #b79ecf; text-transform: uppercase;
+  }
+  .mw-grid-header .mw-col-player img { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; background: #000; }
+  .mw-match-row { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 6px 4px; margin-bottom: 5px; }
+  .mw-match-label { flex: 1.5; font-size: 10px; font-weight: 700; line-height: 1.3; color: #fff; }
+  .mw-match-score { color: #b79ecf; font-weight: 800; display: block; font-size: 10px; }
+  .mw-player-cell { flex: 1; display: flex; gap: 3px; }
+  .mw-player-cell .sb-pill { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -174,18 +189,15 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 
-let scoreboardTimer = null;
-
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
   document.getElementById('pane' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
 
-  if (name === 'scoreboard' && !scoreboardTimer) {
-    loadScoreboard();
-    scoreboardTimer = setInterval(loadScoreboard, 30000);
-  }
+  // No auto-refresh on the admin page — load once when the tab is opened.
+  // Tap the tab again to pull fresh data manually.
+  if (name === 'scoreboard') loadScoreboard();
 }
 
 function showStatus(elId, ok, text) {
@@ -266,79 +278,113 @@ function sbIsGreen(hex) { return !!hex && SB_GREEN.includes(hex.toLowerCase()); 
 function sbIsRed(hex)   { return !!hex && SB_RED.includes(hex.toLowerCase()); }
 
 let sbLastResults = null;
+let sbLastMatches = null;
 let sbHistoryByRow = {};
 
-function computePlayerScoreboard(data, player) {
-  const matches = data.matches || [];
-  let points = 0;
-  const pills = [];
+// Live points + money for each player, computed the same way the backend's
+// syncCurrentMatchweekToHistory does: 1pt per correct FT bet, 3pt if it was
+// an exact correct-score pick; money summed off the WIN row by header name.
+function computeLiveSummary(data) {
+  const summary = {};
+  SB_PLAYERS.forEach(p => { summary[p] = { points: 0, money: 0 }; });
 
-  matches.forEach(m => {
-    const cells = (m.scoreboardCells && m.scoreboardCells[player]) || [];
-    cells.forEach(c => {
-      if (!c.value) { pills.push(null); return; }
-      const isScore = /^\d+\s*-\s*\d+$/.test(String(c.value).trim());
-      const correct = sbIsGreen(c.color);
-      if (m.status === 'FT' && correct) points += isScore ? 3 : 1;
-      pills.push({ value: c.value, correct: correct, wrong: sbIsRed(c.color) });
+  (data.matches || []).forEach(m => {
+    if (m.status !== 'FT') return;
+    SB_PLAYERS.forEach(p => {
+      const cells = (m.scoreboardCells && m.scoreboardCells[p]) || [];
+      cells.forEach(c => {
+        if (!c.value || !sbIsGreen(c.color)) return;
+        const isScore = /^\d+\s*-\s*\d+$/.test(String(c.value).trim());
+        summary[p].points += isScore ? 3 : 1;
+      });
     });
   });
 
-  // This week's win money: sum the WIN row across every header column
-  // belonging to this player (column order doesn't matter here, only
-  // matching by name -- same technique the main page's ticker uses).
-  let money = 0;
   (data.headers || []).forEach((h, i) => {
-    if (h.name === player && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
-      money += (data.betSummary[1].cells[i].value || 0);
+    if (SB_PLAYERS.includes(h.name) && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) {
+      summary[h.name].money += (data.betSummary[1].cells[i].value || 0);
     }
   });
 
-  return { points: points, money: money, pills: pills };
+  return summary;
+}
+
+function renderSummaryStrip(summary) {
+  const cols = SB_PLAYERS.map(p => {
+    const r = summary[p] || { points: 0, money: 0 };
+    const moneyCls = r.money > 0 ? 'mw-summary-money won' : 'mw-summary-money';
+    return `
+      <div class="mw-summary-col">
+        <img src="${SB_AVATARS[p]}" class="mw-summary-avatar">
+        <div class="mw-summary-name">${p}</div>
+        <div class="mw-summary-pts">${r.points} pts</div>
+        <div class="${moneyCls}">£${r.money.toFixed(2)}</div>
+      </div>`;
+  }).join('');
+  return `<div class="mw-summary">${cols}</div>`;
+}
+
+// The "smaller version of the main app": matches down the left with their
+// final result, and each player's 2 bets for that match side by side in
+// their column -- same shape as SCOREBOARD_COLS/scoreboardCells on the backend.
+function renderMatchGrid(matches) {
+  const header = `
+    <div class="mw-grid-header">
+      <div class="mw-col-match"></div>
+      ${SB_PLAYERS.map(p => `<div class="mw-col-player"><img src="${SB_AVATARS[p]}">${p}</div>`).join('')}
+    </div>`;
+
+  if (!matches.length) return header + '<div class="placeholder">No matches yet.</div>';
+
+  const rows = matches.map(m => {
+    const playerCells = SB_PLAYERS.map(p => {
+      const cells = (m.scoreboardCells && m.scoreboardCells[p]) || [];
+      const pills = cells.map(c => {
+        if (!c.value) return `<div class="sb-pill sb-grey">-</div>`;
+        const cls = sbIsGreen(c.color) ? 'sb-green' : (sbIsRed(c.color) ? 'sb-red' : 'sb-grey');
+        return `<div class="sb-pill ${cls}">${c.value}</div>`;
+      }).join('');
+      return `<div class="mw-player-cell">${pills}</div>`;
+    }).join('');
+    const scoreLabel = m.status === 'FT' ? m.score : m.status;
+    return `
+      <div class="mw-match-row">
+        <div class="mw-match-label">${m.match}<span class="mw-match-score">${scoreLabel}</span></div>
+        ${playerCells}
+      </div>`;
+  }).join('');
+
+  return header + rows;
 }
 
 function renderScoreboard(data) {
-  const results = {};
-  SB_PLAYERS.forEach(p => { results[p] = computePlayerScoreboard(data, p); });
-  sbLastResults = results;
-
-  const cols = SB_PLAYERS.map(p => {
-    const r = results[p];
-    const moneyHtml = r.money > 0 ? `<span class="sb-money">+£${r.money.toFixed(2)}</span>` : '';
-    const pillsHtml = r.pills.map(pl => {
-      if (!pl) return `<div class="sb-pill sb-grey">-</div>`;
-      const cls = pl.correct ? 'sb-green' : (pl.wrong ? 'sb-red' : 'sb-grey');
-      return `<div class="sb-pill ${cls}">${pl.value}</div>`;
-    }).join('');
-    return `
-      <div class="sb-col">
-        <img src="${SB_AVATARS[p]}" class="sb-avatar">
-        <div class="sb-name">${p}${moneyHtml}</div>
-        <div class="sb-pills">${pillsHtml}</div>
-        <div class="sb-points">${r.points}<br><span>pts</span></div>
-      </div>`;
-  }).join('');
+  sbLastResults = computeLiveSummary(data);
+  sbLastMatches = data.matches || [];
 
   sbHistoryByRow = {};
   (data.history || []).forEach(h => { sbHistoryByRow[h.row] = h; });
 
   document.getElementById('scoreboardContent').innerHTML = `
-    <div class="sb-board">${cols}</div>
     <button class="action" id="btnSaveMatchweek" onclick="runSaveMatchweek()">Save Matchweek</button>
     <div class="status-msg" id="msgSaveMatchweek" style="display:none;"></div>
+    <div class="mw-section-title">Matchweeks</div>
     ${renderHistoryList(data.history || [])}
   `;
 }
 
 function renderHistoryList(history) {
-  if (!history.length) return '';
+  if (!history.length) return '<div class="placeholder">No matchweek data yet.</div>';
   // Matchweek N follows save order (array position), newest shown first.
   const withNum = history.map((h, i) => Object.assign({ num: i + 1 }, h));
-  const pills = [...withNum].reverse().map(h => `
-    <div class="mw-pill" onclick="toggleMatchweek(${h.row})">Matchweek ${h.num}</div>
-    <div class="mw-detail" id="mwDetail${h.row}" style="display:none;"></div>
-  `).join('');
-  return `<div class="mw-section-title">Saved Matchweeks</div>${pills}`;
+  return [...withNum].reverse().map(h => {
+    const isCurrent = h.locked === false;
+    const label = isCurrent ? `Matchweek ${h.num} (current)` : `Matchweek ${h.num}`;
+    const cls = isCurrent ? 'mw-pill mw-pill-current' : 'mw-pill';
+    return `
+      <div class="${cls}" onclick="toggleMatchweek(${h.row})">${label}</div>
+      <div class="mw-detail" id="mwDetail${h.row}" style="display:none;"></div>
+    `;
+  }).join('');
 }
 
 function toggleMatchweek(row) {
@@ -354,28 +400,40 @@ function toggleMatchweek(row) {
 function renderMatchweekDetail(row, editing) {
   const h = sbHistoryByRow[row];
   if (!h) return '';
-  if (!editing) {
+  const isCurrent = h.locked === false;
+
+  if (editing) {
     const rows = SB_PLAYERS.map(p => `
-      <div class="mw-row"><span class="mw-player">${p}</span><span>${h[p].points} pts</span><span>£${h[p].money.toFixed(2)}</span></div>
+      <div class="mw-row">
+        <span class="mw-player">${p}</span>
+        <input type="number" step="1" id="mwPts_${row}_${p}" value="${h[p].points}" class="mw-input"> pts
+        <input type="number" step="0.01" id="mwMoney_${row}_${p}" value="${h[p].money}" class="mw-input">
+      </div>
     `).join('');
     return `
       <div class="mw-date">${h.date}</div>
       ${rows}
+      <button class="action mw-edit-btn" onclick="saveMatchweekEdit(${row})">Save Changes</button>
+      <div class="status-msg" id="msgEdit${row}" style="display:none;"></div>
+    `;
+  }
+
+  if (isCurrent) {
+    return `
+      <div class="mw-date">${h.date} &middot; live, not saved yet</div>
+      ${renderSummaryStrip(sbLastResults || {})}
+      ${renderMatchGrid(sbLastMatches || [])}
       <button class="action mw-edit-btn" onclick="editMatchweek(${row})">Edit</button>
     `;
   }
+
   const rows = SB_PLAYERS.map(p => `
-    <div class="mw-row">
-      <span class="mw-player">${p}</span>
-      <input type="number" step="1" id="mwPts_${row}_${p}" value="${h[p].points}" class="mw-input"> pts
-      <input type="number" step="0.01" id="mwMoney_${row}_${p}" value="${h[p].money}" class="mw-input">
-    </div>
+    <div class="mw-row"><span class="mw-player">${p}</span><span>${h[p].points} pts</span><span>£${h[p].money.toFixed(2)}</span></div>
   `).join('');
   return `
     <div class="mw-date">${h.date}</div>
     ${rows}
-    <button class="action mw-edit-btn" onclick="saveMatchweekEdit(${row})">Save Changes</button>
-    <div class="status-msg" id="msgEdit${row}" style="display:none;"></div>
+    <button class="action mw-edit-btn" onclick="editMatchweek(${row})">Edit</button>
   `;
 }
 
@@ -411,7 +469,7 @@ function loadScoreboard() {
 function runSaveMatchweek() {
   if (!sbLastResults) return;
   const winners = SB_PLAYERS.filter(p => sbLastResults[p].money > 0);
-  let msg = 'Are you sure you want to save this matchweek?';
+  let msg = 'Are you sure? This locks the current matchweek in HISTORY and starts a fresh one for next week.';
   if (winners.length) {
     msg = winners.map(p => `${p} won £${sbLastResults[p].money.toFixed(2)}`).join(', ') + '. ' + msg;
   }

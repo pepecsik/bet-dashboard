@@ -1542,6 +1542,11 @@ img[alt="AVI"] {
     margin-bottom: 2px;
     white-space: nowrap;
 }
+.place-1 .podium-money { font-size: 15px; }
+/* "N Points" reads wider than a money figure -- a touch smaller so it
+   still sits comfortably in the same space. */
+.podium-money.pts { font-size: 11px; }
+.place-1 .podium-money.pts { font-size: 13px; }
 
 /* Matches Right Text */
 .podium-stats {
@@ -1552,6 +1557,26 @@ img[alt="AVI"] {
     text-align: center;
     line-height: 1.1;
 }
+
+/* Low-profile podium -- same rank-ordered shape as the full podium, but
+   compact: no bars/height hierarchy, just a small avatar row with the
+   winner slightly bigger, used inside the full Performance History chart. */
+.mini-podium { display: flex; align-items: flex-end; justify-content: center; gap: 16px; padding: 4px 0 12px; }
+.mini-podium-place { display: flex; flex-direction: column; align-items: center; position: relative; }
+.mini-podium-avatar { width: 34px; height: 34px; border-radius: 6px; object-fit: contain; background: #000; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+.mini-podium-place.first .mini-podium-avatar { width: 46px; height: 46px; border: 2px solid var(--accent-gold); }
+.mini-crown { position: absolute; top: -15px; font-size: 15px; }
+.mini-podium-name { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+.mini-podium-stat { font-size: 12px; font-weight: 900; color: var(--accent-green); margin-top: 1px; white-space: nowrap; }
+.mini-podium-place.first .mini-podium-stat { font-size: 14px; }
+.mini-podium-stat.pts { font-size: 10px; }
+.mini-podium-place.first .mini-podium-stat.pts { font-size: 12px; }
+
+/* Ranking-card header row (title + Season/All Time toggle) */
+.ranking-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.ranking-header-row .ranking-title { margin-bottom: 0; width: auto; text-align: left; }
+.toggle-group.mini { padding: 2px; gap: 1px; }
+.toggle-group.mini .toggle-btn { font-size: 9px; padding: 3px 8px; }
 
 /* Crown Animation */
 .crown-icon {
@@ -1798,7 +1823,13 @@ img[alt="AVI"] {
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
-          <div class="ranking-title">🏆 Ranking</div>
+          <div class="ranking-header-row">
+            <div class="ranking-title">🏆 Ranking</div>
+            <div class="toggle-group mini" onclick="event.stopPropagation()">
+              <button class="toggle-btn active" id="rankBtnSeason" onclick="setRankingScope('rankingBody', 'season', this)">Season</button>
+              <button class="toggle-btn" id="rankBtnAllTime" onclick="setRankingScope('rankingBody', 'alltime', this)">All Time</button>
+            </div>
+          </div>
           <div id="rankingBody"></div>
           <div style="text-align:center; margin-top:10px;">
             <button onclick="event.stopPropagation(); openHallOfFame();"
@@ -1898,14 +1929,18 @@ img[alt="AVI"] {
       </div>
       
       <div class="history-card-inner">
-         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+             <div class="toggle-group">
+                 <button class="toggle-btn active" id="histBtnSeason" onclick="setRankingScope('historyScoreboard', 'season', this)">Season</button>
+                 <button class="toggle-btn" id="histBtnAllTime" onclick="setRankingScope('historyScoreboard', 'alltime', this)">All Time</button>
+             </div>
              <div class="toggle-group">
                  <button id="btnMatches" class="toggle-btn active">Matches</button>
                  <button id="btnMoney" class="toggle-btn">Money</button>
              </div>
          </div>
 
-         <div class="history-stats-row" id="historyScoreboard"></div>
+         <div id="historyScoreboard"></div>
 
          <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
@@ -2513,6 +2548,141 @@ function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+
+// Which scope each ranking display is currently showing -- keyed by the
+// container's element id, so the small card and the full-chart podium can
+// each remember their own choice independently.
+window.rankingScopes = { rankingBody: 'season', historyScoreboard: 'season' };
+
+// "All Time" = every past season's final total (seasonHistory's last
+// progression entry per season) plus the current, still-live season.
+function computeAllTimeRanking(data) {
+  const totals = { Snackbar: { money: 0, matchesRight: 0 }, Timbo: { money: 0, matchesRight: 0 }, Pepe: { money: 0, matchesRight: 0 } };
+  (data.seasonHistory || []).forEach(season => {
+    const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : {};
+    const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : {};
+    Object.keys(totals).forEach(p => {
+      totals[p].money += finalMoney[p] || 0;
+      totals[p].matchesRight += finalMatches[p] || 0;
+    });
+  });
+  (data.ranking || []).forEach(r => {
+    if (totals[r.name]) {
+      totals[r.name].money += r.money || 0;
+      totals[r.name].matchesRight += r.matchesRight || 0;
+    }
+  });
+  return Object.keys(totals).map(name => ({ name, money: totals[name].money, matchesRight: totals[name].matchesRight }));
+}
+
+function getRankingPlayers(scope) {
+  const data = window.__lastDashboard;
+  if (!data) return null;
+  return scope === 'alltime' ? computeAllTimeRanking(data) : data.ranking;
+}
+
+// Shared by both ranking displays (this container id -> which renderer).
+function rerenderRankingContainer(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const players = getRankingPlayers(window.rankingScopes[containerId]);
+  if (containerId === 'historyScoreboard') renderCompactPodium(el, players);
+  else renderRankingPodium(el, players);
+}
+
+function setRankingScope(containerId, scope, btnEl) {
+  window.rankingScopes[containerId] = scope;
+  const group = btnEl.parentElement;
+  [...group.children].forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  rerenderRankingContainer(containerId);
+}
+
+// Full podium (podium-container/podium-place/...) -- same tie-break and
+// crown/poop logic regardless of which players array (season or all-time)
+// it's handed.
+function renderRankingPodium(container, players) {
+  if (!players || players.length < 3) {
+    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
+    return;
+  }
+  const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  const sorted = [...players].sort((a, b) => {
+    if (b.money !== a.money) return b.money - a.money;
+    return b.matchesRight - a.matchesRight;
+  });
+  const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
+  const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
+  const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
+  let classL = "place-2", classR = "place-3";
+  let iconL = "", iconR = "💩";
+  if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
+  else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
+  else { iconL = ""; iconR = "💩"; }
+  // Ranking position/tie-breaks always stay money-first (see the sort
+  // above) -- this only decides which number is shown large on the podium.
+  // Until anyone's actually won money, points are the more meaningful
+  // number, so they lead; the moment real money shows up, money takes back
+  // the spotlight.
+  const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
+  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatGBP(p.money);
+  const ptsClass = moneyIsPrimary ? '' : ' pts';
+  container.innerHTML = `
+      <div class="podium-container">
+          <div class="podium-place ${classL}">
+              ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
+              <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p2)}</div>
+                  <div class="podium-stats">${secondaryStat(p2)}</div>
+              </div>
+          </div>
+          <div class="podium-place place-1">
+              <div class="crown-icon">👑</div>
+              <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p1)}</div>
+                  <div class="podium-stats" style="color:#fff;">${secondaryStat(p1)}</div>
+              </div>
+          </div>
+          <div class="podium-place ${classR}">
+              ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
+              <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p3)}</div>
+                  <div class="podium-stats">${secondaryStat(p3)}</div>
+              </div>
+          </div>
+      </div>`;
+}
+
+// Low-profile podium for the Performance History modal -- same rank
+// ordering and primary-stat logic as the full podium, just compact: no
+// bars, one stat per player, winner slightly bigger with a small crown.
+function renderCompactPodium(container, players) {
+  if (!players || players.length < 3) { container.innerHTML = ''; return; }
+  const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  const sorted = [...players].sort((a, b) => {
+    if (b.money !== a.money) return b.money - a.money;
+    return b.matchesRight - a.matchesRight;
+  });
+  const [p1, p2, p3] = sorted;
+  const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
+  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+  const ptsClass = moneyIsPrimary ? '' : ' pts';
+  const order = [p2, p1, p3];
+  container.innerHTML = `
+    <div class="mini-podium">
+      ${order.map(p => `
+          <div class="mini-podium-place${p === p1 ? ' first' : ''}">
+              ${p === p1 ? '<div class="mini-crown">👑</div>' : ''}
+              <img src="${AVATARS[p.name] || './pepe.png'}" class="mini-podium-avatar">
+              <div class="mini-podium-name">${p.name}</div>
+              <div class="mini-podium-stat${ptsClass}">${primaryStat(p)}</div>
+          </div>`).join('')}
+    </div>`;
+}
 function hexToRgba(hex, alpha) {
   if(!hex) return `rgba(255,255,255,${alpha})`;
   let r=0,g=0,b=0;
@@ -3074,58 +3244,11 @@ function loadData(){
           weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
         });
 
-        // PODIUM Tie Logic
-        if (data.ranking && data.ranking.length >= 3) {
-            const sorted = [...data.ranking].sort((a,b) => {
-                if(b.money !== a.money) return b.money - a.money;
-                return b.matchesRight - a.matchesRight;
-            });
-            const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
-            const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
-            const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
-            let classL = "place-2", classC = "place-1", classR = "place-3";
-            let iconL = "", iconC = "👑", iconR = "💩";
-            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
-            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
-            else { iconL = ""; iconR = "💩"; }
-            // Ranking position/tie-breaks always stay money-first (see the
-            // sort above) -- this only decides which number is shown large
-            // on the podium. Until anyone's actually won money, points are
-            // the more meaningful number, so they lead; the moment real
-            // money shows up, money takes back the spotlight.
-            const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
-            const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
-            const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatGBP(p.money);
-            ranking.innerHTML = `
-                <div class="podium-container">
-                    <div class="podium-place ${classL}">
-                        ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
-                        <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
-                        <div class="podium-bar">
-                            <div class="podium-money">${primaryStat(p2)}</div>
-                            <div class="podium-stats">${secondaryStat(p2)}</div>
-                        </div>
-                    </div>
-                    <div class="podium-place ${classC}">
-                        <div class="crown-icon">👑</div>
-                        <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
-                        <div class="podium-bar">
-                            <div class="podium-money" style="font-size:15px;">${primaryStat(p1)}</div>
-                            <div class="podium-stats" style="color:#fff;">${secondaryStat(p1)}</div>
-                        </div>
-                    </div>
-                    <div class="podium-place ${classR}">
-                        ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
-                        <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
-                        <div class="podium-bar">
-                            <div class="podium-money">${primaryStat(p3)}</div>
-                            <div class="podium-stats">${secondaryStat(p3)}</div>
-                        </div>
-                    </div>
-                </div>`;
-        } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
+        // Ranking card podium -- respects whichever scope (Season / All Time)
+        // the toggle is currently set to; defaults to "season" on first load.
+        window.__lastDashboard = data;
+        renderRankingPodium(ranking, getRankingPlayers(window.rankingScopes.rankingBody));
        window.__lastMatches = data.matches;
-       window.__lastDashboard = data;
        if (data.hallOfFame) renderHallOfFame(data.hallOfFame);
        updateTicker();
         isFirstLoad = false;
@@ -3432,35 +3555,11 @@ function drawHistoryChart(t) {
     const avatars = { Snackbar: "./snackbar.png", Timbo: "./timbo.png", Pepe: "./pepe.png" };
 
     const lastEntry = d[d.length - 1];
-    const prevEntry = d[d.length - 2] || d[d.length - 1];
-    
-    // Find the Leader for the Crown
-    let leader = ps[0];
-    ps.forEach(p => { if((lastEntry[p]||0) > (lastEntry[leader]||0)) leader = p; });
 
-    // 1. Update Scoreboard (No titles, numbers side-by-side)
-    const scoreboard = document.getElementById("historyScoreboard");
-    scoreboard.innerHTML = "";
-
-    ps.forEach(p => {
-        const score = lastEntry[p] || 0;
-        const diff = score - (prevEntry[p] || 0);
-        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(1)}</span>` : ``;
-        const crownHtml = p === leader ? `<div class="leader-crown">👑</div>` : ``;
-        
-        scoreboard.innerHTML += `
-            <div class="stat-pill" style="color: ${cols[p]}">
-                <div class="chart-avatar-wrap">
-                    ${crownHtml}
-                    <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
-                </div>
-                <div class="p-score-box">
-                    <span class="p-score">${t === 'money' ? '£'+score.toFixed(0) : score}</span>
-                    ${diffHtml}
-                </div>
-            </div>
-        `;
-    });
+    // 1. Update Scoreboard -- a low-profile, rank-ordered podium (Season or
+    // All Time, per that toggle) instead of the old fixed Snackbar/Timbo/
+    // Pepe order. Independent of `t` (the line chart's Matches/Money type).
+    rerenderRankingContainer('historyScoreboard');
 
     // 2. Setup Chart Data
     const sortedPlayers = [...ps].sort((a, b) => (lastEntry[a] || 0) - (lastEntry[b] || 0));

@@ -1,5 +1,5 @@
 // sw.js — Juice Bets service worker
-const CACHE_NAME = 'juicebets-v2';
+const CACHE_NAME = 'juicebets-v3';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [
@@ -38,18 +38,21 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // ---- Apps Script API: stale-while-revalidate ----
+  // ---- Apps Script API: network-first ----
+  // Always try to get the current live data first — the cache is only a
+  // fallback for when the network is unreachable (offline / flaky
+  // connection), never the first thing shown. This is what makes "open
+  // the app" always pull fresh data instead of whatever was cached from
+  // the last time it was opened, possibly days ago.
   if (url.host === API_HOST) {
     event.respondWith(
-      caches.open(CACHE_NAME).then(cache =>
-        cache.match(req).then(cached => {
-          const networkFetch = fetch(req).then(response => {
-            if (response && response.ok) cache.put(req, response.clone());
-            return response;
-          }).catch(() => cached); // fall back to cached when offline
-          return cached || networkFetch;
-        })
-      )
+      fetch(req).then(response => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        }
+        return response;
+      }).catch(() => caches.open(CACHE_NAME).then(cache => cache.match(req)))
     );
     return;
   }

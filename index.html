@@ -2616,11 +2616,17 @@ function setRankingScope(containerId, scope, btnEl) {
 // keeps climbing across season boundaries, then the current season's own
 // progression continues on top of that running total. Ends at the same
 // figure the All Time podium shows.
+// Returns { series, boundaries } -- series is the same stacked cumulative
+// data as before, and boundaries marks the index each season's data starts
+// at (with that season's name) so the chart can draw a divider line and
+// label at every season change.
 function buildAllTimeSeries(t) {
   const running = { Snackbar: 0, Timbo: 0, Pepe: 0 };
   const combined = [];
+  const boundaries = [];
   (window.seasonHistory || []).forEach(season => {
     const arr = season[t] || [];
+    if (arr.length > 0) boundaries.push({ index: combined.length, label: season.season || '' });
     arr.forEach(entry => {
       combined.push({
         date: entry.date,
@@ -2637,6 +2643,7 @@ function buildAllTimeSeries(t) {
     }
   });
   const currentArr = (chartDataCache && chartDataCache[t]) || [];
+  if (currentArr.length > 0) boundaries.push({ index: combined.length, label: 'Current' });
   currentArr.forEach(entry => {
     combined.push({
       date: entry.date,
@@ -2645,7 +2652,7 @@ function buildAllTimeSeries(t) {
       Pepe: running.Pepe + (entry.Pepe || 0)
     });
   });
-  return combined;
+  return { series: combined, boundaries: boundaries };
 }
 
 // Full podium (podium-container/podium-place/...) -- same tie-break and
@@ -2910,7 +2917,7 @@ function loadData(){
         window.specialBetOrder = window.specialBetsEnabled ? (window.specialBets || []) : [];
         window.specialBetOrder.sort((a, b) => specialBetSortKey(a) - specialBetSortKey(b));
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
-        left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
+        left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Live Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
         // Build dynamic logo map from API data (works for WC national teams + any league)
         window.DYNAMIC_LOGOS = {};
@@ -3597,9 +3604,12 @@ function drawHistoryChart(t) {
     const ctx = document.getElementById("historyChart").getContext("2d");
     if (historyChart) { historyChart.destroy(); historyChart = null; }
 
-    const d = window.rankingScopes.historyScoreboard === 'alltime'
-        ? buildAllTimeSeries(t)
-        : (chartDataCache ? chartDataCache[t] : null);
+    const isAllTime = window.rankingScopes.historyScoreboard === 'alltime';
+    const allTimeResult = isAllTime ? buildAllTimeSeries(t) : null;
+    const d = isAllTime ? (allTimeResult && allTimeResult.series) : (chartDataCache ? chartDataCache[t] : null);
+    // Season-change markers -- only meaningful in All Time, where the line
+    // actually spans more than one season.
+    const seasonBoundaries = (allTimeResult && allTimeResult.boundaries) || [];
     if (!d || d.length === 0) return;
 
     const labs = d.map(r => new Date(r.date).toLocaleDateString());
@@ -3688,7 +3698,8 @@ function drawHistoryChart(t) {
                         mode: 'x'
                     },
                     limits: { x: { minRange: 2 } }
-                }
+                },
+                seasonBoundaries: { boundaries: seasonBoundaries }
             }
         }
     });
@@ -4927,6 +4938,45 @@ Chart.register(ChartDataLabels);
 // case the CDN script didn't load, so the chart still renders normally
 // (just without zoom) rather than throwing.
 if (window.ChartZoom) Chart.register(ChartZoom);
+
+// Small custom plugin -- draws a dashed vertical line + season name at
+// every season-change point in the All Time chart (see buildAllTimeSeries).
+// No boundaries means nothing to draw, so this is a silent no-op in the
+// plain Season view.
+Chart.register({
+  id: 'seasonBoundaries',
+  afterDraw(chart) {
+    const opts = chart.options.plugins && chart.options.plugins.seasonBoundaries;
+    const boundaries = (opts && opts.boundaries) || [];
+    if (!boundaries.length) return;
+    const { ctx, chartArea, scales } = chart;
+    const xScale = scales.x;
+    ctx.save();
+    boundaries.forEach(b => {
+      // A line right at the very first point is just noise, not a real change.
+      if (b.index <= 0) return;
+      const x = xScale.getPixelForValue(b.index);
+      if (x < chartArea.left || x > chartArea.right) return;
+
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (b.label) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = "700 9px 'Inter', sans-serif";
+        ctx.textAlign = 'left';
+        ctx.fillText(b.label, x + 4, chartArea.top + 10);
+      }
+    });
+    ctx.restore();
+  }
+});
 
 /* === NEW BETTING LOGIC (Pro V2 - Locked Columns) === */
 

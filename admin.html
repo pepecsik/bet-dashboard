@@ -93,7 +93,6 @@
     color: #fff; font-weight: 800; font-size: 13px; text-align: center;
     cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
   }
-  .mw-pill.mw-pill-current { border-color: rgba(255,40,130,0.5); color: #ff7ac6; }
   .mw-pill:active { background: rgba(255,255,255,0.12); }
   .mw-detail { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 12px; margin: -4px 0 12px; }
   .mw-date { font-size: 11px; color: #b79ecf; margin-bottom: 10px; text-align: center; }
@@ -378,30 +377,39 @@ function renderScoreboard(data) {
   sbLastResults = computeLiveSummary(data);
   sbLastMatches = data.matches || [];
 
+  const history = data.history || [];
   sbHistoryByRow = {};
-  (data.history || []).forEach(h => { sbHistoryByRow[h.row] = h; });
+  history.forEach(h => { sbHistoryByRow[h.row] = h; });
 
-  document.getElementById('scoreboardContent').innerHTML = `
+  // The current (unlocked) row isn't a "Matchweek N" pill -- it's not a
+  // completed matchweek yet, just the live starting point. It always sits
+  // open at the top; only locked/saved rows get numbered pills below it.
+  const current = history.find(h => h.locked === false);
+  const saved = history.filter(h => h.locked !== false);
+
+  const currentHtml = current ? `
+    <div class="mw-section-title">Current Matchweek</div>
+    ${renderMatchGrid(sbLastMatches)}
+    ${renderSummaryStrip(sbLastResults)}
     <button class="action" id="btnSaveMatchweek" onclick="runSaveMatchweek()">Save Matchweek</button>
     <div class="status-msg" id="msgSaveMatchweek" style="display:none;"></div>
-    <div class="mw-section-title">Matchweeks</div>
-    ${renderHistoryList(data.history || [])}
+  ` : '';
+
+  document.getElementById('scoreboardContent').innerHTML = `
+    ${currentHtml}
+    <div class="mw-section-title">Saved Matchweeks</div>
+    ${renderHistoryList(saved)}
   `;
 }
 
-function renderHistoryList(history) {
-  if (!history.length) return '<div class="placeholder">No matchweek data yet.</div>';
+function renderHistoryList(saved) {
+  if (!saved.length) return '<div class="placeholder">No saved matchweeks yet.</div>';
   // Matchweek N follows save order (array position), newest shown first.
-  const withNum = history.map((h, i) => Object.assign({ num: i + 1 }, h));
-  return [...withNum].reverse().map(h => {
-    const isCurrent = h.locked === false;
-    const label = isCurrent ? `Matchweek ${h.num} (current)` : `Matchweek ${h.num}`;
-    const cls = isCurrent ? 'mw-pill mw-pill-current' : 'mw-pill';
-    return `
-      <div class="${cls}" onclick="toggleMatchweek(${h.row})">${label}</div>
-      <div class="mw-detail" id="mwDetail${h.row}" style="display:none;"></div>
-    `;
-  }).join('');
+  const withNum = saved.map((h, i) => Object.assign({ num: i + 1 }, h));
+  return [...withNum].reverse().map(h => `
+    <div class="mw-pill" onclick="toggleMatchweek(${h.row})">Matchweek ${h.num}</div>
+    <div class="mw-detail" id="mwDetail${h.row}" style="display:none;"></div>
+  `).join('');
 }
 
 function toggleMatchweek(row) {
@@ -417,7 +425,6 @@ function toggleMatchweek(row) {
 function renderMatchweekDetail(row, editing) {
   const h = sbHistoryByRow[row];
   if (!h) return '';
-  const isCurrent = h.locked === false;
 
   if (editing) {
     const rows = SB_PLAYERS.map(p => `
@@ -432,15 +439,6 @@ function renderMatchweekDetail(row, editing) {
       ${rows}
       <button class="action mw-edit-btn" onclick="saveMatchweekEdit(${row})">Save Changes</button>
       <div class="status-msg" id="msgEdit${row}" style="display:none;"></div>
-    `;
-  }
-
-  if (isCurrent) {
-    return `
-      <div class="mw-date">${h.date} &middot; live, not saved yet</div>
-      ${renderSummaryStrip(sbLastResults || {})}
-      ${renderMatchGrid(sbLastMatches || [])}
-      <button class="action mw-edit-btn" onclick="editMatchweek(${row})">Edit</button>
     `;
   }
 

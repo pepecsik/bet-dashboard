@@ -395,7 +395,7 @@ function renderBetsGrid(data) {
   // sticky (frozen while scrolling sideways) so the bet columns can sit
   // side by side -- exactly like the DASHBOARD sheet itself -- instead of
   // stacking one full-width card per column.
-  const colTemplate = `76px repeat(${headers.length}, 62px)`;
+  const colTemplate = `58px repeat(${headers.length}, 62px)`;
 
   const headerRow = `<div class="bets-g-cell bets-g-corner"></div>` +
     headers.map(h => `<div class="bets-g-cell bets-g-head" title="${h.name}">${h.name}</div>`).join('');

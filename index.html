@@ -16,6 +16,8 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 
 <title>Juice Bets</title>
 
@@ -1944,7 +1946,12 @@ img[alt="AVI"] {
 
          <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
+            <button id="historyChartResetZoom" onclick="historyChart && historyChart.resetZoom()"
+              style="display:none; position:absolute; top:0; right:0; background:rgba(0,0,0,0.35); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:6px; font-size:9px; font-weight:700; padding:4px 8px; cursor:pointer;">
+              ↺ Reset Zoom
+            </button>
          </div>
+         <div style="text-align:center; font-size:9px; color:var(--text-muted); opacity:0.6; margin-top:6px;">Pinch or scroll to zoom · drag to pan</div>
       </div>
     </div>
 </div>
@@ -3637,13 +3644,26 @@ function drawHistoryChart(t) {
             maintainAspectRatio: false,
             layout: { padding: { top: 10, right: 15, left: 5, bottom: 0 } },
             scales: {
-                x: { display: false },
+                x: {
+                    // Visible now that the chart can pan/zoom -- otherwise
+                    // there'd be no way to tell which matchweek you're
+                    // looking at once you've scrolled away from the end.
+                    display: true,
+                    grid: { display: false },
+                    ticks: {
+                        color: 'rgba(154, 160, 166, 0.5)',
+                        font: { size: 8, weight: '600' },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        autoSkipPadding: 12
+                    }
+                },
                 y: {
                     display: true,
                     position: 'right',
                     grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
-                    ticks: { 
-                        color: 'rgba(154, 160, 166, 0.5)', 
+                    ticks: {
+                        color: 'rgba(154, 160, 166, 0.5)',
                         font: { size: 9, weight: '600' },
                         callback: (val) => t === 'money' ? '£' + val : val
                     }
@@ -3651,7 +3671,7 @@ function drawHistoryChart(t) {
             },
             plugins: {
                 legend: { display: false },
-                datalabels: { display: false }, 
+                datalabels: { display: false },
                 tooltip: {
                     enabled: true,
                     mode: 'index',
@@ -3659,11 +3679,22 @@ function drawHistoryChart(t) {
                     backgroundColor: 'rgba(20, 22, 25, 0.95)',
                     titleFont: { size: 11, weight: '800' },
                     bodyFont: { size: 10, weight: '600' }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    },
+                    limits: { x: { minRange: 2 } }
                 }
             }
         }
     });
     historyChart._type = t;
+    const resetBtn = document.getElementById('historyChartResetZoom');
+    if (resetBtn) resetBtn.style.display = d.length > 4 ? 'block' : 'none';
 }
 
 // UI & HELPERS
@@ -4891,6 +4922,11 @@ const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnM
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
 Chart.register(ChartDataLabels);
+// Pinch-to-zoom / drag-to-pan on the Performance History chart -- the All
+// Time view especially can span many matchweeks across seasons. Guarded in
+// case the CDN script didn't load, so the chart still renders normally
+// (just without zoom) rather than throwing.
+if (window.ChartZoom) Chart.register(ChartZoom);
 
 /* === NEW BETTING LOGIC (Pro V2 - Locked Columns) === */
 

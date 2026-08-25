@@ -37,6 +37,44 @@
   h1 { font-size: 16px; margin: 0; font-weight: 800; }
   .sub { font-size: 10px; color: #ff7ac6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 2px; }
 
+  .start-mw-btn {
+    margin-left: auto; background: linear-gradient(135deg, #ff2882, #c81466);
+    border: none; color: #fff; font-weight: 800; font-size: 11px; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .start-mw-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .auto-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  }
+  .auto-modal-overlay.active { display: flex; }
+  .auto-modal-box {
+    background: #1e0a28; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+    padding: 20px; width: 100%; max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .auto-modal-title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+  .auto-modal-sub { font-size: 11px; color: #b79ecf; margin-bottom: 16px; }
+  .auto-step {
+    display: flex; align-items: center; gap: 10px; padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; font-weight: 700;
+  }
+  .auto-step:last-of-type { border-bottom: none; }
+  .auto-step-icon {
+    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+    background: rgba(255,255,255,0.08); color: #b79ecf;
+  }
+  .auto-step.running .auto-step-icon { background: rgba(255,40,130,0.25); color: #ff7ac6; animation: autoPulse 1s infinite; }
+  .auto-step.done .auto-step-icon { background: rgba(0,255,133,0.2); color: #00ff85; }
+  .auto-step.error .auto-step-icon { background: rgba(255,77,77,0.2); color: #ff4d4d; }
+  .auto-step.skipped .auto-step-icon { opacity: 0.4; }
+  .auto-step-msg { font-size: 10px; font-weight: 500; color: #b79ecf; margin-top: 2px; }
+  .auto-step.error .auto-step-msg { color: #ff4d4d; }
+  @keyframes autoPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .auto-modal-box button.action { margin-top: 16px; }
+
   .tabs { display: flex; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
   .tab-btn {
     flex: 1; padding: 12px; text-align: center; font-size: 11px; font-weight: 700;
@@ -135,7 +173,17 @@
       <h1>Admin</h1>
       <div class="sub">Hidden panel</div>
     </div>
+    <button class="start-mw-btn" id="btnStartNewMatchweek" onclick="startNewMatchweek()">🚀 Start New Matchweek</button>
   </header>
+
+  <div class="auto-modal-overlay" id="autoModal">
+    <div class="auto-modal-box">
+      <div class="auto-modal-title">Starting New Matchweek</div>
+      <div class="auto-modal-sub">Running the usual steps in order — leave this open.</div>
+      <div id="autoSteps"></div>
+      <button class="action" id="autoCloseBtn" style="display:none;" onclick="closeAutoModal()">Close</button>
+    </div>
+  </div>
 
   <div class="tabs">
     <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">Matchweek</button>
@@ -502,6 +550,14 @@ function loadScoreboard() {
     .catch(() => { document.getElementById('scoreboardContent').innerHTML = '<div class="placeholder">Failed to load.</div>'; });
 }
 
+// The actual POST, shared by the manual "Save Matchweek" button and the
+// "Start New Matchweek" automation -- takes the players payload rather than
+// reading sbLastResults itself, so a caller can hand it deliberately fresh
+// data instead of whatever happened to be loaded last.
+function postSaveMatchweek(players) {
+  return postAdmin('adminSaveMatchweek', { players: players });
+}
+
 function runSaveMatchweek() {
   if (!sbLastResults) return;
   const winners = SB_PLAYERS.filter(p => sbLastResults[p].money > 0);
@@ -516,13 +572,117 @@ function runSaveMatchweek() {
 
   const btn = document.getElementById('btnSaveMatchweek');
   btn.disabled = true; btn.textContent = 'Saving...';
-  postAdmin('adminSaveMatchweek', { players: players })
+  postSaveMatchweek(players)
     .then(res => {
       if (res.status === 'success') { loadScoreboard(); return; }
       showStatus('msgSaveMatchweek', false, res.message);
     })
     .catch(err => showStatus('msgSaveMatchweek', false, 'Request failed: ' + err))
     .finally(() => { btn.disabled = false; btn.textContent = 'Save Matchweek'; });
+}
+
+/* ===================== Start New Matchweek automation ===================== */
+// Runs the exact sequence the admin does by hand -- Save Matchweek, then the
+// four Matchweek-tab steps in order -- inside a modal that shows live
+// progress. Stops at the first failure so nothing runs on top of a broken
+// step; the existing individual buttons are always still there to fix
+// whatever went wrong and pick up manually from there.
+const AUTO_STEPS = [
+  { id: 'save',      label: 'Save Matchweek (Scoreboard)' },
+  { id: 'clearDate', label: 'Clear & Set Date' },
+  { id: 'clearBets', label: 'Clear Bets' },
+  { id: 'fixtures',  label: 'Get Fixture IDs' },
+  { id: 'update',    label: 'Update All Data (can take up to a minute)' }
+];
+
+function startNewMatchweek() {
+  const date = document.getElementById('mwDate').value;
+  if (!date) {
+    alert('Pick (or wait for the suggested) date in the Matchweek tab first -- the automation needs it for the "Clear & Set Date" step.');
+    return;
+  }
+  if (!confirm('Start a new matchweek now?\n\nThis will:\n1. Lock the current week\'s scores into HISTORY\n2. Clear last week\'s data and set the date to ' + date + '\n3. Clear everyone\'s bets\n4. Fetch the new fixtures\n5. Pull scores/stats for them\n\nContinue?')) return;
+  if (!confirm('Really sure? Double-check ' + date + ' is the right date -- this can\'t be undone from here.')) return;
+
+  const btn = document.getElementById('btnStartNewMatchweek');
+  btn.disabled = true;
+  renderAutoSteps();
+  document.getElementById('autoCloseBtn').style.display = 'none';
+  document.getElementById('autoModal').classList.add('active');
+  runAutomation(date).finally(() => { btn.disabled = false; });
+}
+
+function renderAutoSteps() {
+  document.getElementById('autoSteps').innerHTML = AUTO_STEPS.map(s => `
+    <div class="auto-step" id="autoStep_${s.id}">
+      <div class="auto-step-icon" id="autoIcon_${s.id}">•</div>
+      <div>
+        <div>${s.label}</div>
+        <div class="auto-step-msg" id="autoMsg_${s.id}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setAutoStepStatus(id, status, message) {
+  const row = document.getElementById('autoStep_' + id);
+  const icon = document.getElementById('autoIcon_' + id);
+  const msg = document.getElementById('autoMsg_' + id);
+  row.className = 'auto-step ' + status;
+  icon.textContent = status === 'done' ? '✓' : status === 'error' ? '✕' : status === 'running' ? '…' : '•';
+  msg.textContent = message || '';
+}
+
+// Fetches the current live Scoreboard data fresh (rather than trusting a
+// possibly stale/never-loaded sbLastResults) so the payload sent to lock
+// the matchweek is definitely accurate -- an empty/zeroed payload here
+// would wrongly overwrite the already-correct live HISTORY row.
+function autoStepSaveMatchweek() {
+  return fetch(API_URL).then(r => r.json()).then(data => {
+    sbLastResults = computeLiveSummary(data);
+    const players = {};
+    SB_PLAYERS.forEach(p => { players[p] = { points: sbLastResults[p].points, money: sbLastResults[p].money }; });
+    return postSaveMatchweek(players);
+  });
+}
+
+async function runAutomation(date) {
+  const steps = {
+    save: autoStepSaveMatchweek,
+    clearDate: () => postAdmin('adminClearAndSetDate', { date: date }),
+    clearBets: () => postAdmin('adminClearBets', {}),
+    fixtures: () => postAdmin('adminGetFixtureIds', {}),
+    update: () => postAdmin('adminUpdateAllData', {})
+  };
+
+  let stopped = false;
+  for (const step of AUTO_STEPS) {
+    if (stopped) { setAutoStepStatus(step.id, 'skipped', 'Skipped'); continue; }
+    setAutoStepStatus(step.id, 'running');
+    try {
+      const res = await steps[step.id]();
+      if (res && res.status === 'error') {
+        setAutoStepStatus(step.id, 'error', res.message || 'Failed');
+        stopped = true;
+      } else {
+        setAutoStepStatus(step.id, 'done', res && res.message);
+      }
+    } catch (err) {
+      setAutoStepStatus(step.id, 'error', 'Request failed: ' + err);
+      stopped = true;
+    }
+  }
+
+  document.getElementById('autoCloseBtn').style.display = 'block';
+  if (!stopped) {
+    // Fresh start: clear the date field and let it re-suggest the next one.
+    document.getElementById('mwDate').value = '';
+    suggestNextMatchweekDate();
+  }
+}
+
+function closeAutoModal() {
+  document.getElementById('autoModal').classList.remove('active');
 }
 </script>
 </body>

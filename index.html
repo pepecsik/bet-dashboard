@@ -1201,6 +1201,18 @@ body {
 .score-input { background: #000; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; width: 100%; }
 .action-btn { background: var(--accent-green); color: #000; padding: 15px; border-radius: 12px; font-weight: 800; text-align: center; border: none; cursor: pointer; width: 100%; font-size: 14px; }
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
+.admin-pin-input {
+  width: 160px; margin: 12px auto 4px; padding: 14px; display: block;
+  text-align: center; font-size: 28px; letter-spacing: 16px;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3); color: var(--text-main); font-family: inherit;
+}
+.admin-pin-input.shake { animation: adminPinShake 0.4s; border-color: #ff4444; }
+@keyframes adminPinShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
 .bet-header-row { padding: 0 8px 8px 8px; }
 .success-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-card); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -2062,6 +2074,15 @@ img[alt="AVI"] {
     </div>
 </div>
 
+<div class="modal-overlay" id="modalAdminPin" style="align-items:center; z-index: 2200;">
+  <div class="modal-sheet" style="text-align:center;">
+    <div class="close-btn" onclick="closeModal('modalAdminPin')">×</div>
+    <div class="picker-title">ENTER PIN</div>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+      id="adminPinInput" class="admin-pin-input" oninput="checkAdminPin()">
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalPlayer" style="align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -2373,11 +2394,36 @@ let seasonChartModalInstance = null;
 let seasonChartModalIdx = null;
 
 // Hidden admin page — opened by 5 taps anywhere on the Weekly Summary
-// card (see handleAdminTap, bound once near the other init code below).
-// A real separate page, not a modal, so it's not sitting in this page's
-// DOM/source at all until someone actually navigates there.
+// card (see handleAdminTap, bound once near the other init code below),
+// then a 4-digit PIN before it actually navigates. A real separate page,
+// not a modal, so it's not sitting in this page's DOM/source at all until
+// someone actually navigates there.
+const ADMIN_PIN = '1390';
+
 function openAdminPage() {
   window.location.href = 'admin.html';
+}
+
+function openAdminPinPrompt() {
+  const input = document.getElementById('adminPinInput');
+  input.value = '';
+  input.classList.remove('shake');
+  document.getElementById('modalAdminPin').classList.add('active');
+  setTimeout(() => input.focus(), 150); // after the modal's own open transition
+}
+
+function checkAdminPin() {
+  const input = document.getElementById('adminPinInput');
+  if (input.value.length < 4) return;
+  if (input.value === ADMIN_PIN) {
+    closeModal('modalAdminPin');
+    openAdminPage();
+  } else {
+    if (navigator.vibrate) navigator.vibrate(200);
+    input.classList.add('shake');
+    input.value = '';
+    setTimeout(() => input.classList.remove('shake'), 400);
+  }
 }
 
 let adminTapCount = 0;
@@ -2389,7 +2435,7 @@ function handleAdminTap() {
   if (adminTapCount >= 5) {
     adminTapCount = 0;
     if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
-    openAdminPage();
+    openAdminPinPrompt();
   }
 }
 

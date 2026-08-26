@@ -222,6 +222,62 @@
   .win-amt.zero { color: #8a7a97; }
   .total-card { background: linear-gradient(135deg, rgba(255,40,130,0.14), rgba(200,20,102,0.08)); border: 1px solid rgba(255,40,130,0.4); }
   .total-card .season-name { color: #ff7ac6; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+
+  /* Balance/Betfair toggle */
+  .bal-toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .bal-toggle-btn {
+    flex: 1; padding: 9px; border-radius: 8px; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12); color: #b79ecf; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.5px; text-align: center; cursor: pointer;
+  }
+  .bal-toggle-btn.active { background: linear-gradient(135deg, #ff2882, #c81466); color: #fff; border-color: transparent; }
+
+  /* Betfair tab -- mirrors the BETFAIR sheet's running deposit ledger */
+  .bf-warning {
+    background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+    font-size: 12px; font-weight: 800; color: #ff6b6b;
+  }
+  .bf-warning-icon { font-size: 18px; flex-shrink: 0; }
+  .bf-hero { text-align: center; }
+  .bf-hero .stat-label { font-size: 10px; }
+  .bf-hero .stat-value { font-size: 30px; }
+  .bf-hero .stat-pp { font-size: 12px; }
+  .bf-hero-sub { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,40,130,0.2); }
+  .bf-hero-sub .stat-label { font-size: 9px; }
+  .bf-hero-sub .stat-value { font-size: 14px; }
+  .bf-hero-sub .stat-pp { font-size: 10px; }
+  .bf-current-name { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .bf-current-name .season-name { margin-bottom: 0; }
+  .bf-current-date { font-size: 10px; color: #8a7a97; }
+  .bf-paid-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .bf-paid-label { font-size: 10px; font-weight: 800; color: #b79ecf; white-space: nowrap; }
+  .bf-paid-input {
+    flex: 1; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3); color: #fff; font-size: 13px; font-family: inherit;
+  }
+  .bf-paid-save {
+    padding: 9px 16px; border-radius: 999px; border: none; background: linear-gradient(135deg, #ff2882, #c81466);
+    color: #fff; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .bf-paid-save.saved { background: linear-gradient(135deg, #00e676, #00b359) !important; }
+  .bf-ledger-wrap { overflow-y: auto; max-height: 320px; border-radius: 10px; background: rgba(0,0,0,0.15); }
+  .bf-ledger { width: 100%; border-collapse: collapse; font-size: 10px; }
+  .bf-ledger th {
+    position: sticky; top: 0; background: #1c0925; color: #b79ecf; text-transform: uppercase;
+    font-size: 9px; font-weight: 800; padding: 7px 6px; text-align: right; letter-spacing: 0.3px;
+  }
+  .bf-ledger th:first-child, .bf-ledger td:first-child { text-align: left; }
+  .bf-ledger td {
+    padding: 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-variant-numeric: tabular-nums; color: #e4dcee;
+  }
+  .bf-ledger tr.current-row { background: rgba(255,40,130,0.14); }
+  .bf-ledger tr.current-row td:first-child { color: #ff7ac6; font-weight: 800; }
+  .bf-ledger td.neg { color: #ff6b6b; }
+  .bf-ledger td.pos { color: #4ade80; }
+  .bf-ledger td.paid { color: #ffd166; font-weight: 800; }
 </style>
 </head>
 <body>
@@ -293,7 +349,13 @@
     </div>
 
     <div class="tab-pane" id="paneBalance">
+      <div class="mw-section-title">Balance</div>
+      <div class="bal-toggle-row">
+        <div class="bal-toggle-btn active" id="balToggleBalance" onclick="showBalView('balance')">Balance</div>
+        <div class="bal-toggle-btn" id="balToggleBetfair" onclick="showBalView('betfair')">Betfair</div>
+      </div>
       <div id="balanceContent"><div class="placeholder">Loading…</div></div>
+      <div id="betfairContent" style="display:none;"><div class="placeholder">Loading…</div></div>
     </div>
   </main>
 
@@ -796,18 +858,124 @@ function renderBalance(balance) {
   const totalHtml = balance.total ? renderBalanceCard(balance.total, 'total-card') : '';
   const seasonsHtml = (balance.seasons || []).slice().reverse().map(s => renderBalanceCard(s)).join('');
   return `
-    <div class="mw-section-title">Balance</div>
     ${totalHtml}
     <div class="bal-subhead">By Season</div>
     ${seasonsHtml}
   `;
 }
 
+function showBalView(view) {
+  document.getElementById('balToggleBalance').classList.toggle('active', view === 'balance');
+  document.getElementById('balToggleBetfair').classList.toggle('active', view === 'betfair');
+  document.getElementById('balanceContent').style.display = view === 'balance' ? 'block' : 'none';
+  document.getElementById('betfairContent').style.display = view === 'betfair' ? 'block' : 'none';
+}
+
+function toggleBetfairLedger() {
+  const el = document.getElementById('bfLedgerDetail');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Betfair tab -- mirrors the BETFAIR sheet's running deposit ledger.
+// "Cost So Far" uses the LAST PLAYED matchweek (the last one whose date has
+// actually passed) since that's the only cost genuinely incurred so far;
+// the Balance figure and the editable Paid field use the next UNPLAYED
+// matchweek instead, since that's the one you'd be depositing ahead of.
+function renderBetfair(betfair) {
+  const rows = (betfair && betfair.rows) || [];
+  if (!rows.length) return '<div class="placeholder">No Betfair data yet.</div>';
+
+  const played = rows.filter(r => r.played);
+  const lastPlayed = played.length ? played[played.length - 1] : rows[0];
+  const upcoming = rows.find(r => !r.played) || rows[rows.length - 1];
+
+  const warningHtml = upcoming.current <= 0
+    ? `<div class="bf-warning"><span class="bf-warning-icon">⚠️</span>Betfair balance is empty -- time to deposit!</div>`
+    : '';
+
+  const rowsHtml = rows.map(r => {
+    const cls = r.row === upcoming.row ? ' class="current-row"' : '';
+    const currentCls = r.current < 0 ? 'neg' : (r.current > 0 ? 'pos' : '');
+    return `<tr${cls}>
+      <td>${r.mw}</td><td>${r.date}</td>
+      <td class="${r.paid !== null ? 'paid' : ''}">${r.paid !== null ? balFmt(r.paid) : '—'}</td>
+      <td class="${currentCls}">${balFmt(r.current)}</td>
+      <td>${balFmt(r.cost)}</td><td>${balFmt(r.costPP)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    ${warningHtml}
+    <div class="season-card total-card bf-hero">
+      <div class="stat">
+        <div class="stat-label">Betfair Balance &mdash; ${upcoming.mw}</div>
+        <div class="stat-value ${balStatClass(upcoming.current)}">${balFmt(upcoming.current)}</div>
+        <div class="stat-pp">as of ${upcoming.date}</div>
+      </div>
+      <div class="bf-hero-sub">
+        <div class="stat">
+          <div class="stat-label">Cost So Far</div>
+          <div class="stat-value">${balFmt(lastPlayed.cost)}</div>
+          <div class="stat-pp">${balFmt(lastPlayed.costPP)} pp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bal-subhead">This Matchweek</div>
+    <div class="season-card">
+      <div class="bf-current-name">
+        <div class="season-name">${upcoming.mw}</div>
+        <div class="bf-current-date">${upcoming.date}</div>
+      </div>
+      <div class="bf-paid-row">
+        <span class="bf-paid-label">Paid &pound;</span>
+        <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="bfPaidInput" placeholder="48" value="${upcoming.paid !== null ? upcoming.paid : ''}">
+        <button class="bf-paid-save" id="bfPaidSave" onclick="saveBetfairPaid(${upcoming.row}, this)">Save</button>
+      </div>
+    </div>
+
+    <div class="mw-pill" onclick="toggleBetfairLedger()">Ledger &mdash; All Matchweeks</div>
+    <div class="mw-detail" id="bfLedgerDetail" style="display:none;">
+      <div class="bf-ledger-wrap">
+        <table class="bf-ledger">
+          <thead><tr><th>MW</th><th>Date</th><th>Paid</th><th>Current</th><th>Cost</th><th>Cost PP</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function saveBetfairPaid(row, btn) {
+  const input = document.getElementById('bfPaidInput');
+  const value = parseFloat(input.value) || 0;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  postAdmin('adminSetBetfairPaid', { row: row, value: value })
+    .then(res => {
+      if (res.status === 'success') {
+        btn.textContent = 'Saved';
+        btn.classList.add('saved');
+        loadBalance(); // re-fetch so Current/Cost recompute from the sheet's own formulas
+      } else {
+        btn.textContent = original;
+        alert(res.message || 'Save failed.');
+      }
+    })
+    .catch(err => { btn.textContent = original; alert('Request failed: ' + err); })
+    .finally(() => {
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('saved'); }, 1200);
+    });
+}
+
 function loadBalance() {
   fetch(API_URL).then(r => r.json()).then(data => {
     document.getElementById('balanceContent').innerHTML = renderBalance(data.balance);
+    document.getElementById('betfairContent').innerHTML = renderBetfair(data.betfair);
   }).catch(() => {
     document.getElementById('balanceContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+    document.getElementById('betfairContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
   });
 }
 

@@ -1,5 +1,5 @@
 // sw.js — Juice Bets service worker
-const CACHE_NAME = 'juicebets-v4';
+const CACHE_NAME = 'juicebets-v5';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [
@@ -10,6 +10,7 @@ const SHELL = [
   '/bet-dashboard/timbo.png',
   '/bet-dashboard/pepe.png',
   '/bet-dashboard/apple-touch-icon.png',
+  '/bet-dashboard/header-logo.png',
   '/bet-dashboard/favicon.ico',
   '/bet-dashboard/favicon-16x16.png',
   '/bet-dashboard/favicon-32x32.png'

@@ -602,18 +602,18 @@ body {
 .pl-logo { width: 90%; height: 90%; object-fit: contain; transform: scale(0.9); }
 
 .brand-btn {
-  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  width: 44px; height: 44px;
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 50px; height: 50px;
   display: flex; align-items: center; justify-content: center;
   background: transparent; border-radius: 10px; overflow: hidden;
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   cursor: pointer;
 }
 .brand-btn:active { transform: translateY(-50%) scale(0.9); }
-/* The logo art is a square icon with its own padding already baked in, so
-   it just needs to fill the button -- no extra zoom/crop like the old mark
-   needed (that scale(1.35) was cutting the crown and banknote off the new
-   one, top and bottom). */
+/* header-logo.png is the shield-shaped mark, used only here -- everywhere
+   else (favicon, apple-touch-icon, manifest) still uses the square mark.
+   It's got its own transparent padding baked in, so object-fit: contain is
+   all that's needed to show it uncropped at whatever size the button is. */
 .brand-logo { width: 100%; height: 100%; object-fit: contain; filter: var(--logo-filter); transition: filter 0.3s; }
 
 /* ALIGNED SPACER/FILTER BAR */
@@ -2884,7 +2884,7 @@ function renderSkeletons() {
   const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
   
   const lh=document.createElement("div"); lh.className="left-header"; 
-  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
   
   const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
   fb.innerHTML = `
@@ -2955,7 +2955,7 @@ function loadData(){
         const leagueLogo = (data.leagueId === 1)
           ? 'https://media.api-sports.io/football/leagues/1.png'
           : 'https://media.api-sports.io/football/leagues/39.png';
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
 
         // Whether every regular bet column is fully resolved: a dead (red)

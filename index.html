@@ -388,10 +388,54 @@ body {
   font-size: var(--base-size);
   background: var(--bg-grad);
   color: var(--text-main);
-  min-height: 100vh; 
-  overflow-y: auto; 
+  min-height: 100vh;
+  overflow-y: auto;
   letter-spacing: -0.02em;
   transition: background 0.5s ease, color 0.3s ease;
+}
+
+/* ===== OPENING BUMPER ===== */
+#splashOverlay {
+  position: fixed; inset: 0; z-index: 999999;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; /* never blocks a tap, even mid-animation */
+  overflow: hidden;
+}
+.splash-wipe {
+  position: absolute; top: 0; left: 0;
+  width: 160vw; height: 100%;
+  background: linear-gradient(100deg, var(--bg-grad) 85%, rgba(255,255,255,0.35) 92%, var(--bg-grad) 100%);
+  clip-path: polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%);
+  transform: translateX(-100%);
+  animation: splashWipe 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+.splash-logo {
+  position: relative; width: min(42vw, 200px); height: min(42vw, 200px);
+  object-fit: contain;
+  opacity: 0; transform: scale(0.7);
+  animation: splashLogo 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+}
+@keyframes splashWipe {
+  0%   { transform: translateX(-100%); }
+  25%  { transform: translateX(0%); }
+  65%  { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes splashLogo {
+  0%   { opacity: 0; transform: scale(0.7); }
+  32%  { opacity: 1; transform: scale(1.05); }
+  40%  { opacity: 1; transform: scale(1); }
+  78%  { opacity: 1; transform: scale(1); }
+  92%  { opacity: 0; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+/* Motion-sensitive: a plain quick fade instead of the sweep/scale. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-wipe { animation: splashFadeWipe 1s ease forwards; transform: translateX(0%); clip-path: none; width: 100%; }
+  .splash-logo { animation: splashFadeLogo 1s ease forwards; transform: none; }
+  @keyframes splashFadeWipe { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes splashFadeLogo { 0% { opacity: 0; } 30%, 60% { opacity: 1; } 100% { opacity: 0; } }
 }
 
 /* PREMIUM NUMBERS */
@@ -609,7 +653,8 @@ body {
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   cursor: pointer;
 }
-.brand-btn:active { transform: translateY(-50%) scale(0.9); }
+/* No :active press effect here on purpose -- this is the triple-tap
+   easter egg for the hidden theme toggle, so it shouldn't look tappable. */
 /* header-logo.png is the shield-shaped mark, used only here -- everywhere
    else (favicon, apple-touch-icon, manifest) still uses the square mark.
    It's got its own transparent padding baked in, so object-fit: contain is
@@ -1821,6 +1866,27 @@ img[alt="AVI"] {
 </style>
 </head>
 <body>
+
+<!-- Opening bumper: a diagonal wipe panel (matching the app's own
+     background, so it reads as the app itself sweeping into view rather
+     than a separate splash screen) with the shield logo fading in once
+     it's fully covered, then wiping onward off the other side. Pure CSS —
+     no video file, no extra network request, reuses header-logo.png which
+     the header itself already loads. Removed from the DOM once done so it
+     costs nothing after the first ~1.4s. -->
+<div id="splashOverlay" aria-hidden="true">
+  <div class="splash-wipe"></div>
+  <img src="header-logo.png" class="splash-logo" alt="">
+</div>
+<script>
+(function() {
+  var el = document.getElementById('splashOverlay');
+  var wipe = el.querySelector('.splash-wipe');
+  var done = function() { if (el && el.parentNode) el.parentNode.removeChild(el); };
+  wipe.addEventListener('animationend', done);
+  setTimeout(done, 1800); // fallback in case the event never fires
+})();
+</script>
 
 <div id="matchday-ticker-bar" role="status" aria-live="polite">
   <div class="ticker-track">

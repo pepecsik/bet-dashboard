@@ -1,5 +1,5 @@
 // sw.js — Juice Bets service worker
-const CACHE_NAME = 'juicebets-v3';
+const CACHE_NAME = 'juicebets-v4';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [
@@ -9,7 +9,10 @@ const SHELL = [
   '/bet-dashboard/snackbar.png',
   '/bet-dashboard/timbo.png',
   '/bet-dashboard/pepe.png',
-  '/bet-dashboard/apple-touch-icon.png'
+  '/bet-dashboard/apple-touch-icon.png',
+  '/bet-dashboard/favicon.ico',
+  '/bet-dashboard/favicon-16x16.png',
+  '/bet-dashboard/favicon-32x32.png'
 ];
 
 const API_HOST = 'script.google.com';
@@ -85,3 +88,4 @@ if (url.host === APP_HOST) {
   );
   return;
 }
+});

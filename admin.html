@@ -197,6 +197,31 @@
   .pv-green { color: #4ade80; }
   .pv-red { color: #ef4444; }
   .pv-grey { color: #b79ecf; }
+
+  /* Balance tab -- one card per BALANCE sheet row: group columns (Paid/
+     Earned/Balance, each with its PP figure) as a 3-stat row, and the
+     individual Snackbar/Timbo/Pepe WIN columns as an avatar strip below. */
+  .bal-subhead { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
+  .season-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 14px 12px; margin-bottom: 12px; }
+  .season-name { font-size: 13px; font-weight: 800; margin-bottom: 12px; }
+  .stat-trio { display: flex; gap: 8px; }
+  .stat { flex: 1; text-align: center; }
+  .stat-label { font-size: 9px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 15px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .stat-pp { font-size: 10px; color: #8a7a97; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .stat-value.pos, .stat-pp.pos { color: #4ade80; }
+  .stat-value.neg, .stat-pp.neg { color: #ff6b6b; }
+  .win-strip-label { font-size: 9px; font-weight: 800; color: #8a7a97; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .win-strip { display: flex; gap: 8px; margin-top: 6px; }
+  .win-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .win-avatar { width: 26px; height: 26px; border-radius: 7px; object-fit: contain; background: #000; }
+  .win-name { font-size: 9px; font-weight: 700; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.3px; }
+  .win-amt { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .win-amt.pos { color: #4ade80; }
+  .win-amt.neg { color: #ff6b6b; }
+  .win-amt.zero { color: #8a7a97; }
+  .total-card { background: linear-gradient(135deg, rgba(255,40,130,0.14), rgba(200,20,102,0.08)); border: 1px solid rgba(255,40,130,0.4); }
+  .total-card .season-name { color: #ff7ac6; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -268,7 +293,7 @@
     </div>
 
     <div class="tab-pane" id="paneBalance">
-      <div class="placeholder">Coming soon.</div>
+      <div id="balanceContent"><div class="placeholder">Loading…</div></div>
     </div>
   </main>
 
@@ -285,6 +310,7 @@ function switchTab(name) {
   // Tap the tab again to pull fresh data manually.
   if (name === 'scoreboard') loadScoreboard();
   if (name === 'matchweek') loadBetsGrid();
+  if (name === 'balance') loadBalance();
 }
 
 function toggleMatchweekSteps() {
@@ -718,6 +744,71 @@ function runSaveMatchweek() {
     })
     .catch(err => showStatus('msgSaveMatchweek', false, 'Request failed: ' + err))
     .finally(() => { btn.disabled = false; btn.textContent = 'Save Matchweek'; });
+}
+
+/* ===== BALANCE TAB ===== */
+// Mirrors the BALANCE sheet: group columns A:G (Paid/Earned/Balance, each
+// with a per-person figure) as a 3-stat row per season, and the individual
+// Snackbar/Timbo/Pepe WIN columns (I:K) as an avatar strip underneath. The
+// Total row becomes its own card pinned at the top; the season rows below
+// it are shown newest first (reverse of the sheet's chronological order).
+function balStatClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
+function balWinClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero'); }
+function balFmt(n) { const v = Number(n) || 0; return (v < 0 ? '-£' : '£') + Math.abs(v).toFixed(2); }
+
+function renderBalanceCard(entry, extraClass) {
+  return `
+    <div class="season-card ${extraClass || ''}">
+      <div class="season-name">${entry.season}</div>
+      <div class="stat-trio">
+        <div class="stat">
+          <div class="stat-label">Paid</div>
+          <div class="stat-value">${balFmt(entry.paid)}</div>
+          <div class="stat-pp">${balFmt(entry.paidPP)} pp</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Earned</div>
+          <div class="stat-value ${balStatClass(entry.earned)}">${balFmt(entry.earned)}</div>
+          <div class="stat-pp ${balStatClass(entry.earned)}">${balFmt(entry.earnedPP)} pp</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Balance</div>
+          <div class="stat-value ${balStatClass(entry.balance)}">${balFmt(entry.balance)}</div>
+          <div class="stat-pp ${balStatClass(entry.balance)}">${balFmt(entry.balancePP)} pp</div>
+        </div>
+      </div>
+      <div class="win-strip-label">Earned</div>
+      <div class="win-strip">
+        ${SB_PLAYERS.map(p => `
+          <div class="win-item">
+            <img src="${SB_AVATARS[p]}" class="win-avatar">
+            <div class="win-name">${p}</div>
+            <div class="win-amt ${balWinClass(entry.win[p])}">${balFmt(entry.win[p])}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderBalance(balance) {
+  if (!balance || (!balance.total && !balance.seasons.length)) {
+    return '<div class="placeholder">No balance data yet.</div>';
+  }
+  const totalHtml = balance.total ? renderBalanceCard(balance.total, 'total-card') : '';
+  const seasonsHtml = (balance.seasons || []).slice().reverse().map(s => renderBalanceCard(s)).join('');
+  return `
+    <div class="mw-section-title">Balance</div>
+    ${totalHtml}
+    <div class="bal-subhead">By Season</div>
+    ${seasonsHtml}
+  `;
+}
+
+function loadBalance() {
+  fetch(API_URL).then(r => r.json()).then(data => {
+    document.getElementById('balanceContent').innerHTML = renderBalance(data.balance);
+  }).catch(() => {
+    document.getElementById('balanceContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+  });
 }
 
 /* ===================== Start New Matchweek automation ===================== */

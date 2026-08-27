@@ -3035,30 +3035,12 @@ function renderSkeletons() {
 // stats/injuries/lineups/day-headers/celebrations) and patches the score
 // text and bet-pill text/colour of the EXISTING rows in place, leaving
 // everything the full render adds (day headers, red-card badges, special
-// bets, what-if pills, celebrations) untouched. If the rows don't exist
-// yet, or the row count doesn't match this data (new matchweek), falls
-// back to a minimal scaffold render instead of patching nothing/the wrong
-// thing -- the next full loadData() cycle replaces that scaffold with the
-// complete rich view regardless.
-function renderFastScaffold(data, left, right) {
-  left.innerHTML = ''; right.innerHTML = '';
-  (data.matches || []).forEach(m => {
-    const [h, a] = (m.match || '').split('-').map(t => t.trim().toUpperCase());
-    const displayStatus = m.status === 'NS' ? 'NS' : m.status;
-    const lr = document.createElement('div'); lr.className = 'left-row fast-row';
-    lr.innerHTML = `<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell"><div class="score-pill"><span>${displayStatus}</span><span>${m.score||''}</span></div></div>`;
-    left.appendChild(lr);
-    const rr = document.createElement('div'); rr.className = 'row fast-row';
-    (m.cells || []).forEach(c => {
-      const el = document.createElement('div'); el.className = 'bet';
-      if (c.value) { el.textContent = c.value; el.style.backgroundColor = c.color || '#262a30'; }
-      else { el.classList.add('empty'); }
-      rr.appendChild(el);
-    });
-    right.appendChild(rr);
-  });
-}
-
+// bets, what-if pills, celebrations) untouched. Deliberately does NOT draw
+// anything of its own -- if the full rich view isn't up yet (or the row
+// count doesn't match, e.g. right after a new matchweek loads), it's a
+// no-op and just waits for the next full loadData() cycle. The interface
+// must always look exactly like loadData() built it; this only ever
+// updates numbers/colours inside rows loadData() already created.
 function patchFastScores(data) {
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
@@ -3066,16 +3048,11 @@ function patchFastScores(data) {
   // Skeleton placeholder rows also carry the .left-row/.row classes (see
   // renderSkeletons), and the BET/WIN/WIN PP summary rows appended after
   // the matches also carry .row (as .short-row) -- both must be excluded
-  // here, otherwise the row count never matches matches.length and every
-  // fast poll would wrongly fall through to the scaffold instead of
-  // patching in place.
+  // here, otherwise the row count never matches matches.length.
   const leftRows = left.querySelectorAll('.left-row:not(.sk-row)');
   const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
 
-  if (leftRows.length !== matches.length || rightRows.length !== matches.length) {
-    renderFastScaffold(data, left, right);
-    return;
-  }
+  if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
 
   matches.forEach((m, i) => {
     const spans = leftRows[i].querySelectorAll('.score-pill span');
@@ -5131,9 +5108,11 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
 })();
  
 renderSkeletons();
-loadFastData(); // paints scores + bet pills first, as fast as DASHBOARD-only can go
 loadData();
 setInterval(loadData,REFRESH_MS);
+// Fast poll starts being useful once loadData() has drawn the real rows the
+// first time -- until then patchFastScores() is a no-op (see above), so
+// there's nothing to gain from firing this before that first render lands.
 setInterval(loadFastData,FAST_REFRESH_MS);
 setInterval(updateTicker, 1000); // NEW: update countdown display every second
 

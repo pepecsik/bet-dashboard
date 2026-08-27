@@ -1048,7 +1048,9 @@ body {
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; margin-left: auto; }
 .el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: var(--text-main); }
-.el-away .el-item { flex-direction: row; justify-content: flex-start; } 
+.el-away .el-item { flex-direction: row; justify-content: flex-start; }
+.el-name-block { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.el-assist { font-size: 9px; opacity: 0.5; font-weight: 600; }
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
 .og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:2px; margin-right:2px; }
@@ -1378,6 +1380,16 @@ img[alt="AVI"] {
 .bar-h { background: var(--accent-green); }
 .bar-d { background: var(--accent-orange); } /* CHANGED TO ORANGE */
 .bar-a { background: #ff4d4d; }
+
+/* The away team's H2H win share isn't a "bad" result -- it's just their
+   wins -- so it shouldn't read as red. Instead of a second hardcoded color
+   (which would clash with whichever theme is active), this shifts the
+   SAME theme green toward teal/cyan, so it's clearly distinguishable from
+   the home-win green (even with zero draws) while staying in the
+   "positive" color family, whatever the current theme's green happens to
+   be. */
+.h2h-away-win-label { color: var(--accent-green); font-weight:800; filter: hue-rotate(30deg) saturate(0.75) brightness(0.85); }
+.h2h-away-win-seg { background: var(--accent-green); filter: hue-rotate(30deg) saturate(0.75) brightness(0.85); }
 
 /* 3. LIVESCORE MATCH CARD */
 .ls-card { 
@@ -1873,8 +1885,104 @@ img[alt="AVI"] {
   font-weight: 600;
   text-align: center;
   padding: 4px 0;
-} 
- 
+}
+
+/* === Match Timeline (Summary tab) -- a central spine with home events on
+   the left, away events on the right, newest event at the top === */
+.timeline-container { position: relative; padding: 2px 0; }
+.timeline-spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.08);
+  transform: translateX(-50%);
+}
+.timeline-entry {
+  display: grid;
+  grid-template-columns: 1fr 32px 1fr;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 5px;
+  position: relative;
+}
+.timeline-minute-badge {
+  grid-column: 2;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 800;
+  opacity: 0.75;
+  background: var(--bg-soft);
+  border-radius: 4px;
+  padding: 1px 0;
+  z-index: 1;
+}
+.timeline-card {
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 3px 7px;
+  min-width: 0;
+}
+.timeline-home .timeline-card { grid-column: 1; border-right: 3px solid var(--accent-green); }
+.timeline-away .timeline-card { grid-column: 3; border-left: 3px solid var(--accent-orange); }
+.timeline-card-inner { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.timeline-home .timeline-card-inner { flex-direction: row-reverse; }
+.timeline-icon { font-size: 12px; flex-shrink: 0; }
+.timeline-text { min-width: 0; }
+.timeline-home .timeline-text { text-align: right; }
+.timeline-away .timeline-text { text-align: left; }
+.timeline-player {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.timeline-sub {
+  font-size: 8px;
+  opacity: 0.55;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+/* === Match Odds strip -- small and subtle, not a headline element === */
+.odds-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.odds-cell {
+  flex: 1;
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 4px 4px;
+  text-align: center;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+.odds-cell-label {
+  font-size: 8px;
+  font-weight: 700;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.odds-cell-value {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.odds-bookie {
+  font-size: 8px;
+  opacity: 0.35;
+  font-weight: 600;
+  text-align: right;
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
 </style>
 </head>
 <body>
@@ -4339,6 +4447,67 @@ function openSpecialBetModal(betId, matchId) {
 
   document.getElementById('modalSpecialBet').classList.add('active');
 }
+// Chronological match-event timeline for the Summary tab -- reuses the same
+// event data goalsArea/cardsArea already have (fetched once per
+// updateAllData() run on the backend), just laid out as a proper
+// minute-by-minute feed instead of two sparse icon rows. Side (home/away)
+// is worked out the same way goalsArea already does it: matching the
+// event's player name against the fetched lineups, since events only carry
+// a numeric API team id, not an explicit home/away flag.
+function renderMatchTimeline(stats) {
+  const events = (stats && stats.events) || [];
+  if (events.length === 0) return '<div class="injury-empty">No events yet</div>';
+
+  const resolveIsHome = (playerName) => {
+    if (!playerName || !stats.lineups) return true;
+    const cleanP = normalizeName(playerName.trim());
+    const parts = cleanP.split(' ');
+    const h = stats.lineups.h || {}, a = stats.lineups.a || {};
+    if (parts.some(pt => pt.length > 2 && ((h.start||[]).some(p => normalizeName(p.name).includes(pt)) || (h.sub||[]).some(p => normalizeName(p.name).includes(pt))))) return true;
+    if (parts.some(pt => pt.length > 2 && ((a.start||[]).some(p => normalizeName(p.name).includes(pt)) || (a.sub||[]).some(p => normalizeName(p.name).includes(pt))))) return false;
+    return true;
+  };
+
+  const minuteValue = (t) => parseFloat(String(t).replace('+', '.')) || 0;
+  // Newest event on top -- reads like a live feed instead of a scoresheet.
+  const sorted = events.slice().sort((a, b) => minuteValue(b.time) - minuteValue(a.time));
+
+  const rows = sorted.map(e => {
+    let icon = null, sub = '';
+    if (e.type === 'Goal') {
+      icon = e.detail === 'Missed Penalty' ? '❌' : '⚽';
+      if (e.detail === 'Own Goal') sub = 'Own goal';
+      else if (e.detail === 'Penalty') sub = 'Penalty';
+      else if (e.detail === 'Missed Penalty') sub = 'Penalty missed';
+      if (e.assist && e.detail !== 'Own Goal' && e.detail !== 'Missed Penalty') sub = (sub ? sub + ' · ' : '') + 'Assist: ' + e.assist;
+    } else if (e.type === 'Card') {
+      icon = (e.detail === 'Red Card') ? '🟥' : '🟨';
+    } else if (e.type === 'subst') {
+      icon = '🔄';
+      sub = e.assist ? ('Off: ' + e.assist) : '';
+    } else if (e.type === 'Var') {
+      icon = '📺';
+      sub = e.detail || 'VAR Review';
+    }
+    if (!icon) return ''; // unknown/uninteresting event type -- skip
+    const isHome = resolveIsHome(e.player);
+    return `<div class="timeline-entry ${isHome ? 'timeline-home' : 'timeline-away'}">
+      <div class="timeline-card">
+        <div class="timeline-card-inner">
+          <div class="timeline-icon">${icon}</div>
+          <div class="timeline-text">
+            <div class="timeline-player">${e.player || ''}</div>
+            ${sub ? `<div class="timeline-sub">${sub}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="timeline-minute-badge">${e.time}'</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return rows ? `<div class="timeline-container"><div class="timeline-spine"></div>${rows}</div>` : '<div class="injury-empty">No notable events</div>';
+}
+
 function switchTab(t){
   vibe();
   // Update button active states
@@ -4388,8 +4557,10 @@ function showPlayerStats(name, stats, events) {
       <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
       <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.shots_on||0}</div><div class="pp-lbl">On Target</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.saves||0}</div><div class="pp-lbl">Saves</div></div>
     `;
     pop.style.display = "block";
 }
@@ -4789,7 +4960,21 @@ function openModal(m){
             </div>
           </div>`;
       }
-      document.getElementById("consensusArea").innerHTML = liveProbHTML + consensusHTML;
+      // Match Odds strip -- the raw Home/Draw/Away price is already fetched
+      // and kept fresh right up to kickoff (used internally for the
+      // What if? payouts and the Smart Tips text), but until now was never
+      // shown to you as its own piece of content.
+      let oddsHTML = "";
+      if (m.odds && (m.odds.home || m.odds.draw || m.odds.away)) {
+        oddsHTML = `
+        <div class="odds-strip">
+          <div class="odds-cell"><div class="odds-cell-label">${hCode}</div><div class="odds-cell-value">${m.odds.home || "-"}</div></div>
+          <div class="odds-cell"><div class="odds-cell-label">Draw</div><div class="odds-cell-value">${m.odds.draw || "-"}</div></div>
+          <div class="odds-cell"><div class="odds-cell-label">${aCode}</div><div class="odds-cell-value">${m.odds.away || "-"}</div></div>
+        </div>
+        ${m.odds.bookie ? `<div class="odds-bookie">via ${m.odds.bookie}</div>` : ""}`;
+      }
+      document.getElementById("consensusArea").innerHTML = oddsHTML + liveProbHTML + consensusHTML;
       
       let hG=[], aG=[];
       let goalsMap = {}; 
@@ -4803,9 +4988,10 @@ function openModal(m){
                      if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
                      else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
                  }
-                 if(isH === null) isH = true; 
-                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
+                 if(isH === null) isH = true;
+                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], assists: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
                  goalsMap[cleanP].times.push(e.time + "'");
+                 if (e.type === "Goal" && e.assist && e.detail !== "Own Goal") goalsMap[cleanP].assists.push(e.assist);
              }
           });
       }
@@ -4813,14 +4999,17 @@ function openModal(m){
           let g = goalsMap[key];
           let timesStr = g.times.join(", ");
           let name = formatName(g.rawName);
+          let assistStr = g.assists.length ? [...new Set(g.assists)].join(", ") : "";
+          let assistHtml = assistStr ? `<div class="el-assist">Assist: ${assistStr}</div>` : "";
           let html = "";
           let icon = "⚽";
           if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
-          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
-          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
-          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
+          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : "";
+          if(g.isHome) { html = `<div class="el-item"><div class="el-name-block"><span>${name}${ogText}</span>${assistHtml}</div><span class="el-time">${timesStr}</span><span class="el-icon">${icon}</span></div>`; hG.push(html); }
+          else { html = `<div class="el-item"><span class="el-icon">${icon}</span><span class="el-time">${timesStr}</span><div class="el-name-block">${ogText}<span>${name}</span>${assistHtml}</div></div>`; aG.push(html); }
       });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+      document.getElementById("summaryTimeline").innerHTML = renderMatchTimeline(s);
 
       // STATS AREA logic...
       const sb = document.getElementById("statsArea"); 
@@ -4830,7 +5019,7 @@ function openModal(m){
       } else {
           let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
           let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
-          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
+          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}, {l:"Saves", h:s.h_saves, a:s.a_saves}, {l:"Fouls", h:s.h_fouls, a:s.a_fouls}];
           let allStatsHTML = ""; 
           sl.forEach(st => {
             if (!st.h && !st.a && !st.pct && !st.dec) return; 
@@ -5848,12 +6037,12 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
             <div class="summary-labels">
                 <span style="color:var(--accent-green); font-weight:800;">${hWins} Win</span>
                 <span style="color:var(--accent-orange); opacity:0.8;">${draws} Draw</span>
-                <span style="color:#ff4d4d; font-weight:800;">${aWins} Win</span>
+                <span class="h2h-away-win-label">${aWins} Win</span>
             </div>
             <div class="summary-bar">
                 <div class="bar-seg" style="width:${hp}%; background:var(--accent-green)"></div>
                 <div class="bar-seg" style="width:${dp}%; background:var(--accent-orange)"></div>
-                <div class="bar-seg" style="width:${ap}%; background:#ff4d4d"></div>
+                <div class="bar-seg h2h-away-win-seg" style="width:${ap}%;"></div>
             </div>
         </div>`;
     }

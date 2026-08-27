@@ -3030,17 +3030,38 @@ function renderSkeletons() {
   }
 }
 
+// Shared by renderDashboard() (full render) and patchFastScores() (fast
+// poll) so a live score arriving through either path produces the exact
+// same "is this pick currently on track to win" pill reaction -- computed
+// purely from the score + the bet's own text, no Sheet color involved, so
+// it's safe (and correct) to run on every fast tick, not just the full
+// 30s reload.
+function computeBetIsWinning(betValue, home, away, hScore, aScore) {
+  const bet = String(betValue || "").toUpperCase();
+  if (bet.includes("-")) {
+    const [bH, bA] = bet.split("-").map(Number);
+    return bH === hScore && bA === aScore;
+  }
+  if ((bet === "1" || bet === "H" || bet === "HOME" || home.includes(bet)) && hScore > aScore) return true;
+  if ((bet === "2" || bet === "A" || bet === "AWAY" || away.includes(bet)) && aScore > hScore) return true;
+  if ((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) return true;
+  return false;
+}
+
 // ── Fast poll: scores + bet pills only ─────────────────────────
 // Hits ?mode=fast (buildFastDashboard() -- DASHBOARD sheet only, no deep
-// stats/injuries/lineups/day-headers/celebrations) and patches the score
-// text and bet-pill text/colour of the EXISTING rows in place, leaving
-// everything the full render adds (day headers, red-card badges, special
-// bets, what-if pills, celebrations) untouched. Deliberately does NOT draw
-// anything of its own -- if the full rich view isn't up yet (or the row
-// count doesn't match, e.g. right after a new matchweek loads), it's a
-// no-op and just waits for the next full loadData() cycle. The interface
-// must always look exactly like loadData() built it; this only ever
-// updates numbers/colours inside rows loadData() already created.
+// stats/injuries/lineups/day-headers/celebrations, but WITH a live score
+// override straight from API-Football when something's actually in play --
+// see buildFastDashboard()) and patches the score text, bet-pill
+// text/colour, and the live "on track to win" pulse of the EXISTING rows in
+// place, leaving everything the full render adds (day headers, red-card
+// badges, special bets, what-if pills, celebrations) untouched. Deliberately
+// does NOT draw anything of its own -- if the full rich view isn't up yet
+// (or the row count doesn't match, e.g. right after a new matchweek loads),
+// it's a no-op and just waits for the next full loadData() cycle. The
+// interface must always look exactly like loadData() built it; this only
+// ever updates numbers/colours/reaction-classes inside rows loadData()
+// already created.
 function patchFastScores(data) {
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
@@ -3055,12 +3076,21 @@ function patchFastScores(data) {
   if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
 
   matches.forEach((m, i) => {
+    const live = getMatchStatusType(m) === 'live';
+
     const spans = leftRows[i].querySelectorAll('.score-pill span');
     if (spans.length === 2) {
-      const live = getMatchStatusType(m) === 'live';
       spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + (m.status === 'NS' ? 'NS' : m.status);
       spans[1].textContent = m.score || '';
     }
+
+    // Same inputs renderDashboard() uses for the live "on track to win"
+    // pulse -- team abbreviations from the match name, and the score, both
+    // already in this fast payload.
+    const [h, a] = String(m.match || '').split('-').map(t => t.trim().toUpperCase());
+    const [hScore, aScore] = (m.score || '0-0').split('-').map(x => parseInt(x) || 0);
+    const matchMinute = parseInt(String(m.status || '').replace("'", ""));
+    const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
 
     const cells = rightRows[i].querySelectorAll('.bet');
     (m.cells || []).forEach((c, ci) => {
@@ -3078,6 +3108,12 @@ function patchFastScores(data) {
         el.style.setProperty('--bet-bg', 'transparent');
         el.classList.add('empty');
       }
+
+      const headerInfo = (window.globalHeaders || [])[ci];
+      const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+      const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
+      el.classList.toggle('sweat-active', isWinning && !isClinchTime);
+      el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
     });
   });
 }
@@ -3309,22 +3345,9 @@ function renderDashboard(data, opts){
                   const headerInfo = data.headers[cellIndex];
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
-                  if(live && !isColumnDead) {
-                      let bet = String(c.value).toUpperCase();
-                      let isWinning = false;
-                      if(bet.includes("-")) {
-                          let [bH, bA] = bet.split("-").map(Number);
-                          if(bH === hScore && bA === aScore) isWinning = true;
-                      } else {
-                          if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                          else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
-                          else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
-                      }
-
-                      if(isWinning) {
-                          if(isClinchTime) el.classList.add("sweat-clinch");
-                          else el.classList.add("sweat-active");
-                      }
+                  if(live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore)) {
+                      if(isClinchTime) el.classList.add("sweat-clinch");
+                      else el.classList.add("sweat-active");
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);

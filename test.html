@@ -1047,8 +1047,10 @@ body {
 .el-home, .el-away { width: 48%; display: flex; flex-direction: column; gap: 6px; }
 .el-home { text-align: right; align-items: flex-end; }
 .el-away { text-align: left; align-items: flex-start; margin-left: auto; }
-.el-item { display: flex; align-items: center; gap:8px; opacity: 1; color: var(--text-main); }
-.el-away .el-item { flex-direction: row; justify-content: flex-start; } 
+.el-item { display: flex; flex-direction: column; gap: 2px; opacity: 1; color: var(--text-main); }
+.el-item-main { display: flex; align-items: center; gap:8px; }
+.el-away .el-item-main { flex-direction: row; justify-content: flex-start; }
+.el-assist { font-size: 9px; opacity: 0.5; font-weight: 600; }
 .el-time { color: var(--accent-orange); font-size:10px; font-weight:700; }
 .divider-line { height: 1px; background: rgba(255,255,255,0.1); width: 100%; margin: 12px 0; }
 .og-tag { color: #ff4d4d; font-size: 9px; font-weight:800; margin-left:2px; margin-right:2px; }
@@ -1875,41 +1877,56 @@ img[alt="AVI"] {
   padding: 4px 0;
 }
 
-/* === Match Timeline (Summary tab) === */
-.timeline-row {
-  display: flex;
+/* === Match Timeline (Summary tab) -- a central spine with home events on
+   the left, away events on the right, newest event at the top === */
+.timeline-container { position: relative; padding: 4px 0; }
+.timeline-spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.08);
+  transform: translateX(-50%);
+}
+.timeline-entry {
+  display: grid;
+  grid-template-columns: 1fr 36px 1fr;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  gap: 4px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.timeline-minute-badge {
+  grid-column: 2;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.75;
+  background: var(--bg-soft);
+  border-radius: 4px;
+  padding: 2px 0;
+  z-index: 1;
+}
+.timeline-card {
   background: var(--bg-soft);
   border: 1px solid rgba(255,255,255,0.05);
-  border-left: 3px solid rgba(255,255,255,0.15);
-  margin-bottom: 6px;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 0;
 }
-.timeline-row.timeline-home { border-left-color: var(--accent-green); }
-.timeline-row.timeline-away { border-left-color: var(--accent-orange); }
-.timeline-minute {
-  font-size: 11px;
-  font-weight: 800;
-  opacity: 0.6;
-  min-width: 28px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.timeline-icon {
-  font-size: 15px;
-  flex-shrink: 0;
-  width: 20px;
-  text-align: center;
-}
-.timeline-detail { min-width: 0; flex: 1; }
+.timeline-home .timeline-card { grid-column: 1; border-right: 3px solid var(--accent-green); }
+.timeline-away .timeline-card { grid-column: 3; border-left: 3px solid var(--accent-orange); }
+.timeline-card-inner { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.timeline-home .timeline-card-inner { flex-direction: row-reverse; }
+.timeline-icon { font-size: 15px; flex-shrink: 0; }
+.timeline-text { min-width: 0; }
+.timeline-home .timeline-text { text-align: right; }
+.timeline-away .timeline-text { text-align: left; }
 .timeline-player {
   font-size: 12px;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 .timeline-sub {
   font-size: 10px;
@@ -4438,7 +4455,8 @@ function renderMatchTimeline(stats) {
   };
 
   const minuteValue = (t) => parseFloat(String(t).replace('+', '.')) || 0;
-  const sorted = events.slice().sort((a, b) => minuteValue(a.time) - minuteValue(b.time));
+  // Newest event on top -- reads like a live feed instead of a scoresheet.
+  const sorted = events.slice().sort((a, b) => minuteValue(b.time) - minuteValue(a.time));
 
   const rows = sorted.map(e => {
     let icon = null, sub = '';
@@ -4459,14 +4477,21 @@ function renderMatchTimeline(stats) {
     }
     if (!icon) return ''; // unknown/uninteresting event type -- skip
     const isHome = resolveIsHome(e.player);
-    return `<div class="timeline-row ${isHome ? 'timeline-home' : 'timeline-away'}">
-      <div class="timeline-minute">${e.time}'</div>
-      <div class="timeline-icon">${icon}</div>
-      <div class="timeline-detail"><div class="timeline-player">${e.player || ''}</div>${sub ? `<div class="timeline-sub">${sub}</div>` : ''}</div>
+    return `<div class="timeline-entry ${isHome ? 'timeline-home' : 'timeline-away'}">
+      <div class="timeline-card">
+        <div class="timeline-card-inner">
+          <div class="timeline-icon">${icon}</div>
+          <div class="timeline-text">
+            <div class="timeline-player">${e.player || ''}</div>
+            ${sub ? `<div class="timeline-sub">${sub}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="timeline-minute-badge">${e.time}'</div>
     </div>`;
   }).filter(Boolean).join('');
 
-  return rows || '<div class="injury-empty">No notable events</div>';
+  return rows ? `<div class="timeline-container"><div class="timeline-spine"></div>${rows}</div>` : '<div class="injury-empty">No notable events</div>';
 }
 
 function switchTab(t){
@@ -4949,9 +4974,10 @@ function openModal(m){
                      if(parts.some(pt => pt.length>2 && (s.lineups.h.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.h.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = true;
                      else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
                  }
-                 if(isH === null) isH = true; 
-                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
+                 if(isH === null) isH = true;
+                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], assists: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
                  goalsMap[cleanP].times.push(e.time + "'");
+                 if (e.type === "Goal" && e.assist && e.detail !== "Own Goal") goalsMap[cleanP].assists.push(e.assist);
              }
           });
       }
@@ -4959,12 +4985,14 @@ function openModal(m){
           let g = goalsMap[key];
           let timesStr = g.times.join(", ");
           let name = formatName(g.rawName);
+          let assistStr = g.assists.length ? [...new Set(g.assists)].join(", ") : "";
+          let assistHtml = assistStr ? `<div class="el-assist">Assist: ${assistStr}</div>` : "";
           let html = "";
           let icon = "⚽";
           if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
-          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : ""; 
-          if(g.isHome) { html = `<div class="el-item"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>`; hG.push(html); } 
-          else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
+          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : "";
+          if(g.isHome) { html = `<div class="el-item"><div class="el-item-main"><span>${name}${ogText}</span> <span class="el-time">${timesStr}</span> <span class="el-icon">${icon}</span></div>${assistHtml}</div>`; hG.push(html); }
+          else { html = `<div class="el-item"><div class="el-item-main"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>${assistHtml}</div>`; aG.push(html); }
       });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
       document.getElementById("summaryTimeline").innerHTML = renderMatchTimeline(s);

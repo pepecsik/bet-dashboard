@@ -1889,7 +1889,7 @@ img[alt="AVI"] {
 
 /* === Match Timeline (Summary tab) -- a central spine with home events on
    the left, away events on the right, newest event at the top === */
-.timeline-container { position: relative; padding: 4px 0; }
+.timeline-container { position: relative; padding: 2px 0; }
 .timeline-spine {
   position: absolute;
   left: 50%;
@@ -1901,48 +1901,48 @@ img[alt="AVI"] {
 }
 .timeline-entry {
   display: grid;
-  grid-template-columns: 1fr 36px 1fr;
+  grid-template-columns: 1fr 32px 1fr;
   align-items: center;
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   position: relative;
 }
 .timeline-minute-badge {
   grid-column: 2;
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   opacity: 0.75;
   background: var(--bg-soft);
   border-radius: 4px;
-  padding: 2px 0;
+  padding: 1px 0;
   z-index: 1;
 }
 .timeline-card {
   background: var(--bg-soft);
   border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 8px;
-  padding: 6px 10px;
+  border-radius: 6px;
+  padding: 3px 7px;
   min-width: 0;
 }
 .timeline-home .timeline-card { grid-column: 1; border-right: 3px solid var(--accent-green); }
 .timeline-away .timeline-card { grid-column: 3; border-left: 3px solid var(--accent-orange); }
-.timeline-card-inner { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.timeline-card-inner { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .timeline-home .timeline-card-inner { flex-direction: row-reverse; }
-.timeline-icon { font-size: 15px; flex-shrink: 0; }
+.timeline-icon { font-size: 12px; flex-shrink: 0; }
 .timeline-text { min-width: 0; }
 .timeline-home .timeline-text { text-align: right; }
 .timeline-away .timeline-text { text-align: left; }
 .timeline-player {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 .timeline-sub {
-  font-size: 10px;
+  font-size: 8px;
   opacity: 0.55;
   font-weight: 600;
-  margin-top: 1px;
+  margin-top: 0;
 }
 
 /* === Match Odds strip -- small and subtle, not a headline element === */

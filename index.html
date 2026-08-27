@@ -2630,6 +2630,10 @@ function renderHallOfFame(slips) {
 }
  
 const REFRESH_MS=30000;
+// Fast poll -- scores + bet pills only (see loadFastData/patchFastScores
+// below), so it can run much more often than the full payload without the
+// cost of everything else the app also fetches.
+const FAST_REFRESH_MS=10000;
 
 // GLOBAL VARIABLES
 let prevMatches = {};
@@ -3024,6 +3028,87 @@ function renderSkeletons() {
     const lr=document.createElement("div"); lr.className="left-row sk-row"; lr.innerHTML=`<div class="left-cell skeleton" style="flex:1"></div><div class="left-cell skeleton" style="width:90px"></div>`; left.appendChild(lr);
     const rr=document.createElement("div"); rr.className="row sk-row"; for(let j=0;j<5;j++){const b=document.createElement("div");b.className="bet skeleton";rr.appendChild(b)} right.appendChild(rr);
   }
+}
+
+// ── Fast poll: scores + bet pills only ─────────────────────────
+// Hits ?mode=fast (buildFastDashboard() -- DASHBOARD sheet only, no deep
+// stats/injuries/lineups/day-headers/celebrations) and patches the score
+// text and bet-pill text/colour of the EXISTING rows in place, leaving
+// everything the full render adds (day headers, red-card badges, special
+// bets, what-if pills, celebrations) untouched. If the rows don't exist
+// yet, or the row count doesn't match this data (new matchweek), falls
+// back to a minimal scaffold render instead of patching nothing/the wrong
+// thing -- the next full loadData() cycle replaces that scaffold with the
+// complete rich view regardless.
+function renderFastScaffold(data, left, right) {
+  left.innerHTML = ''; right.innerHTML = '';
+  (data.matches || []).forEach(m => {
+    const [h, a] = (m.match || '').split('-').map(t => t.trim().toUpperCase());
+    const displayStatus = m.status === 'NS' ? 'NS' : m.status;
+    const lr = document.createElement('div'); lr.className = 'left-row fast-row';
+    lr.innerHTML = `<div class="left-cell match"><div class="match-teams">${renderTeam(h)}<span>-</span>${renderTeam(a)}</div></div><div class="left-cell"><div class="score-pill"><span>${displayStatus}</span><span>${m.score||''}</span></div></div>`;
+    left.appendChild(lr);
+    const rr = document.createElement('div'); rr.className = 'row fast-row';
+    (m.cells || []).forEach(c => {
+      const el = document.createElement('div'); el.className = 'bet';
+      if (c.value) { el.textContent = c.value; el.style.backgroundColor = c.color || '#262a30'; }
+      else { el.classList.add('empty'); }
+      rr.appendChild(el);
+    });
+    right.appendChild(rr);
+  });
+}
+
+function patchFastScores(data) {
+  const left = document.getElementById('left'), right = document.getElementById('right');
+  if (!left || !right) return;
+  const matches = data.matches || [];
+  // Skeleton placeholder rows also carry the .left-row/.row classes (see
+  // renderSkeletons), and the BET/WIN/WIN PP summary rows appended after
+  // the matches also carry .row (as .short-row) -- both must be excluded
+  // here, otherwise the row count never matches matches.length and every
+  // fast poll would wrongly fall through to the scaffold instead of
+  // patching in place.
+  const leftRows = left.querySelectorAll('.left-row:not(.sk-row)');
+  const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
+
+  if (leftRows.length !== matches.length || rightRows.length !== matches.length) {
+    renderFastScaffold(data, left, right);
+    return;
+  }
+
+  matches.forEach((m, i) => {
+    const spans = leftRows[i].querySelectorAll('.score-pill span');
+    if (spans.length === 2) {
+      const live = getMatchStatusType(m) === 'live';
+      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + (m.status === 'NS' ? 'NS' : m.status);
+      spans[1].textContent = m.score || '';
+    }
+
+    const cells = rightRows[i].querySelectorAll('.bet');
+    (m.cells || []).forEach((c, ci) => {
+      const el = cells[ci];
+      if (!el || el.classList.contains('special-bet') || el.classList.contains('whatif-pill')) return;
+      if (c.value) {
+        el.textContent = c.value;
+        let color = c.color || '#262a30';
+        if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
+        el.style.setProperty('--bet-bg', color);
+        el.style.backgroundColor = color;
+        el.classList.remove('empty');
+      } else {
+        el.textContent = '';
+        el.style.setProperty('--bet-bg', 'transparent');
+        el.classList.add('empty');
+      }
+    });
+  });
+}
+
+function loadFastData(){
+  fetch(API_URL + '?mode=fast').then(r=>r.json()).then(data=>{
+    try { patchFastScores(data); } catch(e) { console.error('fast patch failed', e); }
+  }).catch(()=>{});
 }
 
 // MAIN LOAD FUNCTION
@@ -5045,9 +5130,11 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
   }, { passive: true });
 })();
  
-renderSkeletons(); 
-loadData(); 
+renderSkeletons();
+loadFastData(); // paints scores + bet pills first, as fast as DASHBOARD-only can go
+loadData();
 setInterval(loadData,REFRESH_MS);
+setInterval(loadFastData,FAST_REFRESH_MS);
 setInterval(updateTicker, 1000); // NEW: update countdown display every second
 
 document.getElementById("rankingCard").onclick=()=>{

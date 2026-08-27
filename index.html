@@ -3089,8 +3089,14 @@ function loadFastData(){
 }
 
 // MAIN LOAD FUNCTION
-function loadData(){
-  fetch(API_URL).then(r=>r.json()).then(data=>{
+// The actual renderer -- builds the exact same real DOM every time it's
+// called, whether fed a fresh network payload or a locally cached one.
+// suppressCelebration is only true for the instant cache-primed paint (see
+// loadData() below): the confetti/big-win moment already happened in a
+// past session for whatever's in that cached snapshot, so it shouldn't
+// replay just because we're re-showing it while the real fetch is in flight.
+function renderDashboard(data, opts){
+    const suppressCelebration = !!(opts && opts.suppressCelebration);
     try {
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
@@ -3157,7 +3163,7 @@ function loadData(){
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
-           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } }
+           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(!suppressCelebration){ if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } } }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
@@ -3185,8 +3191,10 @@ function loadData(){
                 });
                 if (status === 'HIT' && allMatchesFinal) {
                     p.classList.add('status-green');
-                    if (isFirstLoad) { setTimeout(() => { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }, 1500); }
-                    else { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }
+                    if (!suppressCelebration) {
+                        if (isFirstLoad) { setTimeout(() => { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }, 1500); }
+                        else { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }
+                    }
                 } else if (status === 'HIT') {
                     p.classList.add('status-green-live');
                 } else if (status === 'MISSED') {
@@ -3501,9 +3509,23 @@ function loadData(){
        updateTicker();
         isFirstLoad = false;
     } catch(e){ console.error(e); }
-  });
 }
- 
+
+// Cache-first load: livescore-style apps feel instant because they paint
+// the LAST KNOWN state straight from local storage (zero network wait),
+// then quietly fetch the real thing and re-render over it -- same
+// renderDashboard() call either way, so there's never a different-looking
+// template, just the same real UI arriving sooner. The cache-primed paint
+// on startup (see below) is what actually makes cold-open/reopen fast;
+// this fetch is what keeps it correct.
+const DASHBOARD_CACHE_KEY = 'cachedDashboard_v1';
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(data)); } catch(e) { /* storage full/unavailable -- just skip caching */ }
+    renderDashboard(data, { suppressCelebration: false });
+  }).catch(()=>{});
+}
+
 function getMatchStatusType(m) {
     if(!m.status) return 'upcoming';
     const s = m.status.toUpperCase();
@@ -5107,7 +5129,20 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
   }, { passive: true });
 })();
  
-renderSkeletons();
+// If a previous session already cached a dashboard on this device, paint
+// it immediately -- the exact real interface, zero network wait -- then
+// let loadData() below fetch the current data and render over it. Only
+// falls through to the skeleton placeholders on a device with nothing
+// cached yet (e.g. the very first open ever).
+let paintedFromCache = false;
+try {
+  const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+  if (cachedRaw) {
+    renderDashboard(JSON.parse(cachedRaw), { suppressCelebration: true });
+    paintedFromCache = true;
+  }
+} catch(e) { paintedFromCache = false; }
+if (!paintedFromCache) renderSkeletons();
 loadData();
 setInterval(loadData,REFRESH_MS);
 // Fast poll starts being useful once loadData() has drawn the real rows the

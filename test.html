@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="carbon">
+<html lang="en" data-theme="premierleague">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -12,10 +12,15 @@
 <meta name="apple-mobile-web-app-title" content="Juice Bets">
 
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 
 <title>Juice Bets</title>
 
@@ -227,14 +232,140 @@
     font-size: 1.3em;
 }
 
+/* 4. WORLD CUP (NED + AUS) */
+[data-theme="premierleague"] {
+  --font-main: 'Inter', system-ui, sans-serif;
+  --base-size: 12px;
+
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #3d1350 0%, #24082e 40%, #12040d 100%);
+  --bg-card:  rgba(45, 10, 58, 0.72);
+  --bg-soft:  rgba(255, 255, 255, 0.06);
+  --bg-row:   rgba(255, 255, 255, 0.03);
+  --bg-modal: rgba(20, 4, 26, 0.97);
+
+  --text-main:  #ffffff;
+  --text-muted: #b79ecf;
+
+  --accent-orange: #ff2882;   /* PL magenta */
+  --accent-gold:   #f6c90e;   /* real gold — Hall of Fame / winner accents, not brand-themed */
+  --accent-green:  #00ff85;   /* PL lime */
+
+  --border-light:  1px solid rgba(255, 40, 130, 0.3);
+  --shadow-card:   0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,40,130,0.08);
+
+  --rad-sm: 6px;
+  --rad-md: 10px;
+  --rad-lg: 16px;
+
+  --logo-filter: none;
+  --modal-overlay: rgba(10, 2, 14, 0.9);
+}
+
+/* Header: PL purple + magenta stripe */
+[data-theme="premierleague"] .left-header {
+  background: linear-gradient(135deg, #24082e 60%, #3d1350 100%);
+  border-bottom: 2px solid #ff2882;
+}
+[data-theme="premierleague"] .header-main-text { color: #ffffff; }
+[data-theme="premierleague"] .header-sub-text  { color: #ff7ac6; letter-spacing: 2px; }
+
+/* Cards: deep purple glass with magenta rim */
+[data-theme="premierleague"] .left-card,
+[data-theme="premierleague"] .right-card,
+[data-theme="premierleague"] .summary,
+[data-theme="premierleague"] .modal-card,
+[data-theme="premierleague"] .ranking-card {
+  border: 1px solid rgba(255, 40, 130, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7), inset 0 0 60px rgba(255,40,130,0.03);
+}
+
+/* Magenta active filter */
+[data-theme="premierleague"] .filter-btn.active,
+[data-theme="premierleague"] .toggle-btn.active {
+  background: #ff2882;
+  color: #fff;
+  border-color: #ff2882;
+  box-shadow: 0 3px 12px rgba(255,40,130,0.4);
+}
+
+/* Live row: magenta glow */
+[data-theme="premierleague"] .left-row[data-status="live"] {
+  border: 1px solid #ff2882 !important;
+  background: rgba(255,40,130,0.06) !important;
+  box-shadow: 0 0 16px rgba(255,40,130,0.2);
+}
+[data-theme="premierleague"] .left-row[data-status="live"] .score-pill span:first-child {
+  background: #ff2882 !important;
+  color: #fff !important;
+}
+
+/* Win state: PL lime */
+[data-theme="premierleague"] .status-green {
+  background: linear-gradient(135deg, #00ff85, #00c46a) !important;
+  color: #04150a !important;
+  box-shadow: 0 0 20px rgba(0,255,133,0.5);
+}
+
+/* Near-win state stays true orange — .status-orange normally reads
+   var(--accent-orange), which this theme repoints to PL magenta for
+   branding elsewhere; the live green/orange/red bet-status language
+   itself needs to stay universal regardless of theme. */
+[data-theme="premierleague"] .status-orange {
+  background-color: #fb923c !important;
+}
+
+/* Ticker bar: dark purple + magenta dot */
+[data-theme="premierleague"] #matchday-ticker-bar {
+  background: #12040d;
+  border-bottom: 1px solid rgba(255,40,130,0.3);
+}
+[data-theme="premierleague"] .ticker-countdown        { color: #ff7ac6; }
+[data-theme="premierleague"] .ticker-countdown .ticker-time { color: #00ff85; }
+[data-theme="premierleague"] .ticker-live             { color: #ff2882; }
+[data-theme="premierleague"] .ticker-live .ticker-dot { background: #ff2882; box-shadow: 0 0 8px #ff2882; }
+
+/* Modal tabs: magenta underline */
+[data-theme="premierleague"] .tab-btn.active {
+  color: #ff2882;
+  border-bottom-color: #ff2882;
+}
+
+/* Bet pills get a subtle purple bg */
+[data-theme="premierleague"] .bet {
+  border-color: rgba(255,40,130,0.15);
+}
+
+/* Scores/money */
+[data-theme="premierleague"] .week-gbp.green  { color: #00ff85; }
+[data-theme="premierleague"] .week-gbp.red    { color: #ff4444; }
+[data-theme="premierleague"] .rank-money      { color: #00ff85; }
+[data-theme="premierleague"] .txt-green       { color: #00ff85 !important; }
+
+/* Action button: PL magenta */
+[data-theme="premierleague"] .place-bets-btn {
+  background: linear-gradient(135deg, #ff2882, #c81466);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(255,40,130,0.35);
+}
+[data-theme="premierleague"] .action-btn {
+  background: linear-gradient(135deg, #ff2882, #c81466);
+  color: #fff;
+}
+
+/* Summary toggle */
+[data-theme="premierleague"] .summary-toggle { background: rgba(255,40,130,0.08); }
+
+/* Day headers */
+[data-theme="premierleague"] .day-header { color: #ff2882; opacity: 1; }
+ 
 /* =========================================
    CORE STYLES
    ========================================= */
 
 :root{
   /* --- DIMENSIONS --- */
-  --row-h:50px; 
-  --header-h:50px;
+  --row-h:50px;
+  --header-h:58px;
   --header-pill-w:70px;
   --gap:8px;
   --left-w:230px; 
@@ -257,10 +388,54 @@ body {
   font-size: var(--base-size);
   background: var(--bg-grad);
   color: var(--text-main);
-  min-height: 100vh; 
-  overflow-y: auto; 
+  min-height: 100vh;
+  overflow-y: auto;
   letter-spacing: -0.02em;
   transition: background 0.5s ease, color 0.3s ease;
+}
+
+/* ===== OPENING BUMPER ===== */
+#splashOverlay {
+  position: fixed; inset: 0; z-index: 999999;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; /* never blocks a tap, even mid-animation */
+  overflow: hidden;
+}
+.splash-wipe {
+  position: absolute; top: 0; left: 0;
+  width: 160vw; height: 100%;
+  background: linear-gradient(100deg, var(--bg-grad) 85%, rgba(255,255,255,0.35) 92%, var(--bg-grad) 100%);
+  clip-path: polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%);
+  transform: translateX(-100%);
+  animation: splashWipe 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+.splash-logo {
+  position: relative; width: min(62vw, 300px); height: min(62vw, 300px);
+  object-fit: contain;
+  opacity: 0; transform: scale(0.7);
+  animation: splashLogo 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+}
+@keyframes splashWipe {
+  0%   { transform: translateX(-100%); }
+  25%  { transform: translateX(0%); }
+  65%  { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes splashLogo {
+  0%   { opacity: 0; transform: scale(0.7); }
+  32%  { opacity: 1; transform: scale(1.05); }
+  40%  { opacity: 1; transform: scale(1); }
+  78%  { opacity: 1; transform: scale(1); }
+  92%  { opacity: 0; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+/* Motion-sensitive: a plain quick fade instead of the sweep/scale. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-wipe { animation: splashFadeWipe 1s ease forwards; transform: translateX(0%); clip-path: none; width: 100%; }
+  .splash-logo { animation: splashFadeLogo 1s ease forwards; transform: none; }
+  @keyframes splashFadeWipe { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes splashFadeLogo { 0% { opacity: 0; } 30%, 60% { opacity: 1; } 100% { opacity: 0; } }
 }
 
 /* PREMIUM NUMBERS */
@@ -368,7 +543,15 @@ body {
 }
 
 .score-pill, .bet { transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease; }
-
+@keyframes goalFlash {
+  0%   { transform: scale(1.3); background: #ffd700 !important; color: #000 !important; box-shadow: 0 0 0 3px #ffd700, 0 0 30px rgba(255,215,0,0.9); }
+  40%  { transform: scale(1.08); background: var(--accent-orange) !important; box-shadow: 0 0 15px rgba(255,150,0,0.5); }
+  100% { transform: scale(1); }
+}
+.flash-active {
+  animation: goalFlash 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+ 
 /* === DARK SKELETON === */
 .skeleton {
   background-color: var(--bg-soft);
@@ -463,15 +646,20 @@ body {
 .pl-logo { width: 90%; height: 90%; object-fit: contain; transform: scale(0.9); }
 
 .brand-btn {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  width: 36px; height: 36px; 
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 50px; height: 50px;
   display: flex; align-items: center; justify-content: center;
-  background: transparent; border-radius: 8px; overflow: hidden; 
+  background: transparent; border-radius: 10px; overflow: hidden;
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   cursor: pointer;
 }
-.brand-btn:active { transform: translateY(-50%) scale(0.9); }
-.brand-logo { width: 100%; height: 100%; object-fit: cover; transform: scale(1.35); filter: var(--logo-filter); transition: filter 0.3s; }
+/* No :active press effect here on purpose -- this is the triple-tap
+   easter egg for the hidden theme toggle, so it shouldn't look tappable. */
+/* header-logo.png is the shield-shaped mark, used only here -- everywhere
+   else (favicon, apple-touch-icon, manifest) still uses the square mark.
+   It's got its own transparent padding baked in, so object-fit: contain is
+   all that's needed to show it uncropped at whatever size the button is. */
+.brand-logo { width: 100%; height: 100%; object-fit: contain; filter: var(--logo-filter); transition: filter 0.3s; }
 
 /* ALIGNED SPACER/FILTER BAR */
 .spacer-bar {
@@ -981,10 +1169,26 @@ body {
 .player-card:active { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.1); }
 .player-avatar { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; display: block; }
 .player-name-text { display: none; }
-.bet-row { display:grid; grid-template-columns: 1fr 60px 60px; gap:8px; padding:8px; background:var(--bg-soft); margin-bottom:8px; border-radius:10px; align-items:center; }
-.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); }
-.vs-tag { opacity:0.4; font-size:10px; }
-.bet-input-slot { height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
+/* Betting modal: wider than the other modal-sheets so it fits an iPhone
+   screen more fully instead of leaving big side margins. */
+#modalBetList .modal-sheet { width: 94%; max-width: 460px; }
+/* Bet list: fixed match-name column + one shared horizontally-scrolling pill column, so every row scrolls in sync and pills never overlap the names.
+   .bet-list-row-unit is the names+pills pair sized to its own content (not
+   stretched to fill the row), so .bet-list-split can center that whole unit
+   -- names included -- instead of only centering the pills within whatever
+   space was left over after the names column. If a player ever has enough
+   bet columns that the pair doesn't fit, the row-unit's max-width caps it
+   and the pills scroll horizontally same as before, names still pinned. */
+.bet-list-split { display:flex; justify-content:center; }
+.bet-list-row-unit { display:flex; align-items:flex-start; max-width:100%; }
+.bet-list-names { display:flex; flex-direction:column; gap:8px; flex:0 0 auto; }
+.bet-list-pills-scroll { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; flex:0 1 auto; min-width:0; }
+.bet-list-pills-scroll::-webkit-scrollbar { display:none; }
+.bet-list-pills { display:flex; flex-direction:column; gap:8px; width:max-content; }
+.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; min-width:118px; }
+.vs-tag { opacity:0.4; font-size:10px; flex:0 0 auto; }
+.bet-pills-row { display:flex; align-items:center; gap:8px; background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; }
+.bet-input-slot { flex:0 0 72px; width:72px; height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
 .bet-input-slot.filled { color: #000; border-color: var(--accent-green); background: var(--accent-green); }
 .picker-title { text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 10px; color: var(--accent-orange); }
 .picker-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -997,8 +1201,20 @@ body {
 .score-input { background: #000; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; width: 100%; }
 .action-btn { background: var(--accent-green); color: #000; padding: 15px; border-radius: 12px; font-weight: 800; text-align: center; border: none; cursor: pointer; width: 100%; font-size: 14px; }
 .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; opacity: 0.5; cursor: pointer; color: var(--text-main); }
+.admin-pin-input {
+  width: 160px; margin: 12px auto 4px; padding: 14px; display: block;
+  text-align: center; font-size: 28px; letter-spacing: 16px;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3); color: var(--text-main); font-family: inherit;
+}
+.admin-pin-input.shake { animation: adminPinShake 0.4s; border-color: #ff4444; }
+@keyframes adminPinShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
 .scroll-y { overflow-y: auto; padding-bottom: 50px; }
-.bet-header-row { display: grid !important; grid-template-columns: 1fr 60px 60px !important; gap: 8px; padding: 0 8px 8px 8px; align-items: center; }
+.bet-header-row { padding: 0 8px 8px 8px; }
 .success-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-card); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .success-overlay.active { opacity: 1; pointer-events: all; }
 .success-icon { font-size: 50px; margin-bottom: 20px; animation: bounce 1s infinite; }
@@ -1047,42 +1263,7 @@ body {
   cursor: default;
   border: 1px solid rgba(255,255,255,0.05);
 }
-.place-bets-btn.disabled:active { transform: none; }
-
-/* === LOCK FEATURE STYLES === */
-.bet.locked-bet {
-  background: rgba(249, 115, 22, 0.1) !important;
-  border: 1px solid rgba(249, 115, 22, 0.25) !important;
-  color: var(--text-muted) !important;
-  font-size: 16px !important;
-  box-shadow: none !important;
-}
-.lock-badge-pill {
-  position: absolute; bottom: -5px; right: -5px;
-  width: 18px; height: 18px;
-  background: #f97316; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; z-index: 20;
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-.lock-in-btn {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: #fff; border: none;
-  border-radius: var(--rad-md);
-  padding: 15px; font-weight: 800; font-size: 14px;
-  text-transform: uppercase; letter-spacing: 1px;
-  cursor: pointer; width: 100%; margin-top: 8px;
-  font-family: var(--font-main);
-  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
-  transition: transform 0.1s;
-}
-.lock-in-btn:active { transform: scale(0.97); }
-.lock-in-btn.locked {
-  background: var(--accent-green) !important; color: #000 !important;
-  box-shadow: none; cursor: default;
-}
-.lock-in-btn.locked:active { transform: none; }
+.place-bets-btn.disabled:active { transform: none; } 
 
 /* ========================================================= */
 /* === H2H & FORM STYLES (CLEANED & MERGED) === */
@@ -1437,6 +1618,11 @@ img[alt="AVI"] {
     margin-bottom: 2px;
     white-space: nowrap;
 }
+.place-1 .podium-money { font-size: 15px; }
+/* "N Points" reads wider than a money figure -- a touch smaller so it
+   still sits comfortably in the same space. */
+.podium-money.pts { font-size: 11px; }
+.place-1 .podium-money.pts { font-size: 13px; }
 
 /* Matches Right Text */
 .podium-stats {
@@ -1447,6 +1633,26 @@ img[alt="AVI"] {
     text-align: center;
     line-height: 1.1;
 }
+
+/* Low-profile podium -- same rank-ordered shape as the full podium, but
+   compact: no bars/height hierarchy, just a small avatar row with the
+   winner slightly bigger, used inside the full Performance History chart. */
+.mini-podium { display: flex; align-items: flex-end; justify-content: center; gap: 16px; padding: 4px 0 12px; }
+.mini-podium-place { display: flex; flex-direction: column; align-items: center; position: relative; }
+.mini-podium-avatar { width: 34px; height: 34px; border-radius: 6px; object-fit: contain; background: #000; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+.mini-podium-place.first .mini-podium-avatar { width: 46px; height: 46px; border: 2px solid var(--accent-gold); }
+.mini-crown { position: absolute; top: -15px; font-size: 15px; }
+.mini-podium-name { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+.mini-podium-stat { font-size: 12px; font-weight: 900; color: var(--accent-green); margin-top: 1px; white-space: nowrap; }
+.mini-podium-place.first .mini-podium-stat { font-size: 14px; }
+.mini-podium-stat.pts { font-size: 10px; }
+.mini-podium-place.first .mini-podium-stat.pts { font-size: 12px; }
+
+/* Ranking-card header row (title + Season/All Time toggle) */
+.ranking-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.ranking-header-row .ranking-title { margin-bottom: 0; width: auto; text-align: left; }
+.toggle-group.mini { padding: 2px; gap: 1px; }
+.toggle-group.mini .toggle-btn { font-size: 9px; padding: 3px 8px; }
 
 /* Crown Animation */
 .crown-icon {
@@ -1667,11 +1873,109 @@ img[alt="AVI"] {
   font-weight: 600;
   text-align: center;
   padding: 4px 0;
-} 
- 
+}
+
+/* === Match Timeline (Summary tab) === */
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-left: 3px solid rgba(255,255,255,0.15);
+  margin-bottom: 6px;
+}
+.timeline-row.timeline-home { border-left-color: var(--accent-green); }
+.timeline-row.timeline-away { border-left-color: var(--accent-orange); }
+.timeline-minute {
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.6;
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.timeline-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.timeline-detail { min-width: 0; flex: 1; }
+.timeline-player {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-sub {
+  font-size: 10px;
+  opacity: 0.55;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+/* === Match Odds strip === */
+.odds-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+.odds-cell {
+  flex: 1;
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+.odds-cell-label {
+  font-size: 9px;
+  font-weight: 800;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+.odds-cell-value {
+  font-size: 15px;
+  font-weight: 800;
+}
+.odds-bookie {
+  font-size: 9px;
+  opacity: 0.4;
+  font-weight: 600;
+  text-align: right;
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
 </style>
 </head>
 <body>
+
+<!-- Opening bumper: a diagonal wipe panel (matching the app's own
+     background, so it reads as the app itself sweeping into view rather
+     than a separate splash screen) with the shield logo fading in once
+     it's fully covered, then wiping onward off the other side. Pure CSS —
+     no video file, no extra network request, reuses header-logo.png which
+     the header itself already loads. Removed from the DOM once done so it
+     costs nothing after the first ~1.4s. -->
+<div id="splashOverlay" aria-hidden="true">
+  <div class="splash-wipe"></div>
+  <img src="header-logo.png" class="splash-logo" alt="">
+</div>
+<script>
+(function() {
+  var el = document.getElementById('splashOverlay');
+  var wipe = el.querySelector('.splash-wipe');
+  var done = function() { if (el && el.parentNode) el.parentNode.removeChild(el); };
+  wipe.addEventListener('animationend', done);
+  setTimeout(done, 1800); // fallback in case the event never fires
+})();
+</script>
 
 <div id="matchday-ticker-bar" role="status" aria-live="polite">
   <div class="ticker-track">
@@ -1693,8 +1997,20 @@ img[alt="AVI"] {
       <div class="summary-top-row">
         <div class="weekly-card" id="weeklyCard"></div>
         <div class="ranking-card" id="rankingCard">
-          <div class="ranking-title">🏆 All-Time Ranking</div>
+          <div class="ranking-header-row">
+            <div class="ranking-title">🏆 Ranking</div>
+            <div class="toggle-group mini" onclick="event.stopPropagation()">
+              <button class="toggle-btn active" id="rankBtnSeason" onclick="setRankingScope('rankingBody', 'season', this)">Season</button>
+              <button class="toggle-btn" id="rankBtnAllTime" onclick="setRankingScope('rankingBody', 'alltime', this)">All Time</button>
+            </div>
+          </div>
           <div id="rankingBody"></div>
+          <div style="text-align:center; margin-top:10px;">
+            <button onclick="event.stopPropagation(); openHallOfFame();"
+              style="background:linear-gradient(135deg,#f6c90e,#e0a800);color:#1a1a1a;font-weight:800;font-size:11px;border:none;border-radius:20px;padding:7px 18px;cursor:pointer;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.4);">
+              🥇 Hall of Fame
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1757,20 +2073,27 @@ img[alt="AVI"] {
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">
       <button class="modal-back-btn" onclick="closeModal('tableModal')">Back</button>
-      <div class="modal-title">Premier League</div>
+      <div class="modal-title">Standings</div>
       <div class="modal-sub">Live Standings</div>
-      <img src="https://media.api-sports.io/football/leagues/39.png" class="modal-header-logo">
+      <img src="" class="modal-header-logo" id="tableModalLogo">
     </div>
-    <div class="tbl-header tbl-grid">
+    <div id="tableTabs" class="modal-tabs" style="display:none;">
+      <button class="tab-btn active" id="tabStandings" onclick="switchTableTab('standings')">GROUPS</button>
+      <button class="tab-btn" id="tabBracket" onclick="switchTableTab('bracket')">BRACKET</button>
+    </div>
+    <div class="tbl-header tbl-grid" id="standingsHeader">
       <div class="ta-l">#</div><div class="ta-l">Team</div><div class="ta-c">MP</div>
-      <div class="ta-c">Pts</div> <div class="ta-c">GD</div>  <div class="ta-r">Form</div>
+      <div class="ta-c">Pts</div><div class="ta-c">GD</div><div class="ta-r">Form</div>
     </div>
-    <div class="tab-content active scroll-fix" style="padding-top:0;">
+    <div class="tab-content active scroll-fix" id="standingsContent" style="padding-top:0;">
       <div id="tableBody"></div>
+    </div>
+    <div id="bracketView" class="scroll-fix" style="display:none; padding:15px;">
+      <div id="bracketBody"></div>
     </div>
   </div>
 </div>
-
+ 
 <div class="modal-overlay" id="historyModal" onclick="closeModal('historyModal')">
     <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
       <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
@@ -1780,22 +2103,63 @@ img[alt="AVI"] {
       </div>
       
       <div class="history-card-inner">
-         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+             <div class="toggle-group">
+                 <button class="toggle-btn active" id="histBtnSeason" onclick="setRankingScope('historyScoreboard', 'season', this)">Season</button>
+                 <button class="toggle-btn" id="histBtnAllTime" onclick="setRankingScope('historyScoreboard', 'alltime', this)">All Time</button>
+             </div>
              <div class="toggle-group">
                  <button id="btnMatches" class="toggle-btn active">Matches</button>
                  <button id="btnMoney" class="toggle-btn">Money</button>
              </div>
          </div>
 
-         <div class="history-stats-row" id="historyScoreboard"></div>
-         
+         <div id="historyScoreboard"></div>
+
          <div style="position: relative; height: 220px; width: 100%;">
             <canvas id="historyChart"></canvas>
+            <button id="historyChartResetZoom" onclick="historyChart && historyChart.resetZoom()"
+              style="display:none; position:absolute; top:0; right:0; background:rgba(0,0,0,0.35); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:6px; font-size:9px; font-weight:700; padding:4px 8px; cursor:pointer;">
+              ↺ Reset Zoom
+            </button>
+         </div>
+         <div style="text-align:center; font-size:9px; color:var(--text-muted); opacity:0.6; margin-top:6px;">Pinch or scroll to zoom · drag to pan</div>
+      </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="seasonChartModal" onclick="closeModal('seasonChartModal')" style="z-index:2200;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background: var(--bg-soft);">
+      <div class="modal-header" style="border-radius: var(--rad-lg) var(--rad-lg) 0 0; padding-bottom: 10px;">
+        <button class="modal-back-btn" onclick="closeModal('seasonChartModal')">Back</button>
+        <div class="modal-title" id="seasonChartModalTitle">Season History</div>
+        <div class="modal-sub">Full progression</div>
+      </div>
+
+      <div class="history-card-inner">
+         <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+             <div class="toggle-group">
+                 <button id="seasonModalBtnPts" class="toggle-btn" onclick="drawSeasonChartModal('matches')">Points</button>
+                 <button id="seasonModalBtnMoney" class="toggle-btn" onclick="drawSeasonChartModal('money')">Money</button>
+             </div>
+         </div>
+
+         <div style="position: relative; height: 260px; width: 100%;">
+            <canvas id="seasonChartModalCanvas"></canvas>
          </div>
       </div>
     </div>
 </div>
- 
+
+<div class="modal-overlay" id="modalAdminPin" style="align-items:center; z-index: 2200;">
+  <div class="modal-sheet" style="text-align:center;">
+    <div class="close-btn" onclick="closeModal('modalAdminPin')">×</div>
+    <div class="picker-title">ENTER PIN</div>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+      id="adminPinInput" class="admin-pin-input" oninput="checkAdminPin()">
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalPlayer" style="align-items:center;">
   <div class="modal-sheet">
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
@@ -1824,19 +2188,18 @@ img[alt="AVI"] {
     </div>
 
     <div class="pl-btn" onclick="openTable()" style="position: absolute; top: 15px; left: 15px; transform: none; z-index: 20;">
-      <img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
+      <img id="betModalLeagueLogo" src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo">
     </div>
     <div class="close-btn" onclick="closeModal('modalBetList')">×</div>
     <div class="picker-title" id="lblPlayerName">BETTING</div>
     
     <div class="bet-header-row" style="font-size:10px; font-weight:800; color:var(--text-muted);">
-      <div>MATCH</div> <div></div> <div></div>
+      <div>MATCH</div>
     </div>
 
     <div id="betListContainer" class="scroll-y"></div>
 
     <button class="action-btn" onclick="submitAllBets()">CONFIRM & SEND</button>
-    <button class="lock-in-btn" id="lockBtn" onclick="lockInBets()">🔒 LOCK IN BETS</button>
   </div>
 </div>
 
@@ -1891,11 +2254,463 @@ img[alt="AVI"] {
       </div>
   </div>
 </div>
+
+<div class="modal-overlay" id="modalSpecialBet" onclick="closeModal('modalSpecialBet')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('modalSpecialBet')">Back</button>
+      <div class="modal-title" id="specialBetTitle">Combo Bet</div>
+      <div class="modal-sub" id="specialBetMatchSub"></div>
+    </div>
+    <div class="modal-scroll-area" id="specialBetLegs" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-modal);">
+      </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="hofModal" onclick="closeModal('hofModal')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <button class="modal-back-btn" onclick="closeModal('hofModal')">Back</button>
+      <div class="modal-title">Hall of Fame</div>
+            <div class="modal-sub" id="hofSubtitle" style="color:var(--accent-gold)">Winning Bets</div>
+      <div id="hofTotalWin" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);text-align:right;">
+        <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Won</div>
+        <div style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">£0.00</div>
+      </div>
+    </div>
+    <div id="hofTabs" class="modal-tabs">
+      <button class="tab-btn active" id="tabHofBets" onclick="switchHofTab('bets')">🎉 BETS</button>
+      <button class="tab-btn" id="tabHofSeasons" onclick="switchHofTab('seasons')">🏆 SEASONS</button>
+    </div>
+        <div id="hofContent" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:15px 10px 15px 15px;background:var(--bg-modal);flex:1;min-height:0;"></div>
+    <div id="hofDots" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0 14px;background:var(--bg-modal);border-radius:0 0 16px 16px;"></div>
+    <div id="hofSeasonsContent" style="display:none;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:15px 10px 15px 15px;background:var(--bg-modal);flex:1;min-height:0;"></div>
+    <div id="hofSeasonsDots" style="display:none;justify-content:center;align-items:center;gap:6px;padding:8px 0 14px;background:var(--bg-modal);border-radius:0 0 16px 16px;"></div>
+  </div>
+</div>
  
 <script>
 // REPLACE WITH YOUR DEPLOYED WEB APP URL
 const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
+function openHallOfFame() {
+  vibe();
+  switchHofTab('bets');
+  document.getElementById('hofModal').classList.add('active');
+}
+
+function switchHofTab(tab) {
+  vibe();
+  const showBets = tab === 'bets';
+  document.getElementById('hofContent').style.display = showBets ? 'flex' : 'none';
+  document.getElementById('hofDots').style.display = showBets ? 'flex' : 'none';
+  document.getElementById('hofSeasonsContent').style.display = showBets ? 'none' : 'flex';
+  document.getElementById('hofSeasonsDots').style.display = showBets ? 'none' : 'flex';
+  document.getElementById('hofTotalWin').style.display = showBets ? '' : 'none';
+  document.getElementById('hofSubtitle').textContent = showBets ? 'Winning Bets' : 'Season History';
+  document.querySelectorAll('#hofTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(showBets ? 'tabHofBets' : 'tabHofSeasons').classList.add('active');
+  // Charts need real layout to size into, so render lazily on first switch
+  // to this tab rather than while the modal (and this pane) is hidden.
+  if (!showBets) renderSeasonHistory(window.seasonHistory || []);
+}
+
+// Chart.js instances for the season-history carousel, one per card index,
+// tracked so they can be destroyed before each re-render or toggle-switch
+// (Chart.js throws if you reuse a canvas that already has a live chart).
+let seasonCharts = [];
+
+function renderSeasonHistory(seasons) {
+  const wrap = document.getElementById('hofSeasonsContent');
+  const dotsEl = document.getElementById('hofSeasonsDots');
+  if (!wrap) return;
+
+  seasonCharts.forEach(c => c && c.destroy());
+  seasonCharts = [];
+
+  if (!seasons || seasons.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px;">No past seasons saved yet.</p>';
+    if (dotsEl) dotsEl.innerHTML = '';
+    return;
+  }
+
+  const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  // Stashed so drawSeasonChart() (called by the per-card toggle buttons) can
+  // look series data back up by card index.
+  window.seasonHistoryData = [...seasons].reverse(); // most recent season first
+  const reversed = window.seasonHistoryData;
+
+  wrap.innerHTML = reversed.map((season, idx) => {
+    const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : { Snackbar: 0, Timbo: 0, Pepe: 0 };
+    const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : { Snackbar: 0, Timbo: 0, Pepe: 0 };
+    // Money is the winning factor if this season actually paid out anything;
+    // otherwise (e.g. a season with no recorded combo win, money sitting at
+    // 0 all year) points are what decided it, so those lead instead. Stash
+    // the choice on the season object so the default-chart pass below and
+    // the toggle buttons can agree on it.
+    const moneyIsPrimary = (finalMoney.Snackbar || 0) + (finalMoney.Timbo || 0) + (finalMoney.Pepe || 0) > 0;
+    season._moneyIsPrimary = moneyIsPrimary;
+    const players = ['Snackbar', 'Timbo', 'Pepe']
+      .map(p => ({ name: p, money: finalMoney[p] || 0, matches: finalMatches[p] || 0 }))
+      .sort((a, b) => moneyIsPrimary ? (b.money - a.money || b.matches - a.matches) : (b.matches - a.matches || b.money - a.money));
+    const [p1, p2, p3] = players;
+    const primary = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matches} pts`;
+    const secondary = p => moneyIsPrimary ? `${p.matches} pts` : formatGBP(p.money);
+    const hasChart = (season.matches && season.matches.length > 0) || (season.money && season.money.length > 0);
+
+    return `
+      <div style="min-width:calc(100% - 20px);flex-shrink:0;scroll-snap-align:start;background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);display:flex;flex-direction:column;">
+        <div style="background:linear-gradient(135deg,rgba(246,201,14,0.12),rgba(246,201,14,0.04));padding:12px 14px;border-bottom:1px solid rgba(246,201,14,0.2);text-align:center;">
+          <span style="color:var(--text-main);font-weight:900;font-size:15px;">🏆 ${season.season}</span>
+        </div>
+        <div class="podium-container" style="padding:16px 10px 8px;">
+          <div class="podium-place place-2">
+            <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
+            <div class="podium-bar"><div class="podium-money">${primary(p2)}</div><div class="podium-stats">${secondary(p2)}</div></div>
+          </div>
+          <div class="podium-place place-1">
+            <div class="crown-icon">👑</div>
+            <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
+            <div class="podium-bar"><div class="podium-money" style="font-size:15px;">${primary(p1)}</div><div class="podium-stats" style="color:#fff;">${secondary(p1)}</div></div>
+          </div>
+          <div class="podium-place place-3">
+            <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
+            <div class="podium-bar"><div class="podium-money">${primary(p3)}</div><div class="podium-stats">${secondary(p3)}</div></div>
+          </div>
+        </div>
+        ${hasChart ? `
+        <div style="display:flex;justify-content:flex-end;padding:0 12px;">
+          <div class="toggle-group">
+            <button id="seasonBtnPts${idx}" class="toggle-btn${moneyIsPrimary ? '' : ' active'}" onclick="drawSeasonChart(${idx},'matches')">Points</button>
+            <button id="seasonBtnMoney${idx}" class="toggle-btn${moneyIsPrimary ? ' active' : ''}" onclick="drawSeasonChart(${idx},'money')">Money</button>
+          </div>
+        </div>
+        <div style="padding:6px 12px 14px;height:140px;position:relative;cursor:pointer;" onclick="openSeasonChartModal(${idx})">
+          <div style="position:absolute;top:2px;right:8px;font-size:14px;opacity:0.4;z-index:1;">⤢</div>
+          <canvas id="seasonChart${idx}"></canvas>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  reversed.forEach((season, idx) => {
+    if ((season.matches && season.matches.length) || (season.money && season.money.length)) {
+      drawSeasonChart(idx, season._moneyIsPrimary ? 'money' : 'matches');
+    }
+  });
+
+  if (dotsEl) {
+    dotsEl.innerHTML = reversed.map((_, i) =>
+      `<span data-dot="${i}" style="height:6px;width:${i===0?'18px':'6px'};border-radius:3px;background:${i===0?'var(--accent-gold)':'rgba(255,255,255,0.2)'};transition:all 0.3s;display:inline-block;cursor:pointer;"></span>`
+    ).join('');
+    dotsEl.querySelectorAll('span').forEach(dot => {
+      dot.onclick = () => {
+        const i = parseInt(dot.dataset.dot);
+        wrap.scrollTo({ left: i * wrap.offsetWidth, behavior: 'smooth' });
+      };
+    });
+  }
+  wrap.onscroll = () => {
+    const idx = Math.round(wrap.scrollLeft / (wrap.scrollWidth / reversed.length));
+    if (dotsEl) dotsEl.querySelectorAll('span').forEach((d, i) => {
+      d.style.width = i === idx ? '18px' : '6px';
+      d.style.background = i === idx ? 'var(--accent-gold)' : 'rgba(255,255,255,0.2)';
+    });
+  };
+}
+
+// Draws (or redraws) one season card's chart — type is 'matches' (points) or
+// 'money', matching the same toggle idiom as the main dashboard's history
+// chart (drawHistoryChart). idx indexes into window.seasonHistoryData, which
+// renderSeasonHistory() stashes in the already-reversed (newest-first) order.
+function drawSeasonChart(idx, type) {
+  const season = (window.seasonHistoryData || [])[idx];
+  if (!season) return;
+  const series = season[type] || [];
+  const canvas = document.getElementById('seasonChart' + idx);
+  if (!canvas || series.length === 0) return;
+
+  const ptsBtn = document.getElementById('seasonBtnPts' + idx);
+  const moneyBtn = document.getElementById('seasonBtnMoney' + idx);
+  if (ptsBtn) ptsBtn.classList.toggle('active', type === 'matches');
+  if (moneyBtn) moneyBtn.classList.toggle('active', type === 'money');
+
+  if (seasonCharts[idx]) { seasonCharts[idx].destroy(); seasonCharts[idx] = null; }
+
+  const ctx = canvas.getContext('2d');
+  const COLS = { Snackbar: '#4ade80', Timbo: '#4DA3FF', Pepe: '#FF5BC4' };
+  const ps = ['Snackbar', 'Timbo', 'Pepe'];
+  const datasets = ps.map(p => {
+    const c = COLS[p];
+    const grad = ctx.createLinearGradient(0, 0, 0, 140);
+    grad.addColorStop(0, hexToRgba(c, 0.25));
+    grad.addColorStop(1, hexToRgba(c, 0));
+    return { label: p, data: series.map(r => r[p] || 0), borderColor: c, backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 };
+  });
+  seasonCharts[idx] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: series.map(r => r.date), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 5, right: 5, left: 0, bottom: 0 } },
+      scales: { x: { display: false }, y: { display: false } },
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          enabled: true, mode: 'index', intersect: false,
+          backgroundColor: 'rgba(20, 22, 25, 0.95)', titleFont: { size: 11, weight: '800' }, bodyFont: { size: 10, weight: '600' },
+          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatGBP(c.parsed.y) : c.parsed.y}` }
+        }
+      }
+    }
+  });
+}
+
+// Enlarged season chart, opened by tapping any small season-history chart.
+let seasonChartModalInstance = null;
+let seasonChartModalIdx = null;
+
+// Hidden admin page — opened by 5 taps anywhere on the Weekly Summary
+// card (see handleAdminTap, bound once near the other init code below),
+// then a 4-digit PIN before it actually navigates. A real separate page,
+// not a modal, so it's not sitting in this page's DOM/source at all until
+// someone actually navigates there.
+const ADMIN_PIN = '1390';
+
+function openAdminPage() {
+  window.location.href = 'admin.html';
+}
+
+function openAdminPinPrompt() {
+  const input = document.getElementById('adminPinInput');
+  input.value = '';
+  input.classList.remove('shake');
+  document.getElementById('modalAdminPin').classList.add('active');
+  setTimeout(() => input.focus(), 150); // after the modal's own open transition
+}
+
+function checkAdminPin() {
+  const input = document.getElementById('adminPinInput');
+  if (input.value.length < 4) return;
+  if (input.value === ADMIN_PIN) {
+    closeModal('modalAdminPin');
+    openAdminPage();
+  } else {
+    if (navigator.vibrate) navigator.vibrate(200);
+    input.classList.add('shake');
+    input.value = '';
+    setTimeout(() => input.classList.remove('shake'), 400);
+  }
+}
+
+let adminTapCount = 0;
+let adminTapTimer = null;
+function handleAdminTap() {
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 600);
+  if (adminTapCount >= 5) {
+    adminTapCount = 0;
+    if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
+    openAdminPinPrompt();
+  }
+}
+
+function openSeasonChartModal(idx) {
+  vibe();
+  const season = (window.seasonHistoryData || [])[idx];
+  if (!season) return;
+  seasonChartModalIdx = idx;
+  document.getElementById('seasonChartModalTitle').textContent = season.season;
+  document.getElementById('seasonChartModal').classList.add('active');
+  drawSeasonChartModal(season._moneyIsPrimary ? 'money' : 'matches');
+}
+
+function drawSeasonChartModal(type) {
+  const season = (window.seasonHistoryData || [])[seasonChartModalIdx];
+  if (!season) return;
+  const series = season[type] || [];
+  const canvas = document.getElementById('seasonChartModalCanvas');
+  if (!canvas || series.length === 0) return;
+
+  document.getElementById('seasonModalBtnPts').classList.toggle('active', type === 'matches');
+  document.getElementById('seasonModalBtnMoney').classList.toggle('active', type === 'money');
+
+  if (seasonChartModalInstance) { seasonChartModalInstance.destroy(); seasonChartModalInstance = null; }
+
+  const ctx = canvas.getContext('2d');
+  const COLS = { Snackbar: '#4ade80', Timbo: '#4DA3FF', Pepe: '#FF5BC4' };
+  const ps = ['Snackbar', 'Timbo', 'Pepe'];
+  const datasets = ps.map(p => {
+    const c = COLS[p];
+    const grad = ctx.createLinearGradient(0, 0, 0, 260);
+    grad.addColorStop(0, hexToRgba(c, 0.25));
+    grad.addColorStop(1, hexToRgba(c, 0));
+    return { label: p, data: series.map(r => r[p] || 0), borderColor: c, backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 2, borderWidth: 3 };
+  });
+  seasonChartModalInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels: series.map(r => r.date), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 10, right: 10, left: 5, bottom: 0 } },
+      scales: {
+        x: { display: true, grid: { display: false }, ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, maxRotation: 0, autoSkip: true } },
+        y: {
+          display: true, position: 'right',
+          grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
+          ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, callback: (val) => type === 'money' ? '£' + val : val }
+        }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: 'var(--text-main)', boxWidth: 10, font: { size: 10, weight: '700' } } },
+        datalabels: { display: false },
+        tooltip: {
+          enabled: true, mode: 'index', intersect: false,
+          backgroundColor: 'rgba(20, 22, 25, 0.95)', titleFont: { size: 11, weight: '800' }, bodyFont: { size: 10, weight: '600' },
+          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatGBP(c.parsed.y) : c.parsed.y}` }
+        }
+      }
+    }
+  });
+}
+
+function renderHallOfFame(slips) {
+  const wrap = document.getElementById('hofContent');
+  const dotsEl = document.getElementById('hofDots');
+  if (!wrap) return;
+  if (!slips || slips.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px;">No winning bets yet — keep playing!</p>';
+    if (dotsEl) dotsEl.innerHTML = '';
+    return;
+  }
+
+  const AVATAR      = { snackbar: './snackbar.png', timbo: './timbo.png', pepe: './pepe.png' };
+  const PERSON_NAME = { snackbar: 'Snackbar', timbo: 'Timbo', pepe: 'Pepe' };
+  const COUNTRIES   = {
+    ARG:{name:'Argentina',flag:'🇦🇷'}, AUS:{name:'Australia',flag:'🇦🇺'}, AUT:{name:'Austria',flag:'🇦🇹'},
+    BEL:{name:'Belgium',flag:'🇧🇪'}, BOL:{name:'Bolivia',flag:'🇧🇴'}, BOS:{name:'Bosnia',flag:'🇧🇦'},
+    BRA:{name:'Brazil',flag:'🇧🇷'}, BFA:{name:'Burkina Faso',flag:'🇧🇫'}, CMR:{name:'Cameroon',flag:'🇨🇲'},
+    CAN:{name:'Canada',flag:'🇨🇦'}, CAP:{name:'Cape Verde',flag:'🇨🇻'}, CHI:{name:'Chile',flag:'🇨🇱'},
+    CHN:{name:'China',flag:'🇨🇳'}, COL:{name:'Colombia',flag:'🇨🇴'}, COS:{name:'Costa Rica',flag:'🇨🇷'},
+    CRO:{name:'Croatia',flag:'🇭🇷'}, CZE:{name:'Czechia',flag:'🇨🇿'}, DEN:{name:'Denmark',flag:'🇩🇰'},
+    ECU:{name:'Ecuador',flag:'🇪🇨'}, EGY:{name:'Egypt',flag:'🇪🇬'}, ENG:{name:'England',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+    FRA:{name:'France',flag:'🇫🇷'}, GER:{name:'Germany',flag:'🇩🇪'}, GHA:{name:'Ghana',flag:'🇬🇭'},
+    GRE:{name:'Greece',flag:'🇬🇷'}, GUA:{name:'Guatemala',flag:'🇬🇹'}, HON:{name:'Honduras',flag:'🇭🇳'},
+    HUN:{name:'Hungary',flag:'🇭🇺'}, IDN:{name:'Indonesia',flag:'🇮🇩'}, IND:{name:'India',flag:'🇮🇳'},
+    IRN:{name:'Iran',flag:'🇮🇷'}, IRQ:{name:'Iraq',flag:'🇮🇶'}, IRL:{name:'Ireland',flag:'🇮🇪'},
+    ITA:{name:'Italy',flag:'🇮🇹'}, JAM:{name:'Jamaica',flag:'🇯🇲'}, JPN:{name:'Japan',flag:'🇯🇵'},
+    JOR:{name:'Jordan',flag:'🇯🇴'}, KEN:{name:'Kenya',flag:'🇰🇪'}, KOR:{name:'South Korea',flag:'🇰🇷'},
+    MAR:{name:'Morocco',flag:'🇲🇦'}, MEX:{name:'Mexico',flag:'🇲🇽'}, MLI:{name:'Mali',flag:'🇲🇱'},
+    NED:{name:'Netherlands',flag:'🇳🇱'}, NGA:{name:'Nigeria',flag:'🇳🇬'}, NIR:{name:'N. Ireland',flag:'🏴󠁧󠁢󠁮󠁩󠁲󠁿'},
+    NOR:{name:'Norway',flag:'🇳🇴'}, OMA:{name:'Oman',flag:'🇴🇲'}, PAN:{name:'Panama',flag:'🇵🇦'},
+    PAR:{name:'Paraguay',flag:'🇵🇾'}, PER:{name:'Peru',flag:'🇵🇪'}, POL:{name:'Poland',flag:'🇵🇱'},
+    POR:{name:'Portugal',flag:'🇵🇹'}, QAT:{name:'Qatar',flag:'🇶🇦'}, ROM:{name:'Romania',flag:'🇷🇴'},
+    SAU:{name:'Saudi Arabia',flag:'🇸🇦'}, SCO:{name:'Scotland',flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿'}, SEN:{name:'Senegal',flag:'🇸🇳'},
+    SPA:{name:'Spain',flag:'🇪🇸'}, SRB:{name:'Serbia',flag:'🇷🇸'}, SUI:{name:'Switzerland',flag:'🇨🇭'},
+    SWE:{name:'Sweden',flag:'🇸🇪'}, THA:{name:'Thailand',flag:'🇹🇭'}, TRI:{name:'Trinidad',flag:'🇹🇹'},
+    TUN:{name:'Tunisia',flag:'🇹🇳'}, TUR:{name:'Turkey',flag:'🇹🇷'}, UKR:{name:'Ukraine',flag:'🇺🇦'},
+    URU:{name:'Uruguay',flag:'🇺🇾'}, USA:{name:'USA',flag:'🇺🇸'}, VEN:{name:'Venezuela',flag:'🇻🇪'},
+    WAL:{name:'Wales',flag:'🏴󠁧󠁢󠁷󠁬󠁳󠁿'}, CIV:{name:'Ivory Coast',flag:'🇨🇮'}, COD:{name:'DR Congo',flag:'🇨🇩'},
+    ALG:{name:'Algeria',flag:'🇩🇿'}, SVK:{name:'Slovakia',flag:'🇸🇰'}, SVN:{name:'Slovenia',flag:'🇸🇮'},
+    FIN:{name:'Finland',flag:'🇫🇮'}, ALB:{name:'Albania',flag:'🇦🇱'}, ZAM:{name:'Zambia',flag:'🇿🇲'}
+  };
+
+  const reversed = [...slips].reverse();
+  const totalWon = slips.reduce((sum, s) => sum + Number(s.win || 0), 0);
+  const totalEl = document.getElementById('hofTotalWin');
+  if (totalEl) totalEl.querySelector('div:last-child').textContent = '£' + totalWon.toFixed(2);
+  wrap.innerHTML = reversed.map((slip, idx) => {
+    const avatar     = AVATAR[slip.person] || '';
+    const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
+    const total      = reversed.length;
+
+    const matchGrid = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 42px auto;gap:0;margin-top:2px;">
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 4px 5px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Home</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 4px 5px 0;border-bottom:1px solid rgba(255,255,255,0.08);">Away</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 0 5px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Score</div>
+        <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:3px 0 5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Bet</div>
+        ${slip.matches.map(m => {
+          const [home, away] = (m.match || '').split('-');
+          const homeC = COUNTRIES[home]    || { name: home,    flag: '🏳️' };
+          const awayC = COUNTRIES[away]    || { name: away,    flag: '🏳️' };
+          const betC  = COUNTRIES[m.bet]   || { name: m.bet,   flag: '🏳️' };
+          const b = 'border-bottom:1px solid rgba(255,255,255,0.06);';
+          return `
+            <div style="font-size:11px;color:var(--text-muted);padding:6px 4px 6px 0;${b}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${homeC.flag} ${homeC.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);padding:6px 4px 6px 0;${b}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${awayC.flag} ${awayC.name}</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-main);padding:6px 0;${b}text-align:center;white-space:nowrap;">${m.score || '–'}</div>
+            <div style="padding:4px 0 4px 6px;${b}">
+              <div style="background:rgba(246,201,14,0.15);border:1px solid var(--accent-gold);border-radius:8px;padding:2px 6px;color:var(--accent-gold);font-weight:800;font-size:10px;white-space:nowrap;text-align:center;">${betC.flag} ${betC.name}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+
+    return `
+      <div style="min-width:calc(100% - 20px);flex-shrink:0;scroll-snap-align:start;background:var(--bg-soft);border-radius:14px;overflow:hidden;border:1px solid rgba(246,201,14,0.2);display:flex;flex-direction:column;">
+        <div style="background:linear-gradient(135deg,rgba(246,201,14,0.12),rgba(246,201,14,0.04));padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(246,201,14,0.2);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${avatar ? `<img src="${avatar}" style="width:40px;height:40px;border-radius:8px;border:2px solid var(--accent-gold);object-fit:contain;background:#000;">` : ''}
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="color:var(--text-main);font-weight:800;font-size:14px;">${personName}</span>
+              ${slip.competition ? `<span style="color:var(--accent-gold);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;opacity:0.85;">${slip.competition}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+            <span style="color:var(--text-muted);font-size:10px;">📅 ${slip.date}</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:9px;font-weight:700;">${idx + 1} / ${total}</span>
+          </div>
+        </div>
+        <div style="padding:4px 14px 10px;flex:1;overflow:hidden;">
+          ${matchGrid}
+        </div>
+        <div style="background:rgba(0,176,79,0.08);border-top:1px solid rgba(0,176,79,0.2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:11px;color:var(--text-muted);">
+            <div>Stake</div>
+            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.bet).toFixed(2)}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-muted);">WIN</div>
+            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">£${Number(slip.win).toFixed(2)}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);text-align:right;">
+            <div>Win PP</div>
+            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.winPP).toFixed(2)}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Dot indicators
+  if (dotsEl) {
+    dotsEl.innerHTML = reversed.map((_, i) =>
+      `<span data-dot="${i}" style="height:6px;width:${i===0?'18px':'6px'};border-radius:3px;background:${i===0?'var(--accent-gold)':'rgba(255,255,255,0.2)'};transition:all 0.3s;display:inline-block;cursor:pointer;"></span>`
+    ).join('');
+    dotsEl.querySelectorAll('span').forEach(dot => {
+      dot.onclick = () => {
+        const i = parseInt(dot.dataset.dot);
+        wrap.scrollTo({ left: i * wrap.offsetWidth, behavior: 'smooth' });
+      };
+    });
+  }
+
+  // Update dots on scroll
+  wrap.onscroll = () => {
+    const idx = Math.round(wrap.scrollLeft / (wrap.scrollWidth / reversed.length));
+    if (dotsEl) dotsEl.querySelectorAll('span').forEach((d, i) => {
+      d.style.width  = i === idx ? '18px' : '6px';
+      d.style.background = i === idx ? 'var(--accent-gold)' : 'rgba(255,255,255,0.2)';
+    });
+  };
+}
+ 
 const REFRESH_MS=30000;
+// Fast poll -- scores + bet pills only (see loadFastData/patchFastScores
+// below), so it can run much more often than the full payload without the
+// cost of everything else the app also fetches.
+const FAST_REFRESH_MS=10000;
 
 // GLOBAL VARIABLES
 let prevMatches = {};
@@ -1904,7 +2719,7 @@ let chartDataCache=null, historyChart=null, tableCache=null;
 let activeFilters = { live: false, alive: false }; // MULTI-FILTER STATE
 
 // --- THEME LOGIC (SECRET TOGGLE) ---
-const themes = ['carbon', 'candy', 'retro'];
+const themes = ['premierleague', 'carbon', 'candy', 'retro'];
 
 function setTheme(themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
@@ -1940,13 +2755,201 @@ function toggleTheme() {
 }
 
 // LOAD SAVED THEME
-const savedTheme = localStorage.getItem('jb_theme') || 'carbon';
-setTheme(savedTheme);
+// 'worldcup' no longer exists (World Cup is over) — migrate anyone whose
+// phone still has that cached preference onto the new default.
+const savedTheme = localStorage.getItem('jb_theme') || 'premierleague';
+setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
+
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+
+// Which scope each ranking display is currently showing -- keyed by the
+// container's element id, so the small card and the full-chart podium can
+// each remember their own choice independently.
+window.rankingScopes = { rankingBody: 'season', historyScoreboard: 'season' };
+
+// "All Time" = every past season's final total (seasonHistory's last
+// progression entry per season) plus the current, still-live season.
+function computeAllTimeRanking(data) {
+  const totals = { Snackbar: { money: 0, matchesRight: 0 }, Timbo: { money: 0, matchesRight: 0 }, Pepe: { money: 0, matchesRight: 0 } };
+  (data.seasonHistory || []).forEach(season => {
+    const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : {};
+    const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : {};
+    Object.keys(totals).forEach(p => {
+      totals[p].money += finalMoney[p] || 0;
+      totals[p].matchesRight += finalMatches[p] || 0;
+    });
+  });
+  (data.ranking || []).forEach(r => {
+    if (totals[r.name]) {
+      totals[r.name].money += r.money || 0;
+      totals[r.name].matchesRight += r.matchesRight || 0;
+    }
+  });
+  return Object.keys(totals).map(name => ({ name, money: totals[name].money, matchesRight: totals[name].matchesRight }));
+}
+
+function getRankingPlayers(scope) {
+  const data = window.__lastDashboard;
+  if (!data) return null;
+  return scope === 'alltime' ? computeAllTimeRanking(data) : data.ranking;
+}
+
+// Shared by both ranking displays (this container id -> which renderer).
+function rerenderRankingContainer(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const players = getRankingPlayers(window.rankingScopes[containerId]);
+  if (containerId === 'historyScoreboard') renderCompactPodium(el, players);
+  else renderRankingPodium(el, players);
+}
+
+function setRankingScope(containerId, scope, btnEl) {
+  window.rankingScopes[containerId] = scope;
+  const group = btnEl.parentElement;
+  [...group.children].forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  // The history modal's line chart needs to switch data too, not just its
+  // podium -- redrawing it also re-renders the podium along the way.
+  if (containerId === 'historyScoreboard' && document.getElementById('historyChart')) {
+    drawHistoryChart(window.currentHistoryChartType || 'matches');
+  } else {
+    rerenderRankingContainer(containerId);
+  }
+}
+
+// "All Time" line series -- each past season's week-by-week progression
+// (which resets to 0 at its own start) stacked end-to-end so the total
+// keeps climbing across season boundaries, then the current season's own
+// progression continues on top of that running total. Ends at the same
+// figure the All Time podium shows.
+// Returns { series, boundaries } -- series is the same stacked cumulative
+// data as before, and boundaries marks the index each season's data starts
+// at (with that season's name) so the chart can draw a divider line and
+// label at every season change.
+function buildAllTimeSeries(t) {
+  const running = { Snackbar: 0, Timbo: 0, Pepe: 0 };
+  const combined = [];
+  const boundaries = [];
+  (window.seasonHistory || []).forEach(season => {
+    const arr = season[t] || [];
+    if (arr.length > 0) boundaries.push({ index: combined.length, label: season.season || '' });
+    arr.forEach(entry => {
+      combined.push({
+        date: entry.date,
+        Snackbar: running.Snackbar + (entry.Snackbar || 0),
+        Timbo: running.Timbo + (entry.Timbo || 0),
+        Pepe: running.Pepe + (entry.Pepe || 0)
+      });
+    });
+    const last = arr.length ? arr[arr.length - 1] : null;
+    if (last) {
+      running.Snackbar += last.Snackbar || 0;
+      running.Timbo += last.Timbo || 0;
+      running.Pepe += last.Pepe || 0;
+    }
+  });
+  const currentArr = (chartDataCache && chartDataCache[t]) || [];
+  if (currentArr.length > 0) boundaries.push({ index: combined.length, label: 'Current' });
+  currentArr.forEach(entry => {
+    combined.push({
+      date: entry.date,
+      Snackbar: running.Snackbar + (entry.Snackbar || 0),
+      Timbo: running.Timbo + (entry.Timbo || 0),
+      Pepe: running.Pepe + (entry.Pepe || 0)
+    });
+  });
+  return { series: combined, boundaries: boundaries };
+}
+
+// Full podium (podium-container/podium-place/...) -- same tie-break and
+// crown/poop logic regardless of which players array (season or all-time)
+// it's handed.
+function renderRankingPodium(container, players) {
+  if (!players || players.length < 3) {
+    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
+    return;
+  }
+  const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  const sorted = [...players].sort((a, b) => {
+    if (b.money !== a.money) return b.money - a.money;
+    return b.matchesRight - a.matchesRight;
+  });
+  const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
+  const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
+  const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
+  let classL = "place-2", classR = "place-3";
+  let iconL = "", iconR = "💩";
+  if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
+  else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
+  else { iconL = ""; iconR = "💩"; }
+  // Ranking position/tie-breaks always stay money-first (see the sort
+  // above) -- this only decides which number is shown large on the podium.
+  // Until anyone's actually won money, points are the more meaningful
+  // number, so they lead; the moment real money shows up, money takes back
+  // the spotlight.
+  const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
+  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatGBP(p.money);
+  const ptsClass = moneyIsPrimary ? '' : ' pts';
+  container.innerHTML = `
+      <div class="podium-container">
+          <div class="podium-place ${classL}">
+              ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
+              <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p2)}</div>
+                  <div class="podium-stats">${secondaryStat(p2)}</div>
+              </div>
+          </div>
+          <div class="podium-place place-1">
+              <div class="crown-icon">👑</div>
+              <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p1)}</div>
+                  <div class="podium-stats" style="color:#fff;">${secondaryStat(p1)}</div>
+              </div>
+          </div>
+          <div class="podium-place ${classR}">
+              ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
+              <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
+              <div class="podium-bar">
+                  <div class="podium-money${ptsClass}">${primaryStat(p3)}</div>
+                  <div class="podium-stats">${secondaryStat(p3)}</div>
+              </div>
+          </div>
+      </div>`;
+}
+
+// Low-profile podium for the Performance History modal -- same rank
+// ordering and primary-stat logic as the full podium, just compact: no
+// bars, one stat per player, winner slightly bigger with a small crown.
+function renderCompactPodium(container, players) {
+  if (!players || players.length < 3) { container.innerHTML = ''; return; }
+  const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  const sorted = [...players].sort((a, b) => {
+    if (b.money !== a.money) return b.money - a.money;
+    return b.matchesRight - a.matchesRight;
+  });
+  const [p1, p2, p3] = sorted;
+  const moneyIsPrimary = (p1.money || 0) + (p2.money || 0) + (p3.money || 0) > 0;
+  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+  const ptsClass = moneyIsPrimary ? '' : ' pts';
+  const order = [p2, p1, p3];
+  container.innerHTML = `
+    <div class="mini-podium">
+      ${order.map(p => `
+          <div class="mini-podium-place${p === p1 ? ' first' : ''}">
+              ${p === p1 ? '<div class="mini-crown">👑</div>' : ''}
+              <img src="${AVATARS[p.name] || './pepe.png'}" class="mini-podium-avatar">
+              <div class="mini-podium-name">${p.name}</div>
+              <div class="mini-podium-stat${ptsClass}">${primaryStat(p)}</div>
+          </div>`).join('')}
+    </div>`;
+}
 function hexToRgba(hex, alpha) {
   if(!hex) return `rgba(255,255,255,${alpha})`;
   let r=0,g=0,b=0;
@@ -1976,6 +2979,36 @@ const TEAM_LOGOS = {
   TOT: "https://media.api-sports.io/football/teams/47.png",
   WHA: "https://media.api-sports.io/football/teams/48.png",
   WOL: "https://media.api-sports.io/football/teams/39.png"
+};
+
+// Same logos as TEAM_LOGOS, keyed by normalized full club name instead of
+// short code — H2H history entries come back from the API as full names
+// ("Arsenal", "Nottingham Forest"), which never matched the code-keyed map
+// above, so any opponent that hadn't shown up in the last-5-form list fell
+// through to a generic competition-logo placeholder. Merged into nameToLogo
+// in renderH2H() so the existing exact/startsWith/substring matching passes
+// all apply to it too.
+const TEAM_LOGOS_FULLNAME = {
+  ARSENAL: TEAM_LOGOS.ARS,
+  ASTONVILLA: TEAM_LOGOS.AVI,
+  BOURNEMOUTH: TEAM_LOGOS.BOU,
+  BRENTFORD: TEAM_LOGOS.BRE,
+  BRIGHTONHOVEALBION: TEAM_LOGOS.BRI, BRIGHTON: TEAM_LOGOS.BRI,
+  BURNLEY: TEAM_LOGOS.BUR,
+  CHELSEA: TEAM_LOGOS.CHE,
+  CRYSTALPALACE: TEAM_LOGOS.CPA,
+  EVERTON: TEAM_LOGOS.EVE,
+  FULHAM: TEAM_LOGOS.FUL,
+  LEEDSUNITED: TEAM_LOGOS.LEE, LEEDS: TEAM_LOGOS.LEE,
+  LIVERPOOL: TEAM_LOGOS.LIV,
+  MANCHESTERCITY: TEAM_LOGOS.CTY, MANCITY: TEAM_LOGOS.CTY,
+  MANCHESTERUNITED: TEAM_LOGOS.MAN, MANUNITED: TEAM_LOGOS.MAN,
+  NEWCASTLEUNITED: TEAM_LOGOS.NWC, NEWCASTLE: TEAM_LOGOS.NWC,
+  NOTTINGHAMFOREST: TEAM_LOGOS.NOT, NOTTMFOREST: TEAM_LOGOS.NOT,
+  SUNDERLAND: TEAM_LOGOS.SUN,
+  TOTTENHAMHOTSPUR: TEAM_LOGOS.TOT, TOTTENHAM: TEAM_LOGOS.TOT, SPURS: TEAM_LOGOS.TOT,
+  WESTHAMUNITED: TEAM_LOGOS.WHA, WESTHAM: TEAM_LOGOS.WHA,
+  WOLVERHAMPTONWANDERERS: TEAM_LOGOS.WOL, WOLVERHAMPTON: TEAM_LOGOS.WOL, WOLVES: TEAM_LOGOS.WOL
 };
 
 // HELPER: GET TEAM RANK FROM TABLE CACHE
@@ -2019,7 +3052,7 @@ function getTeamRank(teamName) {
 function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
-  const logo = TEAM_LOGOS[code];
+  const logo = TEAM_LOGOS[code] || (window.DYNAMIC_LOGOS && window.DYNAMIC_LOGOS[code]);
   const rank = getTeamRank(code); 
   
   let imgHtml = "";
@@ -2044,7 +3077,7 @@ function renderSkeletons() {
   const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
   
   const lh=document.createElement("div"); lh.className="left-header"; 
-  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
   
   const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
   fb.innerHTML = `
@@ -2074,25 +3107,165 @@ function renderSkeletons() {
   }
 }
 
+// Shared by renderDashboard() (full render) and patchFastScores() (fast
+// poll) so a live score arriving through either path produces the exact
+// same "is this pick currently on track to win" pill reaction -- computed
+// purely from the score + the bet's own text, no Sheet color involved, so
+// it's safe (and correct) to run on every fast tick, not just the full
+// 30s reload.
+function computeBetIsWinning(betValue, home, away, hScore, aScore) {
+  const bet = String(betValue || "").toUpperCase();
+  if (bet.includes("-")) {
+    const [bH, bA] = bet.split("-").map(Number);
+    return bH === hScore && bA === aScore;
+  }
+  if ((bet === "1" || bet === "H" || bet === "HOME" || home.includes(bet)) && hScore > aScore) return true;
+  if ((bet === "2" || bet === "A" || bet === "AWAY" || away.includes(bet)) && aScore > hScore) return true;
+  if ((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) return true;
+  return false;
+}
+
+// ── Fast poll: scores + bet pills only ─────────────────────────
+// Hits ?mode=fast (buildFastDashboard() -- DASHBOARD sheet only, no deep
+// stats/injuries/lineups/day-headers/celebrations, but WITH a live score
+// override straight from API-Football when something's actually in play --
+// see buildFastDashboard()) and patches the score text, bet-pill
+// text/colour, and the live "on track to win" pulse of the EXISTING rows in
+// place, leaving everything the full render adds (day headers, red-card
+// badges, special bets, what-if pills, celebrations) untouched. Deliberately
+// does NOT draw anything of its own -- if the full rich view isn't up yet
+// (or the row count doesn't match, e.g. right after a new matchweek loads),
+// it's a no-op and just waits for the next full loadData() cycle. The
+// interface must always look exactly like loadData() built it; this only
+// ever updates numbers/colours/reaction-classes inside rows loadData()
+// already created.
+function patchFastScores(data) {
+  const left = document.getElementById('left'), right = document.getElementById('right');
+  if (!left || !right) return;
+  const matches = data.matches || [];
+  // Skeleton placeholder rows also carry the .left-row/.row classes (see
+  // renderSkeletons), and the BET/WIN/WIN PP summary rows appended after
+  // the matches also carry .row (as .short-row) -- both must be excluded
+  // here, otherwise the row count never matches matches.length.
+  const leftRows = left.querySelectorAll('.left-row:not(.sk-row)');
+  const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
+
+  if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
+
+  matches.forEach((m, i) => {
+    const live = getMatchStatusType(m) === 'live';
+
+    const spans = leftRows[i].querySelectorAll('.score-pill span');
+    if (spans.length === 2) {
+      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + (m.status === 'NS' ? 'NS' : m.status);
+      spans[1].textContent = m.score || '';
+    }
+
+    // Same inputs renderDashboard() uses for the live "on track to win"
+    // pulse -- team abbreviations from the match name, and the score, both
+    // already in this fast payload.
+    const [h, a] = String(m.match || '').split('-').map(t => t.trim().toUpperCase());
+    const [hScore, aScore] = (m.score || '0-0').split('-').map(x => parseInt(x) || 0);
+    const matchMinute = parseInt(String(m.status || '').replace("'", ""));
+    const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
+
+    const cells = rightRows[i].querySelectorAll('.bet');
+    (m.cells || []).forEach((c, ci) => {
+      const el = cells[ci];
+      if (!el || el.classList.contains('special-bet') || el.classList.contains('whatif-pill')) return;
+      if (c.value) {
+        el.textContent = c.value;
+        let color = c.color || '#262a30';
+        if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
+        el.style.setProperty('--bet-bg', color);
+        el.style.backgroundColor = color;
+        el.classList.remove('empty');
+      } else {
+        el.textContent = '';
+        el.style.setProperty('--bet-bg', 'transparent');
+        el.classList.add('empty');
+      }
+
+      const headerInfo = (window.globalHeaders || [])[ci];
+      const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+      const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
+      el.classList.toggle('sweat-active', isWinning && !isClinchTime);
+      el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
+    });
+  });
+}
+
+function loadFastData(){
+  fetch(API_URL + '?mode=fast').then(r=>r.json()).then(data=>{
+    try { patchFastScores(data); } catch(e) { console.error('fast patch failed', e); }
+  }).catch(()=>{});
+}
+
 // MAIN LOAD FUNCTION
-function loadData(){
-  fetch(API_URL).then(r=>r.json()).then(data=>{
+// The actual renderer -- builds the exact same real DOM every time it's
+// called, whether fed a fresh network payload or a locally cached one.
+// suppressCelebration is only true for the instant cache-primed paint (see
+// loadData() below): the confetti/big-win moment already happened in a
+// past session for whatever's in that cached snapshot, so it shouldn't
+// replay just because we're re-showing it while the real fetch is in flight.
+function renderDashboard(data, opts){
+    const suppressCelebration = !!(opts && opts.suppressCelebration);
     try {
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
-        window.lockStatus = data.lockStatus || {};
-        const _pNames = [...new Set((data.headers||[]).map(h=>h.name).filter(Boolean))];
-        window.allBetsLocked = _pNames.length > 0 && _pNames.every(n => window.lockStatus[n] === true);
+        window.specialBets = data.specialBets || [];
+        window.seasonHistory = data.seasonHistory || [];
+        window.specialBetsEnabled = !!data.specialBetsEnabled;
+        window.eurRate = (typeof data.eurRate === 'number' && data.eurRate > 0) ? data.eurRate : 1;
+        // Every special bet gets its own fixed extra column APPENDED after all the
+        // real bet columns (same order in the header and every row) — one avatar
+        // and one pill per BET, not per player, so a player with 3 special bets
+        // gets 3 separate slots (mirroring the regular 4-avatars-per-player look),
+        // and a single-match bet correctly shows blank on its other match's row.
+        window.specialBetOrder = window.specialBetsEnabled ? (window.specialBets || []) : [];
+        window.specialBetOrder.sort((a, b) => specialBetSortKey(a) - specialBetSortKey(b));
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
-        left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Weekly Summary</div>'; ranking.innerHTML="";
-        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable;
+        left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Live Weekly Summary</div>'; ranking.innerHTML="";
+        if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
+        // Build dynamic logo map from API data (works for WC national teams + any league)
+        window.DYNAMIC_LOGOS = {};
+        window.leagueMode = data.leagueId || 39;
+        const betLogo = document.getElementById('betModalLeagueLogo');
+        if (betLogo) betLogo.src = (data.leagueId === 1)
+          ? 'https://media.api-sports.io/football/leagues/1.png'
+          : 'https://media.api-sports.io/football/leagues/39.png';
+        (data.matches || []).forEach(m => {
+          if (!m.match) return;
+          const parts = m.match.split('-').map(x => x.trim().toUpperCase().replace(/[^A-Z]/g,''));
+          if (parts[0] && m.homeLogoUrl) window.DYNAMIC_LOGOS[parts[0]] = m.homeLogoUrl;
+          if (parts[1] && m.awayLogoUrl) window.DYNAMIC_LOGOS[parts[1]] = m.awayLogoUrl;
+        });
         const lh = document.createElement("div"); lh.className = "left-header";
         const remaining = data.matches.filter(m => getMatchStatusType(m) !== 'finished').length;
         const subLabel = remaining === 0 ? 'Complete' : `${remaining} remaining`;
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="apple-touch-icon.png" class="brand-logo"></div>`;
+        const leagueLogo = (data.leagueId === 1)
+          ? 'https://media.api-sports.io/football/leagues/1.png'
+          : 'https://media.api-sports.io/football/leagues/39.png';
+        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+
+        // Whether every regular bet column is fully resolved: a dead (red)
+        // column doesn't need a WIN value to count as "locked" -- only a
+        // still-active column missing one means a bet genuinely hasn't been
+        // placed yet. Computed up front (not just for the bottom button)
+        // since the "What if?" column also gates on this same signal.
+        window.allLocked = true;
+        const totalCols = (data.headers || []).length;
+        if (totalCols === 0 || !window.winData) {
+            window.allLocked = false;
+        } else {
+            data.headers.forEach((h, i) => {
+                if (h.status !== 'red' && (!window.winData[i] || !window.winData[i].value)) window.allLocked = false;
+            });
+        }
+
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
@@ -2103,16 +3276,72 @@ function loadData(){
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
-           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } }
+           if(hasB&&!hasR&&allG&&pen===0){ p.classList.add("status-green"); if(!suppressCelebration){ if(isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); } else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } } }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
-           if(window.lockStatus && window.lockStatus[h.name] && !window.allBetsLocked) {
-           const lb = document.createElement('div'); lb.className='lock-badge-pill'; lb.textContent='🔒';
-           p.style.position = 'relative'; p.style.overflow = 'visible'; p.appendChild(lb);
-           }
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
+
+        // One avatar per special BET (not per player), appended after all the real
+        // columns in the same fixed order every row below uses — a "Special Bets"
+        // section, so a player with 3 special bets gets 3 separate avatar slots.
+        if (window.specialBetOrder && window.specialBetOrder.length) {
+            window.specialBetOrder.forEach(bet => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "header-pill-wrapper special-bet-header";
+                const p = document.createElement("div");
+                p.className = "header-pill";
+                if (AVATARS[bet.player]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[bet.player]}" class="avatar-img" alt="${bet.player}">`; }
+                else { p.textContent = bet.player; }
+
+                // Same status coloring + celebration as the regular headers above,
+                // driven by the bet's own computed status instead of a sheet color.
+                const status = evaluateBetOverallStatus(bet);
+                const allMatchesFinal = bet.legs.every(leg => {
+                    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+                    return m && m.status === 'FT';
+                });
+                if (status === 'HIT' && allMatchesFinal) {
+                    p.classList.add('status-green');
+                    if (!suppressCelebration) {
+                        if (isFirstLoad) { setTimeout(() => { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }, 1500); }
+                        else { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }
+                    }
+                } else if (status === 'HIT') {
+                    p.classList.add('status-green-live');
+                } else if (status === 'MISSED') {
+                    p.classList.add('status-red');
+                } else {
+                    // Still alive, nothing missed yet: if only 1-2 legs are left
+                    // unresolved, it's close enough to winning to shiver orange.
+                    const remaining = bet.legs.filter(leg => {
+                        const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+                        return evaluateLeg(leg, m) === 'PENDING';
+                    }).length;
+                    if (remaining >= 1 && remaining <= 2) p.classList.add('status-orange');
+                }
+
+                wrapper.appendChild(p);
+                headerRow.appendChild(wrapper);
+            });
+        }
+
+        // "What if?" column — only once every regular bet is fully placed
+        // (same moment the bottom button flips to WINNING COMBOS), and only
+        // if the sheet actually has a shared first-bet game set this week.
+        if (window.allLocked && getFirstBetGames().length > 0) {
+            const wi = computeWhatIf();
+            const wrapper = document.createElement("div");
+            wrapper.className = "header-pill-wrapper whatif-header";
+            const p = document.createElement("div");
+            p.className = "header-pill has-avatar";
+            p.innerHTML = `<img src="./what_if.png" class="avatar-img" alt="What if?">`;
+            if (wi.allDone) { p.style.background = 'var(--accent-orange)'; }
+            wrapper.appendChild(p);
+            headerRow.appendChild(wrapper);
+        }
+
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
@@ -2178,46 +3407,81 @@ function loadData(){
               el.setAttribute('data-col-idx', cellIndex);
 
               if(c.value){
+                  el.textContent=c.value;
+                  let color = c.color || '#262a30';
+                  if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+
+                  // Same golden treatment as the match score pill above: this
+                  // specific pick is an exact correct-score bet on the actual result.
+                  if (isGoldenScore && String(c.value).includes("-") && String(c.value).replace(/\s/g, "") === `${hScore}-${aScore}`) {
+                      el.classList.add("gold-active");
+                  }
+
                   const headerInfo = data.headers[cellIndex];
-                  const cellPlayerName = headerInfo ? headerInfo.name : null;
                   const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
 
-                  if(!window.allBetsLocked) {
-                      const isPlayerLocked = window.lockStatus && cellPlayerName && window.lockStatus[cellPlayerName];
-                      if(isPlayerLocked) {
-                          el.textContent = '🔒';
-                          el.classList.add('locked-bet');
-                      } else {
-                          el.style.setProperty('--bet-bg', 'transparent');
-                          el.classList.add('empty');
-                      }
-                  } else {
-                      el.textContent=c.value;
-                      let color = c.color || '#262a30';
-                      if (color === '#7CFF5B' || color === '#7cff5b') color = 'var(--accent-green)';
-                      el.style.setProperty('--bet-bg', color);
-                      el.style.backgroundColor = color;
-
-                      if(live && !isColumnDead) {
-                          let bet = String(c.value).toUpperCase();
-                          let isWinning = false;
-                          if(bet.includes("-")) {
-                              let [bH, bA] = bet.split("-").map(Number);
-                              if(bH === hScore && bA === aScore) isWinning = true;
-                          } else {
-                              if((bet === "1" || bet === "H" || bet === "HOME" || h.includes(bet)) && hScore > aScore) isWinning = true;
-                              else if((bet === "2" || bet === "A" || bet === "AWAY" || a.includes(bet)) && aScore > hScore) isWinning = true;
-                              else if((bet === "X" || bet === "D" || bet === "DRAW") && hScore === aScore) isWinning = true;
-                          }
-                          if(isWinning) {
-                              if(isClinchTime) el.classList.add("sweat-clinch");
-                              else el.classList.add("sweat-active");
-                          }
-                      }
+                  if(live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore)) {
+                      if(isClinchTime) el.classList.add("sweat-clinch");
+                      else el.classList.add("sweat-active");
                   }
               } else { el.style.setProperty('--bet-bg', 'transparent'); el.classList.add('empty'); }
               rr.appendChild(el);
           });
+
+          // Special-bet ("Bet Builder" multi) pills — one fixed column per BET,
+          // appended after all real columns in the same order as the header's
+          // special-bet avatars. Blank on any match that particular bet doesn't
+          // touch, so single-match bets show exactly one pill, not two.
+          if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
+              window.specialBetOrder.forEach(bet => {
+                  const legsHere = bet.legs.filter(l => l.match === m.match);
+
+                  const pillEl = document.createElement('div');
+                  pillEl.className = 'bet special-bet';
+                  if (legsHere.length === 0) {
+                      pillEl.style.setProperty('--bet-bg', 'transparent');
+                      pillEl.classList.add('empty');
+                  } else {
+                      const status = evaluateLegsSummary(legsHere, m);
+                      const color = specialBetPillColor(status);
+                      pillEl.style.setProperty('--bet-bg', color);
+                      pillEl.style.backgroundColor = color;
+                      if (legsHere.length > 1) {
+                          pillEl.textContent = 'COMBO';
+                          pillEl.style.cursor = 'pointer';
+                          pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
+                      } else {
+                          pillEl.textContent = legsHere[0].target;
+                      }
+                  }
+                  rr.appendChild(pillEl);
+              });
+          }
+
+          // "What if?" pill — outline until this shared first-bet game
+          // finishes, then fills in with the actual result. Blank on any
+          // row that isn't one of the 3 shared games.
+          if (window.allLocked && getFirstBetGames().length > 0) {
+              const pillEl = document.createElement('div');
+              pillEl.className = 'bet whatif-pill';
+              if (!m.isFirstBetGame) {
+                  pillEl.style.setProperty('--bet-bg', 'transparent');
+                  pillEl.classList.add('empty');
+              } else if (m.status !== 'FT') {
+                  pillEl.style.setProperty('--bet-bg', 'transparent');
+                  pillEl.style.border = '1px dashed rgba(255,255,255,0.35)';
+                  pillEl.textContent = '?';
+              } else {
+                  const label = whatIfResultLabel(m);
+                  pillEl.textContent = label || '?';
+                  pillEl.style.setProperty('--bet-bg', 'var(--accent-orange)');
+                  pillEl.style.backgroundColor = 'var(--accent-orange)';
+              }
+              rr.appendChild(pillEl);
+          }
+
           right.appendChild(rr);
         });
         const filterSection = document.createElement("div"); filterSection.className = "filter-separator spacer-bar";
@@ -2226,19 +3490,24 @@ function loadData(){
         const rightSpacer = document.createElement("div"); rightSpacer.className = "spacer-bar"; rightSpacer.innerHTML = "&nbsp;"; right.appendChild(rightSpacer); right.appendChild(document.createElement("div")).className="right-divider";
 
         // -------- Bottom action button: PLACE BETS / WINNING COMBOS / NO COMBOS POSSIBLE --------
-        let allLocked = true; let activeColsFound = false;
-        if(data.headers && window.winData) {
-            data.headers.forEach((h, i) => {
-                if(h.status !== 'red') { activeColsFound = true; if(!window.winData[i] || !window.winData[i].value) allLocked = false; }
-            });
-        } else { allLocked = false; }
-        if(!activeColsFound) allLocked = false;
-
         const bottomGrid = document.createElement("div"); bottomGrid.className = "bottom-control-grid";
         const btnDiv = document.createElement("button");
         btnDiv.className = "place-bets-btn";
 
-        if(allLocked) {
+        if(window.specialBetsEnabled) {
+            // Special bets replace the regular Place Bets / Combos flow entirely.
+            if(hasAnySpecialCombos()) {
+                btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "WINNING<br>COMBOS";
+                btnDiv.onclick = openSpecialCombosModal;
+            } else {
+                btnDiv.style.background = "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)";
+                btnDiv.style.color = "#fff";
+                btnDiv.innerHTML = "NO COMBOS<br>POSSIBLE";
+                btnDiv.onclick = openSpecialCombosModal;
+            }
+        } else if(window.allLocked) {
             if(hasAnyCombos()) {
                 // Blue — same hue as the bet-1 avatar in the combos modal
                 btnDiv.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
@@ -2267,73 +3536,96 @@ function loadData(){
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{
-            const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex);
-            if(!window.allBetsLocked) {
-              const hdr = data.headers[cellIndex]; const pName = hdr ? hdr.name : null;
-              const isPlocked = window.lockStatus && pName && window.lockStatus[pName];
-              if(isPlocked) { el.textContent='🔒'; el.classList.add('locked-bet'); }
-              else { el.classList.add('empty'); }
-            } else {
-              el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color;
-            }
-            rr.appendChild(el);
-          });
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
+
+          // Same stake/win/potential figures for each special bet, one cell per
+          // bet matching the avatar/pill columns appended above.
+          if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
+              window.specialBetOrder.forEach(bet => {
+                  const status = evaluateBetOverallStatus(bet);
+                  const el = document.createElement("div"); el.className = "bet";
+                  let value = 0, color = '#2f343a';
+                  if (l === "BET") { value = bet.stake || 0; color = '#ff4d4d'; }
+                  else if (l === "WIN") { value = bet.potentialWin || 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // potential win, shown even when dead
+                  else { value = (bet.potentialWin || 0) / 3; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // WIN PP = WIN ÷ 3, shown even when dead
+                  el.textContent = formatGBP(value);
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+                  rr.appendChild(el);
+              });
+          }
+
+          // "What if?" money cell -- fixed £2 stake, and a running fold
+          // total that fills in grey/blank until the first shared game
+          // finishes, then multiplies in each game's odds as they land.
+          // WIN PP is just WIN ÷ 3, same convention as the special bets.
+          if (window.allLocked && getFirstBetGames().length > 0) {
+              const wi = computeWhatIf();
+              const el = document.createElement("div"); el.className = "bet";
+              if (l === "BET") {
+                  el.textContent = formatGBP(2);
+                  // Same red as every other stake pill in this row -- read it
+                  // straight off a real BET cell instead of guessing the exact
+                  // shade, so it's always pixel-identical to the sheet's own.
+                  const betColor = (data.betSummary[0].cells[0] && data.betSummary[0].cells[0].color) || '#ff4d4d';
+                  el.style.setProperty('--bet-bg', betColor);
+                  el.style.backgroundColor = betColor;
+              } else {
+                  const value = l === "WIN" ? wi.total : wi.total / 3;
+                  el.textContent = formatGBP(value);
+                  const color = wi.finishedCount > 0 ? 'var(--accent-orange)' : '#2f343a';
+                  el.style.setProperty('--bet-bg', color);
+                  el.style.backgroundColor = color;
+              }
+              rr.appendChild(el);
+          }
+
           right.appendChild(rr);
         });
         applyFilterLogic();
-        data.totals.forEach(t=>{ const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label); let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0; let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0; weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`; });
+        data.totals.forEach(t=>{
+          const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
+          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          if (window.specialBetsEnabled && ["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label)) {
+              const combo = bestSpecialCombo();
+              if (t.label === "TOTAL WIN" || t.label === "HIGH. POS. WIN") gbp = combo.total;
+              else if (t.label === "TOTAL WIN PP") gbp = combo.total / 3;
+              else { // AVG. WIN — average potentialWin across still-alive special bets
+                  const alive = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
+                  gbp = alive.length ? alive.reduce((sum, b) => sum + (b.potentialWin || 0), 0) / alive.length : 0;
+              }
+              eur = window.eurRate ? gbp / window.eurRate : gbp; // eurRate is GBP-per-1-EUR (ECB convention)
+          }
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+        });
 
-        // PODIUM Tie Logic
-        if (data.ranking && data.ranking.length >= 3) {
-            const sorted = [...data.ranking].sort((a,b) => {
-                if(b.money !== a.money) return b.money - a.money;
-                return b.matchesRight - a.matchesRight;
-            });
-            const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
-            const is1stTie = (p1.money === p2.money && p1.matchesRight === p2.matchesRight);
-            const isLastTie = (p2.money === p3.money && p2.matchesRight === p3.matchesRight);
-            let classL = "place-2", classC = "place-1", classR = "place-3";
-            let iconL = "", iconC = "👑", iconR = "💩";
-            if (is1stTie) { classL = "place-1"; iconL = "👑"; iconR = "💩"; }
-            else if (isLastTie) { classL = "place-3"; iconL = "💩"; classR = "place-3"; iconR = "💩"; }
-            else { iconL = ""; iconR = "💩"; }
-            ranking.innerHTML = `
-                <div class="podium-container">
-                    <div class="podium-place ${classL}">
-                        ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
-                        <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar">
-                        <div class="podium-bar">
-                            <div class="podium-money">${formatGBP(p2.money)}</div>
-                            <div class="podium-stats">${p2.matchesRight} Bets</div>
-                        </div>
-                    </div>
-                    <div class="podium-place ${classC}">
-                        <div class="crown-icon">👑</div>
-                        <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar">
-                        <div class="podium-bar">
-                            <div class="podium-money" style="font-size:15px;">${formatGBP(p1.money)}</div>
-                            <div class="podium-stats" style="color:#fff;">${p1.matchesRight} Bets</div>
-                        </div>
-                    </div>
-                    <div class="podium-place ${classR}">
-                        ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
-                        <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar">
-                        <div class="podium-bar">
-                            <div class="podium-money">${formatGBP(p3.money)}</div>
-                            <div class="podium-stats">${p3.matchesRight} Bets</div>
-                        </div>
-                    </div>
-                </div>`;
-        } else { ranking.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`; }
+        // Ranking card podium -- respects whichever scope (Season / All Time)
+        // the toggle is currently set to; defaults to "season" on first load.
+        window.__lastDashboard = data;
+        renderRankingPodium(ranking, getRankingPlayers(window.rankingScopes.rankingBody));
        window.__lastMatches = data.matches;
-       window.__lastDashboard = data;
+       if (data.hallOfFame) renderHallOfFame(data.hallOfFame);
        updateTicker();
         isFirstLoad = false;
     } catch(e){ console.error(e); }
-  });
 }
- 
+
+// Cache-first load: livescore-style apps feel instant because they paint
+// the LAST KNOWN state straight from local storage (zero network wait),
+// then quietly fetch the real thing and re-render over it -- same
+// renderDashboard() call either way, so there's never a different-looking
+// template, just the same real UI arriving sooner. The cache-primed paint
+// on startup (see below) is what actually makes cold-open/reopen fast;
+// this fetch is what keeps it correct.
+const DASHBOARD_CACHE_KEY = 'cachedDashboard_v1';
+function loadData(){
+  fetch(API_URL).then(r=>r.json()).then(data=>{
+    try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(data)); } catch(e) { /* storage full/unavailable -- just skip caching */ }
+    renderDashboard(data, { suppressCelebration: false });
+  }).catch(()=>{});
+}
+
 function getMatchStatusType(m) {
     if(!m.status) return 'upcoming';
     const s = m.status.toUpperCase();
@@ -2621,10 +3913,16 @@ function applyFilterLogic() {
 }
 
 function drawHistoryChart(t) {
+    window.currentHistoryChartType = t;
     const ctx = document.getElementById("historyChart").getContext("2d");
     if (historyChart) { historyChart.destroy(); historyChart = null; }
 
-    const d = chartDataCache ? chartDataCache[t] : null;
+    const isAllTime = window.rankingScopes.historyScoreboard === 'alltime';
+    const allTimeResult = isAllTime ? buildAllTimeSeries(t) : null;
+    const d = isAllTime ? (allTimeResult && allTimeResult.series) : (chartDataCache ? chartDataCache[t] : null);
+    // Season-change markers -- only meaningful in All Time, where the line
+    // actually spans more than one season.
+    const seasonBoundaries = (allTimeResult && allTimeResult.boundaries) || [];
     if (!d || d.length === 0) return;
 
     const labs = d.map(r => new Date(r.date).toLocaleDateString());
@@ -2633,35 +3931,11 @@ function drawHistoryChart(t) {
     const avatars = { Snackbar: "./snackbar.png", Timbo: "./timbo.png", Pepe: "./pepe.png" };
 
     const lastEntry = d[d.length - 1];
-    const prevEntry = d[d.length - 2] || d[d.length - 1];
-    
-    // Find the Leader for the Crown
-    let leader = ps[0];
-    ps.forEach(p => { if((lastEntry[p]||0) > (lastEntry[leader]||0)) leader = p; });
 
-    // 1. Update Scoreboard (No titles, numbers side-by-side)
-    const scoreboard = document.getElementById("historyScoreboard");
-    scoreboard.innerHTML = "";
-
-    ps.forEach(p => {
-        const score = lastEntry[p] || 0;
-        const diff = score - (prevEntry[p] || 0);
-        const diffHtml = diff > 0 ? `<span class="p-diff">+${diff % 1 === 0 ? diff : diff.toFixed(1)}</span>` : ``;
-        const crownHtml = p === leader ? `<div class="leader-crown">👑</div>` : ``;
-        
-        scoreboard.innerHTML += `
-            <div class="stat-pill" style="color: ${cols[p]}">
-                <div class="chart-avatar-wrap">
-                    ${crownHtml}
-                    <img src="${avatars[p]}" class="chart-avatar" alt="${p}">
-                </div>
-                <div class="p-score-box">
-                    <span class="p-score">${t === 'money' ? '£'+score.toFixed(0) : score}</span>
-                    ${diffHtml}
-                </div>
-            </div>
-        `;
-    });
+    // 1. Update Scoreboard -- a low-profile, rank-ordered podium (Season or
+    // All Time, per that toggle) instead of the old fixed Snackbar/Timbo/
+    // Pepe order. Independent of `t` (the line chart's Matches/Money type).
+    rerenderRankingContainer('historyScoreboard');
 
     // 2. Setup Chart Data
     const sortedPlayers = [...ps].sort((a, b) => (lastEntry[a] || 0) - (lastEntry[b] || 0));
@@ -2693,13 +3967,26 @@ function drawHistoryChart(t) {
             maintainAspectRatio: false,
             layout: { padding: { top: 10, right: 15, left: 5, bottom: 0 } },
             scales: {
-                x: { display: false },
+                x: {
+                    // Visible now that the chart can pan/zoom -- otherwise
+                    // there'd be no way to tell which matchweek you're
+                    // looking at once you've scrolled away from the end.
+                    display: true,
+                    grid: { display: false },
+                    ticks: {
+                        color: 'rgba(154, 160, 166, 0.5)',
+                        font: { size: 8, weight: '600' },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        autoSkipPadding: 12
+                    }
+                },
                 y: {
                     display: true,
                     position: 'right',
                     grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
-                    ticks: { 
-                        color: 'rgba(154, 160, 166, 0.5)', 
+                    ticks: {
+                        color: 'rgba(154, 160, 166, 0.5)',
                         font: { size: 9, weight: '600' },
                         callback: (val) => t === 'money' ? '£' + val : val
                     }
@@ -2707,7 +3994,7 @@ function drawHistoryChart(t) {
             },
             plugins: {
                 legend: { display: false },
-                datalabels: { display: false }, 
+                datalabels: { display: false },
                 tooltip: {
                     enabled: true,
                     mode: 'index',
@@ -2715,11 +4002,23 @@ function drawHistoryChart(t) {
                     backgroundColor: 'rgba(20, 22, 25, 0.95)',
                     titleFont: { size: 11, weight: '800' },
                     bodyFont: { size: 10, weight: '600' }
-                }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    },
+                    limits: { x: { minRange: 2 } }
+                },
+                seasonBoundaries: { boundaries: seasonBoundaries }
             }
         }
     });
     historyChart._type = t;
+    const resetBtn = document.getElementById('historyChartResetZoom');
+    if (resetBtn) resetBtn.style.display = d.length > 4 ? 'block' : 'none';
 }
 
 // UI & HELPERS
@@ -2752,6 +4051,424 @@ function normalizeName(str) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 function formatName(n){return n||""}
+
+// Evaluates one special-bet leg against a match's already-fetched data.
+// Returns 'HIT' | 'MISSED' | 'PENDING'. MISSED only once the match is final
+// and the condition never happened \u2014 mirrors how the rest of the app treats
+// match status (nothing is a permanent loss while the match is still live).
+function evaluateLeg(leg, m) {
+  if (!m) return 'PENDING';
+  const isFinal = m.status === 'FT';
+  const events = (m.stats && m.stats.events) || [];
+  const scoreParts = (m.score || '').split('-').map(x => parseInt(x, 10));
+  const hScore = scoreParts[0], aScore = scoreParts[1];
+  const hasScore = !isNaN(hScore) && !isNaN(aScore);
+  const [homeCode, awayCode] = m.match.split('-').map(s => s.trim().toUpperCase());
+
+  // Matches on surname (+ optional first-initial), not exact full-name equality —
+  // bet sheets mix "Kylian Mbappe", "K. Mbappe", and "Mbappe" for the same player,
+  // and API-Football always spells the full accented name.
+  const nameIs = (apiName, target) => {
+    const tokenize = (s) => normalizeName(s || '').replace(/[.\-']/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const apiTokens = tokenize(apiName);
+    const targetTokens = tokenize(target);
+    if (!apiTokens.length || !targetTokens.length) return false;
+    if (apiTokens[apiTokens.length - 1] !== targetTokens[targetTokens.length - 1]) return false;
+    if (targetTokens.length === 1) return true;
+    const apiFirst = apiTokens[0], targetFirst = targetTokens[0];
+    return apiFirst === targetFirst || apiFirst[0] === targetFirst[0];
+  };
+  const playerScored = (name) => events.some(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name));
+  const playerAssisted = (name) => events.some(e => e.type === 'Goal' && nameIs(e.assist || '', name));
+  const playerGoalCount = (name) => events.filter(e => e.type === 'Goal' && e.detail !== 'Own Goal' && nameIs(e.player || '', name)).length;
+  const playerCarded = (name) => events.some(e => e.type === 'Card' && nameIs(e.player || '', name));
+  const totalCards = () => events.filter(e => e.type === 'Card').length;
+
+  switch (leg.type) {
+    case 'GOALS_OVER': {
+      if (!hasScore) return 'PENDING';
+      if ((hScore + aScore) > parseFloat(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    }
+    case 'BTTS': {
+      if (!hasScore) return 'PENDING';
+      const bothScored = hScore > 0 && aScore > 0;
+      const wantYes = String(leg.target).trim().toUpperCase() !== 'NO';
+      if (wantYes) return bothScored ? 'HIT' : (isFinal ? 'MISSED' : 'PENDING');
+      return bothScored ? 'MISSED' : (isFinal ? 'HIT' : 'PENDING');
+    }
+    case 'CORRECT_SCORE': {
+      if (!isFinal) return 'PENDING'; // score can still change until full-time
+      if (!hasScore) return 'PENDING';
+      return (`${hScore}-${aScore}` === String(leg.target).replace(/\s/g, '')) ? 'HIT' : 'MISSED';
+    }
+    case 'GOALSCORER':
+      if (playerScored(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'SCORE_OR_ASSIST':
+      if (playerScored(leg.target) || playerAssisted(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'SCORE_2PLUS':
+      if (playerGoalCount(leg.target) >= 2) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'CARD':
+      if (playerCarded(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'CARDS_OVER':
+      if (totalCards() > parseFloat(leg.target)) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    case 'WINNER_METHOD': {
+      if (!isFinal) return 'PENDING';
+      const parsed = String(leg.target).trim().toUpperCase().match(/^([A-Z]+)_(ET|PEN)$/);
+      if (!parsed) return 'PENDING';
+      const [, teamCode, method] = parsed;
+      let winnerCode = null;
+      if (hasScore && hScore > aScore) winnerCode = homeCode;
+      else if (hasScore && aScore > hScore) winnerCode = awayCode;
+      else if (m.penaltyWinner === 'HOME') winnerCode = homeCode;
+      else if (m.penaltyWinner === 'AWAY') winnerCode = awayCode;
+      if (winnerCode !== teamCode) return 'MISSED';
+      if (method === 'PEN') return m.penaltyWinner ? 'HIT' : 'MISSED';
+      return (m.wasAET && !m.penaltyWinner) ? 'HIT' : 'MISSED'; // ET win, not decided by pens
+    }
+    case 'MATCH_WINNER': {
+      if (!isFinal || !hasScore) return 'PENDING';
+      const winnerCode = hScore > aScore ? homeCode : (aScore > hScore ? awayCode : 'DRAW');
+      return winnerCode === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'CORNERS_MOST': {
+      if (!isFinal) return 'PENDING';
+      const hC = (m.stats && m.stats.h_corners) || 0, aC = (m.stats && m.stats.a_corners) || 0;
+      if (hC === aC) return 'MISSED';
+      return (hC > aC ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'SHOTS_ON_TARGET_MOST': {
+      if (!isFinal) return 'PENDING';
+      const hS = (m.stats && m.stats.h_shots) || 0, aS = (m.stats && m.stats.a_shots) || 0;
+      if (hS === aS) return 'MISSED';
+      return (hS > aS ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'CARDS_MOST': {
+      if (!isFinal) return 'PENDING';
+      const lineups = (m.stats && m.stats.lineups) || { h: {}, a: {} };
+      const inRoster = (roster, name) => roster && ((roster.start || []).some(p => nameIs(p.name, name)) || (roster.sub || []).some(p => nameIs(p.name, name)));
+      const sideOf = (name) => inRoster(lineups.h, name) ? 'H' : (inRoster(lineups.a, name) ? 'A' : null);
+      let hCards = 0, aCards = 0;
+      events.filter(e => e.type === 'Card').forEach(e => {
+        const side = sideOf(e.player || '');
+        if (side === 'H') hCards++; else if (side === 'A') aCards++;
+      });
+      if (hCards === aCards) return 'MISSED';
+      return (hCards > aCards ? homeCode : awayCode) === String(leg.target).trim().toUpperCase() ? 'HIT' : 'MISSED';
+    }
+    case 'SHOTS_ON_TARGET_2PLUS': {
+      const players = (m.stats && m.stats.players) || { h: [], a: [] };
+      const findPlayer = (name) => [...(players.h || []), ...(players.a || [])].find(p => nameIs(p.name || '', name));
+      const p = findPlayer(leg.target);
+      if (p && (p.shots_on || 0) >= 2) return 'HIT';
+      return isFinal ? 'MISSED' : 'PENDING';
+    }
+    default:
+      return 'PENDING';
+  }
+}
+
+// Overall status for one match's slice of a special bet: red beats orange
+// beats green \u2014 any single missed leg fails the whole match-pill immediately.
+function evaluateLegsSummary(legs, m) {
+  const statuses = legs.map(l => evaluateLeg(l, m));
+  if (statuses.includes('MISSED')) return 'MISSED';
+  if (statuses.every(s => s === 'HIT')) return 'HIT';
+  return 'PENDING';
+}
+
+function specialBetPillColor(status) {
+  if (status === 'HIT') return 'var(--accent-green)';
+  if (status === 'MISSED') return '#ff4d4d';
+  return '#ff9900';
+}
+
+// Overall status for a whole special bet, across every leg on every match it
+// touches (not scoped to one match) — used to settle the BET/WIN/WIN PP rows.
+function evaluateBetOverallStatus(bet) {
+  const statuses = bet.legs.map(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return evaluateLeg(leg, m);
+  });
+  if (statuses.includes('MISSED')) return 'MISSED';
+  if (statuses.every(s => s === 'HIT')) return 'HIT';
+  return 'PENDING';
+}
+
+// Left-to-right ordering key for the special-bet columns, mirroring the same
+// tiers used for the header avatar colors: confirmed win first, then a live
+// bet that's already fully correct, then "1-2 legs away" (orange), then
+// further-away pendings (fewer remaining legs = closer to the front), then
+// dead bets last. Recomputed on every loadData() poll so the row reorders
+// itself live as the matches play out.
+function specialBetSortKey(bet) {
+  const status = evaluateBetOverallStatus(bet);
+  if (status === 'MISSED') return 5000;
+  const allMatchesFinal = bet.legs.every(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return m && m.status === 'FT';
+  });
+  if (status === 'HIT' && allMatchesFinal) return 0;
+  if (status === 'HIT') return 1000;
+  const remaining = bet.legs.filter(leg => {
+    const m = (window.allMatches || []).find(mm => mm.match === leg.match);
+    return evaluateLeg(leg, m) === 'PENDING';
+  }).length;
+  return 2000 + remaining;
+}
+
+// Maps an outcome-determining leg to a team-code-or-DRAW result, so two bets
+// can be checked for a direct contradiction. Only Match Winner / Method Of
+// Victory / Correct Score legs actually pin down a match result — every other
+// leg type (goalscorer, cards, corners, shots-on-target, BTTS, etc.) is an
+// independent condition that never blocks a combo.
+function impliedOutcome(leg) {
+  const parts = String(leg.match || '').split('-').map(s => s.trim().toUpperCase());
+  const [homeCode, awayCode] = parts;
+  if (leg.type === 'MATCH_WINNER') return String(leg.target).trim().toUpperCase();
+  if (leg.type === 'WINNER_METHOD') {
+    const m = String(leg.target).trim().toUpperCase().match(/^([A-Z]+)_(ET|PEN)$/);
+    return m ? m[1] : null;
+  }
+  if (leg.type === 'CORRECT_SCORE') {
+    const scoreParts = String(leg.target).replace(/\s/g, '').split('-').map(Number);
+    if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+    const [h, a] = scoreParts;
+    return h > a ? homeCode : (a > h ? awayCode : 'DRAW');
+  }
+  return null;
+}
+
+// Two special bets can win together unless they pin down a different result
+// for the same match.
+function specialBetsConflict(betA, betB) {
+  for (const legA of betA.legs) {
+    const outcomeA = impliedOutcome(legA);
+    if (!outcomeA) continue;
+    for (const legB of betB.legs) {
+      if (legA.match !== legB.match) continue;
+      const outcomeB = impliedOutcome(legB);
+      if (outcomeB && outcomeA !== outcomeB) return true;
+    }
+  }
+  return false;
+}
+
+// Best (max total potentialWin) set of still-alive, mutually compatible
+// special bets — small recursive skip/include search, plenty fast for the
+// handful of bets this group places.
+function bestSpecialCombo() {
+  const aliveBets = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
+  let best = { total: 0, bets: [] };
+  function search(idx, chosen, total) {
+    if (idx === aliveBets.length) {
+      if (total > best.total) best = { total, bets: chosen.slice() };
+      return;
+    }
+    search(idx + 1, chosen, total);
+    const candidate = aliveBets[idx];
+    if (chosen.every(b => !specialBetsConflict(b, candidate))) {
+      chosen.push(candidate);
+      search(idx + 1, chosen, total + (candidate.potentialWin || 0));
+      chosen.pop();
+    }
+  }
+  search(0, [], 0);
+  return best;
+}
+
+function hasAnySpecialCombos() {
+  return bestSpecialCombo().bets.length >= 2;
+}
+
+// "What if?" — a hypothetical fold across the 3 shared first-bet games
+// (win/draw only, backend-flagged via m.isFirstBetGame), always using
+// whichever outcome actually happened in each game. It's never "wrong" by
+// definition, so there's no red/dead state — just empty until a game
+// finishes, then it fills in and compounds.
+function getFirstBetGames() {
+  return (window.allMatches || []).filter(m => m.isFirstBetGame);
+}
+
+function whatIfResultLabel(m) {
+  const scoreParts = (m.score || '').split('-').map(Number);
+  if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+  const [hCode, aCode] = m.match.split('-').map(s => s.trim().toUpperCase());
+  const [hS, aS] = scoreParts;
+  if (hS > aS) return hCode;
+  if (aS > hS) return aCode;
+  return 'DRAW';
+}
+
+function whatIfResultOdds(m) {
+  // Prefer the frozen snapshot taken by the backend the moment bets locked
+  // in this week (see Code.gs buildDashboard) -- it doesn't move once set.
+  // Falls back to the live, continuously-refreshing odds only for the brief
+  // window before that snapshot has landed.
+  const source = m.whatIfOdds || m.odds;
+  if (!source) return null;
+  const scoreParts = (m.score || '').split('-').map(Number);
+  if (scoreParts.length !== 2 || scoreParts.some(isNaN)) return null;
+  const [hS, aS] = scoreParts;
+  const odd = hS > aS ? source.home : (aS > hS ? source.away : source.draw);
+  const n = parseFloat(odd);
+  return isNaN(n) ? null : n;
+}
+
+// Multiplies in each finished game's actual-result odds as it completes --
+// a real fold at a fixed £2 stake, not a sum of singles.
+function computeWhatIf() {
+  const games = getFirstBetGames();
+  const finished = games.filter(m => m.status === 'FT');
+  const stake = 2;
+  let total = stake;
+  finished.forEach(m => {
+    const odds = whatIfResultOdds(m);
+    if (odds) total *= odds;
+  });
+  return {
+    games: games,
+    finishedCount: finished.length,
+    totalGames: games.length,
+    allDone: games.length > 0 && finished.length === games.length,
+    total: finished.length > 0 ? total : 0
+  };
+}
+
+function openSpecialCombosModal() {
+  vibe();
+  const container = document.getElementById('combosContent');
+  container.innerHTML = '';
+  document.getElementById('modalCombos').classList.add('active');
+
+  const { total, bets } = bestSpecialCombo();
+  if (bets.length < 2) {
+    container.innerHTML = "<div style='text-align:center; padding:40px 10px; opacity:0.6;'>No combos possible right now — keep playing!</div>";
+    return;
+  }
+
+  const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+  const header = document.createElement('div');
+  header.style.cssText = 'text-align:center;padding:10px 0 4px;';
+  header.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Highest Possible Win</div><div style="font-size:22px;font-weight:900;color:var(--accent-green);">${formatGBP(total)}</div>`;
+  container.appendChild(header);
+
+  bets.forEach(bet => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+    const avatarSrc = AVATARS[bet.player] || '';
+    row.innerHTML = `
+      ${avatarSrc ? `<img src="${avatarSrc}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">` : ''}
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:var(--text-main);">${bet.id}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${bet.player}</div>
+      </div>
+      <div style="font-weight:800;color:var(--accent-green);">${formatGBP(bet.potentialWin || 0)}</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function openSpecialBetModal(betId, matchId) {
+  vibe();
+  const bet = (window.specialBets || []).find(b => b.id === betId);
+  const m = (window.allMatches || []).find(mm => mm.match === matchId);
+  const legs = bet ? bet.legs.filter(l => l.match === matchId) : [];
+
+  document.getElementById('specialBetTitle').textContent = bet ? (bet.player.toUpperCase() + ' \u2014 COMBO') : 'COMBO';
+  document.getElementById('specialBetMatchSub').textContent = matchId;
+
+  const container = document.getElementById('specialBetLegs');
+  container.innerHTML = '';
+  const legLabel = (leg) => {
+    switch (leg.type) {
+      case 'GOALS_OVER': return `Over ${leg.target} Goals`;
+      case 'BTTS': return `Both Teams To Score: ${leg.target}`;
+      case 'CORRECT_SCORE': return `Correct Score: ${leg.target}`;
+      case 'GOALSCORER': return `Anytime Goalscorer: ${leg.target}`;
+      case 'SCORE_OR_ASSIST': return `To Score Or Assist: ${leg.target}`;
+      case 'SCORE_2PLUS': return `To Score 2+ Goals: ${leg.target}`;
+      case 'CARD': return `Shown A Card: ${leg.target}`;
+      case 'CARDS_OVER': return `Over ${leg.target} Cards`;
+      case 'WINNER_METHOD': return `Method Of Victory: ${leg.target}`;
+      case 'MATCH_WINNER': return `Match Winner: ${leg.target}`;
+      case 'CORNERS_MOST': return `Most Corners: ${leg.target}`;
+      case 'SHOTS_ON_TARGET_MOST': return `Most Shots On Target: ${leg.target}`;
+      case 'CARDS_MOST': return `Most Cards: ${leg.target}`;
+      case 'SHOTS_ON_TARGET_2PLUS': return `2+ Shots On Target: ${leg.target}`;
+      default: return `${leg.type}: ${leg.target}`;
+    }
+  };
+  const dotClass = (status) => status === 'HIT' ? 'dot-W' : status === 'MISSED' ? 'dot-L' : 'dot-D';
+
+  legs.forEach(leg => {
+    const status = evaluateLeg(leg, m);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--bg-soft);border-radius:10px;';
+    row.innerHTML = `<span style="font-size:13px;font-weight:600;color:var(--text-main);">${legLabel(leg)}</span><div class="big-dot ${dotClass(status)}"></div>`;
+    container.appendChild(row);
+  });
+
+  document.getElementById('modalSpecialBet').classList.add('active');
+}
+// Chronological match-event timeline for the Summary tab -- reuses the same
+// event data goalsArea/cardsArea already have (fetched once per
+// updateAllData() run on the backend), just laid out as a proper
+// minute-by-minute feed instead of two sparse icon rows. Side (home/away)
+// is worked out the same way goalsArea already does it: matching the
+// event's player name against the fetched lineups, since events only carry
+// a numeric API team id, not an explicit home/away flag.
+function renderMatchTimeline(stats) {
+  const events = (stats && stats.events) || [];
+  if (events.length === 0) return '<div class="injury-empty">No events yet</div>';
+
+  const resolveIsHome = (playerName) => {
+    if (!playerName || !stats.lineups) return true;
+    const cleanP = normalizeName(playerName.trim());
+    const parts = cleanP.split(' ');
+    const h = stats.lineups.h || {}, a = stats.lineups.a || {};
+    if (parts.some(pt => pt.length > 2 && ((h.start||[]).some(p => normalizeName(p.name).includes(pt)) || (h.sub||[]).some(p => normalizeName(p.name).includes(pt))))) return true;
+    if (parts.some(pt => pt.length > 2 && ((a.start||[]).some(p => normalizeName(p.name).includes(pt)) || (a.sub||[]).some(p => normalizeName(p.name).includes(pt))))) return false;
+    return true;
+  };
+
+  const minuteValue = (t) => parseFloat(String(t).replace('+', '.')) || 0;
+  const sorted = events.slice().sort((a, b) => minuteValue(a.time) - minuteValue(b.time));
+
+  const rows = sorted.map(e => {
+    let icon = null, sub = '';
+    if (e.type === 'Goal') {
+      icon = e.detail === 'Missed Penalty' ? '❌' : '⚽';
+      if (e.detail === 'Own Goal') sub = 'Own goal';
+      else if (e.detail === 'Penalty') sub = 'Penalty';
+      else if (e.detail === 'Missed Penalty') sub = 'Penalty missed';
+      if (e.assist && e.detail !== 'Own Goal' && e.detail !== 'Missed Penalty') sub = (sub ? sub + ' · ' : '') + 'Assist: ' + e.assist;
+    } else if (e.type === 'Card') {
+      icon = (e.detail === 'Red Card') ? '🟥' : '🟨';
+    } else if (e.type === 'subst') {
+      icon = '🔄';
+      sub = e.assist ? ('Off: ' + e.assist) : '';
+    } else if (e.type === 'Var') {
+      icon = '📺';
+      sub = e.detail || 'VAR Review';
+    }
+    if (!icon) return ''; // unknown/uninteresting event type -- skip
+    const isHome = resolveIsHome(e.player);
+    return `<div class="timeline-row ${isHome ? 'timeline-home' : 'timeline-away'}">
+      <div class="timeline-minute">${e.time}'</div>
+      <div class="timeline-icon">${icon}</div>
+      <div class="timeline-detail"><div class="timeline-player">${e.player || ''}</div>${sub ? `<div class="timeline-sub">${sub}</div>` : ''}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return rows || '<div class="injury-empty">No notable events</div>';
+}
+
 function switchTab(t){
   vibe();
   // Update button active states
@@ -2801,8 +4518,10 @@ function showPlayerStats(name, stats, events) {
       <div class="pp-stat"><div class="pp-val">${goals}</div><div class="pp-lbl">Goals</div></div>
       <div class="pp-stat"><div class="pp-val">${assists}</div><div class="pp-lbl">Asst</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.shots}</div><div class="pp-lbl">Shots</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.shots_on||0}</div><div class="pp-lbl">On Target</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.key_passes}</div><div class="pp-lbl">Key P</div></div>
       <div class="pp-stat"><div class="pp-val">${stats.tackles||0}</div><div class="pp-lbl">Tkl</div></div>
+      <div class="pp-stat"><div class="pp-val">${stats.saves||0}</div><div class="pp-lbl">Saves</div></div>
     `;
     pop.style.display = "block";
 }
@@ -3202,7 +4921,21 @@ function openModal(m){
             </div>
           </div>`;
       }
-      document.getElementById("consensusArea").innerHTML = liveProbHTML + consensusHTML;
+      // Match Odds strip -- the raw Home/Draw/Away price is already fetched
+      // and kept fresh right up to kickoff (used internally for the
+      // What if? payouts and the Smart Tips text), but until now was never
+      // shown to you as its own piece of content.
+      let oddsHTML = "";
+      if (m.odds && (m.odds.home || m.odds.draw || m.odds.away)) {
+        oddsHTML = `
+        <div class="odds-strip">
+          <div class="odds-cell"><div class="odds-cell-label">${hCode}</div><div class="odds-cell-value">${m.odds.home || "-"}</div></div>
+          <div class="odds-cell"><div class="odds-cell-label">Draw</div><div class="odds-cell-value">${m.odds.draw || "-"}</div></div>
+          <div class="odds-cell"><div class="odds-cell-label">${aCode}</div><div class="odds-cell-value">${m.odds.away || "-"}</div></div>
+        </div>
+        ${m.odds.bookie ? `<div class="odds-bookie">via ${m.odds.bookie}</div>` : ""}`;
+      }
+      document.getElementById("consensusArea").innerHTML = oddsHTML + liveProbHTML + consensusHTML;
       
       let hG=[], aG=[];
       let goalsMap = {}; 
@@ -3234,6 +4967,7 @@ function openModal(m){
           else { html = `<div class="el-item"><span class="el-icon">${icon}</span>${ogText} <span class="el-time">${timesStr}</span> <span>${name}</span></div>`; aG.push(html); }
       });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
+      document.getElementById("summaryTimeline").innerHTML = renderMatchTimeline(s);
 
       // STATS AREA logic...
       const sb = document.getElementById("statsArea"); 
@@ -3243,7 +4977,7 @@ function openModal(m){
       } else {
           let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
           let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
-          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}];
+          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}, {l:"Saves", h:s.h_saves, a:s.a_saves}, {l:"Fouls", h:s.h_fouls, a:s.a_fouls}];
           let allStatsHTML = ""; 
           sl.forEach(st => {
             if (!st.h && !st.a && !st.pct && !st.dec) return; 
@@ -3360,21 +5094,117 @@ function openModal(m){
 }
  
 function openTable(){
-    const b=document.getElementById("tableBody");
-    b.innerHTML="";
-    if(!tableCache) b.innerHTML="Loading...";
-    else tableCache.forEach(t=>{
-        let formHtml = "";
-        if(t.form) {
-            t.form.split('').forEach(char => {
-                let colorClass = char === 'W' ? 'dot-W' : (char === 'L' ? 'dot-L' : 'dot-D');
-                formHtml += `<div class="form-dot ${colorClass}"></div>`;
-            });
-        }
-        b.innerHTML+=`<div class="tbl-row tbl-grid"><div class="ta-l" style="color:#9aa0a6">${t.rank}</div><div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div><div class="ta-c">${t.mp}</div><div class="ta-c txt-green">${t.pts}</div><div class="ta-c" style="color:#9aa0a6">${t.gd}</div><div class="tbl-form-wrap">${formHtml}</div></div>`
-    });
-    document.getElementById("tableModal").classList.add("active");
+  const isWC = window.leagueMode === 1;
+  document.querySelector('#tableModal .modal-title').textContent = isWC ? 'World Cup 2026' : 'Premier League';
+  document.querySelector('#tableModal .modal-sub').textContent   = isWC ? 'Group Stage' : 'Live Standings';
+  const headerLogo = document.querySelector('#tableModal .modal-header-logo');
+  if (headerLogo) headerLogo.src = isWC
+    ? 'https://media.api-sports.io/football/leagues/1.png'
+    : 'https://media.api-sports.io/football/leagues/39.png';
+
+  // Show tabs only in WC mode
+  document.getElementById('tableTabs').style.display = isWC ? 'flex' : 'none';
+  switchTableTab('standings');
+
+  const b = document.getElementById("tableBody");
+  b.innerHTML = "";
+  if (!tableCache) { b.innerHTML = "Loading..."; document.getElementById("tableModal").classList.add("active"); return; }
+
+  const useGroups = isWC && tableCache[0] && tableCache[0].group;
+  let currentGroup = null;
+  tableCache.forEach(t => {
+    if (useGroups && t.group !== currentGroup) {
+      currentGroup = t.group;
+      b.innerHTML += `<div style="padding:10px 15px 4px; font-size:10px; font-weight:800; color:var(--accent-orange); text-transform:uppercase; letter-spacing:1px; background:var(--bg-row); margin-top:4px;">${t.group}</div>`;
+    }
+    let formHtml = "";
+    if (t.form) t.form.split('').forEach(char => { formHtml += `<div class="form-dot ${char==='W'?'dot-W':char==='L'?'dot-L':'dot-D'}"></div>`; });
+    b.innerHTML += `<div class="tbl-row tbl-grid">
+      <div class="ta-l" style="color:#9aa0a6">${t.rank}</div>
+      <div class="tbl-team-wrap"><img src="${t.logo}" class="tbl-logo"><span>${t.team}</span></div>
+      <div class="ta-c">${t.mp}</div>
+      <div class="ta-c txt-green">${t.pts}</div>
+      <div class="ta-c" style="color:#9aa0a6">${t.gd}</div>
+      <div class="tbl-form-wrap">${formHtml}</div>
+    </div>`;
+  });
+  document.getElementById("tableModal").classList.add("active");
 }
+
+function switchTableTab(tab) {
+  const showStandings = tab === 'standings';
+  document.getElementById('standingsHeader').style.display = showStandings ? '' : 'none';
+  document.getElementById('standingsContent').style.display = showStandings ? '' : 'none';
+  document.getElementById('bracketView').style.display = showStandings ? 'none' : '';
+  document.querySelectorAll('#tableTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(showStandings ? 'tabStandings' : 'tabBracket').classList.add('active');
+  if (tab === 'bracket') renderBracket();
+}
+
+function renderBracket() {
+  const el = document.getElementById("bracketBody");
+  const data = window.knockoutCache || [];
+  if (!data.length) {
+    el.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5;">
+      <div style="font-size:36px; margin-bottom:10px;">🏆</div>
+      <div style="font-weight:800; font-size:13px;">Bracket not available yet</div>
+      <div style="font-size:11px; margin-top:6px; opacity:0.7;">Check back when the group stage ends</div>
+    </div>`;
+    return;
+  }
+  const roundOrder = ['Round of 32','Round of 16','Quarter-finals','Semi-finals','3rd Place Final','Final'];
+  const roundEmoji = { 'Final':'🏆', '3rd Place Final':'🥉', 'Semi-finals':'🔜', 'Quarter-finals':'⚔️', 'Round of 16':'1️⃣6️⃣', 'Round of 32':'3️⃣2️⃣' };
+  const byRound = {};
+  data.forEach(m => { if (!byRound[m.round]) byRound[m.round] = []; byRound[m.round].push(m); });
+
+  let html = '';
+  roundOrder.forEach(round => {
+    const matches = byRound[round];
+    if (!matches || !matches.length) return;
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-size:10px; font-weight:800; color:var(--accent-orange); text-transform:uppercase; letter-spacing:1px; padding-bottom:6px; margin-bottom:8px; border-bottom:1px solid rgba(255,109,0,0.25);">
+        ${roundEmoji[round] || ''} ${round}
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">`;
+
+    matches.forEach(m => {
+      const isFinished = ['FT','AET','PEN'].includes(m.status);
+      const isLive     = m.status && (m.status.includes("'") || m.status === 'HT');
+      const hG = m.homeGoals; const aG = m.awayGoals;
+      const hasScore = hG !== null && aG !== null;
+      const hWin = isFinished && hasScore && hG > aG;
+      const aWin = isFinished && hasScore && aG > hG;
+
+      const teamRow = (name, logo, goals, winner) => {
+        const shortName = (name || 'TBD').length > 16 ? (name || 'TBD').substring(0,15) + '…' : (name || 'TBD');
+        return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; ${winner ? 'background:rgba(74,222,128,0.08);' : ''}">
+          ${logo ? `<img src="${logo}" style="width:20px; height:20px; object-fit:contain; flex-shrink:0;">` : `<div style="width:20px; height:20px; background:rgba(255,255,255,0.08); border-radius:50%; flex-shrink:0;"></div>`}
+          <span style="flex:1; font-size:12px; font-weight:${winner ? '800' : '600'}; color:${winner ? 'var(--text-main)' : 'var(--text-muted)'};">${shortName}</span>
+          <span style="font-size:14px; font-weight:800; min-width:18px; text-align:right; color:${winner ? 'var(--accent-green)' : (hasScore ? 'var(--text-main)' : 'transparent')};">${hasScore ? goals : '–'}</span>
+        </div>`;
+      };
+
+      const statusBadge = isLive
+        ? `<span style="color:#ef4444; font-size:9px; font-weight:800;">${m.status}</span>`
+        : isFinished
+          ? `<span style="color:var(--text-muted); font-size:9px;">FT</span>`
+          : m.date
+            ? `<span style="color:var(--text-muted); font-size:9px;">${new Date(m.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`
+            : `<span style="color:var(--text-muted); font-size:9px;">TBD</span>`;
+
+      html += `<div style="background:var(--bg-soft); border-radius:8px; border:1px solid ${isLive ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.05)'}; overflow:hidden;">
+        ${teamRow(m.home, m.homeLogo, hG, hWin)}
+        <div style="height:1px; background:rgba(255,255,255,0.05); margin:0 10px;"></div>
+        ${teamRow(m.away, m.awayLogo, aG, aWin)}
+        <div style="padding:2px 10px 5px; display:flex; justify-content:flex-end;">${statusBadge}</div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
 function closeModal(id){document.getElementById(id).classList.remove("active")}
  
 // === Swipe between matches in the modal (carousel-style) ===
@@ -3469,9 +5299,26 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
   }, { passive: true });
 })();
  
-renderSkeletons(); 
-loadData(); 
+// If a previous session already cached a dashboard on this device, paint
+// it immediately -- the exact real interface, zero network wait -- then
+// let loadData() below fetch the current data and render over it. Only
+// falls through to the skeleton placeholders on a device with nothing
+// cached yet (e.g. the very first open ever).
+let paintedFromCache = false;
+try {
+  const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+  if (cachedRaw) {
+    renderDashboard(JSON.parse(cachedRaw), { suppressCelebration: true });
+    paintedFromCache = true;
+  }
+} catch(e) { paintedFromCache = false; }
+if (!paintedFromCache) renderSkeletons();
+loadData();
 setInterval(loadData,REFRESH_MS);
+// Fast poll starts being useful once loadData() has drawn the real rows the
+// first time -- until then patchFastScores() is a no-op (see above), so
+// there's nothing to gain from firing this before that first render lands.
+setInterval(loadFastData,FAST_REFRESH_MS);
 setInterval(updateTicker, 1000); // NEW: update countdown display every second
 
 document.getElementById("rankingCard").onclick=()=>{
@@ -3481,58 +5328,57 @@ document.getElementById("rankingCard").onclick=()=>{
     document.getElementById("historyModal").classList.add("active");
 };
 document.getElementById("summaryToggle").onclick=()=>{vibe();document.getElementById("summaryContentWrap").classList.toggle("hidden");document.getElementById("summaryToggle").classList.toggle("open");};
+document.getElementById("weeklyCard").addEventListener("click", handleAdminTap);
 const bm=document.getElementById("btnMatches"), bn=document.getElementById("btnMoney");
 if(bm){bm.onclick=()=>{bm.classList.add("active");bn.classList.remove("active");drawHistoryChart("matches")};bn.onclick=()=>{bn.classList.add("active");bm.classList.remove("active");drawHistoryChart("money")}}
 
 Chart.register(ChartDataLabels);
+// Pinch-to-zoom / drag-to-pan on the Performance History chart -- the All
+// Time view especially can span many matchweeks across seasons. Guarded in
+// case the CDN script didn't load, so the chart still renders normally
+// (just without zoom) rather than throwing.
+if (window.ChartZoom) Chart.register(ChartZoom);
 
-// === LOCK IN BETS FEATURE ===
-function lockInBets() {
-    if(!selectedPlayer) return;
-    if(window.lockStatus && window.lockStatus[selectedPlayer]) {
-        alert("You've already locked in your bets!"); return;
-    }
-    const btn = document.getElementById('lockBtn');
-    const orig = btn.innerHTML;
-    btn.innerHTML = "LOCKING..."; btn.disabled = true; btn.style.opacity = "0.7";
+// Small custom plugin -- draws a dashed vertical line + season name at
+// every season-change point in the All Time chart (see buildAllTimeSeries).
+// No boundaries means nothing to draw, so this is a silent no-op in the
+// plain Season view.
+Chart.register({
+  id: 'seasonBoundaries',
+  afterDraw(chart) {
+    const opts = chart.options.plugins && chart.options.plugins.seasonBoundaries;
+    const boundaries = (opts && opts.boundaries) || [];
+    if (!boundaries.length) return;
+    const { ctx, chartArea, scales } = chart;
+    const xScale = scales.x;
+    ctx.save();
+    boundaries.forEach(b => {
+      // A line right at the very first point is just noise, not a real change.
+      if (b.index <= 0) return;
+      const x = xScale.getPixelForValue(b.index);
+      if (x < chartArea.left || x > chartArea.right) return;
 
-    const betsToSend = [];
-    for(const [match, d] of Object.entries(pendingBets)) {
-        if(d.col1 !== undefined || d.col2 !== undefined)
-            betsToSend.push({ match, col1: d.col1, col2: d.col2 });
-    }
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-    fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ player: selectedPlayer, bets: betsToSend, action: "lock" })
-    })
-    .then(r => r.json())
-    .then(res => {
-        if(res.status === "success") {
-            document.querySelectorAll('#betListContainer .bet-input-slot:not(.locked)').forEach(slot => {
-                slot.classList.add('locked'); slot.style.pointerEvents = 'none';
-            });
-            const confirmBtn = document.querySelector('#modalBetList .action-btn');
-            if(confirmBtn) confirmBtn.style.display = 'none';
-            btn.innerHTML = "✅ LOCKED IN!"; btn.classList.add('locked');
-            btn.style.opacity = "1"; btn.disabled = true;
-            if(typeof confetti !== 'undefined') {
-                confetti({ particleCount: 80, spread: 90, origin: { y: 0.6 },
-                    colors: ['#f97316','#ffffff','#4ade80'] });
-            }
-            setTimeout(() => { closeModal('modalBetList'); loadData(); }, 1800);
-        } else {
-            alert("Error: " + (res.message || "Unknown error"));
-            btn.innerHTML = orig; btn.disabled = false; btn.style.opacity = "1";
-        }
-    })
-    .catch(() => {
-        alert("Network error. Please try again.");
-        btn.innerHTML = orig; btn.disabled = false; btn.style.opacity = "1";
+      if (b.label) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = "700 9px 'Inter', sans-serif";
+        ctx.textAlign = 'left';
+        ctx.fillText(b.label, x + 4, chartArea.top + 10);
+      }
     });
-}
+    ctx.restore();
+  }
+});
 
-// === NEW BETTING LOGIC (Pro V2 - Locked Columns) ===
+/* === NEW BETTING LOGIC (Pro V2 - Locked Columns) === */
 
 let selectedPlayer = null;
 let activePicker = { match: null, col: null }; 
@@ -3778,14 +5624,13 @@ function startBettingProcess() {
       }
 
       // Check if locked (Value exists in Row 18 / winData)
-      // We check for truthy value (e.g. 8, "£8", etc). 
-      let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
-      let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
+      // We check for truthy value (e.g. 8, "£8", etc).
+      const allLocked = pIndices.length > 0 && pIndices.every(idx => window.winData && window.winData[idx] && window.winData[idx].value);
 
       const card = document.getElementById('card-' + name);
       if(card) {
-          // If BOTH are locked, hide the player card entirely
-          if(isLocked1 && isLocked2) {
+          // If ALL bet columns are locked, hide the player card entirely
+          if(allLocked) {
               card.style.display = 'none';
           } else {
               card.style.display = 'flex';
@@ -3807,88 +5652,70 @@ function selectPlayer(name) {
   const savedData = localStorage.getItem('jb_saved_' + name);
   pendingBets = savedData ? JSON.parse(savedData) : {};
 
-  // 2. Identify Player Columns & Locks
+  // 2. Identify Player Columns & Locks (however many bet columns this player has)
   let pIndices = [];
   if(window.globalHeaders) {
       window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
   }
-  
-  // Check locks
-  let isLocked1 = pIndices[0] !== undefined && window.winData && window.winData[pIndices[0]] && window.winData[pIndices[0]].value;
-  let isLocked2 = pIndices[1] !== undefined && window.winData && window.winData[pIndices[1]] && window.winData[pIndices[1]].value;
+  // Check locks per slot
+  const isLocked = pIndices.map(idx => !!(window.winData && window.winData[idx] && window.winData[idx].value));
 
   // 3. Filter Upcoming
   const upcoming = window.allMatches ? window.allMatches.filter(m => m.status === 'NS' || m.status.includes(":")) : [];
-  
-  if(upcoming.length === 0) { 
-    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No upcoming games.</div>`; 
+
+  if(upcoming.length === 0) {
+    container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No upcoming games.</div>`;
     document.getElementById('modalBetList').classList.add('active');
-    return; 
+    return;
   }
+
+  // Two synced columns: fixed match names on the left, one shared
+  // horizontally-scrolling column of bet pills on the right — so every
+  // row scrolls together and pills never overlap the match names.
+  container.innerHTML = `
+    <div class="bet-list-split">
+      <div class="bet-list-row-unit">
+        <div id="betListNames" class="bet-list-names"></div>
+        <div class="bet-list-pills-scroll"><div id="betListPills" class="bet-list-pills"></div></div>
+      </div>
+    </div>
+  `;
+  const namesContainer = document.getElementById('betListNames');
+  const pillsContainer = document.getElementById('betListPills');
 
   upcoming.forEach(m => {
     const [h, a] = m.match.split("-").map(s => s.trim());
     if(!pendingBets[m.match]) pendingBets[m.match] = {};
 
-    // Get Existing Sheet Bets
-    let sheetVal1 = (pIndices[0] !== undefined && m.cells[pIndices[0]]) ? m.cells[pIndices[0]].value : "";
-    let sheetVal2 = (pIndices[1] !== undefined && m.cells[pIndices[1]]) ? m.cells[pIndices[1]].value : "";
+    // --- HTML GENERATION: one slot per bet column this player has ---
+    const slotsHtml = pIndices.map((idx, i) => {
+        const colNum = i + 1;
+        const sheetVal = m.cells[idx] ? m.cells[idx].value : "";
 
-    // If pending is empty, adopt sheet value
-    if(pendingBets[m.match].col1 === undefined) pendingBets[m.match].col1 = sheetVal1;
-    if(pendingBets[m.match].col2 === undefined) pendingBets[m.match].col2 = sheetVal2;
+        // If pending is empty, adopt sheet value
+        if(pendingBets[m.match][`col${colNum}`] === undefined) pendingBets[m.match][`col${colNum}`] = sheetVal;
+        const val = pendingBets[m.match][`col${colNum}`];
 
-    const val1 = pendingBets[m.match].col1;
-    const val2 = pendingBets[m.match].col2;
+        if (isLocked[i]) {
+            return `<div class="bet-input-slot locked">${sheetVal || "-"}</div>`;
+        }
+        return `<div class="bet-input-slot ${val ? 'filled' : ''}" id="slot-${m.match}-${colNum}" onclick="openPicker('${m.match}', '${h}', '${a}', ${colNum})">${val || ''}</div>`;
+    }).join('');
 
-    // --- HTML GENERATION (Cleaner) ---
-    // Change: Removed "BET 1" / "BET 2" fallback text. Now it defaults to empty string.
-    
-    let htmlBtn1 = "";
-    if (isLocked1) {
-        htmlBtn1 = `<div class="bet-input-slot locked">${sheetVal1 || "-"}</div>`;
-    } else {
-        htmlBtn1 = `<div class="bet-input-slot ${val1 ? 'filled' : ''}" id="slot-${m.match}-1" onclick="openPicker('${m.match}', '${h}', '${a}', 1)">${val1 || ''}</div>`;
-    }
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'match-info';
+    nameDiv.setAttribute('onclick', `openPreMatchStats('${m.match}')`);
+    nameDiv.style.cssText = 'cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;';
+    nameDiv.innerHTML = `${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}`;
+    namesContainer.appendChild(nameDiv);
 
-    let htmlBtn2 = "";
-    if (isLocked2) {
-        htmlBtn2 = `<div class="bet-input-slot locked">${sheetVal2 || "-"}</div>`;
-    } else {
-        htmlBtn2 = `<div class="bet-input-slot ${val2 ? 'filled' : ''}" id="slot-${m.match}-2" onclick="openPicker('${m.match}', '${h}', '${a}', 2)">${val2 || ''}</div>`;
-    }
-
-    const div = document.createElement('div'); 
-    div.className = 'bet-row';
-    // In selectPlayer function, replace the div.innerHTML part with this:
-    div.innerHTML = `
-      <div class="match-info" onclick="openPreMatchStats('${m.match}')" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;">
-          ${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}
-      </div>
-      ${htmlBtn1}
-      ${htmlBtn2}
-    `;
-    container.appendChild(div);
+    const pillsDiv = document.createElement('div');
+    pillsDiv.className = 'bet-pills-row';
+    pillsDiv.innerHTML = slotsHtml;
+    pillsContainer.appendChild(pillsDiv);
   });
-  
+
   localStorage.setItem('jb_saved_' + selectedPlayer, JSON.stringify(pendingBets));
-
-  const _alreadyLocked = window.lockStatus && window.lockStatus[name];
-  const _lockBtn = document.getElementById('lockBtn');
-  const _confirmBtn = document.querySelector('#modalBetList .action-btn');
-  if(_alreadyLocked) {
-      _lockBtn.innerHTML = "✅ LOCKED IN"; _lockBtn.classList.add('locked'); _lockBtn.disabled = true;
-      if(_confirmBtn) _confirmBtn.style.display = 'none';
-      setTimeout(() => {
-          document.querySelectorAll('#betListContainer .bet-input-slot:not(.locked)').forEach(slot => {
-              slot.classList.add('locked'); slot.style.pointerEvents = 'none';
-          });
-      }, 50);
-  } else {
-      _lockBtn.innerHTML = "🔒 LOCK IN BETS"; _lockBtn.classList.remove('locked'); _lockBtn.disabled = false;
-      if(_confirmBtn) _confirmBtn.style.display = '';
-  }
-
   document.getElementById('modalBetList').classList.add('active');
 }
 function openPicker(matchId, home, away, colNum) {
@@ -3930,9 +5757,8 @@ function pickValue(val) {
 function submitAllBets() {
   const betsToSend = [];
   for (const [match, data] of Object.entries(pendingBets)) {
-    let v1 = data.col1; let v2 = data.col2;
-    if (v1 !== undefined || v2 !== undefined) {
-        betsToSend.push({ match: match, col1: v1, col2: v2 });
+    if (Object.keys(data).some(k => /^col\d+$/.test(k) && data[k] !== undefined)) {
+        betsToSend.push({ match: match, ...data });
     }
   }
   
@@ -3961,14 +5787,12 @@ function submitAllBets() {
                 const rows = document.querySelectorAll('.right-card .row:not(.header-row-sticky)');
                 const targetRow = rows[matchIndex];
                 if(targetRow) {
-                   if(playerIndices[0] !== undefined && bet.col1 !== undefined) {
-                       const cell = targetRow.children[playerIndices[0]];
-                       if(cell) { cell.textContent = bet.col1; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
-                   }
-                   if(playerIndices[1] !== undefined && bet.col2 !== undefined) {
-                       const cell = targetRow.children[playerIndices[1]];
-                       if(cell) { cell.textContent = bet.col2; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
-                   }
+                   playerIndices.forEach((colIdx, i) => {
+                       const val = bet[`col${i + 1}`];
+                       if(val === undefined) return;
+                       const cell = targetRow.children[colIdx];
+                       if(cell) { cell.textContent = val; cell.classList.remove('empty'); cell.style.backgroundColor = 'var(--bg-soft)'; cell.style.border = '1px solid var(--accent-green)'; }
+                   });
                 }
             }
         });
@@ -4019,6 +5843,17 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
     // Fall back to plain W/L/D dots from the league table if not available yet.
     const detailedHForm = (formData && formData.home) ? formData.home : [];
     const detailedAForm = (formData && formData.away) ? formData.away : [];
+    // Build name → logo map from form opponents + DYNAMIC_LOGOS
+    const nameToLogo = {};
+    [...detailedHForm, ...detailedAForm].forEach(f => {
+      if (f.opponent && f.opponentLogo) {
+        nameToLogo[normalizeName(f.opponent).toUpperCase().replace(/[^A-Z]/g,'')] = f.opponentLogo;
+      }
+    });
+    if (window.DYNAMIC_LOGOS) {
+      Object.entries(window.DYNAMIC_LOGOS).forEach(([k,v]) => { nameToLogo[k] = v; });
+    }
+    Object.entries(TEAM_LOGOS_FULLNAME).forEach(([k,v]) => { if (!nameToLogo[k]) nameToLogo[k] = v; });
     const hFormFallback = detailedHForm.length === 0 ? findFormInTable(currentHome).split('') : null;
     const aFormFallback = detailedAForm.length === 0 ? findFormInTable(currentAway).split('') : null;
 
@@ -4045,38 +5880,28 @@ function renderH2H(h2hData, currentHome, currentAway, formData, matchObj) {
 
     // --- FIXED LOGO LOGIC WITH SPECIAL STYLING ---
     const getLogoHtml = (name) => {
-        if (!name) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
-        const norm = normalizeName(name).toUpperCase();
-        
-        // Reverse mapping for full names back to shortcodes
-        const reverseMappings = {
-            "WEST HAM": "WHA", "MANCHESTER CITY": "CTY", "MANCHESTER UNITED": "MAN",
-            "NEWCASTLE": "NWC", "NOTTINGHAM FOREST": "NOT", "ASTON VILLA": "AVI",
-            "CRYSTAL PALACE": "CPA", "CHELSEA": "CHE", "ARSENAL": "ARS",
-            "LIVERPOOL": "LIV", "TOTTENHAM": "TOT", "BOURNEMOUTH": "BOU",
-            "BRENTFORD": "BRE", "BRIGHTON": "BRI", "BURNLEY": "BUR",
-            "EVERTON": "EVE", "FULHAM": "FUL", "WOLVES": "WOL",
-            "WOLVERHAMPTON": "WOL", "SUNDERLAND": "SUN", "LEEDS": "LEE"
-        };
-
-        let code = norm; 
-        for (const [fullName, shortCode] of Object.entries(reverseMappings)) {
-            if (norm.includes(fullName) || fullName.includes(norm)) {
-                code = shortCode;
-                break;
-            }
+      if (!name) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
+      const norm = normalizeName(name).toUpperCase().replace(/[^A-Z]/g,'');
+  
+      // 1. Exact match (PL short code or normalized full name)
+      let logo = TEAM_LOGOS[norm] || nameToLogo[norm];
+  
+      // 2. startsWith match — "NETHERLANDS" startsWith "NED", "TURKEY" startsWith "TUR"
+      if (!logo) {
+        for (const [k, v] of Object.entries(nameToLogo)) {
+          if (k.length >= 3 && norm.startsWith(k)) { logo = v; break; }
         }
+      }
+  
+      // 3. Substring match — catches edge cases like "TURKIYE" ↔ "TUR"  
+      if (!logo) {
+        for (const [k, v] of Object.entries(nameToLogo)) {
+          if (k.length >= 3 && (norm.includes(k) || k.includes(norm.substring(0,4)))) { logo = v; break; }
+        }
+      }
 
-        const logo = TEAM_LOGOS[code];
-        if (!logo) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
-
-        // Apply your original special size/background rules
-        let style = "";
-        if (code === "TOT") style = "background:white; border-radius:50%; padding:2px;";
-        if (code === "SUN") style = "transform:scale(1.35);";
-        if (code === "AVI") style = "transform:scale(1.3);";
-
-        return `<img src="${logo}" alt="${code}" class="ls-logo" style="${style}">`;
+      if (!logo) return `<img src="https://media.api-sports.io/football/leagues/39.png" class="ls-logo">`;
+      return `<img src="${logo}" alt="${name}" class="ls-logo">`;
     };
 
     let hWins = 0, draws = 0, aWins = 0, total = 0;

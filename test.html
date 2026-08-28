@@ -3186,9 +3186,15 @@ function patchFastScores(data) {
   matches.forEach((m, i) => {
     const live = getMatchStatusType(m) === 'live';
 
+    // A not-yet-started match has no startTime in this fast payload (that's
+    // DATA-sheet-only info, deliberately left out to keep this poll cheap)
+    // -- overwriting the pill here would flip it back to a bare "NS" every
+    // ~10-15s, flickering against the real kickoff time the full render
+    // just set. Simplest fix: leave it alone while still NS: there's
+    // nothing time-critical to update on a match that hasn't kicked off.
     const spans = leftRows[i].querySelectorAll('.score-pill span');
-    if (spans.length === 2) {
-      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + (m.status === 'NS' ? 'NS' : m.status);
+    if (spans.length === 2 && m.status !== 'NS') {
+      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + m.status;
       spans[1].textContent = m.score || '';
     }
 

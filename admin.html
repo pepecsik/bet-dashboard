@@ -475,25 +475,42 @@ function runUpdateAllData() {
 // Each card lists that column's picks the same way the Scoreboard grid
 // does, then a WIN (£) figure the admin can type in and save -- writes
 // straight into DASHBOARD row 18 at that column via adminSetWinValue.
+//
+// Deliberately does NOT use data.headers' own order here -- that's the
+// main app's dynamic ordering (which column moved into view based on bet
+// activity), and while that's exactly right for the live app, it made this
+// entry grid's columns jump around while filling in bets. Instead this
+// re-sorts a local copy by `idx` (the actual, never-changing DASHBOARD
+// sheet column: D=Snackbar, E=Snackbar, F=Timbo, G=Timbo, H=Pepe, I=Pepe),
+// so left-to-right here always matches the Sheet's own static layout. Only
+// affects this admin grid -- index.html's own rendering is untouched.
 function renderBetsGrid(data) {
-  const headers = data.headers || [];
+  const rawHeaders = data.headers || [];
   const matches = data.matches || [];
   const winCells = (data.betSummary && data.betSummary[1] && data.betSummary[1].cells) || [];
 
-  if (!headers.length) return '<div class="placeholder">No active bets yet.</div>';
+  if (!rawHeaders.length) return '<div class="placeholder">No active bets yet.</div>';
   if (!matches.length) return '<div class="placeholder">No matches yet.</div>';
+
+  // Each entry keeps `i`, its position in the ORIGINAL headers array --
+  // that's what m.cells[]/winCells[] are indexed by (paired by position,
+  // not by idx), so after sorting for display we still look up the right
+  // cell for each header.
+  const sortedEntries = rawHeaders
+    .map((h, i) => ({ h, i }))
+    .sort((a, b) => a.h.idx - b.h.idx);
 
   // A CSS grid, built row-major in DOM order: the match-label column is
   // sticky (frozen while scrolling sideways) so the bet columns can sit
   // side by side -- exactly like the DASHBOARD sheet itself -- instead of
   // stacking one full-width card per column.
-  const colTemplate = `58px repeat(${headers.length}, 62px)`;
+  const colTemplate = `58px repeat(${sortedEntries.length}, 62px)`;
 
   const headerRow = `<div class="bets-g-cell bets-g-corner"></div>` +
-    headers.map(h => `<div class="bets-g-cell bets-g-head" title="${h.name}">${h.name}</div>`).join('');
+    sortedEntries.map(({ h }) => `<div class="bets-g-cell bets-g-head" title="${h.name}">${h.name}</div>`).join('');
 
   const matchRows = matches.map(m => {
-    const cells = headers.map((h, i) => {
+    const cells = sortedEntries.map(({ i }) => {
       const c = (m.cells && m.cells[i]) || {};
       if (!c.value) return `<div class="bets-g-cell bets-g-pick pv-grey">-</div>`;
       const cls = sbIsGreen(c.color) ? 'pv-green' : (sbIsRed(c.color) ? 'pv-red' : 'pv-grey');
@@ -503,13 +520,13 @@ function renderBetsGrid(data) {
   }).join('');
 
   const winInputRow = `<div class="bets-g-cell bets-g-label">WIN £</div>` +
-    headers.map((h, i) => {
+    sortedEntries.map(({ h, i }) => {
       const currentWin = (winCells[i] && winCells[i].value) || 0;
       return `<div class="bets-g-cell bets-g-win"><input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}"></div>`;
     }).join('');
 
   const saveRow = `<div class="bets-g-cell bets-g-label"></div>` +
-    headers.map(h => `<div class="bets-g-cell bets-g-save"><button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button></div>`).join('');
+    sortedEntries.map(({ h }) => `<div class="bets-g-cell bets-g-save"><button class="action bets-win-save" onclick="saveWinValue(${h.idx}, this)">Save</button></div>`).join('');
 
   return `
     <div class="bets-grid-wrap">

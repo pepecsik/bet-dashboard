@@ -3508,7 +3508,9 @@ function renderDashboard(data, opts){
                   pillEl.classList.add('empty');
               } else if (m.status !== 'FT') {
                   pillEl.style.setProperty('--bet-bg', 'transparent');
-                  pillEl.style.border = '1px dashed rgba(255,255,255,0.35)';
+                  pillEl.style.border = '1px dashed var(--accent-orange)';
+                  pillEl.style.color = 'var(--accent-orange)';
+                  pillEl.style.fontWeight = '800';
                   pillEl.textContent = '?';
               } else {
                   const label = whatIfResultLabel(m);
@@ -4982,8 +4984,13 @@ function openModal(m){
       }
       document.getElementById("consensusArea").innerHTML = oddsHTML + liveProbHTML + consensusHTML;
       
+      // One row per event -- deliberately NOT grouped by player, so a
+      // player who scores twice gets two separate rows (with their own
+      // times/assists) instead of one row with both times mashed together.
+      // Also fixes a side effect of the old grouping: a player with both a
+      // goal AND a red card used to silently lose one of them, since both
+      // events shared the same per-player bucket.
       let hG=[], aG=[];
-      let goalsMap = {}; 
       if(s.events){
           s.events.forEach(e => {
              if((e.type === "Goal" && e.detail !== "Missed Penalty") || (e.type === "Card" && e.detail === "Red Card")){
@@ -4995,25 +5002,21 @@ function openModal(m){
                      else if(parts.some(pt => pt.length>2 && (s.lineups.a.start.some(p => normalizeName(p.name).includes(pt)) || s.lineups.a.sub?.some(p => normalizeName(p.name).includes(pt))))) isH = false;
                  }
                  if(isH === null) isH = true;
-                 if(!goalsMap[cleanP]) goalsMap[cleanP] = { times: [], assists: [], isHome: isH, isOG: e.detail === "Own Goal", type: e.type, detail: e.detail, rawName: e.player };
-                 goalsMap[cleanP].times.push(e.time + "'");
-                 if (e.type === "Goal" && e.assist && e.detail !== "Own Goal") goalsMap[cleanP].assists.push(e.assist);
+
+                 const name = formatName(e.player);
+                 const isOG = e.detail === "Own Goal";
+                 const icon = (e.type === "Card" && e.detail === "Red Card") ? "🟥" : "⚽";
+                 const ogText = isOG ? ` <span class="og-tag">(OG)</span>` : "";
+                 const assistStr = (e.type === "Goal" && e.assist && !isOG) ? e.assist : "";
+                 const assistHtml = assistStr ? `<div class="el-assist">Assist: ${assistStr}</div>` : "";
+                 const timeStr = e.time + "'";
+
+                 let html = "";
+                 if(isH) { html = `<div class="el-item"><div class="el-name-block"><span>${name}${ogText}</span>${assistHtml}</div><span class="el-time">${timeStr}</span><span class="el-icon">${icon}</span></div>`; hG.push(html); }
+                 else { html = `<div class="el-item"><span class="el-icon">${icon}</span><span class="el-time">${timeStr}</span><div class="el-name-block">${ogText}<span>${name}</span>${assistHtml}</div></div>`; aG.push(html); }
              }
           });
       }
-      Object.keys(goalsMap).forEach(key => {
-          let g = goalsMap[key];
-          let timesStr = g.times.join(", ");
-          let name = formatName(g.rawName);
-          let assistStr = g.assists.length ? [...new Set(g.assists)].join(", ") : "";
-          let assistHtml = assistStr ? `<div class="el-assist">Assist: ${assistStr}</div>` : "";
-          let html = "";
-          let icon = "⚽";
-          if(g.type === "Card" && g.detail === "Red Card") icon = "🟥";
-          let ogText = g.isOG ? ` <span class="og-tag">(OG)</span>` : "";
-          if(g.isHome) { html = `<div class="el-item"><div class="el-name-block"><span>${name}${ogText}</span>${assistHtml}</div><span class="el-time">${timesStr}</span><span class="el-icon">${icon}</span></div>`; hG.push(html); }
-          else { html = `<div class="el-item"><span class="el-icon">${icon}</span><span class="el-time">${timesStr}</span><div class="el-name-block">${ogText}<span>${name}</span>${assistHtml}</div></div>`; aG.push(html); }
-      });
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
       document.getElementById("summaryTimeline").innerHTML = renderMatchTimeline(s);
 

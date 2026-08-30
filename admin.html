@@ -310,6 +310,18 @@
       <div class="mw-section-title">Active Bets</div>
       <div id="betsGridContent"><div class="placeholder">Loading…</div></div>
 
+      <!-- Manual "Paid this week" -- replaces the old automatic credit-on-lock
+           behavior (that silently re-fired during testing and badly inflated
+           BALANCE's Paid total). This is a deliberate one-off click: type
+           this week's stake once bets are placed, hit save, it adds onto
+           BALANCE's current-season Paid cell. Nothing else happens on its
+           own anymore. -->
+      <div class="bf-paid-row">
+        <span class="bf-paid-label">Paid this week &pound;</span>
+        <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="weeklyPaidInput" placeholder="12">
+        <button class="bf-paid-save" id="weeklyPaidSave" onclick="saveWeeklyPaid(this)">Add</button>
+      </div>
+
       <div class="mw-pill" onclick="toggleMatchweekSteps()">MATCHWEEK</div>
       <div class="mw-detail" id="matchweekStepsDetail" style="display:none;">
         <div class="step-card">
@@ -561,6 +573,35 @@ function saveWinValue(colIdx, btn) {
       if (res.status === 'success') {
         btn.textContent = 'Saved';
         btn.classList.add('saved');
+      } else {
+        btn.textContent = original;
+        alert(res.message || 'Save failed.');
+      }
+    })
+    .catch(err => { btn.textContent = original; alert('Request failed: ' + err); })
+    .finally(() => {
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('saved'); }, 1200);
+    });
+}
+
+// Adds (not sets) the typed amount onto BALANCE's current-season Paid cell
+// -- a deliberate one-off click once bets are placed for the week, replacing
+// the old automatic credit-on-lock behavior. Clears the input on success
+// since this is "add this week's stake", not a value that should linger and
+// look like it's still waiting to be re-saved.
+function saveWeeklyPaid(btn) {
+  const input = document.getElementById('weeklyPaidInput');
+  const value = parseFloat(input.value) || 0;
+  if (value <= 0) { alert('Enter a positive amount.'); return; }
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  postAdmin('adminAddPaidThisWeek', { amount: value })
+    .then(res => {
+      if (res.status === 'success') {
+        btn.textContent = 'Added';
+        btn.classList.add('saved');
+        input.value = '';
       } else {
         btn.textContent = original;
         alert(res.message || 'Save failed.');

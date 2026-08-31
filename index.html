@@ -1621,6 +1621,27 @@ img[alt="AVI"] {
     border: 1px solid #8D6E63;
 }
 
+/* Anchors the "+N this week" badge to the avatar's own corner, independent
+   of how wide the flex .podium-place column ends up being. */
+.podium-avatar-wrap { position: relative; display: inline-block; }
+.podium-week-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 8px;
+    border: 1.5px solid var(--bg-row);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    line-height: 1.2;
+    white-space: nowrap;
+    z-index: 3;
+}
+.place-1 .podium-week-badge { font-size: 10px; padding: 2px 6px; top: -7px; right: -7px; }
+
 /* Money Text - Condensed */
 .podium-money {
     color: var(--accent-green);
@@ -2899,12 +2920,27 @@ function buildAllTimeSeries(t) {
 // Full podium (podium-container/podium-place/...) -- same tie-break and
 // crown/poop logic regardless of which players array (season or all-time)
 // it's handed.
+// This matchweek's points per player, straight from HISTORY's still-open
+// (unlocked) row -- the exact same number the admin Scoreboard tab's
+// summary strip shows, since both read the row syncCurrentMatchweekToHistory
+// keeps live-updated. Locking a matchweek (or starting a fresh one with no
+// HISTORY row yet) naturally zeroes this out, which is what makes the
+// podium badge disappear on its own -- no separate "reset" needed.
+function getWeeklyPoints(name) {
+  const liveRow = (window.__lastDashboard && window.__lastDashboard.history || []).find(h => !h.locked);
+  return (liveRow && liveRow[name]) ? liveRow[name].points : 0;
+}
+
 function renderRankingPodium(container, players) {
   if (!players || players.length < 3) {
     container.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;font-size:11px;">Waiting for rankings...</div>`;
     return;
   }
   const AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+  const weekBadge = p => {
+    const pts = getWeeklyPoints(p.name);
+    return pts > 0 ? `<div class="podium-week-badge">+${pts}</div>` : '';
+  };
   const sorted = [...players].sort((a, b) => {
     if (b.money !== a.money) return b.money - a.money;
     return b.matchesRight - a.matchesRight;
@@ -2930,7 +2966,10 @@ function renderRankingPodium(container, players) {
       <div class="podium-container">
           <div class="podium-place ${classL}">
               ${iconL ? `<div class="${iconL==='👑'?'crown-icon':'poop-icon'}">${iconL}</div>` : ''}
-              <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
+              <div class="podium-avatar-wrap">
+                  <img src="${AVATARS[p2.name] || './pepe.png'}" class="podium-avatar" data-player="${p2.name}">
+                  ${weekBadge(p2)}
+              </div>
               <div class="podium-bar">
                   <div class="podium-money${ptsClass}">${primaryStat(p2)}</div>
                   <div class="podium-stats">${secondaryStat(p2)}</div>
@@ -2938,7 +2977,10 @@ function renderRankingPodium(container, players) {
           </div>
           <div class="podium-place place-1">
               <div class="crown-icon">👑</div>
-              <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
+              <div class="podium-avatar-wrap">
+                  <img src="${AVATARS[p1.name] || './pepe.png'}" class="podium-avatar" data-player="${p1.name}">
+                  ${weekBadge(p1)}
+              </div>
               <div class="podium-bar">
                   <div class="podium-money${ptsClass}">${primaryStat(p1)}</div>
                   <div class="podium-stats" style="color:#fff;">${secondaryStat(p1)}</div>
@@ -2946,7 +2988,10 @@ function renderRankingPodium(container, players) {
           </div>
           <div class="podium-place ${classR}">
               ${iconR ? `<div class="${iconR==='👑'?'crown-icon':'poop-icon'}">${iconR}</div>` : ''}
-              <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
+              <div class="podium-avatar-wrap">
+                  <img src="${AVATARS[p3.name] || './pepe.png'}" class="podium-avatar" data-player="${p3.name}">
+                  ${weekBadge(p3)}
+              </div>
               <div class="podium-bar">
                   <div class="podium-money${ptsClass}">${primaryStat(p3)}</div>
                   <div class="podium-stats">${secondaryStat(p3)}</div>

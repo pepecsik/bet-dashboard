@@ -960,6 +960,21 @@ body {
     display: inline-block; margin-right: 6px; animation: blink 1.5s infinite ease-in-out;
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Only shown on live rows while a stale cache-primed paint is waiting on
+   the first real fetch after a manual reload -- see __awaitingFreshData.
+   A sibling of the two score-pill <span>s, not inside either one, so the
+   10s fast poll (which only rewrites those spans' own content) can't wipe
+   it out from under a still-pending first load. */
+.live-refresh-spinner {
+    width: 9px; height: 9px;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-top-color: var(--accent-green);
+    border-radius: 50%;
+    animation: liveRefreshSpin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes liveRefreshSpin { to { transform: rotate(360deg); } }
 /* ── Matchday Ticker ──────────────────────────────────────── */
 .ticker {
   display: inline-flex;
@@ -3275,6 +3290,36 @@ function patchFastScores(data) {
       el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
     });
   });
+
+  // Header avatar row -- same per-column green/orange/red aggregate
+  // renderDashboard() computes at index.html's headerRow build (hasBet,
+  // all-green, any-red, any-pending), reapplied here as class toggles only
+  // so the avatar strip stops lagging ~20s behind the bet pills it sits
+  // above. Deliberately skips the celebration trigger (fireScreenBlaster/
+  // showBigWin) -- that stays the full render's job alone, so a column
+  // sitting green doesn't refire confetti on every 10s tick.
+  const headers = data.headers || [];
+  const headerWrappers = right.querySelectorAll('.header-pill-wrapper[data-col-idx]');
+  if (headerWrappers.length === headers.length) {
+    headers.forEach((h, i) => {
+      const pill = headerWrappers[i].querySelector('.header-pill');
+      if (!pill) return;
+      let hasB = false, allG = true, hasR = false, pen = 0;
+      matches.forEach(m => {
+        const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
+        if (!c || !c.value) return;
+        hasB = true;
+        if (!isCorrectColor(c.color)) allG = false;
+        if (isWrongColor(c.color)) hasR = true;
+        if (st !== 'FT') pen++;
+      });
+      pill.classList.remove('status-green', 'status-green-live', 'status-orange', 'status-red');
+      if (hasB && !hasR && allG && pen === 0) pill.classList.add('status-green');
+      else if (hasB && !hasR && allG && pen > 0) pill.classList.add('status-green-live');
+      else if (h.status === 'orange') pill.classList.add('status-orange');
+      else if (h.status === 'red') pill.classList.add('status-red');
+    });
+  }
 }
 
 function loadFastData(){
@@ -3478,7 +3523,7 @@ function renderDashboard(data, opts){
           }
           const goldenClass = isGoldenScore ? "gold-active" : "";
 
-          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span></div></div>`;
+          lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>${live && window.__awaitingFreshData ? '<div class="live-refresh-spinner"></div>' : ''}</div></div>`;
           left.appendChild(lr);
           const rr=document.createElement("div"); rr.className="row";
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
@@ -3706,6 +3751,10 @@ const DASHBOARD_CACHE_KEY = 'cachedDashboard_v1';
 function loadData(){
   fetch(API_URL).then(r=>r.json()).then(data=>{
     try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(data)); } catch(e) { /* storage full/unavailable -- just skip caching */ }
+    // Real data has landed -- whatever spinner the cache-primed paint put on
+    // live rows (see __awaitingFreshData below) is done its job the instant
+    // this render replaces them.
+    window.__awaitingFreshData = false;
     renderDashboard(data, { suppressCelebration: false });
   }).catch(()=>{});
 }
@@ -5400,6 +5449,11 @@ function closeModal(id){document.getElementById(id).classList.remove("active")}
 // let loadData() below fetch the current data and render over it. Only
 // falls through to the skeleton placeholders on a device with nothing
 // cached yet (e.g. the very first open ever).
+// While this stale cache paint is standing in for real data, any live match
+// row gets a small spinner (see .live-refresh-spinner / loadData()) so a
+// manual refresh visibly shows "still fetching" instead of sitting silent
+// for the 10-15s a real fetch can take, then jumping straight to new scores.
+window.__awaitingFreshData = true;
 let paintedFromCache = false;
 try {
   const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
@@ -5408,7 +5462,7 @@ try {
     paintedFromCache = true;
   }
 } catch(e) { paintedFromCache = false; }
-if (!paintedFromCache) renderSkeletons();
+if (!paintedFromCache) { window.__awaitingFreshData = false; renderSkeletons(); }
 loadData();
 setInterval(loadData,REFRESH_MS);
 // Fast poll starts being useful once loadData() has drawn the real rows the

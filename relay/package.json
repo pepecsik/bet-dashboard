@@ -1,0 +1,14 @@
+{
+  "name": "juice-bets-relay",
+  "version": "1.0.0",
+  "description": "Small always-on service that watches API-Football for live score changes and pushes them to connected clients over WebSocket, instead of the app polling Apps Script for them.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:mock": "MOCK_MODE=1 POLL_MS=1000 node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

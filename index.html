@@ -3824,6 +3824,15 @@ function loadData(){
     // this render replaces them.
     window.__awaitingFreshData = false;
     renderDashboard(data, { suppressCelebration: false });
+    // The full payload above can take several seconds to arrive (stats/
+    // injuries/HISTORY on top of the match data), so what it carries can
+    // already be a beat stale by the time it lands and rebuilds everything
+    // from scratch -- momentarily undoing whatever the last fast poll had
+    // already correctly shown (e.g. flashing a live match back to "NS").
+    // Re-running the fast patch right away corrects that within
+    // milliseconds instead of waiting up to FAST_REFRESH_MS for the next
+    // scheduled tick.
+    loadFastData();
   }).catch(()=>{});
 }
 

@@ -3230,6 +3230,57 @@ function computeBetIsWinning(betValue, home, away, hScore, aScore) {
 // interface must always look exactly like loadData() built it; this only
 // ever updates numbers/colours/reaction-classes inside rows loadData()
 // already created.
+// Moves the header avatars (and each row's matching bet cell) into whatever
+// order `data.headers` now says, WITHOUT tearing anything down -- just
+// repositioning the existing DOM nodes. The order number typed into each
+// player's DASHBOARD header cell can be edited by hand at any point, and
+// until now only the slow 30s full render ever picked that up; this lets a
+// reorder show up on the very next 10s fast poll instead.
+// Bails out (leaving the reorder to the next full render) unless the new
+// header list is a pure reshuffle of the exact same names already on
+// screen -- a genuine column count/identity change (new matchweek, special
+// bets toggled) is exactly the kind of structural change this patch path
+// was built to stay out of.
+function reorderFastColumns(right, data) {
+  const newNames = (data.headers || []).map(h => h.name);
+  const oldNames = window.__lastHeaderOrder || newNames;
+  window.__lastHeaderOrder = newNames;
+  if (newNames.length === 0 || newNames.length !== oldNames.length) return;
+  if (newNames.every((n, i) => n === oldNames[i])) { window.globalHeaders = data.headers; return; }
+  const sortedOld = [...oldNames].sort(), sortedNew = [...newNames].sort();
+  if (JSON.stringify(sortedOld) !== JSON.stringify(sortedNew)) return;
+
+  const oldIndexOf = name => oldNames.indexOf(name);
+
+  const headerRowEl = right.querySelector('.header-row-sticky');
+  const headerWrappers = headerRowEl ? Array.from(headerRowEl.querySelectorAll('.header-pill-wrapper[data-col-idx]')) : [];
+  if (headerRowEl && headerWrappers.length === oldNames.length) {
+    newNames.forEach((name, newI) => {
+      const wrapper = headerWrappers[oldIndexOf(name)];
+      if (wrapper) { wrapper.setAttribute('data-col-idx', newI); headerRowEl.appendChild(wrapper); }
+    });
+  }
+
+  const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
+  rightRows.forEach(rowEl => {
+    const realCells = Array.from(rowEl.querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)'));
+    if (realCells.length !== oldNames.length) return;
+    // A fixed anchor that isn't one of the cells being moved -- inserting
+    // each cell (in new order) right before it leaves them in the right
+    // sequence regardless of where they started.
+    const anchor = rowEl.querySelector('.bet.special-bet, .bet.whatif-pill') || null;
+    newNames.forEach((name, newI) => {
+      const cell = realCells[oldIndexOf(name)];
+      if (cell) { cell.setAttribute('data-col-idx', newI); rowEl.insertBefore(cell, anchor); }
+    });
+  });
+
+  // Every index-based lookup elsewhere (the "Alive" filter, special-bet
+  // combos, the ticker) reads window.globalHeaders -- keep it matching the
+  // order the DOM was just moved into.
+  window.globalHeaders = data.headers;
+}
+
 function patchFastScores(data) {
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
@@ -3242,6 +3293,20 @@ function patchFastScores(data) {
   const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
 
   if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
+
+  // Reorder first so the value/colour patch below (which matches DOM
+  // position to data.matches[].cells position) and the header-status sync
+  // further down both line up with whatever order this payload just moved
+  // things into.
+  reorderFastColumns(right, data);
+
+  // This payload is live/current data actually reaching the screen -- any
+  // "still fetching" spinner from a manual refresh (see __awaitingFreshData)
+  // has done its job.
+  if (window.__awaitingFreshData) {
+    window.__awaitingFreshData = false;
+    document.querySelectorAll('.live-refresh-spinner').forEach(el => el.remove());
+  }
 
   matches.forEach((m, i) => {
     const live = getMatchStatusType(m) === 'live';
@@ -3342,6 +3407,9 @@ function renderDashboard(data, opts){
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
+        // Baseline the fast poll's reorder check (see patchFastScores) against
+        // whatever order this full render just drew.
+        window.__lastHeaderOrder = (data.headers || []).map(h => h.name);
         window.specialBets = data.specialBets || [];
         window.seasonHistory = data.seasonHistory || [];
         window.specialBetsEnabled = !!data.specialBetsEnabled;
@@ -5464,6 +5532,12 @@ try {
 } catch(e) { paintedFromCache = false; }
 if (!paintedFromCache) { window.__awaitingFreshData = false; renderSkeletons(); }
 loadData();
+// The cache paint already has real rows to patch into -- don't make a manual
+// refresh wait out the full, heavy dashboard fetch (stats/injuries/HISTORY/
+// ranking) just to get the one thing that's actually urgent: live scores,
+// bet-pill colours, and column order. Firing the cheap fast endpoint
+// straight away gets those on screen well before loadData() above lands.
+if (paintedFromCache) loadFastData();
 setInterval(loadData,REFRESH_MS);
 // Fast poll starts being useful once loadData() has drawn the real rows the
 // first time -- until then patchFastScores() is a no-op (see above), so

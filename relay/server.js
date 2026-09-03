@@ -21,6 +21,7 @@
 import { WebSocketServer } from "ws";
 import http from "http";
 import { combineState } from "./combine.js";
+import { normalizeStatus } from "./normalizeStatus.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -143,7 +144,7 @@ async function fetchLiveFixtures() {
   const data = await res.json();
   return (data.response || []).map((f) => ({
     id: f.fixture.id,
-    status: f.fixture.status.short,
+    status: f.fixture.status.short, // raw API-Football code -- normalizeStatus() runs centrally in pollOnce()
     elapsed: f.fixture.status.elapsed,
     score: `${f.goals.home ?? 0}-${f.goals.away ?? 0}`,
     match: `${f.teams.home.name} - ${f.teams.away.name}`,
@@ -277,11 +278,19 @@ async function pollOnce() {
   }
   let anyChanged = false;
   for (const f of fixtures) {
+    // Normalized here (once, centrally) so both mock and real fixtures go
+    // through the same conversion, and lastKnown always holds the same
+    // display/scoring-ready format ("58'", "FT", "NS", ...) the rest of the
+    // app expects -- see normalizeStatus.js. Comparing on the normalized
+    // value (not the raw code) also means the displayed minute now ticks
+    // over roughly once a minute even without a score change, instead of
+    // sitting frozen between actual events.
+    const status = normalizeStatus(f.status, f.elapsed);
     const prev = lastKnown.get(f.id);
-    const changed = !prev || prev.status !== f.status || prev.score !== f.score;
+    const changed = !prev || prev.status !== status || prev.score !== f.score;
     if (!changed) continue;
     anyChanged = true;
-    lastKnown.set(f.id, { status: f.status, score: f.score, elapsed: f.elapsed, match: f.match });
+    lastKnown.set(f.id, { status, score: f.score, elapsed: f.elapsed, match: f.match });
   }
   if (anyChanged) broadcast({ type: "state", ...computeFullState() });
 }

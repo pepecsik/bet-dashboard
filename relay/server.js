@@ -29,8 +29,6 @@ const PORT = parseInt(process.env.PORT || "8787", 10);
 const POLL_MS = parseInt(process.env.POLL_MS || "10000", 10);
 const MOCK_MODE = process.env.MOCK_MODE === "1";
 const API_KEY = process.env.API_FOOTBALL_KEY || "";
-const LEAGUE_ID = process.env.LEAGUE_ID || "39"; // Premier League, matches Code.gs's default
-const SEASON = process.env.SEASON || "2026";
 
 // Used only by the manual /trigger page (MOCK_MODE) to actually write a fake
 // match's state into the real sheet via Code.gs's adminSetTestMatchState,
@@ -129,8 +127,16 @@ function broadcast(msg) {
 
 async function fetchLiveFixtures() {
   if (MOCK_MODE) return mockFixtures();
+  // API-Football's `live` param is used ALONE -- `all` for every live match
+  // globally, or a `-`-separated list of league IDs. It's not meant to be
+  // combined with a separate league/season filter (which is what this used
+  // to do, and likely why a live fixture outside LEAGUE_ID never showed
+  // up). Costs the same single request either way -- combineState() only
+  // ever looks up fixtureIds that are actually in betsCache anyway, so
+  // fetching every live match globally instead of pre-filtering costs
+  // nothing extra and just works regardless of which league a match is in.
   const res = await fetch(
-    `https://v3.football.api-sports.io/fixtures?live=all&league=${LEAGUE_ID}&season=${SEASON}`,
+    `https://v3.football.api-sports.io/fixtures?live=all`,
     { headers: { "x-apisports-key": API_KEY } }
   );
   if (!res.ok) throw new Error(`API-Football ${res.status}`);

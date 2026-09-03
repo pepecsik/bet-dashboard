@@ -3415,7 +3415,7 @@ function loadFastData(){
 // here; it just makes the existing, already-correct machinery run sooner.
 // If the relay's unreachable or not yet deployed, this silently does
 // nothing and the app behaves exactly as it does without it.
-const RELAY_URL = ""; // set once the relay is deployed, e.g. "wss://juice-bets-relay.fly.dev"
+const RELAY_URL = "wss://bet-dashboard-relay.onrender.com";
 let relaySocket = null;
 let relayReconnectTimer = null;
 let relayDebounceTimer = null;
@@ -3426,14 +3426,15 @@ function connectRelay() {
     relaySocket = new WebSocket(RELAY_URL);
   } catch (e) { scheduleRelayReconnect(); return; }
 
-  relaySocket.onopen = () => { window.__relayConnected = true; };
-  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; scheduleRelayReconnect(); };
+  relaySocket.onopen = () => { window.__relayConnected = true; updateRelayBadge(); };
+  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayBadge(); scheduleRelayReconnect(); };
   relaySocket.onerror = () => { /* onclose follows and handles reconnect */ };
   relaySocket.onmessage = () => {
     // Any message (a specific fixture update, or the on-connect snapshot)
     // means "something's worth checking now" -- coalesce a quick burst of
     // these (e.g. several matches updating close together) into one
     // loadFastData() call rather than firing one per message.
+    flashRelayBadge();
     clearTimeout(relayDebounceTimer);
     relayDebounceTimer = setTimeout(loadFastData, 200);
   };
@@ -3443,6 +3444,35 @@ function scheduleRelayReconnect() {
   clearTimeout(relayReconnectTimer);
   relayReconnectTimer = setTimeout(connectRelay, 5000);
 }
+
+// test.html-only debug aid, so this test can actually be watched on a phone
+// screen instead of needing a desktop console -- a small corner badge
+// showing whether the relay is connected, and a brief flash whenever it
+// pushes something. Deliberately not something to carry over to index.html.
+function ensureRelayBadge() {
+  let el = document.getElementById('relayDebugBadge');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'relayDebugBadge';
+  el.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.15);font-family:monospace;font-size:10px;color:#fff;pointer-events:none;transition:background 0.2s;';
+  el.innerHTML = '<span id="relayDebugDot" style="width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;"></span><span id="relayDebugText">relay: connecting…</span>';
+  document.body.appendChild(el);
+  return el;
+}
+function updateRelayBadge() {
+  ensureRelayBadge();
+  const dot = document.getElementById('relayDebugDot');
+  const text = document.getElementById('relayDebugText');
+  if (!RELAY_URL) { dot.style.background = '#888'; text.textContent = 'relay: off'; return; }
+  if (window.__relayConnected) { dot.style.background = 'var(--accent-green, #7cff5b)'; text.textContent = 'relay: connected'; }
+  else { dot.style.background = '#ff4d4d'; text.textContent = 'relay: reconnecting…'; }
+}
+function flashRelayBadge() {
+  const badge = ensureRelayBadge();
+  badge.style.background = 'rgba(124,255,91,0.35)';
+  setTimeout(() => { badge.style.background = 'rgba(0,0,0,0.75)'; }, 300);
+}
+if (RELAY_URL) updateRelayBadge();
 
 // MAIN LOAD FUNCTION
 // The actual renderer -- builds the exact same real DOM every time it's

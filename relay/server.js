@@ -20,6 +20,7 @@
 
 import { WebSocketServer } from "ws";
 import http from "http";
+import { combineState } from "./combine.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -74,6 +75,14 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(betsCache, null, 2));
     return;
   }
+  // Phase 3 visibility -- the actual combined output (live score + bets +
+  // computed colour) a connecting client would receive right now. Same
+  // openness reasoning as /bets-debug.
+  if (req.method === "GET" && req.url === "/snapshot") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(computeFullState(), null, 2));
+    return;
+  }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray
   // public control surface once real matches are actually being tracked.
   // Open /trigger on any browser (e.g. a computer) and click a button to
@@ -107,11 +116,8 @@ wss.on("connection", (ws) => {
   ws.on("close", () => clients.delete(ws));
   ws.on("error", () => clients.delete(ws));
   // A client that just connected shouldn't sit blank until the next actual
-  // change -- hand it everything currently known right away.
-  ws.send(JSON.stringify({
-    type: "snapshot",
-    fixtures: [...lastKnown.entries()].map(([id, v]) => ({ id, ...v })),
-  }));
+  // change -- hand it the full computed board right away.
+  ws.send(JSON.stringify({ type: "state", ...computeFullState() }));
 });
 
 function broadcast(msg) {
@@ -246,6 +252,15 @@ const TRIGGER_PAGE = `<!doctype html>
   </script>
 </body></html>`;
 
+// Fast/slow split, Phase 3: the actual computed board, combining this
+// relay's own live-score poll (lastKnown) with the cached bets (betsCache)
+// via combine.js's pure combineState() -- see that file for the scoring
+// logic and its one known gap (cards/goalscorer markets). This wrapper just
+// supplies server.js's own module-level state to it.
+function computeFullState() {
+  return combineState(betsCache, lastKnown);
+}
+
 async function pollOnce() {
   let fixtures;
   try {
@@ -254,14 +269,15 @@ async function pollOnce() {
     console.error("poll failed:", err.message);
     return;
   }
+  let anyChanged = false;
   for (const f of fixtures) {
     const prev = lastKnown.get(f.id);
     const changed = !prev || prev.status !== f.status || prev.score !== f.score;
     if (!changed) continue;
-    const entry = { status: f.status, score: f.score, elapsed: f.elapsed, match: f.match };
-    lastKnown.set(f.id, entry);
-    broadcast({ type: "update", fixture: { id: f.id, ...entry }, detectedAt: Date.now() });
+    anyChanged = true;
+    lastKnown.set(f.id, { status: f.status, score: f.score, elapsed: f.elapsed, match: f.match });
   }
+  if (anyChanged) broadcast({ type: "state", ...computeFullState() });
 }
 
 async function fetchBetsSnapshot() {
@@ -274,6 +290,7 @@ async function fetchBetsSnapshot() {
     }
     betsCache = { headers: data.headers || [], matches: data.matches, fetchedAt: Date.now() };
     console.log(`bets snapshot refreshed: ${data.matches.length} match(es), ${(data.headers || []).length} column(s)`);
+    broadcast({ type: "state", ...computeFullState() });
   } catch (err) {
     console.error("bets sync failed:", err.message);
   }

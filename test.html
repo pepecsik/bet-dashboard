@@ -3335,6 +3335,11 @@ function patchFastScores(data) {
     (m.cells || []).forEach((c, ci) => {
       const el = cells[ci];
       if (!el || el.classList.contains('special-bet') || el.classList.contains('whatif-pill')) return;
+      // color === null (distinct from "", meaning "no bet") means the relay
+      // deliberately left this cell uncomputed -- a cards/goalscorer market
+      // it doesn't have live data for yet (see combine.js). Leave whatever's
+      // already showing rather than overwrite it with a wrong grey/blank.
+      if (c.color === null) return;
       if (c.value) {
         el.textContent = c.value;
         let color = c.color || '#262a30';
@@ -3386,8 +3391,12 @@ function patchFastScores(data) {
         if (window.__celebratedColumns && !window.__celebratedColumns.has(h.name)) {
           window.__celebratedColumns.add(h.name);
           const celebrationAvatars = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-          fireScreenBlaster(pill);
-          showBigWin(formatGBP(tot), celebrationAvatars[h.name] || null);
+          // The actual score/colour patch above already landed regardless of
+          // what happens here -- a confetti-library hiccup (CDN blip, ad
+          // blocker, etc.) must never cascade into treating this whole
+          // update as failed and falling back to a slower path.
+          try { fireScreenBlaster(pill); showBigWin(formatGBP(tot), celebrationAvatars[h.name] || null); }
+          catch (e) { console.error('celebration failed (non-fatal)', e); }
         }
       }
       else if (hasB && !hasR && allG && pen > 0) pill.classList.add('status-green-live');
@@ -3403,22 +3412,53 @@ function loadFastData(){
   }).catch(()=>{});
 }
 
-// ── Live-score relay (optional accelerant) ──────────────────────
-// Deliberately does NOT replace anything above -- loadData()/loadFastData()
-// keep running on their normal timers no matter what. The relay only ever
-// ADDS an earlier trigger: the instant it notices a score change (its own
-// poll of API-Football, independent of Apps Script), it tells this tab to
-// run loadFastData() right now instead of waiting for the next scheduled
-// tick. That one call already updates score, bet-pill colour, column order,
-// and (edge-triggered) celebrations together as a single patch -- see
-// patchFastScores() -- so there's nothing relay-specific to keep in sync
-// here; it just makes the existing, already-correct machinery run sooner.
-// If the relay's unreachable or not yet deployed, this silently does
-// nothing and the app behaves exactly as it does without it.
+// ── Live-score relay (Phase 4: applied directly, no Sheets round-trip) ──
+// Deliberately does NOT replace loadData()/loadFastData() -- they keep
+// running on their normal timers regardless, as the safety net. When the
+// relay pushes a "state" message, it's already the fully computed board
+// (live score + every bet's colour, via combine.js on the relay side) --
+// applyRelayState() feeds that straight into patchFastScores() exactly
+// like a fast-poll response would, so score/colour/order/celebrations
+// update together with no Apps Script call needed at that moment at all.
+// Unreachable/undeployed relay, or a malformed push, falls back to the
+// same loadFastData() path used before Phase 4 -- nothing regresses.
 const RELAY_URL = "wss://bet-dashboard-relay.onrender.com";
 let relaySocket = null;
 let relayReconnectTimer = null;
 let relayDebounceTimer = null;
+
+// Adapts the relay's {headers, matches, winCells} into the shape
+// patchFastScores() already expects, so every bit of existing, tested
+// logic there (reorder, per-cell colour, header status, edge-triggered
+// celebration, the color:null "leave it alone" rule for cards/goalscorer
+// markets) runs unmodified -- nothing relay-specific to keep in sync here.
+// The relay/combine.js sends logical colour names (GREEN/ORANGE/RED/"" --
+// see scoring.js), not hex codes -- patchFastScores() and its helpers
+// (isCorrectColor/isWrongColor) only recognize the actual hex values Sheets
+// itself uses. color: null (cards/goalscorer markets with no live data
+// yet) is a distinct sentinel patchFastScores already knows to leave alone
+// -- passed through unchanged, never run through this map.
+const RELAY_COLOR_MAP = { GREEN: '#7cff5b', ORANGE: '#ff9900', RED: '#ff0000', '': '' };
+function mapRelayColor(color) {
+  if (color === null) return null;
+  return Object.prototype.hasOwnProperty.call(RELAY_COLOR_MAP, color) ? RELAY_COLOR_MAP[color] : '';
+}
+
+function applyRelayState(state) {
+  if (!state || !Array.isArray(state.matches) || !Array.isArray(state.headers)) {
+    loadFastData(); // unexpected shape -- fall back rather than risk showing nothing/wrong
+    return;
+  }
+  const adapted = {
+    headers: state.headers.map(h => ({ name: h.name, status: null, idx: h.idx })),
+    matches: state.matches.map(m => ({
+      match: m.match, status: m.status, score: m.score,
+      cells: (m.cells || []).map(c => ({ value: c.value, color: mapRelayColor(c.color) })),
+    })),
+    betSummary: [null, { cells: state.winCells || [] }],
+  };
+  try { patchFastScores(adapted); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
+}
 
 function connectRelay() {
   if (!RELAY_URL) return; // not deployed yet -- normal polling only
@@ -3429,14 +3469,15 @@ function connectRelay() {
   relaySocket.onopen = () => { window.__relayConnected = true; updateRelayBadge(); };
   relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayBadge(); scheduleRelayReconnect(); };
   relaySocket.onerror = () => { /* onclose follows and handles reconnect */ };
-  relaySocket.onmessage = () => {
-    // Any message (a specific fixture update, or the on-connect snapshot)
-    // means "something's worth checking now" -- coalesce a quick burst of
-    // these (e.g. several matches updating close together) into one
-    // loadFastData() call rather than firing one per message.
+  relaySocket.onmessage = (evt) => {
     flashRelayBadge();
+    let msg = null;
+    try { msg = JSON.parse(evt.data); } catch (e) { /* leave null */ }
+    // Coalesce a quick burst of pushes (e.g. several matches updating close
+    // together) into one applied update rather than one per message.
     clearTimeout(relayDebounceTimer);
-    relayDebounceTimer = setTimeout(loadFastData, 200);
+    if (msg && msg.type === 'state') relayDebounceTimer = setTimeout(() => applyRelayState(msg), 200);
+    else relayDebounceTimer = setTimeout(loadFastData, 200); // unrecognized message -- safe fallback
   };
 }
 
@@ -3566,8 +3607,11 @@ function renderDashboard(data, opts){
              p.classList.add("status-green");
              if(!suppressCelebration && !window.__celebratedColumns.has(h.name)){
                window.__celebratedColumns.add(h.name);
-               if (isFirstLoad) { setTimeout(()=>{fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]);}, 1500); }
-               else { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); }
+               // A confetti-library hiccup here must not abort the rest of
+               // this render (ranking podium, hall of fame, ticker, etc.
+               // all still need to run after this loop finishes).
+               const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
+               if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
              }
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
@@ -3600,8 +3644,8 @@ function renderDashboard(data, opts){
                     const celebrationKey = 'special:' + bet.id;
                     if (!suppressCelebration && !window.__celebratedColumns.has(celebrationKey)) {
                         window.__celebratedColumns.add(celebrationKey);
-                        if (isFirstLoad) { setTimeout(() => { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }, 1500); }
-                        else { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); }
+                        const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
+                        if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
                     }
                 } else if (status === 'HIT') {
                     p.classList.add('status-green-live');

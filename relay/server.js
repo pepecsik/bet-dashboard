@@ -63,7 +63,7 @@ const clients = new Set();
 // from Code.gs's buildBetsSnapshot(). Empty until the first successful
 // sync; nothing reads this yet (that's Phase 3), it's just being proven to
 // refresh correctly first.
-let betsCache = { headers: [], matches: [], fetchedAt: 0 };
+let betsCache = { headers: [], matches: [], winCells: [], fetchedAt: 0 };
 
 const server = http.createServer((req, res) => {
   // Phase 2 visibility -- read-only, just the same bet picks anyone with
@@ -288,7 +288,7 @@ async function fetchBetsSnapshot() {
       console.error("bets sync: unexpected response shape", JSON.stringify(data).slice(0, 200));
       return;
     }
-    betsCache = { headers: data.headers || [], matches: data.matches, fetchedAt: Date.now() };
+    betsCache = { headers: data.headers || [], matches: data.matches, winCells: data.winCells || [], fetchedAt: Date.now() };
     console.log(`bets snapshot refreshed: ${data.matches.length} match(es), ${(data.headers || []).length} column(s)`);
     broadcast({ type: "state", ...computeFullState() });
   } catch (err) {

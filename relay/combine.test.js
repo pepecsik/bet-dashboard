@@ -67,6 +67,22 @@ test("blank bet cell stays blank, not a colour", () => {
   assert.equal(result.matches[0].cells[0].color, "");
 });
 
+test("winCells pass through unchanged, not recomputed", () => {
+  const betsCache = {
+    headers: [{ name: "Snackbar", idx: 3 }],
+    matches: [{ match: "ARS - CHE", fixtureId: 1557387, homeCode: "ARS", awayCode: "CHE", cells: [{ value: "ARS" }] }],
+    winCells: [{ value: 6 }],
+  };
+  const result = combineState(betsCache, new Map());
+  assert.deepEqual(result.winCells, [{ value: 6 }]);
+});
+
+test("missing winCells defaults to an empty array, doesn't throw", () => {
+  const betsCache = { headers: [], matches: [] };
+  const result = combineState(betsCache, new Map());
+  assert.deepEqual(result.winCells, []);
+});
+
 test("multiple matches, only some live -- each resolved independently", () => {
   const betsCache = {
     headers: [{ name: "Snackbar", idx: 3 }],

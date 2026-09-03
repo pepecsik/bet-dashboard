@@ -46,7 +46,11 @@ function combineState(betsCache, lastKnown) {
     return { match: m.match, fixtureId: m.fixtureId, status, score, cells };
   });
 
-  return { headers: betsCache.headers || [], matches, computedAt: Date.now() };
+  // Passed straight through, not recomputed -- the £ WIN amount per column
+  // is a Sheets-side stake calculation, not part of what this combines.
+  const winCells = betsCache.winCells || [];
+
+  return { headers: betsCache.headers || [], matches, winCells, computedAt: Date.now() };
 }
 
 export { combineState };

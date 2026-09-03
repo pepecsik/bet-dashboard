@@ -39,6 +39,14 @@ const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || "https://script.google.co
 const TEST_MATCH_HOME_CODE = process.env.TEST_MATCH_HOME_CODE || "ABC";
 const TEST_MATCH_AWAY_CODE = process.env.TEST_MATCH_AWAY_CODE || "DEF";
 
+// Fast/slow split, Phase 2: a periodic, read-only pull of the week's bets
+// from Code.gs's ?mode=bets (see scoring.js for what it's for). Runs
+// regardless of MOCK_MODE -- bets always come from the real sheet, there's
+// no "fake" version of this, and a GET here is harmless (no writes, doesn't
+// touch API-Football's quota at all). Two minutes is plenty: bets don't
+// change once a matchweek's locked in, this is just a safety-net refresh.
+const BETS_SYNC_MS = parseInt(process.env.BETS_SYNC_MS || "120000", 10);
+
 if (!MOCK_MODE && !API_KEY) {
   console.error("API_FOOTBALL_KEY is required outside MOCK_MODE. Set MOCK_MODE=1 to run against simulated data instead.");
   process.exit(1);
@@ -48,7 +56,24 @@ if (!MOCK_MODE && !API_KEY) {
 const lastKnown = new Map();
 const clients = new Set();
 
+// The relay's own cached copy of this matchweek's bets -- what Phase 2
+// exists to fill in. { headers, matches, fetchedAt } -- matches[] carries
+// each match's fixtureId/homeCode/awayCode plus its bet cells, straight
+// from Code.gs's buildBetsSnapshot(). Empty until the first successful
+// sync; nothing reads this yet (that's Phase 3), it's just being proven to
+// refresh correctly first.
+let betsCache = { headers: [], matches: [], fetchedAt: 0 };
+
 const server = http.createServer((req, res) => {
+  // Phase 2 visibility -- read-only, just the same bet picks anyone with
+  // the app can already see, so this stays open (unlike /trigger) even
+  // once MOCK_MODE is off. Useful for confirming the sync is actually
+  // refreshing before anything is built on top of it.
+  if (req.method === "GET" && req.url === "/bets-debug") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(betsCache, null, 2));
+    return;
+  }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray
   // public control surface once real matches are actually being tracked.
   // Open /trigger on any browser (e.g. a computer) and click a button to
@@ -239,7 +264,24 @@ async function pollOnce() {
   }
 }
 
+async function fetchBetsSnapshot() {
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?mode=bets`);
+    const data = await res.json();
+    if (!data || !Array.isArray(data.matches)) {
+      console.error("bets sync: unexpected response shape", JSON.stringify(data).slice(0, 200));
+      return;
+    }
+    betsCache = { headers: data.headers || [], matches: data.matches, fetchedAt: Date.now() };
+    console.log(`bets snapshot refreshed: ${data.matches.length} match(es), ${(data.headers || []).length} column(s)`);
+  } catch (err) {
+    console.error("bets sync failed:", err.message);
+  }
+}
+
 setInterval(pollOnce, POLL_MS);
+setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
+fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
-  console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}`);
+  console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms`);
 });

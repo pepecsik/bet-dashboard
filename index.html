@@ -1208,7 +1208,7 @@ body {
 .bet-list-pills { display:flex; flex-direction:column; gap:8px; width:max-content; }
 .match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; min-width:118px; }
 .vs-tag { opacity:0.4; font-size:10px; flex:0 0 auto; }
-.info-hint { margin-left:auto; width:14px; height:14px; border-radius:50%; border:1px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; font-style:italic; opacity:0.3; flex:0 0 auto; }
+.match-teams-line { display:inline-flex; align-items:center; gap:8px; border-bottom:var(--border-light); padding-bottom:4px; }
 .bet-pills-row { display:flex; align-items:center; gap:8px; background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; }
 .bet-input-slot { flex:0 0 72px; width:72px; height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
 .bet-input-slot.filled { color: #000; border-color: var(--accent-green); background: var(--accent-green); }
@@ -6099,7 +6099,7 @@ function selectPlayer(name) {
     nameDiv.className = 'match-info';
     nameDiv.setAttribute('onclick', `openPreMatchStats('${m.match}')`);
     nameDiv.style.cssText = 'cursor:pointer;';
-    nameDiv.innerHTML = `${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}<span class="info-hint">i</span>`;
+    nameDiv.innerHTML = `<span class="match-teams-line">${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}</span>`;
     namesContainer.appendChild(nameDiv);
 
     const pillsDiv = document.createElement('div');

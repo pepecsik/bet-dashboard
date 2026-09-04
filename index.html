@@ -1864,6 +1864,13 @@ img[alt="AVI"] {
 .ticker-item.accuracy  { color: #64dfdf; }
 .ticker-item.today     { color: #f4f4f4; }
 .ticker-item.complete  { color: #8a8a8a; font-style: italic; }
+.ticker-item.goal      { color: #ffd700; font-weight: 800; }
+.ticker-item.perfect   { color: #7cff5b; font-weight: 800; }
+.ticker-item.underdog  { color: #c792ea; }
+.ticker-item.mover     { color: #4fc3f7; }
+.ticker-item.pot       { color: #a5d6a7; }
+.ticker-item.rivalry   { color: #ffb400; }
+.ticker-item.trash     { color: #9aa0a6; font-style: italic; }
 .ticker-sep { opacity: 0.3; font-weight: 800; color: #f4f4f4; }
 @keyframes tickerScroll {
   from { transform: translateX(0); }
@@ -4026,12 +4033,34 @@ function getPlayerColIndices(player) {
   headers.forEach((h, i) => { if (h.name === player) out.push(i); });
   return out;
 }
-// "A" / "A & B" / "A, B & C" -- used for streak/leader ties
+// "A" / "A & B" / "A, B & C" -- used for streak/leader/rivalry ties
 function joinWithAnd(names) {
   if (names.length <= 1) return names[0] || '';
   if (names.length === 2) return `${names[0]} & ${names[1]}`;
   return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 }
+// Reused by leader + rivalry gap so they agree on who's actually ahead.
+function sortedRanking(dashboard) {
+  return [...(dashboard.ranking || [])].sort((a, b) => {
+    if (b.money !== a.money) return b.money - a.money;
+    return b.matchesRight - a.matchesRight;
+  });
+}
+// H/X/A style match-result pick, or null for any other market (exact
+// score, goals, cards, scorer) -- those don't have a meaningful "consensus".
+function normalizeOutcome(raw, home, away) {
+  const v = String(raw || '').trim().toUpperCase();
+  if (v === '1' || v === 'H' || v === home) return 'H';
+  if (v === '2' || v === 'A' || v === away) return 'A';
+  if (v === 'X' || v === 'D') return 'X';
+  return null;
+}
+
+// Live goal-flash memory -- buildTickerItems runs every second, so a score
+// bump is remembered here for a while rather than only flashing for the one
+// tick it happened on (module-level state, deliberately not reset elsewhere).
+let tickerPrevScores  = {};
+let tickerGoalFlashes = [];
 
 // ── Build the rotating ticker items ─────────────────────────────
 function buildTickerItems() {
@@ -4040,6 +4069,26 @@ function buildTickerItems() {
   const players   = ['Snackbar','Timbo','Pepe'];
   const items     = [];
   const now       = Date.now();
+
+  // 0. Live goal flash — a score that just went up on a live match, kept
+  // around for a few minutes so it's not gone before anyone notices.
+  matches.forEach(m => {
+    if (getMatchStatusType(m) !== 'live' || !m.score) return;
+    const prev = tickerPrevScores[m.match];
+    if (prev !== undefined && prev !== m.score) {
+      const [ph, pa] = String(prev).split('-').map(n => parseInt(n, 10) || 0);
+      const [nh, na] = String(m.score).split('-').map(n => parseInt(n, 10) || 0);
+      if (nh + na > ph + pa) {
+        tickerGoalFlashes.push({
+          match: m.match, until: now + 10 * 60 * 1000,
+          html: `⚽ GOAL! ${tickerShortMatch(m.match)} ${m.score}`
+        });
+      }
+    }
+    tickerPrevScores[m.match] = m.score;
+  });
+  tickerGoalFlashes = tickerGoalFlashes.filter(f => f.until > now);
+  tickerGoalFlashes.forEach(f => items.push({ cls: 'goal', html: f.html }));
 
   // 1. Live OR next kickoff
   const live = matches.filter(m => getMatchStatusType(m) === 'live');
@@ -4081,6 +4130,7 @@ function buildTickerItems() {
   const ftAsc = matches
     .filter(m => getMatchStatusType(m) === 'finished' && m.kickoffTs)
     .sort((a, b) => a.kickoffTs - b.kickoffTs);
+  const ftDesc = [...ftAsc].sort((a, b) => b.kickoffTs - a.kickoffTs);
   const colStreaks = [];
   for (const player of players) {
     for (const idx of getPlayerColIndices(player)) {
@@ -4111,23 +4161,31 @@ function buildTickerItems() {
 
   // 4. Current leader (from RANKING sheet) — ties (same money AND same
   // points) show every tied player instead of just whoever sorted first.
-  if (dashboard.ranking && dashboard.ranking.length) {
-    const sorted = [...dashboard.ranking].sort((a, b) => {
-      if (b.money !== a.money) return b.money - a.money;
-      return b.matchesRight - a.matchesRight;
+  const ranked = sortedRanking(dashboard);
+  if (ranked.length) {
+    const top = ranked[0];
+    const leaders = ranked.filter(p => p.money === top.money && p.matchesRight === top.matchesRight);
+    const label = leaders.length > 1 ? 'Leaders' : 'Leader';
+    items.push({
+      cls: 'leader',
+      html: `<strong>${label}:</strong> ${joinWithAnd(leaders.map(p => p.name))} · ${top.matchesRight} pts`
     });
-    const top = sorted[0];
-    if (top) {
-      const leaders = sorted.filter(p => p.money === top.money && p.matchesRight === top.matchesRight);
-      const label = leaders.length > 1 ? 'Leaders' : 'Leader';
-      items.push({
-        cls: 'leader',
-        html: `<strong>${label}:</strong> ${joinWithAnd(leaders.map(p => p.name))} · ${top.matchesRight} pts`
-      });
+
+    // 4b. Rivalry gap — money gap between 1st and 2nd, only when there
+    // genuinely is one (skip entirely if they're tied -- the leader item
+    // above already says that).
+    if (leaders.length === 1 && ranked.length >= 2) {
+      const gap = ranked[0].money - ranked[1].money;
+      if (gap > 0) {
+        items.push({
+          cls: 'rivalry',
+          html: `⚡ Only ${formatGBP(gap)} separates ${ranked[0].name} & ${ranked[1].name}`
+        });
+      }
     }
   }
 
-  // 5. MW accuracy (this matchweek's FT cells only)
+  // 5. MW accuracy (this matchweek's FT cells only, pooled across both bets)
   let bestAcc = { player: null, pct: 0 };
   for (const player of players) {
     const idxs = getPlayerColIndices(player);
@@ -4152,8 +4210,70 @@ function buildTickerItems() {
     });
   }
 
-  // 6. Bust of the week — most recent FT where all 3 missed everything
-  const ftDesc = [...ftAsc].sort((a, b) => b.kickoffTs - a.kickoffTs);
+  // 5b. Biggest mover — this matchweek's points leader so far, straight
+  // from HISTORY's still-open row (same number the podium's week badge
+  // shows). Ties list everyone tied, same idiom as streak/leader.
+  const liveHistoryRow = (dashboard.history || []).find(h => !h.locked);
+  if (liveHistoryRow) {
+    const pts = {};
+    let maxPts = 0;
+    players.forEach(player => {
+      const p = (liveHistoryRow[player] && liveHistoryRow[player].points) || 0;
+      pts[player] = p;
+      if (p > maxPts) maxPts = p;
+    });
+    if (maxPts > 0) {
+      const top = players.filter(p => pts[p] === maxPts);
+      items.push({ cls: 'mover', html: `📈 ${joinWithAnd(top)} leading this matchweek with ${maxPts}pts` });
+    }
+  }
+
+  // 6. Perfect call — an exact-score bet that hit exactly, most recent first
+  for (const m of ftDesc) {
+    let found = null;
+    for (const player of players) {
+      for (const idx of getPlayerColIndices(player)) {
+        const c = m.cells[idx];
+        if (!c || !c.value) continue;
+        if (/^\d+\s*-\s*\d+$/.test(String(c.value).trim()) && isCorrectColor(c.color)) {
+          found = player;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (found) {
+      items.push({ cls: 'perfect', html: `🎯 ${found} called it exactly: ${tickerShortMatch(m.match)} ${m.score}` });
+      break;
+    }
+  }
+
+  // 6b. Underdog pick — a match-result pick only one column took, and it hit
+  for (const m of ftDesc) {
+    const [home, away] = m.match.split('-').map(s => s.trim().toUpperCase());
+    const counts = { H: 0, X: 0, A: 0 };
+    const picks  = [];
+    for (const player of players) {
+      for (const idx of getPlayerColIndices(player)) {
+        const c = m.cells[idx];
+        if (!c || !c.value) continue;
+        const outcome = normalizeOutcome(c.value, home, away);
+        if (!outcome) continue;
+        counts[outcome]++;
+        picks.push({ player, outcome, color: c.color });
+      }
+    }
+    const lonely = picks.find(p => counts[p.outcome] === 1 && isCorrectColor(p.color));
+    if (lonely) {
+      items.push({
+        cls: 'underdog',
+        html: `👀 ${lonely.player} was the only one on ${tickerShortMatch(m.match)} · ${m.score} — and called it`
+      });
+      break;
+    }
+  }
+
+  // 7. Bust of the week — most recent FT where all 3 missed everything
   for (const m of ftDesc) {
     let everybodyBet = true, everybodyMissed = true;
     for (const player of players) {
@@ -4174,6 +4294,22 @@ function buildTickerItems() {
         html: `💀 All 3 missed: ${tickerShortMatch(m.match)}`
       });
       break;
+    }
+  }
+
+  // 8. Pot size — total £ in play across every bet column this matchweek
+  const winCells = (dashboard.betSummary && dashboard.betSummary[1] && dashboard.betSummary[1].cells) || [];
+  const pot = winCells.reduce((sum, c) => sum + (Number(c && c.value) || 0), 0);
+  if (pot > 0) {
+    items.push({ cls: 'pot', html: `💰 ${formatGBP(pot)} in play this matchweek` });
+  }
+
+  // 9. Light trash talk — whoever's currently last, only once there's an
+  // actual season underway and it isn't just everyone tied at zero.
+  if (ranked.length >= 2) {
+    const last = ranked[ranked.length - 1];
+    if (ranked[0].matchesRight > 0 && last.matchesRight !== ranked[0].matchesRight) {
+      items.push({ cls: 'trash', html: `😬 ${last.name} propping up the table` });
     }
   }
 

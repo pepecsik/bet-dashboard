@@ -4026,6 +4026,12 @@ function getPlayerColIndices(player) {
   headers.forEach((h, i) => { if (h.name === player) out.push(i); });
   return out;
 }
+// "A" / "A & B" / "A, B & C" -- used for streak/leader ties
+function joinWithAnd(names) {
+  if (names.length <= 1) return names[0] || '';
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+}
 
 // ── Build the rotating ticker items ─────────────────────────────
 function buildTickerItems() {
@@ -4070,46 +4076,53 @@ function buildTickerItems() {
   }
 
   // 3. Streak — current MW, FT only, trailing run, ≥2
+  // Each bet column is its own vertical streak (not combined per player) --
+  // a match left empty on that column is skipped over, not a break.
   const ftAsc = matches
     .filter(m => getMatchStatusType(m) === 'finished' && m.kickoffTs)
     .sort((a, b) => a.kickoffTs - b.kickoffTs);
-  let bestStreak = { player: null, count: 0 };
+  const colStreaks = [];
   for (const player of players) {
-    const idxs = getPlayerColIndices(player);
-    if (!idxs.length) continue;
-    let trailing = 0;
-    for (let i = ftAsc.length - 1; i >= 0; i--) {
-      const m = ftAsc[i];
-      let hadCorrect = false, hadWrong = false;
-      for (const idx of idxs) {
-        const c = m.cells[idx];
-        if (!c || !c.value) continue;
-        if (isCorrectColor(c.color)) hadCorrect = true;
-        else if (isWrongColor(c.color)) hadWrong = true;
+    for (const idx of getPlayerColIndices(player)) {
+      let streak = 0;
+      for (let i = ftAsc.length - 1; i >= 0; i--) {
+        const c = ftAsc[i].cells[idx];
+        if (!c || !c.value) continue;      // no bet placed → skip, doesn't break
+        if (isWrongColor(c.color)) break;  // streak broken
+        if (isCorrectColor(c.color)) streak++;
       }
-      if (hadWrong) break;            // streak broken
-      if (hadCorrect) trailing++;     // streak extends
-      // empty pick → skip silently
+      colStreaks.push({ player, idx, streak });
     }
-    if (trailing > bestStreak.count) bestStreak = { player, count: trailing };
   }
-  if (bestStreak.count >= 2) {
+  const maxStreak = colStreaks.reduce((max, s) => Math.max(max, s.streak), 0);
+  if (maxStreak >= 2) {
+    const winners = colStreaks.filter(s => s.streak === maxStreak);
+    const winsByPlayer = {};
+    winners.forEach(w => { (winsByPlayer[w.player] = winsByPlayer[w.player] || []).push(w.idx); });
+    const labels = Object.keys(winsByPlayer).map(name => {
+      const bothBets = winsByPlayer[name].length > 1 && getPlayerColIndices(name).length > 1;
+      return bothBets ? `${name} (both bets)` : name;
+    });
     items.push({
       cls: 'streak',
-      html: `🔥 ${bestStreak.player} on a ${bestStreak.count}-correct streak`
+      html: `🔥 ${joinWithAnd(labels)} on a ${maxStreak}-correct streak`
     });
   }
 
-  // 4. Current leader (from RANKING sheet)
+  // 4. Current leader (from RANKING sheet) — ties (same money AND same
+  // points) show every tied player instead of just whoever sorted first.
   if (dashboard.ranking && dashboard.ranking.length) {
-    const leader = [...dashboard.ranking].sort((a, b) => {
+    const sorted = [...dashboard.ranking].sort((a, b) => {
       if (b.money !== a.money) return b.money - a.money;
       return b.matchesRight - a.matchesRight;
-    })[0];
-    if (leader) {
+    });
+    const top = sorted[0];
+    if (top) {
+      const leaders = sorted.filter(p => p.money === top.money && p.matchesRight === top.matchesRight);
+      const label = leaders.length > 1 ? 'Leaders' : 'Leader';
       items.push({
         cls: 'leader',
-        html: `<strong>Leader:</strong> ${leader.name} · ${leader.matchesRight} pts`
+        html: `<strong>${label}:</strong> ${joinWithAnd(leaders.map(p => p.name))} · ${top.matchesRight} pts`
       });
     }
   }

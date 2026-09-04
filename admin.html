@@ -75,6 +75,36 @@
   @keyframes autoPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   .auto-modal-box button.action { margin-top: 16px; }
 
+  .email-preview-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+  }
+  .email-preview-overlay.active { display: flex; }
+  .email-preview-box {
+    background: #1e0a28; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+    width: 100%; max-width: 680px; max-height: 92vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .email-preview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
+  }
+  .email-preview-title { font-size: 15px; font-weight: 800; }
+  .email-preview-close {
+    background: rgba(255,255,255,0.1); border: none; color: #fff;
+    width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; line-height: 1;
+  }
+  .email-preview-frame { flex: 1; width: 100%; border: 0; background: #1b0a24; min-height: 50vh; }
+  .email-preview-footer {
+    display: flex; gap: 10px; align-items: center; padding: 14px 16px;
+    border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
+  }
+  .email-preview-footer button.action {
+    width: auto; flex: 0 0 auto; padding: 12px 20px; margin-top: 0;
+    background: linear-gradient(135deg, #00ff85, #00c46a); color: #0a1f0f;
+  }
+  .email-preview-footer .status-msg { flex: 1; margin-top: 0; }
+
   .tabs { display: flex; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
   .tab-btn {
     flex: 1; padding: 12px; text-align: center; font-size: 11px; font-weight: 700;
@@ -299,6 +329,20 @@
     </div>
   </div>
 
+  <div class="email-preview-overlay" id="emailPreviewModal">
+    <div class="email-preview-box">
+      <div class="email-preview-header">
+        <div class="email-preview-title">Matchweek Email Preview</div>
+        <button class="email-preview-close" onclick="closeEmailPreview()">&times;</button>
+      </div>
+      <iframe class="email-preview-frame" id="emailPreviewFrame"></iframe>
+      <div class="email-preview-footer">
+        <button class="action" id="btnSendMatchweekEmail" onclick="runSendMatchweekEmail()">Send to Everyone</button>
+        <div class="status-msg" id="msgSendMatchweekEmail" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="tabs">
     <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
     <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
@@ -352,6 +396,13 @@
           <div class="step-desc">Runs updateAllData() to pull scores, stats, odds etc. for the new fixtures. Can take up to a minute or so.</div>
           <button class="action" id="btnUpdate" onclick="runUpdateAllData()">Update All Data</button>
           <div class="status-msg" id="msgUpdate" style="display:none;"></div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-title">5. Matchweek Preview Email</div>
+          <div class="step-desc">Builds the email and shows it here first -- nothing goes out until you hit Send inside the preview.</div>
+          <button class="action" id="btnPreviewEmail" onclick="runPreviewMatchweekEmail()">Preview Email</button>
+          <div class="status-msg" id="msgPreviewEmail" style="display:none;"></div>
         </div>
       </div>
     </div>
@@ -423,6 +474,44 @@ function suggestNextMatchweekDate() {
     .catch(() => {});
 }
 suggestNextMatchweekDate();
+
+// Builds the matchweek email server-side and shows it in an iframe --
+// nothing is sent at this point. Sending only happens if Send is pressed
+// inside the preview, as its own separate action.
+function runPreviewMatchweekEmail() {
+  const btn = document.getElementById('btnPreviewEmail');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  document.getElementById('msgPreviewEmail').style.display = 'none';
+  postAdmin('adminPreviewMatchweekEmail', {})
+    .then(res => {
+      if (res.status !== 'success') throw new Error(res.message || 'Failed to build preview');
+      document.getElementById('emailPreviewFrame').srcdoc = res.html;
+      document.getElementById('msgSendMatchweekEmail').style.display = 'none';
+      document.getElementById('emailPreviewModal').classList.add('active');
+    })
+    .catch(err => showStatus('msgPreviewEmail', false, 'Failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Preview Email'; });
+}
+
+function closeEmailPreview() {
+  document.getElementById('emailPreviewModal').classList.remove('active');
+}
+
+// The actual send -- separate action from the preview, and confirmed first
+// since this really does go out to everyone with no undo.
+function runSendMatchweekEmail() {
+  if (!confirm('Send this matchweek preview email to everyone now? This actually goes out — there\'s no undo.')) return;
+  const btn = document.getElementById('btnSendMatchweekEmail');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  postAdmin('adminSendMatchweekEmail', {})
+    .then(res => {
+      if (res.status !== 'success') throw new Error(res.message || 'Send failed');
+      showStatus('msgSendMatchweekEmail', true, res.message || 'Sent!');
+      setTimeout(closeEmailPreview, 1500);
+    })
+    .catch(err => showStatus('msgSendMatchweekEmail', false, 'Failed: ' + err))
+    .finally(() => { btn.disabled = false; btn.textContent = 'Send to Everyone'; });
+}
 
 // Matchweek/BETS is the default active tab, so it needs its own initial
 // load here too -- switchTab()'s "load once when opened" only fires on

@@ -643,6 +643,10 @@ body {
   cursor: pointer;
 }
 .pl-btn:active { transform: translateY(-50%) scale(0.9); }
+.pl-btn { transition: box-shadow 0.3s ease; }
+.pl-btn.relay-connected { box-shadow: 0 2px 5px rgba(0,0,0,0.3), 0 0 0 2px #7cff5b; }
+.pl-btn.relay-disconnected { box-shadow: 0 2px 5px rgba(0,0,0,0.3), 0 0 0 2px #ff4d4d; }
+.pl-btn.relay-flash { box-shadow: 0 2px 5px rgba(0,0,0,0.3), 0 0 0 4px #7cff5b; }
 .pl-logo { width: 90%; height: 90%; object-fit: contain; transform: scale(0.9); }
 
 .brand-btn {
@@ -1188,7 +1192,7 @@ body {
 .player-name-text { display: none; }
 /* Betting modal: wider than the other modal-sheets so it fits an iPhone
    screen more fully instead of leaving big side margins. */
-#modalBetList .modal-sheet { width: 94%; max-width: 460px; }
+#modalBetList .modal-sheet { width: 96%; max-width: 520px; }
 /* Bet list: fixed match-name column + one shared horizontally-scrolling pill column, so every row scrolls in sync and pills never overlap the names.
    .bet-list-row-unit is the names+pills pair sized to its own content (not
    stretched to fill the row), so .bet-list-split can center that whole unit
@@ -1202,8 +1206,9 @@ body {
 .bet-list-pills-scroll { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; flex:0 1 auto; min-width:0; }
 .bet-list-pills-scroll::-webkit-scrollbar { display:none; }
 .bet-list-pills { display:flex; flex-direction:column; gap:8px; width:max-content; }
-.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; min-width:118px; }
+.match-info { display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; color: var(--text-main); background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; min-width:180px; }
 .vs-tag { opacity:0.4; font-size:10px; flex:0 0 auto; }
+.match-kickoff { opacity:0.5; font-size:10px; font-weight:600; flex:0 0 auto; white-space:nowrap; margin-left:auto; }
 .bet-pills-row { display:flex; align-items:center; gap:8px; background:var(--bg-soft); border-radius:10px; height:42px; box-sizing:border-box; padding:0 8px; }
 .bet-input-slot { flex:0 0 72px; width:72px; height: 36px; background: var(--bg-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-align: center; overflow: hidden; white-space: nowrap; }
 .bet-input-slot.filled { color: #000; border-color: var(--accent-green); background: var(--accent-green); }
@@ -3140,6 +3145,11 @@ function getTeamRank(teamName) {
     return row ? `#${row.rank}` : "";
 }
 
+const DAY_ABBR = { Monday:'MO', Tuesday:'TU', Wednesday:'WE', Thursday:'TH', Friday:'FR', Saturday:'SA', Sunday:'SU' };
+function abbrevDay(dayName){
+  return DAY_ABBR[dayName] || (dayName ? dayName.slice(0,2).toUpperCase() : '');
+}
+
 function renderTeam(raw){
   if(!raw) return "";
   const code = raw.trim().toUpperCase().replace(/[^A-Z]/g,"");
@@ -3168,7 +3178,8 @@ function renderSkeletons() {
   const lhContainer = document.createElement("div"); lhContainer.className="left-header-container";
   
   const lh=document.createElement("div"); lh.className="left-header"; 
-  lh.innerHTML=`<div class="pl-btn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
+  lh.innerHTML=`<div class="pl-btn" id="mainPlBtn" onclick="openTable()"><img src="https://media.api-sports.io/football/leagues/39.png" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCHDAY</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
+  updateRelayRing();
   
   const fb = document.createElement("div"); fb.className="filter-separator spacer-bar";
   fb.innerHTML = `
@@ -3466,11 +3477,11 @@ function connectRelay() {
     relaySocket = new WebSocket(RELAY_URL);
   } catch (e) { scheduleRelayReconnect(); return; }
 
-  relaySocket.onopen = () => { window.__relayConnected = true; updateRelayBadge(); };
-  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayBadge(); scheduleRelayReconnect(); };
+  relaySocket.onopen = () => { window.__relayConnected = true; updateRelayRing(); };
+  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayRing(); scheduleRelayReconnect(); };
   relaySocket.onerror = () => { /* onclose follows and handles reconnect */ };
   relaySocket.onmessage = (evt) => {
-    flashRelayBadge();
+    flashRelayRing();
     let msg = null;
     try { msg = JSON.parse(evt.data); } catch (e) { /* leave null */ }
     // Coalesce a quick burst of pushes (e.g. several matches updating close
@@ -3486,34 +3497,26 @@ function scheduleRelayReconnect() {
   relayReconnectTimer = setTimeout(connectRelay, 5000);
 }
 
-// test.html-only debug aid, so this test can actually be watched on a phone
-// screen instead of needing a desktop console -- a small corner badge
-// showing whether the relay is connected, and a brief flash whenever it
-// pushes something. Deliberately not something to carry over to index.html.
-function ensureRelayBadge() {
-  let el = document.getElementById('relayDebugBadge');
-  if (el) return el;
-  el = document.createElement('div');
-  el.id = 'relayDebugBadge';
-  el.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:9999;display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.15);font-family:monospace;font-size:10px;color:#fff;pointer-events:none;transition:background 0.2s;';
-  el.innerHTML = '<span id="relayDebugDot" style="width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;"></span><span id="relayDebugText">relay: connecting…</span>';
-  document.body.appendChild(el);
-  return el;
+// Connection status is shown as a thin ring around the Premier League logo
+// in the top-left of the header (#mainPlBtn) -- green while the relay is
+// connected, red while it isn't, with a brief flash on each push. The
+// header itself gets rebuilt on every render (renderSkeletons/renderDashboard),
+// so #mainPlBtn is a fresh element each time -- callers re-apply the ring
+// right after building it rather than relying on the class surviving.
+function updateRelayRing() {
+  const el = document.getElementById('mainPlBtn');
+  if (!el) return;
+  el.classList.remove('relay-connected', 'relay-disconnected');
+  if (!RELAY_URL) return; // relay not deployed -- no ring at all
+  el.classList.add(window.__relayConnected ? 'relay-connected' : 'relay-disconnected');
 }
-function updateRelayBadge() {
-  ensureRelayBadge();
-  const dot = document.getElementById('relayDebugDot');
-  const text = document.getElementById('relayDebugText');
-  if (!RELAY_URL) { dot.style.background = '#888'; text.textContent = 'relay: off'; return; }
-  if (window.__relayConnected) { dot.style.background = 'var(--accent-green, #7cff5b)'; text.textContent = 'relay: connected'; }
-  else { dot.style.background = '#ff4d4d'; text.textContent = 'relay: reconnecting…'; }
+function flashRelayRing() {
+  const el = document.getElementById('mainPlBtn');
+  if (!el) return;
+  el.classList.add('relay-flash');
+  setTimeout(() => el.classList.remove('relay-flash'), 300);
 }
-function flashRelayBadge() {
-  const badge = ensureRelayBadge();
-  badge.style.background = 'rgba(124,255,91,0.35)';
-  setTimeout(() => { badge.style.background = 'rgba(0,0,0,0.75)'; }, 300);
-}
-if (RELAY_URL) updateRelayBadge();
+if (RELAY_URL) updateRelayRing();
 
 // MAIN LOAD FUNCTION
 // The actual renderer -- builds the exact same real DOM every time it's
@@ -3575,8 +3578,9 @@ function renderDashboard(data, opts){
         const leagueLogo = (data.leagueId === 1)
           ? 'https://media.api-sports.io/football/leagues/1.png'
           : 'https://media.api-sports.io/football/leagues/39.png';
-        lh.innerHTML = `<div class="pl-btn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
+        lh.innerHTML = `<div class="pl-btn" id="mainPlBtn" onclick="openTable()"><img src="${leagueLogo}" class="pl-logo"></div><div class="header-title-box"><span class="header-main-text">MATCH WEEK</span><span class="header-sub-text">${subLabel}</span></div><div class="brand-btn" onclick="handleSecretTap()"><img src="header-logo.png" class="brand-logo"></div>`;
         left.appendChild(lh); left.appendChild(document.createElement("div")).className="left-divider";
+        updateRelayRing();
 
         // Whether every regular bet column is fully resolved: a dead (red)
         // column doesn't need a WIN value to count as "locked" -- only a
@@ -6080,11 +6084,13 @@ function selectPlayer(name) {
         return `<div class="bet-input-slot ${val ? 'filled' : ''}" id="slot-${m.match}-${colNum}" onclick="openPicker('${m.match}', '${h}', '${a}', ${colNum})">${val || ''}</div>`;
     }).join('');
 
+    const kickoffLabel = (m.startDay && m.startTime) ? `${abbrevDay(m.startDay)} ${m.startTime}` : '';
+
     const nameDiv = document.createElement('div');
     nameDiv.className = 'match-info';
     nameDiv.setAttribute('onclick', `openPreMatchStats('${m.match}')`);
     nameDiv.style.cssText = 'cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;';
-    nameDiv.innerHTML = `${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}`;
+    nameDiv.innerHTML = `${renderTeam(h)} <span class="vs-tag">vs</span> ${renderTeam(a)}${kickoffLabel ? `<span class="match-kickoff">${kickoffLabel}</span>` : ''}`;
     namesContainer.appendChild(nameDiv);
 
     const pillsDiv = document.createElement('div');

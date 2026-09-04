@@ -1,5 +1,5 @@
 // sw.js — Juice Bets service worker
-const CACHE_NAME = 'juicebets-v5';
+const CACHE_NAME = 'juicebets-v6';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [

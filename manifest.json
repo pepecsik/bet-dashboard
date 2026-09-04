@@ -3,8 +3,8 @@
   "short_name": "Juice Bets",
   "start_url": "/bet-dashboard/",
   "display": "standalone",
-  "background_color": "#134d2b",
-  "theme_color": "#134d2b",
+  "background_color": "#141619",
+  "theme_color": "#141619",
   "icons": [
     {
       "src": "/bet-dashboard/icon-192.png",

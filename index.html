@@ -3502,16 +3502,24 @@ function patchFastScores(data) {
       //            (RED here counts ANY red leg, live or finished -- a
       //            live leg losing by more than "1 away" is RED too, not
       //            just an FT-confirmed loss)
-      //   GREEN  = ALIVE and doesn't meet the ORANGE condition (i.e. the
-      //            fallback for everything still alive) -- solid + the
-      //            celebration once every match is FT (pen===0), shivering
-      //            while still pending
+      //   GREEN  = ALIVE, not ORANGE, and every single pick is CURRENTLY
+      //            green (this last part is deliberately stricter than the
+      //            sheet's own GREEN rule, which has no such requirement --
+      //            the app's avatar should show no colour at all for a bet
+      //            that's merely alive with nothing decided yet, e.g. most
+      //            matches not even kicked off, rather than defaulting to
+      //            green the way the raw sheet formula technically would).
+      //            Solid + celebration once every match is FT (pen===0),
+      //            shivering while still pending.
+      //   (none) = alive, not orange, not all-green yet -- shown with no
+      //            status class at all.
       let hasB = false, pen = 0, tot = 0;
-      let hasDeadFT = false, hasGray = false, orangeCount = 0, redCount = 0;
+      let hasDeadFT = false, hasGray = false, orangeCount = 0, redCount = 0, allGreen = true;
       matches.forEach(m => {
         const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
         if (!c || !c.value) return;
         hasB = true;
+        if (!isCorrectColor(c.color)) allGreen = false;
         if (isWrongColor(c.color)) { redCount++; if (st === 'FT') hasDeadFT = true; }
         if (isGrayColor(c.color)) hasGray = true;
         if (isOrangeColor(c.color)) orangeCount++;
@@ -3525,7 +3533,7 @@ function patchFastScores(data) {
         pill.classList.add('status-red');
       } else if (hasB && isOrangeState) {
         pill.classList.add('status-orange');
-      } else if (hasB && pen === 0) {
+      } else if (hasB && allGreen && pen === 0) {
         pill.classList.add('status-green');
         if (window.__celebratedColumns && !window.__celebratedColumns.has(h.name)) {
           window.__celebratedColumns.add(h.name);
@@ -3537,7 +3545,7 @@ function patchFastScores(data) {
           try { fireScreenBlaster(pill); showBigWin(formatGBP(tot), celebrationAvatars[h.name] || null); }
           catch (e) { console.error('celebration failed (non-fatal)', e); }
         }
-      } else if (hasB) {
+      } else if (hasB && allGreen) {
         pill.classList.add('status-green-live');
       }
     });
@@ -3840,12 +3848,19 @@ function renderDashboard(data, opts){
            // Replicates the sheet's own 3 conditional-formatting rules
            // exactly -- see the matching, fuller comment in
            // patchFastScores()'s copy of this same aggregate.
+           // GREEN (either flavour) additionally requires every single pick
+           // to be CURRENTLY green -- deliberately stricter than the sheet's
+           // own rule (see the fuller comment in patchFastScores()'s copy),
+           // so a bet that's merely alive with most matches not even
+           // kicked off yet shows no colour at all instead of defaulting
+           // to green.
            let tot=0,pen=0,hasB=false;
-           let hasDeadFT=false, hasGray=false, orangeCount=0, redCount=0;
+           let hasDeadFT=false, hasGray=false, orangeCount=0, redCount=0, allGreen=true;
            data.matches.forEach(m=>{
              const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
              if(!c||!c.value)return;
              hasB=true;
+             if (!isWinningGreen(c.color)) allGreen=false;
              if (isWrongColor(c.color)) { redCount++; if (st==="FT") hasDeadFT=true; }
              if (isGrayColor(c.color)) hasGray=true;
              if (isOrangeColor(c.color)) orangeCount++;
@@ -3861,7 +3876,7 @@ function renderDashboard(data, opts){
              p.classList.add("status-red");
            }
            else if(hasB&&isOrangeState) p.classList.add("status-orange");
-           else if(hasB&&pen===0){
+           else if(hasB&&allGreen&&pen===0){
              p.classList.add("status-green");
              if(!suppressCelebration && !window.__celebratedColumns.has(h.name)){
                window.__celebratedColumns.add(h.name);
@@ -3872,7 +3887,7 @@ function renderDashboard(data, opts){
                if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
              }
            }
-           else if(hasB) p.classList.add("status-green-live");
+           else if(hasB&&allGreen) p.classList.add("status-green-live");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 

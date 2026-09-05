@@ -3472,25 +3472,41 @@ function patchFastScores(data) {
     headers.forEach((h, i) => {
       const pill = headerWrappers[i].querySelector('.header-pill');
       if (!pill) return;
-      let hasB = false, allG = true, hasR = false, pen = 0, tot = 0;
+      // Replicates the sheet's own 3 conditional-formatting rules on the
+      // header cell exactly, straight from real formulas the sheet owner
+      // pasted in (CALC!D1 = ALIVE/DEAD, plus the header's RED/ORANGE/GREEN
+      // rules), instead of a from-scratch guess:
+      //   DEAD  = any leg is RED on an FT match, OR any leg is GRAY
+      //           (an exact-score pick already mathematically impossible,
+      //           dead immediately, doesn't wait for FT)
+      //   ORANGE = ALIVE, 1-2 legs currently ORANGE, 0 legs currently RED
+      //            (RED here counts ANY red leg, live or finished -- a
+      //            live leg losing by more than "1 away" is RED too, not
+      //            just an FT-confirmed loss)
+      //   GREEN  = ALIVE and doesn't meet the ORANGE condition (i.e. the
+      //            fallback for everything still alive) -- solid + the
+      //            celebration once every match is FT (pen===0), shivering
+      //            while still pending
+      let hasB = false, pen = 0, tot = 0;
+      let hasDeadFT = false, hasGray = false, orangeCount = 0, redCount = 0;
       matches.forEach(m => {
         const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
         if (!c || !c.value) return;
         hasB = true;
-        // allG reflects the CURRENT colour of every pick, live or not --
-        // unchanged from before. Only "dead" (hasR) waits for a match to
-        // actually finish: a currently-losing live pick can still turn
-        // around, so it isn't confirmed wrong yet, but it's also not
-        // currently green either -- allG being false for it is correct and
-        // is exactly what keeps a not-all-green-yet bet out of the
-        // shivering-green state.
-        if (!isCorrectColor(c.color)) allG = false;
-        if (st === 'FT' && isWrongColor(c.color)) hasR = true;
+        if (isWrongColor(c.color)) { redCount++; if (st === 'FT') hasDeadFT = true; }
+        if (isGrayColor(c.color)) hasGray = true;
+        if (isOrangeColor(c.color)) orangeCount++;
         if (st !== 'FT') pen++;
       });
+      const isDead = hasDeadFT || hasGray;
+      const isOrangeState = !isDead && orangeCount >= 1 && orangeCount <= 2 && redCount === 0;
       if (hasB && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) tot += (data.betSummary[1].cells[i].value || 0);
       pill.classList.remove('status-green', 'status-green-live', 'status-orange', 'status-red');
-      if (hasB && !hasR && allG && pen === 0) {
+      if (hasB && isDead) {
+        pill.classList.add('status-red');
+      } else if (hasB && isOrangeState) {
+        pill.classList.add('status-orange');
+      } else if (hasB && pen === 0) {
         pill.classList.add('status-green');
         if (window.__celebratedColumns && !window.__celebratedColumns.has(h.name)) {
           window.__celebratedColumns.add(h.name);
@@ -3502,16 +3518,9 @@ function patchFastScores(data) {
           try { fireScreenBlaster(pill); showBigWin(formatGBP(tot), celebrationAvatars[h.name] || null); }
           catch (e) { console.error('celebration failed (non-fatal)', e); }
         }
+      } else if (hasB) {
+        pill.classList.add('status-green-live');
       }
-      else if (hasB && !hasR && allG && pen > 0) pill.classList.add('status-green-live');
-      // A confirmed-dead leg (FT and wrong -- see the FT gate on hasR
-      // above) turns the avatar red directly, straight from the actual
-      // match data -- doesn't wait on the sheet's own separate header flag
-      // for this, which is really for a different case (voided before any
-      // match even starts).
-      else if (hasB && hasR) pill.classList.add('status-red');
-      else if (h.status === 'orange') pill.classList.add('status-orange');
-      else if (h.status === 'red') pill.classList.add('status-red');
     });
   }
 }
@@ -3806,16 +3815,31 @@ function renderDashboard(data, opts){
         const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
         data.headers.forEach((h,i)=>{
-           let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-           // allG reflects current colour regardless of live/finished (see
-           // the matching comment in patchFastScores()'s copy of this same
-           // aggregate) -- only hasR (dead) waits for FT.
-           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(st==="FT"&&c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
+           // Replicates the sheet's own 3 conditional-formatting rules
+           // exactly -- see the matching, fuller comment in
+           // patchFastScores()'s copy of this same aggregate.
+           let tot=0,pen=0,hasB=false;
+           let hasDeadFT=false, hasGray=false, orangeCount=0, redCount=0;
+           data.matches.forEach(m=>{
+             const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
+             if(!c||!c.value)return;
+             hasB=true;
+             if (isWrongColor(c.color)) { redCount++; if (st==="FT") hasDeadFT=true; }
+             if (isGrayColor(c.color)) hasGray=true;
+             if (isOrangeColor(c.color)) orangeCount++;
+             if(st!=="FT")pen++;
+           });
+           const isDead = hasDeadFT || hasGray;
+           const isOrangeState = !isDead && orangeCount>=1 && orangeCount<=2 && redCount===0;
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
-           if(hasB&&!hasR&&allG&&pen===0){
+           if(hasB&&isDead){
+             p.classList.add("status-red");
+           }
+           else if(hasB&&isOrangeState) p.classList.add("status-orange");
+           else if(hasB&&pen===0){
              p.classList.add("status-green");
              if(!suppressCelebration && !window.__celebratedColumns.has(h.name)){
                window.__celebratedColumns.add(h.name);
@@ -3826,10 +3850,7 @@ function renderDashboard(data, opts){
                if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
              }
            }
-           else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
-           else if(hasB&&hasR) p.classList.add("status-red");
-           else if(h.status==='orange') p.classList.add("status-orange");
-           else if(h.status==='red') p.classList.add("status-red");
+           else if(hasB) p.classList.add("status-green-live");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 
@@ -4204,6 +4225,18 @@ function isWrongColor(hex) {
   if (!hex) return false;
   const h = hex.toLowerCase();
   return ['#ff0000','#ff4d4d','red'].includes(h);
+}
+// "1 goal/card away" -- same orange the header avatar itself already used
+// for its own sheet-set flag (see detectColor() in Code.gs).
+function isOrangeColor(hex) {
+  if (!hex) return false;
+  return ['#ff9900','#ff9f43'].includes(hex.toLowerCase());
+}
+// An exact-score pick that's already mathematically impossible (e.g. picked
+// 3-1, actual score already 0-2) -- dead immediately, doesn't wait for FT.
+function isGrayColor(hex) {
+  if (!hex) return false;
+  return hex.toLowerCase() === '#999999';
 }
 function isToday(ts) {
   const d = new Date(ts), n = new Date();

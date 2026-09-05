@@ -38,8 +38,8 @@ test("exact score bet -- live", () => {
   assert.equal(scoreBet({ ...live, bet: "1-1" }), "ORANGE", "home already matches, away needs exactly 1 more -> orange");
   assert.equal(scoreBet({ ...live, bet: "2-1" }), "RED", "2 goals still needed in total -> too far, red");
   assert.equal(scoreBet({ ...live, bet: "3-1" }), "RED", "3 goals still needed in total -> red");
-  assert.equal(scoreBet({ ...live, bet: "0-0" }), "RED", "actual home goals already exceed the guess -> busted, red");
-  assert.equal(scoreBet({ ...live, bet: "0-1" }), "RED", "actual home goals already exceed the guess -> busted, red");
+  assert.equal(scoreBet({ ...live, bet: "0-0" }), "GRAY", "actual home goals already exceed the guess -> busted, dead immediately even though still live");
+  assert.equal(scoreBet({ ...live, bet: "0-1" }), "GRAY", "actual home goals already exceed the guess -> busted, dead immediately even though still live");
 });
 
 test("exact score bet -- full time", () => {

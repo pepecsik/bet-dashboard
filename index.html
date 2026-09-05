@@ -3551,13 +3551,16 @@ let relayDebounceTimer = null;
 // logic there (reorder, per-cell colour, header status, edge-triggered
 // celebration, the color:null "leave it alone" rule for cards/goalscorer
 // markets) runs unmodified -- nothing relay-specific to keep in sync here.
-// The relay/combine.js sends logical colour names (GREEN/ORANGE/RED/"" --
-// see scoring.js), not hex codes -- patchFastScores() and its helpers
-// (isCorrectColor/isWrongColor) only recognize the actual hex values Sheets
-// itself uses. color: null (cards/goalscorer markets with no live data
-// yet) is a distinct sentinel patchFastScores already knows to leave alone
-// -- passed through unchanged, never run through this map.
-const RELAY_COLOR_MAP = { GREEN: '#7cff5b', ORANGE: '#ff9900', RED: '#ff0000', '': '' };
+// The relay/combine.js sends logical colour names (GREEN/ORANGE/RED/GRAY/""
+// -- see scoring.js), not hex codes -- patchFastScores() and its helpers
+// (isCorrectColor/isWrongColor/isOrangeColor/isGrayColor) only recognize
+// the actual hex values Sheets itself uses. color: null (cards/goalscorer
+// markets with no live data yet) is a distinct sentinel patchFastScores
+// already knows to leave alone -- passed through unchanged, never run
+// through this map. GRAY must map to the real gray hex, not fall through
+// to '' (no bet) -- a busted exact-score pick is a real, dead pick, not a
+// blank one.
+const RELAY_COLOR_MAP = { GREEN: '#7cff5b', ORANGE: '#ff9900', RED: '#ff0000', GRAY: '#999999', '': '' };
 function mapRelayColor(color) {
   if (color === null) return null;
   return Object.prototype.hasOwnProperty.call(RELAY_COLOR_MAP, color) ? RELAY_COLOR_MAP[color] : '';

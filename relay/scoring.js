@@ -4,8 +4,12 @@
 // bet outcome colour gets decided once the fast layer is live: Sheets
 // stops computing it independently and just stores what this says.
 //
-// Returns "GREEN" | "ORANGE" | "RED" | "" -- the same vocabulary the rest
-// of the app already reads off Sheets' own cell colours.
+// Returns "GREEN" | "ORANGE" | "RED" | "GRAY" | "" -- the same vocabulary
+// the rest of the app already reads off Sheets' own cell colours. GRAY is
+// specific to an exact-score pick that's already mathematically impossible
+// (actual goals have overtaken the guess) -- dead immediately regardless of
+// FT, unlike a plain RED which (while still live) could in principle still
+// land once the match finishes.
 //
 // Kept as a plain, dependency-free function so it can be unit-tested in
 // isolation (see scoring.test.js) before anything wires it into the live
@@ -34,7 +38,7 @@ function scoreBet({ bet, homeGoals, awayGoals, status, yellowCards, redCards, sc
     const exact = hg === eh && ag === ea;
     if (isFT) return exact ? "GREEN" : "RED";
     if (exact) return "GREEN";
-    if (hg > eh || ag > ea) return "RED"; // busted -- goals only go up, this can't land right anymore
+    if (hg > eh || ag > ea) return "GRAY"; // busted -- goals only go up, this can't land right anymore. Matches the sheet formula exactly: this is dead immediately, even while still live, distinct from a merely-too-far-away RED that could still land after FT.
     const remaining = (eh + ea) - (hg + ag);
     return remaining === 1 ? "ORANGE" : "RED";
   }

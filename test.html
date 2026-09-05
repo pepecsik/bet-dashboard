@@ -3328,6 +3328,20 @@ function patchFastScores(data) {
   }
 
   matches.forEach((m, i) => {
+    // Once a match is confirmed finished, its result is permanent -- lock
+    // it and ignore every subsequent update for it from any source, forever.
+    // Why this is needed even with window.__liveMatchState above: the relay
+    // only ever knows about CURRENTLY live fixtures (it polls API-Football's
+    // live-fixtures feed). The instant a match ends it can vanish from that
+    // feed a beat before a final "FT" ever gets recorded, leaving the relay
+    // frozen on a stale "90'" forever, with nothing that would ever correct
+    // it. Without this lock, that stale value keeps re-winning the race
+    // against the sheet's correct FT every ~10s, forever -- exactly the
+    // "flickers between 90' and FT a full day later" bug. FT is a one-way
+    // door: once reached for a match, never revisited.
+    if (!window.__matchLocked) window.__matchLocked = {};
+    if (window.__matchLocked[m.match]) return;
+
     const live = getMatchStatusType(m) === 'live';
 
     // A not-yet-started match has no startTime in this fast payload (that's
@@ -3408,6 +3422,11 @@ function patchFastScores(data) {
       el.classList.toggle('sweat-active', isWinning && !isClinchTime);
       el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
     });
+
+    // This update just confirmed the match is over -- lock it (see the
+    // guard at the top of this loop) so no later update, however stale or
+    // wrong, can ever drag it back to a live-looking state again.
+    if (getMatchStatusType(m) === 'finished') window.__matchLocked[m.match] = true;
   });
 
   // Header avatar row -- same per-column green/orange/red aggregate
@@ -3640,8 +3659,20 @@ function renderDashboard(data, opts){
         // Matches with no live state yet (e.g. very first load, before any
         // fast/relay data has arrived) fall through to the sheet's own
         // values unchanged.
+        if (!window.__matchLocked) window.__matchLocked = {};
+        if (!window.__liveMatchState) window.__liveMatchState = {};
         data.matches = (data.matches || []).map(m => {
-          const liveState = (window.__liveMatchState || {})[m.match];
+          // The plain sheet payload can independently be the first (or
+          // only) source to ever report a match as finished -- e.g. if the
+          // relay/fast poll never managed to confirm it at all. Lock on
+          // that too, using this payload's own values, so patchFastScores()
+          // stops trusting anything else for this match from here on (see
+          // its matching guard there).
+          if (!window.__matchLocked[m.match] && getMatchStatusType(m) === 'finished') {
+            window.__matchLocked[m.match] = true;
+            window.__liveMatchState[m.match] = { status: m.status, score: m.score, cells: (m.cells || []).slice() };
+          }
+          const liveState = window.__liveMatchState[m.match];
           if (!liveState) return m;
           const cells = (m.cells || []).map((c, ci) => {
             const lc = (liveState.cells || [])[ci];
@@ -3844,11 +3875,18 @@ function renderDashboard(data, opts){
           // animations for no visible reason (the exact "pulses twice" bug
           // this exists to fix). Keep the existing nodes; only the
           // special-bet/what-if pills inside (which patchFastScores never
-          // touches) still get refreshed. The moment a match stops being
-          // live, matchStatusType !== 'live' and it falls through to a
-          // normal full rebuild again, exactly once, cleanly.
-          const reusableLr = matchStatusType === 'live' ? prevLeftRowByMatch[m.match] : null;
-          const reusableRr = matchStatusType === 'live' ? prevRightRowByMatch[m.match] : null;
+          // touches) still get refreshed.
+          //
+          // A LOCKED (permanently finished, see window.__matchLocked above)
+          // match is reused too, once it's had exactly one normal rebuild
+          // with the finished styling applied (data-status flips to
+          // "finished" that one time) -- there's nothing left to ever
+          // change about it, so there's no reason to keep tearing it down
+          // and rebuilding it every 30s forever.
+          const prevWasAlreadyFinished = prevLeftRowByMatch[m.match] && prevLeftRowByMatch[m.match].getAttribute('data-status') === 'finished';
+          const canReuse = matchStatusType === 'live' || (window.__matchLocked[m.match] && prevWasAlreadyFinished);
+          const reusableLr = canReuse ? prevLeftRowByMatch[m.match] : null;
+          const reusableRr = canReuse ? prevRightRowByMatch[m.match] : null;
           if (reusableLr && reusableRr) {
             left.appendChild(reusableLr);
             right.appendChild(reusableRr);

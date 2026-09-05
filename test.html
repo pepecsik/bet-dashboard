@@ -3254,12 +3254,35 @@ function computeBetIsWinning(betValue, home, away, hScore, aScore) {
 // screen -- a genuine column count/identity change (new matchweek, special
 // bets toggled) is exactly the kind of structural change this patch path
 // was built to stay out of.
+// Persistent per-column cache for header.status (admin-set dead/orange
+// flags on a column, e.g. a voided bet) -- the relay never knows about
+// these (it only ever carries live score/colour data) and always sends
+// status: null for every header (see applyRelayState()). Without this, a
+// relay push would wipe a dead/orange column's avatar styling for a moment
+// -- classList.remove() runs unconditionally before re-checking status --
+// until the next real sheet-derived update restores it, flashing on and
+// off exactly like the match-status flicker this file already fixes once.
+// null means "this source doesn't know"; '' is still a real, cacheable
+// value ("sheet confirms nothing special right now") -- only null falls
+// back to whatever was last actually known.
+function mergeHeaderStatus(headers) {
+  if (!window.__headerStatusByName) window.__headerStatusByName = {};
+  return (headers || []).map(h => {
+    if (h.status !== null && h.status !== undefined) {
+      window.__headerStatusByName[h.name] = h.status;
+      return h;
+    }
+    const cached = window.__headerStatusByName[h.name];
+    return cached !== undefined ? Object.assign({}, h, { status: cached }) : h;
+  });
+}
+
 function reorderFastColumns(right, data) {
   const newNames = (data.headers || []).map(h => h.name);
   const oldNames = window.__lastHeaderOrder || newNames;
   window.__lastHeaderOrder = newNames;
   if (newNames.length === 0 || newNames.length !== oldNames.length) return;
-  if (newNames.every((n, i) => n === oldNames[i])) { window.globalHeaders = data.headers; return; }
+  if (newNames.every((n, i) => n === oldNames[i])) { window.globalHeaders = mergeHeaderStatus(data.headers); return; }
   const sortedOld = [...oldNames].sort(), sortedNew = [...newNames].sort();
   if (JSON.stringify(sortedOld) !== JSON.stringify(sortedNew)) return;
 
@@ -3297,7 +3320,7 @@ function reorderFastColumns(right, data) {
   // Every index-based lookup elsewhere (the "Alive" filter, special-bet
   // combos, the ticker) reads window.globalHeaders -- keep it matching the
   // order the DOM was just moved into.
-  window.globalHeaders = data.headers;
+  window.globalHeaders = mergeHeaderStatus(data.headers);
 }
 
 function patchFastScores(data) {
@@ -3437,7 +3460,7 @@ function patchFastScores(data) {
   // renderDashboard(), which shares the same Set and resets it on a new
   // matchweek) -- so this can run on every fast/relay-triggered poll without
   // ever refiring confetti for a column that's already been celebrated.
-  const headers = data.headers || [];
+  const headers = mergeHeaderStatus(data.headers);
   const headerWrappers = right.querySelectorAll('.header-pill-wrapper[data-col-idx]');
   if (headerWrappers.length === headers.length) {
     headers.forEach((h, i) => {
@@ -3683,6 +3706,7 @@ function renderDashboard(data, opts){
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
+        data.headers = mergeHeaderStatus(data.headers);
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
         // Baseline the fast poll's reorder check (see patchFastScores) against
         // whatever order this full render just drew.

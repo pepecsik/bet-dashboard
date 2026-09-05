@@ -3326,7 +3326,25 @@ function reorderFastColumns(right, data) {
 function patchFastScores(data) {
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
-  const matches = data.matches || [];
+  if (!window.__matchLocked) window.__matchLocked = {};
+  if (!window.__liveMatchState) window.__liveMatchState = {};
+  // The per-match loop below has its own lock guard that skips a locked
+  // match's row patching entirely -- but the header-avatar aggregate
+  // further down used to read straight from this same raw `matches` array,
+  // completely bypassing that protection. A relay push has no memory of a
+  // match that finished before it started tracking it live (it only polls
+  // API-Football's CURRENTLY-live-fixtures feed) and reports it as "NS"
+  // with a blank score -- which would flip an already-confirmed-dead leg's
+  // colour back to something harmless for the header computation, then the
+  // next sheet-derived update would correct it back to red, forever
+  // alternating. Building the protected view HERE, once, means every
+  // consumer below -- row patching AND the header aggregate -- sees the
+  // same locked, stable truth for any match already confirmed finished.
+  const matches = (data.matches || []).map(m => {
+    if (!window.__matchLocked[m.match]) return m;
+    const liveState = window.__liveMatchState[m.match];
+    return liveState ? Object.assign({}, m, { status: liveState.status, score: liveState.score, cells: liveState.cells }) : m;
+  });
   // Skeleton placeholder rows also carry the .left-row/.row classes (see
   // renderSkeletons), and the BET/WIN/WIN PP summary rows appended after
   // the matches also carry .row (as .short-row) -- both must be excluded
@@ -3361,8 +3379,9 @@ function patchFastScores(data) {
     // it. Without this lock, that stale value keeps re-winning the race
     // against the sheet's correct FT every ~10s, forever -- exactly the
     // "flickers between 90' and FT a full day later" bug. FT is a one-way
-    // door: once reached for a match, never revisited.
-    if (!window.__matchLocked) window.__matchLocked = {};
+    // door: once reached for a match, never revisited. (window.__matchLocked
+    // is initialized once at the top of this function now, since the
+    // protected `matches` array above needs it too.)
     if (window.__matchLocked[m.match]) return;
 
     const live = getMatchStatusType(m) === 'live';

@@ -957,8 +957,6 @@ body {
     width: 0%; 
     min-width: 4px; 
 }
-.extra-time-pill { font-size: 9px; color: var(--accent-orange); background: rgba(251, 146, 60, 0.15); padding: 1px 3px; border-radius: 4px; margin-left: 4px; font-weight: 800; vertical-align: middle; border: 1px solid rgba(251, 146, 60, 0.3); }
-
 .live-dot {
     width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%;
     display: inline-block; margin-right: 6px; animation: blink 1.5s infinite ease-in-out;
@@ -3323,7 +3321,8 @@ function reorderFastColumns(right, data) {
   window.globalHeaders = mergeHeaderStatus(data.headers);
 }
 
-function patchFastScores(data) {
+function patchFastScores(data, opts) {
+  opts = opts || {};
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
   if (!window.__matchLocked) window.__matchLocked = {};
@@ -3354,11 +3353,24 @@ function patchFastScores(data) {
 
   if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
 
-  // Reorder first so the value/colour patch below (which matches DOM
-  // position to data.matches[].cells position) and the header-status sync
-  // further down both line up with whatever order this payload just moved
-  // things into.
-  reorderFastColumns(right, data);
+  // Only physically reorder columns for a source whose header order is
+  // actually current. The direct 10s ?mode=fast poll reads the live sheet,
+  // same as the full render, so its order is trustworthy the instant it
+  // arrives. The relay is fed from a bets snapshot it only re-fetches every
+  // BETS_SYNC_MS (2 minutes, see relay/server.js) -- for up to that whole
+  // window its header order can be stale relative to the sheet's real,
+  // already-current order, and letting it drive a physical reorder was
+  // exactly the "avatars and bets shuffling for about a minute" bug: the
+  // correct order (from the next fast poll or full render) and the relay's
+  // stale order kept winning the reorder race back and forth. The value/
+  // colour patch below never relies on this -- it maps every column by
+  // NAME (via window.globalHeaders, the one place order actually lives),
+  // so a relay push with a differently-ordered header list still lands
+  // every cell in the right column even though the DOM itself doesn't move.
+  if (opts.trustOrder !== false) reorderFastColumns(right, data);
+  const domHeaders = window.globalHeaders || [];
+  const incomingIndexByName = {};
+  (data.headers || []).forEach((h, idx) => { incomingIndexByName[h.name] = idx; });
 
   // This payload is live/current data actually reaching the screen -- any
   // "still fetching" spinner from a manual refresh (see __awaitingFreshData)
@@ -3392,20 +3404,9 @@ function patchFastScores(data) {
     // ~10-15s, flickering against the real kickoff time the full render
     // just set. Simplest fix: leave it alone while still NS: there's
     // nothing time-critical to update on a match that hasn't kicked off.
-    // Direct-child combinator, not a descendant selector: once an extra-time
-    // pill is nested inside the status span (below), a plain ".score-pill
-    // span" match would pick up 3 spans instead of 2 and this whole block
-    // would silently stop firing for that match on every later poll.
     const spans = leftRows[i].querySelectorAll('.score-pill > span');
     if (spans.length === 2 && m.status !== 'NS') {
-      // Stoppage time: API-Football freezes m.status ("90'") for the whole
-      // of injury time and reports the announced added minutes separately
-      // in m.extra -- without appending it, the clock looks stuck at 90'
-      // until the referee actually blows full time. Matches renderDashboard()'s
-      // own extra-time-pill markup exactly.
-      const extraPill = (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status))
-        ? '<span class="extra-time-pill">+' + m.extra + '</span>' : '';
-      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + m.status + extraPill;
+      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + formatMatchMinute(m);
       spans[1].textContent = m.score || '';
     }
 
@@ -3448,39 +3449,49 @@ function patchFastScores(data) {
     const matchMinute = parseInt(String(m.status || '').replace("'", ""));
     const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
 
-    const cells = rightRows[i].querySelectorAll('.bet');
-    (m.cells || []).forEach((c, ci) => {
-      const el = cells[ci];
-      if (!el || el.classList.contains('special-bet') || el.classList.contains('whatif-pill')) return;
-      // color === null (distinct from "", meaning "no bet") means the relay
-      // deliberately left this cell uncomputed -- a cards/goalscorer market
-      // it doesn't have live data for yet (see combine.js). Leave whatever's
-      // already showing rather than overwrite it with a wrong grey/blank.
-      if (c.color === null) return;
-      if (scoreChanged) {
-        el.classList.remove('flash-active');
-        void el.offsetWidth;
-        el.classList.add('flash-active');
-      }
-      if (c.value) {
-        el.textContent = c.value;
-        let color = c.color || '#262a30';
-        if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
-        el.style.setProperty('--bet-bg', color);
-        el.style.backgroundColor = color;
-        el.classList.remove('empty');
-      } else {
-        el.textContent = '';
-        el.style.setProperty('--bet-bg', 'transparent');
-        el.classList.add('empty');
-      }
+    // Direct-child-filtered and matched to DOM position by NAME (via
+    // domHeaders/incomingIndexByName above), not by raw array position --
+    // this payload's own header order can differ from the DOM's actual
+    // column order (see the reorder comment above), so indexing both by
+    // the same raw `i` would silently write one bettor's cell into another
+    // bettor's column whenever the two orders disagree.
+    const cells = rightRows[i].querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)');
+    if (cells.length === domHeaders.length) {
+      domHeaders.forEach((dh, domIdx) => {
+        const srcIdx = incomingIndexByName[dh.name];
+        const c = srcIdx === undefined ? undefined : (m.cells || [])[srcIdx];
+        const el = cells[domIdx];
+        if (!c || !el) return;
+        // color === null (distinct from "", meaning "no bet") means the relay
+        // deliberately left this cell uncomputed -- a cards/goalscorer market
+        // it doesn't have live data for yet (see combine.js). Leave whatever's
+        // already showing rather than overwrite it with a wrong grey/blank.
+        if (c.color === null) return;
+        if (scoreChanged) {
+          el.classList.remove('flash-active');
+          void el.offsetWidth;
+          el.classList.add('flash-active');
+        }
+        if (c.value) {
+          el.textContent = c.value;
+          let color = c.color || '#262a30';
+          if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
+          el.style.setProperty('--bet-bg', color);
+          el.style.backgroundColor = color;
+          el.classList.remove('empty');
+        } else {
+          el.textContent = '';
+          el.style.setProperty('--bet-bg', 'transparent');
+          el.classList.add('empty');
+        }
 
-      const headerInfo = (window.globalHeaders || [])[ci];
-      const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-      const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
-      el.classList.toggle('sweat-active', isWinning && !isClinchTime);
-      el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
-    });
+        const headerInfo = domHeaders[domIdx];
+        const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+        const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
+        el.classList.toggle('sweat-active', isWinning && !isClinchTime);
+        el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
+      });
+    }
 
     // This update just confirmed the match is over -- lock it (see the
     // guard at the top of this loop) so no later update, however stale or
@@ -3496,11 +3507,21 @@ function patchFastScores(data) {
   // renderDashboard(), which shares the same Set and resets it on a new
   // matchweek) -- so this can run on every fast/relay-triggered poll without
   // ever refiring confetti for a column that's already been celebrated.
-  const headers = mergeHeaderStatus(data.headers);
+  // Same name-based mapping as the cell patch above: `domHeaders` (DOM's
+  // real, current order) drives which wrapper gets updated, while `i` below
+  // is looked up per-header into THIS payload's own arrays -- never assumed
+  // to equal the DOM position, since the payload's own header order can
+  // differ from it (a stale relay push especially).
+  const incomingHeaders = mergeHeaderStatus(data.headers);
+  const incomingHeaderByName = {};
+  incomingHeaders.forEach(h => { incomingHeaderByName[h.name] = h; });
   const headerWrappers = right.querySelectorAll('.header-pill-wrapper[data-col-idx]');
-  if (headerWrappers.length === headers.length) {
-    headers.forEach((h, i) => {
-      const pill = headerWrappers[i].querySelector('.header-pill');
+  if (headerWrappers.length === domHeaders.length) {
+    domHeaders.forEach((dh, domIdx) => {
+      const h = incomingHeaderByName[dh.name];
+      const i = incomingIndexByName[dh.name];
+      if (!h || i === undefined) return;
+      const pill = headerWrappers[domIdx].querySelector('.header-pill');
       if (!pill) return;
       // Replicates the sheet's own 3 conditional-formatting rules on the
       // header cell exactly, straight from real formulas the sheet owner
@@ -3617,7 +3638,11 @@ function applyRelayState(state) {
     })),
     betSummary: [null, { cells: state.winCells || [] }],
   };
-  try { patchFastScores(adapted); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
+  // trustOrder: false -- the relay's own header list can be up to
+  // BETS_SYNC_MS (2 minutes) stale (see the comment in patchFastScores()),
+  // so it must never physically reorder columns, only patch values into
+  // whatever column each name already occupies.
+  try { patchFastScores(adapted, { trustOrder: false }); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
 }
 
 function connectRelay() {
@@ -4030,8 +4055,7 @@ function renderDashboard(data, opts){
           const matchMinute = parseInt(m.status.replace("'", ""));
           const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
-          let displayStatus = m.status === "NS" ? (m.startTime || "NS") : m.status;
-          if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) { displayStatus = `${m.status}<span class="extra-time-pill">+${m.extra}</span>`; }
+          let displayStatus = m.status === "NS" ? (m.startTime || "NS") : formatMatchMinute(m);
 
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
 
@@ -4246,6 +4270,17 @@ function getMatchStatusType(m) {
     if(s.includes("'") || ["HT","1H","2H","LIVE"].includes(s)) return 'live';
     if(s === "FT" || s === "AET" || s === "PEN") return 'finished';
     return 'upcoming';
+}
+// Stoppage/injury time: API-Football freezes m.status ("90'") for the whole
+// of added time and reports the announced extra minutes separately in
+// m.extra. Folded straight into the displayed minute (91', 92', ...) rather
+// than a separate "+N" badge -- just the normal running clock continuing.
+function formatMatchMinute(m) {
+  if (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status)) {
+    const base = parseInt(String(m.status).replace("'", ""), 10);
+    if (!isNaN(base)) return (base + m.extra) + "'";
+  }
+  return m.status;
 }
 // ── Ticker ──────────────────────────────────────────────────
 function tickerShortMatch(name) {

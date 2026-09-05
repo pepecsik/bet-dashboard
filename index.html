@@ -3477,15 +3477,15 @@ function patchFastScores(data) {
         const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
         if (!c || !c.value) return;
         hasB = true;
-        // A pick only counts as wrong (or breaks "all green") once ITS OWN
-        // match is actually over -- a currently-losing live pick can still
-        // turn around, so it isn't dead yet. Without this, the avatar
-        // turned red the moment a still-live match's pill went red, instead
-        // of waiting for that match to actually finish.
-        if (st === 'FT') {
-          if (!isCorrectColor(c.color)) allG = false;
-          if (isWrongColor(c.color)) hasR = true;
-        }
+        // allG reflects the CURRENT colour of every pick, live or not --
+        // unchanged from before. Only "dead" (hasR) waits for a match to
+        // actually finish: a currently-losing live pick can still turn
+        // around, so it isn't confirmed wrong yet, but it's also not
+        // currently green either -- allG being false for it is correct and
+        // is exactly what keeps a not-all-green-yet bet out of the
+        // shivering-green state.
+        if (!isCorrectColor(c.color)) allG = false;
+        if (st === 'FT' && isWrongColor(c.color)) hasR = true;
         if (st !== 'FT') pen++;
       });
       if (hasB && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) tot += (data.betSummary[1].cells[i].value || 0);
@@ -3807,10 +3807,10 @@ function renderDashboard(data, opts){
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-           // A pick only counts as wrong (or breaks "all green") once ITS
-           // OWN match is actually over -- see the matching comment in
-           // patchFastScores()'s copy of this same aggregate.
-           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(st==="FT"){ if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; } if(st!=="FT")pen++; });
+           // allG reflects current colour regardless of live/finished (see
+           // the matching comment in patchFastScores()'s copy of this same
+           // aggregate) -- only hasR (dead) waits for FT.
+           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(st==="FT"&&c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";

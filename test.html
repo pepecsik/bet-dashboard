@@ -3387,7 +3387,13 @@ function patchFastScores(data) {
     // match string, same key prevMatches already uses.
     if (!window.__liveMatchState) window.__liveMatchState = {};
     const prevLive = window.__liveMatchState[m.match];
-    const scoreChanged = !!(prevLive && m.score && prevLive.score !== m.score);
+    // Normalized (not a raw string compare) because the sheet-derived and
+    // relay-derived score strings for the SAME actual score aren't always
+    // byte-identical (whitespace, formatting) -- a raw compare treated that
+    // as a "goal" and fired the flash on every single poll, live match or
+    // not, even with nothing having actually changed.
+    const normScore = s => String(s || '0-0').split('-').map(x => parseInt(x, 10) || 0).join('-');
+    const scoreChanged = !!(prevLive && m.score && normScore(prevLive.score) !== normScore(m.score));
     window.__liveMatchState[m.match] = { status: m.status, score: m.score, cells: (m.cells || []).slice() };
 
     // Goal flash -- moved here from renderDashboard() so it still fires for
@@ -3471,8 +3477,15 @@ function patchFastScores(data) {
         const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
         if (!c || !c.value) return;
         hasB = true;
-        if (!isCorrectColor(c.color)) allG = false;
-        if (isWrongColor(c.color)) hasR = true;
+        // A pick only counts as wrong (or breaks "all green") once ITS OWN
+        // match is actually over -- a currently-losing live pick can still
+        // turn around, so it isn't dead yet. Without this, the avatar
+        // turned red the moment a still-live match's pill went red, instead
+        // of waiting for that match to actually finish.
+        if (st === 'FT') {
+          if (!isCorrectColor(c.color)) allG = false;
+          if (isWrongColor(c.color)) hasR = true;
+        }
         if (st !== 'FT') pen++;
       });
       if (hasB && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) tot += (data.betSummary[1].cells[i].value || 0);
@@ -3491,6 +3504,12 @@ function patchFastScores(data) {
         }
       }
       else if (hasB && !hasR && allG && pen > 0) pill.classList.add('status-green-live');
+      // A confirmed-dead leg (FT and wrong -- see the FT gate on hasR
+      // above) turns the avatar red directly, straight from the actual
+      // match data -- doesn't wait on the sheet's own separate header flag
+      // for this, which is really for a different case (voided before any
+      // match even starts).
+      else if (hasB && hasR) pill.classList.add('status-red');
       else if (h.status === 'orange') pill.classList.add('status-orange');
       else if (h.status === 'red') pill.classList.add('status-red');
     });
@@ -3788,7 +3807,10 @@ function renderDashboard(data, opts){
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
         data.headers.forEach((h,i)=>{
            let tot=0,pen=0,hasB=false,allG=true,hasR=false;
-           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; if(st!=="FT")pen++; });
+           // A pick only counts as wrong (or breaks "all green") once ITS
+           // OWN match is actually over -- see the matching comment in
+           // patchFastScores()'s copy of this same aggregate.
+           data.matches.forEach(m=>{ const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():""; if(!c||!c.value)return; hasB=true; if(st==="FT"){ if(!isWinningGreen(c.color))allG=false; if(c.color&&['#ff0000','#ff4d4d','red'].includes(c.color))hasR=true; } if(st!=="FT")pen++; });
            if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
@@ -3805,6 +3827,7 @@ function renderDashboard(data, opts){
              }
            }
            else if(hasB&&!hasR&&allG&&pen>0) p.classList.add("status-green-live");
+           else if(hasB&&hasR) p.classList.add("status-red");
            else if(h.status==='orange') p.classList.add("status-orange");
            else if(h.status==='red') p.classList.add("status-red");
            wrapper.appendChild(p); headerRow.appendChild(wrapper);

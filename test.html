@@ -3343,7 +3343,7 @@ function patchFastScores(data) {
   const matches = (data.matches || []).map(m => {
     if (!window.__matchLocked[m.match]) return m;
     const liveState = window.__liveMatchState[m.match];
-    return liveState ? Object.assign({}, m, { status: liveState.status, score: liveState.score, cells: liveState.cells }) : m;
+    return liveState ? Object.assign({}, m, { status: liveState.status, score: liveState.score, extra: liveState.extra, cells: liveState.cells }) : m;
   });
   // Skeleton placeholder rows also carry the .left-row/.row classes (see
   // renderSkeletons), and the BET/WIN/WIN PP summary rows appended after
@@ -3392,9 +3392,20 @@ function patchFastScores(data) {
     // ~10-15s, flickering against the real kickoff time the full render
     // just set. Simplest fix: leave it alone while still NS: there's
     // nothing time-critical to update on a match that hasn't kicked off.
-    const spans = leftRows[i].querySelectorAll('.score-pill span');
+    // Direct-child combinator, not a descendant selector: once an extra-time
+    // pill is nested inside the status span (below), a plain ".score-pill
+    // span" match would pick up 3 spans instead of 2 and this whole block
+    // would silently stop firing for that match on every later poll.
+    const spans = leftRows[i].querySelectorAll('.score-pill > span');
     if (spans.length === 2 && m.status !== 'NS') {
-      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + m.status;
+      // Stoppage time: API-Football freezes m.status ("90'") for the whole
+      // of injury time and reports the announced added minutes separately
+      // in m.extra -- without appending it, the clock looks stuck at 90'
+      // until the referee actually blows full time. Matches renderDashboard()'s
+      // own extra-time-pill markup exactly.
+      const extraPill = (m.extra && m.extra > 0 && !["HT", "FT", "NS"].includes(m.status))
+        ? '<span class="extra-time-pill">+' + m.extra + '</span>' : '';
+      spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + m.status + extraPill;
       spans[1].textContent = m.score || '';
     }
 
@@ -3413,7 +3424,7 @@ function patchFastScores(data) {
     // not, even with nothing having actually changed.
     const normScore = s => String(s || '0-0').split('-').map(x => parseInt(x, 10) || 0).join('-');
     const scoreChanged = !!(prevLive && m.score && normScore(prevLive.score) !== normScore(m.score));
-    window.__liveMatchState[m.match] = { status: m.status, score: m.score, cells: (m.cells || []).slice() };
+    window.__liveMatchState[m.match] = { status: m.status, score: m.score, extra: m.extra, cells: (m.cells || []).slice() };
 
     // Goal flash -- moved here from renderDashboard() so it still fires for
     // a live match now that its row isn't torn down and rebuilt every 30s
@@ -3601,7 +3612,7 @@ function applyRelayState(state) {
   const adapted = {
     headers: state.headers.map(h => ({ name: h.name, status: null, idx: h.idx })),
     matches: state.matches.map(m => ({
-      match: m.match, status: m.status, score: m.score,
+      match: m.match, status: m.status, score: m.score, extra: m.extra ?? null,
       cells: (m.cells || []).map(c => ({ value: c.value, color: mapRelayColor(c.color) })),
     })),
     betSummary: [null, { cells: state.winCells || [] }],
@@ -3751,7 +3762,7 @@ function renderDashboard(data, opts){
           // its matching guard there).
           if (!window.__matchLocked[m.match] && getMatchStatusType(m) === 'finished') {
             window.__matchLocked[m.match] = true;
-            window.__liveMatchState[m.match] = { status: m.status, score: m.score, cells: (m.cells || []).slice() };
+            window.__liveMatchState[m.match] = { status: m.status, score: m.score, extra: m.extra, cells: (m.cells || []).slice() };
           }
           const liveState = window.__liveMatchState[m.match];
           if (!liveState) return m;
@@ -3759,7 +3770,7 @@ function renderDashboard(data, opts){
             const lc = (liveState.cells || [])[ci];
             return lc ? Object.assign({}, c, { value: lc.value, color: lc.color }) : c;
           });
-          return Object.assign({}, m, { status: liveState.status, score: liveState.score, cells });
+          return Object.assign({}, m, { status: liveState.status, score: liveState.score, extra: liveState.extra, cells });
         });
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];

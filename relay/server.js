@@ -146,6 +146,11 @@ async function fetchLiveFixtures() {
     id: f.fixture.id,
     status: f.fixture.status.short, // raw API-Football code -- normalizeStatus() runs centrally in pollOnce()
     elapsed: f.fixture.status.elapsed,
+    // API-Football freezes `elapsed` at 45/90 through stoppage time and
+    // reports the announced added minutes here instead -- without this,
+    // the displayed minute gets stuck at "90'" for the entire length of
+    // injury time instead of ticking on to "90+3'" etc.
+    extra: f.fixture.status.extra ?? null,
     score: `${f.goals.home ?? 0}-${f.goals.away ?? 0}`,
     match: `${f.teams.home.name} - ${f.teams.away.name}`,
   }));
@@ -287,10 +292,14 @@ async function pollOnce() {
     // sitting frozen between actual events.
     const status = normalizeStatus(f.status, f.elapsed);
     const prev = lastKnown.get(f.id);
-    const changed = !prev || prev.status !== status || prev.score !== f.score;
+    // extra is compared separately from status -- status itself stays
+    // frozen at e.g. "90'" for the whole of stoppage time (elapsed doesn't
+    // move), so without this an added-time announcement (extra going from
+    // null to 3) would never be seen as a change and never get broadcast.
+    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra;
     if (!changed) continue;
     anyChanged = true;
-    lastKnown.set(f.id, { status, score: f.score, elapsed: f.elapsed, match: f.match });
+    lastKnown.set(f.id, { status, score: f.score, elapsed: f.elapsed, extra: f.extra, match: f.match });
   }
   if (anyChanged) broadcast({ type: "state", ...computeFullState() });
 }

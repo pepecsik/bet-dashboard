@@ -20,6 +20,7 @@ function combineState(betsCache, lastKnown) {
     const live = m.fixtureId ? lastKnown.get(m.fixtureId) : null;
     const status = live ? live.status : "NS";
     const score = live ? live.score : "";
+    const extra = live ? (live.extra ?? null) : null;
     const parts = String(score || "0-0").split("-").map((n) => parseInt(n, 10));
     const homeGoals = Number.isFinite(parts[0]) ? parts[0] : 0;
     const awayGoals = Number.isFinite(parts[1]) ? parts[1] : 0;
@@ -43,7 +44,7 @@ function combineState(betsCache, lastKnown) {
       return { value: c.value, color };
     });
 
-    return { match: m.match, fixtureId: m.fixtureId, status, score, cells };
+    return { match: m.match, fixtureId: m.fixtureId, status, score, extra, cells };
   });
 
   // Passed straight through, not recomputed -- the £ WIN amount per column

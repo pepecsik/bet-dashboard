@@ -3268,9 +3268,15 @@ function reorderFastColumns(right, data) {
   const headerRowEl = right.querySelector('.header-row-sticky');
   const headerWrappers = headerRowEl ? Array.from(headerRowEl.querySelectorAll('.header-pill-wrapper[data-col-idx]')) : [];
   if (headerRowEl && headerWrappers.length === oldNames.length) {
+    // Same anchor trick as the row-level reorder below: appendChild would
+    // shove every regular avatar to the very end of the row, past the
+    // special-bet/what-if avatars that are already there -- insertBefore a
+    // fixed anchor keeps them in front, exactly matching how the bet pills
+    // underneath are reordered relative to their own special/what-if pills.
+    const headerAnchor = headerRowEl.querySelector('.special-bet-header, .whatif-header') || null;
     newNames.forEach((name, newI) => {
       const wrapper = headerWrappers[oldIndexOf(name)];
-      if (wrapper) { wrapper.setAttribute('data-col-idx', newI); headerRowEl.appendChild(wrapper); }
+      if (wrapper) { wrapper.setAttribute('data-col-idx', newI); headerRowEl.insertBefore(wrapper, headerAnchor); }
     });
   }
 
@@ -3336,6 +3342,31 @@ function patchFastScores(data) {
       spans[1].textContent = m.score || '';
     }
 
+    // The single source of truth for "what does this match's live state
+    // actually look like right now" -- renderDashboard() reads this back
+    // (see its merge step) instead of trusting data.matches[] from a plain
+    // sheet fetch, which can be a beat stale by the time it lands and would
+    // otherwise flash the board back to an older status/score. Keyed by
+    // match string, same key prevMatches already uses.
+    if (!window.__liveMatchState) window.__liveMatchState = {};
+    const prevLive = window.__liveMatchState[m.match];
+    const scoreChanged = !!(prevLive && m.score && prevLive.score !== m.score);
+    window.__liveMatchState[m.match] = { status: m.status, score: m.score, cells: (m.cells || []).slice() };
+
+    // Goal flash -- moved here from renderDashboard() so it still fires for
+    // a live match now that its row isn't torn down and rebuilt every 30s
+    // (see renderDashboard()'s row-reuse branch). classList.add() on a class
+    // the element may already carry (e.g. two goals in quick succession)
+    // wouldn't restart the animation, so force it: remove, reflow, re-add.
+    if (scoreChanged) {
+      const scorePill = leftRows[i].querySelector('.score-pill');
+      if (scorePill) {
+        scorePill.classList.remove('flash-active');
+        void scorePill.offsetWidth; // force reflow so the re-add is seen as a fresh start
+        scorePill.classList.add('flash-active');
+      }
+    }
+
     // Same inputs renderDashboard() uses for the live "on track to win"
     // pulse -- team abbreviations from the match name, and the score, both
     // already in this fast payload.
@@ -3353,6 +3384,11 @@ function patchFastScores(data) {
       // it doesn't have live data for yet (see combine.js). Leave whatever's
       // already showing rather than overwrite it with a wrong grey/blank.
       if (c.color === null) return;
+      if (scoreChanged) {
+        el.classList.remove('flash-active');
+        void el.offsetWidth;
+        el.classList.add('flash-active');
+      }
       if (c.value) {
         el.textContent = c.value;
         let color = c.color || '#262a30';
@@ -3527,9 +3563,92 @@ if (RELAY_URL) updateRelayRing();
 // loadData() below): the confetti/big-win moment already happened in a
 // past session for whatever's in that cached snapshot, so it shouldn't
 // replay just because we're re-showing it while the real fetch is in flight.
+// Shared by renderDashboard()'s normal fresh-row build and its "reuse an
+// existing live row" branch -- patchFastScores() deliberately never touches
+// special-bet/what-if pills (see its cells.forEach guard), so they need
+// this same build/refresh logic run on every renderDashboard() pass
+// regardless of whether the rest of that row was rebuilt or reused.
+// opts.replace clears out whatever pills a reused row already has first
+// (cheap -- there are only ever a handful) so this never doubles them up.
+function buildSpecialAndWhatIfPills(rr, m, opts) {
+  if (opts && opts.replace) rr.querySelectorAll('.special-bet, .whatif-pill').forEach(el => el.remove());
+
+  // Special-bet ("Bet Builder" multi) pills — one fixed column per BET,
+  // appended after all real columns in the same order as the header's
+  // special-bet avatars. Blank on any match that particular bet doesn't
+  // touch, so single-match bets show exactly one pill, not two.
+  if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
+      window.specialBetOrder.forEach(bet => {
+          const legsHere = bet.legs.filter(l => l.match === m.match);
+
+          const pillEl = document.createElement('div');
+          pillEl.className = 'bet special-bet';
+          if (legsHere.length === 0) {
+              pillEl.style.setProperty('--bet-bg', 'transparent');
+              pillEl.classList.add('empty');
+          } else {
+              const status = evaluateLegsSummary(legsHere, m);
+              const color = specialBetPillColor(status);
+              pillEl.style.setProperty('--bet-bg', color);
+              pillEl.style.backgroundColor = color;
+              if (legsHere.length > 1) {
+                  pillEl.textContent = 'COMBO';
+                  pillEl.style.cursor = 'pointer';
+                  pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
+              } else {
+                  pillEl.textContent = legsHere[0].target;
+              }
+          }
+          rr.appendChild(pillEl);
+      });
+  }
+
+  // "What if?" pill — outline until this shared first-bet game
+  // finishes, then fills in with the actual result. Blank on any
+  // row that isn't one of the 3 shared games.
+  if (window.allLocked && getFirstBetGames().length > 0) {
+      const pillEl = document.createElement('div');
+      pillEl.className = 'bet whatif-pill';
+      if (!m.isFirstBetGame) {
+          pillEl.style.setProperty('--bet-bg', 'transparent');
+          pillEl.classList.add('empty');
+      } else if (m.status !== 'FT') {
+          pillEl.style.setProperty('--bet-bg', 'transparent');
+          pillEl.style.border = '1px dashed var(--accent-orange)';
+          pillEl.style.color = 'var(--accent-orange)';
+          pillEl.style.fontWeight = '800';
+          pillEl.textContent = '?';
+      } else {
+          const label = whatIfResultLabel(m);
+          pillEl.textContent = label || '?';
+          pillEl.style.setProperty('--bet-bg', 'var(--accent-orange)');
+          pillEl.style.backgroundColor = 'var(--accent-orange)';
+      }
+      rr.appendChild(pillEl);
+  }
+}
+
 function renderDashboard(data, opts){
     const suppressCelebration = !!(opts && opts.suppressCelebration);
     try {
+        // Plain sheet fetches can take several seconds round-trip and land a
+        // beat stale -- patchFastScores() (fed by the relay, or the fast
+        // poll as fallback) is the one place status/score/colour actually
+        // get decided moment-to-moment now, via window.__liveMatchState.
+        // Overlaying it here means this full render can never regress a
+        // match back to an older status/score than what's already showing.
+        // Matches with no live state yet (e.g. very first load, before any
+        // fast/relay data has arrived) fall through to the sheet's own
+        // values unchanged.
+        data.matches = (data.matches || []).map(m => {
+          const liveState = (window.__liveMatchState || {})[m.match];
+          if (!liveState) return m;
+          const cells = (m.cells || []).map((c, ci) => {
+            const lc = (liveState.cells || [])[ci];
+            return lc ? Object.assign({}, c, { value: lc.value, color: lc.color }) : c;
+          });
+          return Object.assign({}, m, { status: liveState.status, score: liveState.score, cells });
+        });
         window.allMatches = data.matches || [];
         window.winData = (data.betSummary && data.betSummary[1]) ? data.betSummary[1].cells : [];
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
@@ -3559,6 +3678,16 @@ function renderDashboard(data, opts){
         window.specialBetOrder = window.specialBetsEnabled ? (window.specialBets || []) : [];
         window.specialBetOrder.sort((a, b) => specialBetSortKey(a) - specialBetSortKey(b));
         const left=document.getElementById("left"), right=document.getElementById("right"), weekly=document.getElementById("weeklyCard"), ranking=document.getElementById("rankingBody");
+        // Keep a reference to any currently-live match's existing row pair
+        // before wiping the board -- see the reuse branch in the matches
+        // loop below for why. Not first-load (nothing to reuse yet) and not
+        // for non-live matches (rebuilding those from scratch is harmless,
+        // there's no pulse animation running on them to interrupt).
+        const prevLeftRowByMatch = {}, prevRightRowByMatch = {};
+        if (!isFirstLoad) {
+          left.querySelectorAll('.left-row[data-match]').forEach(el => { prevLeftRowByMatch[el.getAttribute('data-match')] = el; });
+          right.querySelectorAll('.row[data-match]').forEach(el => { prevRightRowByMatch[el.getAttribute('data-match')] = el; });
+        }
         left.innerHTML=""; right.innerHTML=""; weekly.innerHTML='<div class="weekly-title">📊 Live Weekly Summary</div>'; ranking.innerHTML="";
         if(data.chartData) chartDataCache=data.chartData; if(data.leagueTable) tableCache=data.leagueTable; if(data.knockoutBracket) window.knockoutCache = data.knockoutBracket;
         // Build dynamic logo map from API data (works for WC national teams + any league)
@@ -3706,12 +3835,34 @@ function renderDashboard(data, opts){
               if (isFirstLoad) { ds.classList.add("animate-enter"); ds.style.animationDelay = (idx * 0.05) + "s"; }
               right.appendChild(ds);
           }
+          const matchStatusType = getMatchStatusType(m);
+
+          // A live match already on screen is being kept correct in real
+          // time by patchFastScores() (see window.__liveMatchState above) --
+          // rebuilding it here from this render's own payload would just
+          // recreate identical DOM nodes and restart their CSS pulse
+          // animations for no visible reason (the exact "pulses twice" bug
+          // this exists to fix). Keep the existing nodes; only the
+          // special-bet/what-if pills inside (which patchFastScores never
+          // touches) still get refreshed. The moment a match stops being
+          // live, matchStatusType !== 'live' and it falls through to a
+          // normal full rebuild again, exactly once, cleanly.
+          const reusableLr = matchStatusType === 'live' ? prevLeftRowByMatch[m.match] : null;
+          const reusableRr = matchStatusType === 'live' ? prevRightRowByMatch[m.match] : null;
+          if (reusableLr && reusableRr) {
+            left.appendChild(reusableLr);
+            right.appendChild(reusableRr);
+            buildSpecialAndWhatIfPills(reusableRr, m, { replace: true });
+            prevMatches[m.match] = { score: m.score };
+            return;
+          }
+
           const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
           prevMatches[m.match]={score:m.score};
 
-          const matchStatusType = getMatchStatusType(m);
           const lr=document.createElement("div");
           lr.className="left-row";
+          lr.setAttribute('data-match', m.match);
           lr.style.gridTemplateColumns="1fr 90px";
           lr.style.cursor="pointer";
           lr.onclick = function() { openModal(m); };
@@ -3744,6 +3895,7 @@ function renderDashboard(data, opts){
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>${live && window.__awaitingFreshData ? '<div class="live-refresh-spinner"></div>' : ''}</div></div>`;
           left.appendChild(lr);
           const rr=document.createElement("div"); rr.className="row";
+          rr.setAttribute('data-match', m.match);
           if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
 
           m.cells.forEach((c, cellIndex)=>{
@@ -3775,59 +3927,7 @@ function renderDashboard(data, opts){
               rr.appendChild(el);
           });
 
-          // Special-bet ("Bet Builder" multi) pills — one fixed column per BET,
-          // appended after all real columns in the same order as the header's
-          // special-bet avatars. Blank on any match that particular bet doesn't
-          // touch, so single-match bets show exactly one pill, not two.
-          if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
-              window.specialBetOrder.forEach(bet => {
-                  const legsHere = bet.legs.filter(l => l.match === m.match);
-
-                  const pillEl = document.createElement('div');
-                  pillEl.className = 'bet special-bet';
-                  if (legsHere.length === 0) {
-                      pillEl.style.setProperty('--bet-bg', 'transparent');
-                      pillEl.classList.add('empty');
-                  } else {
-                      const status = evaluateLegsSummary(legsHere, m);
-                      const color = specialBetPillColor(status);
-                      pillEl.style.setProperty('--bet-bg', color);
-                      pillEl.style.backgroundColor = color;
-                      if (legsHere.length > 1) {
-                          pillEl.textContent = 'COMBO';
-                          pillEl.style.cursor = 'pointer';
-                          pillEl.onclick = () => openSpecialBetModal(bet.id, m.match);
-                      } else {
-                          pillEl.textContent = legsHere[0].target;
-                      }
-                  }
-                  rr.appendChild(pillEl);
-              });
-          }
-
-          // "What if?" pill — outline until this shared first-bet game
-          // finishes, then fills in with the actual result. Blank on any
-          // row that isn't one of the 3 shared games.
-          if (window.allLocked && getFirstBetGames().length > 0) {
-              const pillEl = document.createElement('div');
-              pillEl.className = 'bet whatif-pill';
-              if (!m.isFirstBetGame) {
-                  pillEl.style.setProperty('--bet-bg', 'transparent');
-                  pillEl.classList.add('empty');
-              } else if (m.status !== 'FT') {
-                  pillEl.style.setProperty('--bet-bg', 'transparent');
-                  pillEl.style.border = '1px dashed var(--accent-orange)';
-                  pillEl.style.color = 'var(--accent-orange)';
-                  pillEl.style.fontWeight = '800';
-                  pillEl.textContent = '?';
-              } else {
-                  const label = whatIfResultLabel(m);
-                  pillEl.textContent = label || '?';
-                  pillEl.style.setProperty('--bet-bg', 'var(--accent-orange)');
-                  pillEl.style.backgroundColor = 'var(--accent-orange)';
-              }
-              rr.appendChild(pillEl);
-          }
+          buildSpecialAndWhatIfPills(rr, m);
 
           right.appendChild(rr);
         });

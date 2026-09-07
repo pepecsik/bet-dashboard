@@ -3391,6 +3391,14 @@ function patchFastScores(data) {
   const matches = (data.matches || []).map(m => {
     if (!window.__matchLocked[m.match]) return m;
     const liveState = window.__liveMatchState[m.match];
+    // stats deliberately NOT substituted here even when locked/liveState
+    // exists: liveState.stats (see below) only ever carries the relay's
+    // narrow live-number shape (h_corners, h_shots, h_xg, ...), never the
+    // richer Sheet-derived one this match's own `m.stats` may already have
+    // (lineups, events, players, h2h, scorers, form, injuries) -- swapping
+    // it in here would silently drop all of that for the match-detail
+    // modal. Once a match is locked/FT, the next full render brings back
+    // the complete, authoritative stats from the Sheet anyway.
     return liveState ? Object.assign({}, m, { status: liveState.status, score: liveState.score, extra: liveState.extra, cells: liveState.cells }) : m;
   });
   // Skeleton placeholder rows also carry the .left-row/.row classes (see
@@ -3455,7 +3463,29 @@ function patchFastScores(data) {
     // not, even with nothing having actually changed.
     const normScore = s => String(s || '0-0').split('-').map(x => parseInt(x, 10) || 0).join('-');
     const scoreChanged = !!(prevLive && m.score && normScore(prevLive.score) !== normScore(m.score));
-    window.__liveMatchState[m.match] = { status: m.status, score: m.score, extra: m.extra, cells: (m.cells || []).slice() };
+    window.__liveMatchState[m.match] = { status: m.status, score: m.score, extra: m.extra, stats: m.stats, cells: (m.cells || []).slice() };
+
+    // If the match-detail modal is currently open on THIS match, refresh
+    // its live-changing bits (status/score, pitch gradient, stat bars) in
+    // place -- merged onto whatever richer stats the last full render
+    // already loaded (lineups/events/players/h2h/odds, which m.stats here
+    // never carries), so those don't disappear just because a live update
+    // came in. renderLiveMatchVisuals() itself no-ops if the modal isn't
+    // actually open, but checking here first avoids rebuilding a match
+    // object for a currently-closed modal on every single poll.
+    if (document.getElementById('matchModal').classList.contains('active') && window._currentMatchIndex >= 0) {
+      const openMatch = (window.allMatches || [])[window._currentMatchIndex];
+      if (openMatch && openMatch.match === m.match) {
+        const mergedStats = m.stats ? Object.assign({}, openMatch.stats || {}, m.stats) : openMatch.stats;
+        // Persisted back onto the same object window.allMatches already
+        // holds (a direct reference, not a copy) -- so closing and
+        // reopening this modal before the next full render still shows
+        // the latest known numbers instead of regressing to what the
+        // last full render had.
+        openMatch.status = m.status; openMatch.score = m.score; openMatch.stats = mergedStats;
+        renderLiveMatchVisuals(Object.assign({}, openMatch, { status: m.status, score: m.score, stats: mergedStats }));
+      }
+    }
 
     // Goal flash -- moved here from renderDashboard() so it still fires for
     // a live match now that its row isn't torn down and rebuilt every 30s
@@ -3616,7 +3646,7 @@ function applyRelayState(state) {
   const adapted = {
     headers: state.headers.map(h => ({ name: h.name, status: null, idx: h.idx })),
     matches: state.matches.map(m => ({
-      match: m.match, status: m.status, score: m.score, extra: m.extra ?? null,
+      match: m.match, status: m.status, score: m.score, extra: m.extra ?? null, stats: m.stats ?? null,
       cells: (m.cells || []).map(c => ({ value: c.value, color: mapRelayColor(c.color) })),
     })),
     betSummary: [null, { cells: state.winCells || [] }],
@@ -3624,14 +3654,44 @@ function applyRelayState(state) {
   try { patchFastScores(adapted); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
 }
 
+// WebSocket is the ONLY thing that keeps live scores/colours updating in
+// normal operation -- the old unconditional setInterval(loadFastData, ...)
+// polling every 10s no matter what is gone (see the bottom of this file).
+// A fallback poll only exists as a circuit breaker: if the relay has
+// genuinely failed to reconnect several times in a row, THEN (and only
+// then) loadFastData() starts filling in on its own timer, and stops the
+// instant the WebSocket is healthy again. It never runs quietly alongside
+// a working connection "just in case".
+let relayFailureCount = 0;
+const RELAY_FAILURE_THRESHOLD = 3;
+let relayFallbackTimer = null;
+
+function startRelayFallbackPolling() {
+  if (relayFallbackTimer) return; // already running
+  console.warn('relay unreachable after', relayFailureCount, 'attempts -- falling back to polling until it reconnects');
+  loadFastData();
+  relayFallbackTimer = setInterval(loadFastData, FAST_REFRESH_MS);
+}
+
+function stopRelayFallbackPolling() {
+  if (!relayFallbackTimer) return;
+  clearInterval(relayFallbackTimer);
+  relayFallbackTimer = null;
+}
+
 function connectRelay() {
   if (!RELAY_URL) return; // not deployed yet -- normal polling only
   try {
     relaySocket = new WebSocket(RELAY_URL);
-  } catch (e) { scheduleRelayReconnect(); return; }
+  } catch (e) { onRelayConnectFailed(); return; }
 
-  relaySocket.onopen = () => { window.__relayConnected = true; updateRelayRing(); };
-  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayRing(); scheduleRelayReconnect(); };
+  relaySocket.onopen = () => {
+    window.__relayConnected = true;
+    updateRelayRing();
+    relayFailureCount = 0;
+    stopRelayFallbackPolling();
+  };
+  relaySocket.onclose = () => { window.__relayConnected = false; relaySocket = null; updateRelayRing(); onRelayConnectFailed(); };
   relaySocket.onerror = () => { /* onclose follows and handles reconnect */ };
   relaySocket.onmessage = (evt) => {
     flashRelayRing();
@@ -3643,6 +3703,17 @@ function connectRelay() {
     if (msg && msg.type === 'state') relayDebounceTimer = setTimeout(() => applyRelayState(msg), 200);
     else relayDebounceTimer = setTimeout(loadFastData, 200); // unrecognized message -- safe fallback
   };
+}
+
+// Counts a failed connection attempt (couldn't open, or closed again before
+// ever recovering) and, once RELAY_FAILURE_THRESHOLD is reached, starts the
+// fallback poll -- reconnect attempts themselves keep happening on their
+// own 5s timer regardless, this only decides whether loadFastData() also
+// runs meanwhile.
+function onRelayConnectFailed() {
+  relayFailureCount++;
+  if (relayFailureCount >= RELAY_FAILURE_THRESHOLD) startRelayFallbackPolling();
+  scheduleRelayReconnect();
 }
 
 function scheduleRelayReconnect() {
@@ -5576,7 +5647,59 @@ function smartMatchTips(m, hCode, aCode) {
 
   return tips.sort((a, b) => b.s - a.s);
 }
- 
+
+// The genuinely LIVE-changing slice of the match-detail modal: status/score
+// header, the pitch xG-pressure gradient, and the stats bars (possession,
+// shots, corners, etc.). Factored out of openModal() so a live relay push
+// can refresh just these, in place, while the modal is open -- WITHOUT
+// re-running the rest of openModal() (which would reset the active tab,
+// re-scroll, and rebuild things like lineups/H2H/odds that don't change
+// mid-match anyway). Guarded internally: a no-op if the modal isn't
+// actually open, so callers don't need to check first.
+function renderLiveMatchVisuals(m) {
+  if (!document.getElementById("matchModal").classList.contains("active")) return;
+  const s = m.stats || {};
+
+  const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+  document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score || "0-0");
+
+  // PITCH PRESSURE GRADIENT
+  const pitch = document.getElementById("pitch");
+  if (s.h_xg !== undefined && s.a_xg !== undefined) {
+    if (s.h_xg > s.a_xg) {
+       pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`;
+    } else if (s.a_xg > s.h_xg) {
+       pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
+    } else {
+        pitch.style.background = "#2e5a2e"; // Reset
+    }
+  }
+
+  // STATS AREA logic...
+  const sb = document.getElementById("statsArea");
+  sb.innerHTML = "";
+  if (m.status === "NS" || m.status === "PST") {
+      sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
+  } else {
+      let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
+      let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
+      const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}, {l:"Saves", h:s.h_saves, a:s.a_saves}, {l:"Fouls", h:s.h_fouls, a:s.a_fouls}];
+      let allStatsHTML = "";
+      sl.forEach(st => {
+        if (!st.h && !st.a && !st.pct && !st.dec) return;
+        let t = (st.h || 0) + (st.a || 0);
+        let hp = 0, ap = 0;
+        if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } }
+        else if (st.pct) { hp = 50; ap = 50; }
+        let ht = st.h || 0, at = st.a || 0;
+        if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
+        allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
+      });
+      sb.innerHTML = allStatsHTML;
+      setTimeout(() => { document.querySelectorAll('#statsArea .animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
+  }
+}
+
 function openModal(m){
   try {
       vibe(); 
@@ -5605,20 +5728,7 @@ function openModal(m){
       document.getElementById("matchModal").classList.add("active");
 
       document.getElementById("mTitle").innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:15px;"><div style="transform:scale(1.15);">${renderTeam(hCode)}</div><span style="font-size:12px;opacity:0.4;">vs</span><div style="transform:scale(1.15);">${renderTeam(aCode)}</div></div>`;
-      const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
-      document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score||"0-0");
-
-      // PITCH PRESSURE GRADIENT
-      const pitch = document.getElementById("pitch");
-      if (s.h_xg !== undefined && s.a_xg !== undefined) {
-        if (s.h_xg > s.a_xg) {
-           pitch.style.background = `linear-gradient(to top, rgba(124, 255, 91, 0.15), rgba(46, 90, 46, 1))`; 
-        } else if (s.a_xg > s.h_xg) {
-           pitch.style.background = `linear-gradient(to bottom, rgba(255, 159, 67, 0.15), rgba(46, 90, 46, 1))`;
-        } else {
-            pitch.style.background = "#2e5a2e"; // Reset
-        }
-      }
+      renderLiveMatchVisuals(m); // status header, pitch gradient, stats bars -- see its own definition
 
       // GROUP PREDICTIONS logic...
       let consensusHTML = "";
@@ -5748,32 +5858,9 @@ function openModal(m){
       }
       document.getElementById("goalsArea").innerHTML=`<div class="el-home">${hG.join("")}</div><div class="el-away">${aG.join("")}</div>`;
       document.getElementById("summaryTimeline").innerHTML = renderMatchTimeline(s);
+      // Stats area already drawn by renderLiveMatchVisuals(m) above.
 
-      // STATS AREA logic...
-      const sb = document.getElementById("statsArea"); 
-      sb.innerHTML = "";
-      if (m.status === "NS" || m.status === "PST") {
-          sb.innerHTML = `<div style="text-align:center; padding:40px 20px; opacity:0.6; display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; margin-bottom:10px;">⏳</div><div style="font-size:12px; font-weight:700;">Waiting for kick-off</div></div>`;
-      } else {
-          let xgH = s.h_xg !== undefined ? parseFloat(s.h_xg) : 0;
-          let xgA = s.a_xg !== undefined ? parseFloat(s.a_xg) : 0;
-          const sl = [{l:"Expected Goals", h:xgH, a:xgA, dec:true}, {l:"Possession", h:s.h_poss, a:s.a_poss, pct:true}, {l:"Shots", h:s.h_shots_tot, a:s.a_shots_tot}, {l:"On Target", h:s.h_shots, a:s.a_shots}, {l:"Corners", h:s.h_corners, a:s.a_corners}, {l:"Saves", h:s.h_saves, a:s.a_saves}, {l:"Fouls", h:s.h_fouls, a:s.a_fouls}];
-          let allStatsHTML = ""; 
-          sl.forEach(st => {
-            if (!st.h && !st.a && !st.pct && !st.dec) return; 
-            let t = (st.h || 0) + (st.a || 0);
-            let hp = 0, ap = 0;
-            if(t > 0){ hp = (st.h / t) * 100; ap = (st.a / t) * 100; if(st.pct){ hp = st.h; ap = st.a; } if(st.dec){ let totalXG = st.h + st.a + 0.001; hp = (st.h / totalXG) * 100; ap = 100 - hp; } } 
-            else if (st.pct) { hp = 50; ap = 50; }
-            let ht = st.h || 0, at = st.a || 0;
-            if(st.pct){ ht += "%"; at += "%"; } if(st.dec){ ht = (st.h||0).toFixed(2); at = (st.a||0).toFixed(2); }
-            allStatsHTML += `<div class="stat-row"><div class="stat-label"><span class="${st.h > st.a ? 'stat-value-high' : ''}">${ht}</span><span class="stat-name">${st.l}</span><span class="${st.a > st.h ? 'stat-value-high' : ''}">${at}</span></div><div class="stat-bar-container"><div class="sb-half home"><div class="sb-fill animate-bar ${st.h >= st.a ? 'orange' : ''}" style="width:0%" data-width="${hp}%"></div></div><div class="sb-half away"><div class="sb-fill animate-bar ${st.a >= st.h ? 'orange' : ''}" style="width:0%" data-width="${ap}%"></div></div></div></div>`;
-          });
-          sb.innerHTML = allStatsHTML;
-          setTimeout(() => { document.querySelectorAll('#statsArea .animate-bar').forEach(bar => { if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } }); }, 50);
-      }
-      
-      setTimeout(() => { 
+      setTimeout(() => {
           document.querySelectorAll('#consensusArea .animate-bar').forEach(bar => { 
               if(bar.getAttribute('data-width')) { bar.style.width = bar.getAttribute('data-width'); } 
           }); 
@@ -6106,10 +6193,10 @@ loadData();
 // straight away gets those on screen well before loadData() above lands.
 if (paintedFromCache) loadFastData();
 setInterval(loadData,REFRESH_MS);
-// Fast poll starts being useful once loadData() has drawn the real rows the
-// first time -- until then patchFastScores() is a no-op (see above), so
-// there's nothing to gain from firing this before that first render lands.
-setInterval(loadFastData,FAST_REFRESH_MS);
+// No unconditional setInterval(loadFastData, ...) here anymore -- the
+// WebSocket (connectRelay(), below) is the live-score channel now.
+// loadFastData() only runs again on its own timer if the relay genuinely
+// fails to reconnect a few times in a row (see onRelayConnectFailed()).
 connectRelay();
 setInterval(updateTicker, 1000); // NEW: update countdown display every second
 

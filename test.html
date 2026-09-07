@@ -789,18 +789,14 @@ body {
    Modernized: same dynamic --bet-bg colour driving everything (sheet/relay
    still pick the exact hue -- this never touches that), just layered with
    a diagonal glass highlight + soft base shade for depth, a real drop
-   shadow instead of a flat one, and a bit more corner rounding. Split into
-   background-color/background-image (was a single `background` shorthand)
-   so the gradient survives the two later rules that still only touch
-   background-color (line ~1550's glass-panel fix and the
-   [style*="background-color"] force-rule) instead of being wiped by them. */
+   shadow instead of a flat one. Split into background-color/background-image
+   (was a single `background` shorthand) so the gradient survives the two
+   later rules that still only touch background-color (the glass-panel fix
+   below and the [style*="background-color"] force-rule) instead of being
+   wiped by them. */
 .bet{
   width:var(--bet-w);
   height:var(--row-h);
-  /* Matches --rad-md, same radius as the avatar header-pill sitting right
-     above it and the place-bets-btn/filter buttons elsewhere -- was a
-     hardcoded 16px, which looked like a different, more-rounded shape next
-     to everything else's consistent radius. */
   border-radius: var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800;
@@ -817,7 +813,7 @@ body {
 .bet.empty {
     background-color: transparent !important;
     background-image: none !important;
-    border: 1px dashed rgba(255,255,255,0.1) !important;
+    border: none !important;
     box-shadow: none !important;
     color: var(--text-muted);
 }

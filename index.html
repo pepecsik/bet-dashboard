@@ -4243,6 +4243,18 @@ function renderDashboard(data, opts){
         // ranking podium, ticker, etc.) can never leave the board looking
         // un-ordered.
         applyColumnOrder(data.headers, data.matches, data.betSummary);
+        // isFirstLoad is ONLY read by the row-building code above (it's what
+        // gates the fade-in-and-slide-up "wave" entrance animation to just
+        // the very first paint) -- turned off here, the moment that work is
+        // actually done, instead of waiting for everything else below
+        // (totals, ranking podium, ticker, Hall of Fame, ...) to also
+        // succeed. Previously this only flipped at the very end of the
+        // function: if ANY of that unrelated code threw on a given
+        // response, the flag never turned off, and the NEXT 30s refresh
+        // (and every one after that) would silently still think it was the
+        // first load and replay the entrance wave on every single row --
+        // a real recurring bug, not the intended "once, on open" animation.
+        isFirstLoad = false;
         applyFilterLogic();
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
@@ -4268,7 +4280,8 @@ function renderDashboard(data, opts){
        window.__lastMatches = data.matches;
        if (data.hallOfFame) renderHallOfFame(data.hallOfFame);
        updateTicker();
-        isFirstLoad = false;
+        // isFirstLoad already turned off earlier, right after the rows
+        // that actually need it were built -- see that comment.
     } catch(e){ console.error(e); }
 }
 

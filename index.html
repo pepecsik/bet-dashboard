@@ -3814,6 +3814,27 @@ function buildSpecialAndWhatIfPills(rr, m, opts) {
   }
 }
 
+// Real cause of the "wave keeps replaying" report: renderDashboard() wipes
+// left/right via innerHTML="" on every full render, THEN re-appends any
+// row it's reusing (see canReuse below) -- but innerHTML="" tears every
+// child, reused ones included, out of the live document first. A CSS
+// animation restarts the instant its element is disconnected and later
+// reconnected, even if the triggering class was only ever added once, on
+// the very first render. isFirstLoad correctly stopped NEW animate-enter
+// classes from being added on later renders, but every row from the
+// original first-load render still carried the class from back then --
+// and kept replaying its rollIn animation every single reuse cycle.
+// Fixed at the source: strip the class again once its one real playthrough
+// has actually finished, so there's nothing left to replay on any later
+// reconnect. A plain setTimeout, not an 'animationend' listener, because
+// animationend never fires for an element that gets disconnected (exactly
+// what happens here) before the animation completes.
+function addEnterAnimation(el, delaySeconds) {
+  el.classList.add('animate-enter');
+  el.style.animationDelay = delaySeconds + 's';
+  setTimeout(() => { el.classList.remove('animate-enter'); el.style.animationDelay = ''; }, (delaySeconds + 0.5) * 1000 + 150);
+}
+
 function renderDashboard(data, opts){
     const suppressCelebration = !!(opts && opts.suppressCelebration);
     try {
@@ -4029,12 +4050,12 @@ function renderDashboard(data, opts){
               dh.className = "day-header";
               dh.setAttribute("data-day", m.startDay);
               dh.textContent = m.startDay;
-              if (isFirstLoad) { dh.classList.add("animate-enter"); dh.style.animationDelay = (idx * 0.05) + "s"; }
+              if (isFirstLoad) { addEnterAnimation(dh, idx * 0.05); }
               left.appendChild(dh);
               const ds = document.createElement("div");
               ds.className = "day-spacer";
               ds.setAttribute("data-day", m.startDay);
-              if (isFirstLoad) { ds.classList.add("animate-enter"); ds.style.animationDelay = (idx * 0.05) + "s"; }
+              if (isFirstLoad) { addEnterAnimation(ds, idx * 0.05); }
               right.appendChild(ds);
           }
           const matchStatusType = getMatchStatusType(m);
@@ -4067,12 +4088,6 @@ function renderDashboard(data, opts){
           const canReuse = matchStatusType === 'live' || matchStatusType === 'upcoming' || (window.__matchLocked[m.match] && prevWasAlreadyFinished);
           const reusableLr = canReuse ? prevLeftRowByMatch[m.match] : null;
           const reusableRr = canReuse ? prevRightRowByMatch[m.match] : null;
-          // TEMPORARY debug log -- tracking down a report that the "wave"
-          // is still visible even after the NS-row-reuse fix. Confirms
-          // whether real production matches are actually hitting the reuse
-          // path or falling through to a fresh rebuild every cycle. Remove
-          // once that's confirmed resolved.
-          console.log('[row]', m.match, 'status=', m.status, 'type=', matchStatusType, 'isFirstLoad=', isFirstLoad, 'reused=', !!(reusableLr && reusableRr), 'hadPrevRow=', !!prevLeftRowByMatch[m.match]);
           if (reusableLr && reusableRr) {
             left.appendChild(reusableLr);
             right.appendChild(reusableRr);
@@ -4092,7 +4107,7 @@ function renderDashboard(data, opts){
           lr.onclick = function() { openModal(m); };
           lr.setAttribute('data-status', matchStatusType);
 
-          if(isFirstLoad) { lr.classList.add("animate-enter"); lr.style.animationDelay = (idx * 0.05) + "s"; }
+          if(isFirstLoad) { addEnterAnimation(lr, idx * 0.05); }
 
           const [h,a]=m.match.split("-").map(t=>t.trim().toUpperCase());
           const live = matchStatusType === 'live';
@@ -4119,7 +4134,7 @@ function renderDashboard(data, opts){
           left.appendChild(lr);
           const rr=document.createElement("div"); rr.className="row";
           rr.setAttribute('data-match', m.match);
-          if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = (idx * 0.05) + "s"; }
+          if(isFirstLoad) { addEnterAnimation(rr, idx * 0.05); }
 
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div");
@@ -4205,7 +4220,7 @@ function renderDashboard(data, opts){
         left.appendChild(bottomGrid);
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
-          if(isFirstLoad) { rr.classList.add("animate-enter"); rr.style.animationDelay = ((matchCount + i) * 0.05) + "s"; }
+          if(isFirstLoad) { addEnterAnimation(rr, (matchCount + i) * 0.05); }
           data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
 
           // Same stake/win/potential figures for each special bet, one cell per
@@ -4270,8 +4285,6 @@ function renderDashboard(data, opts){
         // first load and replay the entrance wave on every single row --
         // a real recurring bug, not the intended "once, on open" animation.
         isFirstLoad = false;
-        // TEMPORARY debug log -- see the [row] log above.
-        console.log('[render-summary] animate-enter elements currently in DOM:', document.querySelectorAll('.animate-enter').length);
         applyFilterLogic();
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);

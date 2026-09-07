@@ -3816,10 +3816,6 @@ function buildSpecialAndWhatIfPills(rr, m, opts) {
 
 function renderDashboard(data, opts){
     const suppressCelebration = !!(opts && opts.suppressCelebration);
-    // TEMPORARY debug log -- tracking down a report that the once-on-open
-    // entrance wave is still replaying on the 30s full refresh even after
-    // the isFirstLoad-timing fix. Remove once that's confirmed resolved.
-    console.log('[render] renderDashboard called, isFirstLoad =', isFirstLoad, new Date().toISOString());
     try {
         // Plain sheet fetches can take several seconds round-trip and land a
         // beat stale -- patchFastScores() (fed by the relay, or the fast
@@ -4058,8 +4054,17 @@ function renderDashboard(data, opts){
           // "finished" that one time) -- there's nothing left to ever
           // change about it, so there's no reason to keep tearing it down
           // and rebuilding it every 30s forever.
+          // An upcoming (NS) match's own row content is static (its kickoff
+          // time doesn't change without actually kicking off, and its bet
+          // cells are already kept correct by patchFastScores() -- see the
+          // unconditional cell-patch loop there, it's not live-only) --
+          // rebuilding it here every 30s was pure churn: fresh <img> team
+          // logos every cycle, reloading/redecoding and visibly popping in
+          // top-to-bottom, which reads exactly like the old entrance-wave
+          // bug even with isFirstLoad correctly gating the CSS animation
+          // itself. Reused the same way live rows already are.
           const prevWasAlreadyFinished = prevLeftRowByMatch[m.match] && prevLeftRowByMatch[m.match].getAttribute('data-status') === 'finished';
-          const canReuse = matchStatusType === 'live' || (window.__matchLocked[m.match] && prevWasAlreadyFinished);
+          const canReuse = matchStatusType === 'live' || matchStatusType === 'upcoming' || (window.__matchLocked[m.match] && prevWasAlreadyFinished);
           const reusableLr = canReuse ? prevLeftRowByMatch[m.match] : null;
           const reusableRr = canReuse ? prevRightRowByMatch[m.match] : null;
           if (reusableLr && reusableRr) {

@@ -4127,7 +4127,7 @@ function renderDashboard(data, opts){
           if (window.specialBetsEnabled && window.specialBetOrder && window.specialBetOrder.length) {
               window.specialBetOrder.forEach(bet => {
                   const status = evaluateBetOverallStatus(bet);
-                  const el = document.createElement("div"); el.className = "bet";
+                  const el = document.createElement("div"); el.className = "bet special-bet";
                   let value = 0, color = '#2f343a';
                   if (l === "BET") { value = bet.stake || 0; color = '#ff4d4d'; }
                   else if (l === "WIN") { value = bet.potentialWin || 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // potential win, shown even when dead
@@ -4145,7 +4145,7 @@ function renderDashboard(data, opts){
           // WIN PP is just WIN ÷ 3, same convention as the special bets.
           if (window.allLocked && getFirstBetGames().length > 0) {
               const wi = computeWhatIf();
-              const el = document.createElement("div"); el.className = "bet";
+              const el = document.createElement("div"); el.className = "bet whatif-pill";
               if (l === "BET") {
                   el.textContent = formatGBP(2);
                   // Same red as every other stake pill in this row -- read it

@@ -4067,6 +4067,12 @@ function renderDashboard(data, opts){
           const canReuse = matchStatusType === 'live' || matchStatusType === 'upcoming' || (window.__matchLocked[m.match] && prevWasAlreadyFinished);
           const reusableLr = canReuse ? prevLeftRowByMatch[m.match] : null;
           const reusableRr = canReuse ? prevRightRowByMatch[m.match] : null;
+          // TEMPORARY debug log -- tracking down a report that the "wave"
+          // is still visible even after the NS-row-reuse fix. Confirms
+          // whether real production matches are actually hitting the reuse
+          // path or falling through to a fresh rebuild every cycle. Remove
+          // once that's confirmed resolved.
+          console.log('[row]', m.match, 'status=', m.status, 'type=', matchStatusType, 'isFirstLoad=', isFirstLoad, 'reused=', !!(reusableLr && reusableRr), 'hadPrevRow=', !!prevLeftRowByMatch[m.match]);
           if (reusableLr && reusableRr) {
             left.appendChild(reusableLr);
             right.appendChild(reusableRr);
@@ -4264,6 +4270,8 @@ function renderDashboard(data, opts){
         // first load and replay the entrance wave on every single row --
         // a real recurring bug, not the intended "once, on open" animation.
         isFirstLoad = false;
+        // TEMPORARY debug log -- see the [row] log above.
+        console.log('[render-summary] animate-enter elements currently in DOM:', document.querySelectorAll('.animate-enter').length);
         applyFilterLogic();
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);

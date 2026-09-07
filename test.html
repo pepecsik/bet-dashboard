@@ -766,11 +766,25 @@ body {
 }
 
 .header-pill{
-  width:var(--header-pill-w); 
-  height:50px; 
+  width:var(--header-pill-w);
+  height:50px;
   background:var(--bg-soft);
   border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
+  position: relative;
+}
+
+/* Live rank number, matching the sheet's own "1. Snackbar" -- the number
+   updates, the avatar itself never moves (see computeColumnStats/
+   rankColumns in index.html). */
+.rank-badge {
+  position: absolute; top: -4px; left: -4px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: 999px; background: var(--bg-main, #141619);
+  border: 1.5px solid var(--text-main, #fff);
+  color: var(--text-main, #fff);
+  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
+  z-index: 6;
 }
 
 /* AVATARS */
@@ -3275,54 +3289,67 @@ function mergeHeaderStatus(headers) {
   });
 }
 
-function reorderFastColumns(right, data) {
-  const newNames = (data.headers || []).map(h => h.name);
-  const oldNames = window.__lastHeaderOrder || newNames;
-  window.__lastHeaderOrder = newNames;
-  if (newNames.length === 0 || newNames.length !== oldNames.length) return;
-  if (newNames.every((n, i) => n === oldNames[i])) { window.globalHeaders = mergeHeaderStatus(data.headers); return; }
-  const sortedOld = [...oldNames].sort(), sortedNew = [...newNames].sort();
-  if (JSON.stringify(sortedOld) !== JSON.stringify(sortedNew)) return;
-
-  const oldIndexOf = name => oldNames.indexOf(name);
-
-  const headerRowEl = right.querySelector('.header-row-sticky');
-  const headerWrappers = headerRowEl ? Array.from(headerRowEl.querySelectorAll('.header-pill-wrapper[data-col-idx]')) : [];
-  if (headerRowEl && headerWrappers.length === oldNames.length) {
-    // Same anchor trick as the row-level reorder below: appendChild would
-    // shove every regular avatar to the very end of the row, past the
-    // special-bet/what-if avatars that are already there -- insertBefore a
-    // fixed anchor keeps them in front, exactly matching how the bet pills
-    // underneath are reordered relative to their own special/what-if pills.
-    const headerAnchor = headerRowEl.querySelector('.special-bet-header, .whatif-header') || null;
-    newNames.forEach((name, newI) => {
-      const wrapper = headerWrappers[oldIndexOf(name)];
-      if (wrapper) { wrapper.setAttribute('data-col-idx', newI); headerRowEl.insertBefore(wrapper, headerAnchor); }
+// Per-column tallies shared by the avatar colour AND the rank number badge
+// -- both come straight from the real sheet's own CALC formulas (see
+// DASHBOARD!D2's conditional formatting and CALC!D21's ranking score,
+// pasted verbatim from the actual spreadsheet):
+//   DEAD  = any leg is RED on an FT match, OR any leg is GRAY (an exact-
+//           score pick already mathematically impossible, dead immediately,
+//           doesn't wait for FT)
+//   ORANGE = ALIVE, 1-2 legs currently ORANGE, 0 legs currently RED
+//   GREEN  = ALIVE, >=1 leg currently GREEN, 0 legs RED, 0 legs ORANGE --
+//            which (since RED/ORANGE/GRAY are already ruled out) means
+//            every placed leg is green. The sheet's 4th rule, PINK, is the
+//            unconditional "ALIVE" catch-all for everything else (nothing
+//            decided yet, or currently losing/tied on a still-live match)
+//            -- the app deliberately renders that bucket as no colour at
+//            all rather than an actual pink avatar.
+function computeColumnStats(headers, matches, betSummary) {
+  return headers.map((h, i) => {
+    let hasB = false, pen = 0, tot = 0;
+    let hasDeadFT = false, grayCount = 0, orangeCount = 0, redCount = 0, allGreen = true;
+    matches.forEach(m => {
+      const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
+      if (!c || !c.value) return;
+      hasB = true;
+      if (!isCorrectColor(c.color)) allGreen = false;
+      if (isWrongColor(c.color)) { redCount++; if (st === 'FT') hasDeadFT = true; }
+      if (isGrayColor(c.color)) grayCount++;
+      if (isOrangeColor(c.color)) orangeCount++;
+      if (st !== 'FT') pen++;
     });
-  }
-
-  const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
-  rightRows.forEach(rowEl => {
-    const realCells = Array.from(rowEl.querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)'));
-    if (realCells.length !== oldNames.length) return;
-    // A fixed anchor that isn't one of the cells being moved -- inserting
-    // each cell (in new order) right before it leaves them in the right
-    // sequence regardless of where they started.
-    const anchor = rowEl.querySelector('.bet.special-bet, .bet.whatif-pill') || null;
-    newNames.forEach((name, newI) => {
-      const cell = realCells[oldIndexOf(name)];
-      if (cell) { cell.setAttribute('data-col-idx', newI); rowEl.insertBefore(cell, anchor); }
-    });
+    const isDead = hasDeadFT || grayCount > 0;
+    const isOrangeState = !isDead && orangeCount >= 1 && orangeCount <= 2 && redCount === 0;
+    if (hasB && betSummary && betSummary[1] && betSummary[1].cells[i]) tot += (betSummary[1].cells[i].value || 0);
+    // CALC!D21 verbatim: 0 if alive else 500, +1 per orange leg, +2 per red
+    // leg, +2 per gray leg -- lower wins.
+    const rankScore = hasB ? (isDead ? 500 : 0) + orangeCount + redCount * 2 + grayCount * 2 : null;
+    return { hasB, isDead, isOrangeState, allGreen, pen, tot, rankScore };
   });
-
-  // Every index-based lookup elsewhere (the "Alive" filter, special-bet
-  // combos, the ticker) reads window.globalHeaders -- keep it matching the
-  // order the DOM was just moved into.
-  window.globalHeaders = mergeHeaderStatus(data.headers);
 }
 
-function patchFastScores(data, opts) {
-  opts = opts || {};
+// Google Sheets' RANK(value, range, 1): ascending, ties share the same
+// rank, and the next distinct value's rank equals 1 + however many values
+// are strictly below it (so a tie for 1st is followed by rank 3rd, not
+// 2nd) -- only ranked against OTHER columns that actually have a bet
+// placed, matching the sheet excluding an empty column via its own
+// IF(D2=""; 9999; ...) guard.
+function rankColumns(stats) {
+  const activeScores = stats.filter(s => s.hasB).map(s => s.rankScore);
+  return stats.map(s => s.hasB ? 1 + activeScores.filter(v => v < s.rankScore).length : null);
+}
+
+// Small numbered badge on a header avatar showing its live sheet rank
+// (matching DASHBOARD!D2's "1. Snackbar" -- the number, not the physical
+// column, is what moves in the real sheet). rank === null removes it.
+function updateRankBadge(pill, rank) {
+  let badge = pill.querySelector('.rank-badge');
+  if (rank == null) { if (badge) badge.remove(); return; }
+  if (!badge) { badge = document.createElement('span'); badge.className = 'rank-badge'; pill.appendChild(badge); }
+  badge.textContent = rank;
+}
+
+function patchFastScores(data) {
   const left = document.getElementById('left'), right = document.getElementById('right');
   if (!left || !right) return;
   if (!window.__matchLocked) window.__matchLocked = {};
@@ -3352,25 +3379,6 @@ function patchFastScores(data, opts) {
   const rightRows = right.querySelectorAll('.row:not(.header-row-sticky):not(.sk-row):not(.short-row)');
 
   if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
-
-  // Only physically reorder columns for a source whose header order is
-  // actually current. The direct 10s ?mode=fast poll reads the live sheet,
-  // same as the full render, so its order is trustworthy the instant it
-  // arrives. The relay is fed from a bets snapshot it only re-fetches every
-  // BETS_SYNC_MS (2 minutes, see relay/server.js) -- for up to that whole
-  // window its header order can be stale relative to the sheet's real,
-  // already-current order, and letting it drive a physical reorder was
-  // exactly the "avatars and bets shuffling for about a minute" bug: the
-  // correct order (from the next fast poll or full render) and the relay's
-  // stale order kept winning the reorder race back and forth. The value/
-  // colour patch below never relies on this -- it maps every column by
-  // NAME (via window.globalHeaders, the one place order actually lives),
-  // so a relay push with a differently-ordered header list still lands
-  // every cell in the right column even though the DOM itself doesn't move.
-  if (opts.trustOrder !== false) reorderFastColumns(right, data);
-  const domHeaders = window.globalHeaders || [];
-  const incomingIndexByName = {};
-  (data.headers || []).forEach((h, idx) => { incomingIndexByName[h.name] = idx; });
 
   // This payload is live/current data actually reaching the screen -- any
   // "still fetching" spinner from a manual refresh (see __awaitingFreshData)
@@ -3449,49 +3457,44 @@ function patchFastScores(data, opts) {
     const matchMinute = parseInt(String(m.status || '').replace("'", ""));
     const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
 
-    // Direct-child-filtered and matched to DOM position by NAME (via
-    // domHeaders/incomingIndexByName above), not by raw array position --
-    // this payload's own header order can differ from the DOM's actual
-    // column order (see the reorder comment above), so indexing both by
-    // the same raw `i` would silently write one bettor's cell into another
-    // bettor's column whenever the two orders disagree.
+    // Columns are permanently fixed per person/bet (D/E, F/G, H/I... in the
+    // real sheet) -- they never physically move, only a small rank NUMBER
+    // next to the name changes (see the header loop below). So this payload's
+    // cell order always matches DOM column order directly by position, same
+    // as every other index-based lookup in this file.
     const cells = rightRows[i].querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)');
-    if (cells.length === domHeaders.length) {
-      domHeaders.forEach((dh, domIdx) => {
-        const srcIdx = incomingIndexByName[dh.name];
-        const c = srcIdx === undefined ? undefined : (m.cells || [])[srcIdx];
-        const el = cells[domIdx];
-        if (!c || !el) return;
-        // color === null (distinct from "", meaning "no bet") means the relay
-        // deliberately left this cell uncomputed -- a cards/goalscorer market
-        // it doesn't have live data for yet (see combine.js). Leave whatever's
-        // already showing rather than overwrite it with a wrong grey/blank.
-        if (c.color === null) return;
-        if (scoreChanged) {
-          el.classList.remove('flash-active');
-          void el.offsetWidth;
-          el.classList.add('flash-active');
-        }
-        if (c.value) {
-          el.textContent = c.value;
-          let color = c.color || '#262a30';
-          if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
-          el.style.setProperty('--bet-bg', color);
-          el.style.backgroundColor = color;
-          el.classList.remove('empty');
-        } else {
-          el.textContent = '';
-          el.style.setProperty('--bet-bg', 'transparent');
-          el.classList.add('empty');
-        }
+    (m.cells || []).forEach((c, ci) => {
+      const el = cells[ci];
+      if (!el) return;
+      // color === null (distinct from "", meaning "no bet") means the relay
+      // deliberately left this cell uncomputed -- a cards/goalscorer market
+      // it doesn't have live data for yet (see combine.js). Leave whatever's
+      // already showing rather than overwrite it with a wrong grey/blank.
+      if (c.color === null) return;
+      if (scoreChanged) {
+        el.classList.remove('flash-active');
+        void el.offsetWidth;
+        el.classList.add('flash-active');
+      }
+      if (c.value) {
+        el.textContent = c.value;
+        let color = c.color || '#262a30';
+        if (String(color).toLowerCase() === '#7cff5b') color = 'var(--accent-green)';
+        el.style.setProperty('--bet-bg', color);
+        el.style.backgroundColor = color;
+        el.classList.remove('empty');
+      } else {
+        el.textContent = '';
+        el.style.setProperty('--bet-bg', 'transparent');
+        el.classList.add('empty');
+      }
 
-        const headerInfo = domHeaders[domIdx];
-        const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
-        const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
-        el.classList.toggle('sweat-active', isWinning && !isClinchTime);
-        el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
-      });
-    }
+      const headerInfo = (window.globalHeaders || [])[ci];
+      const isColumnDead = headerInfo && (headerInfo.status === 'red' || headerInfo.status === '#ff4d4d' || headerInfo.color === 'red');
+      const isWinning = !!c.value && live && !isColumnDead && computeBetIsWinning(c.value, h, a, hScore, aScore);
+      el.classList.toggle('sweat-active', isWinning && !isClinchTime);
+      el.classList.toggle('sweat-clinch', isWinning && isClinchTime);
+    });
 
     // This update just confirmed the match is over -- lock it (see the
     // guard at the top of this loop) so no later update, however stale or
@@ -3507,65 +3510,23 @@ function patchFastScores(data, opts) {
   // renderDashboard(), which shares the same Set and resets it on a new
   // matchweek) -- so this can run on every fast/relay-triggered poll without
   // ever refiring confetti for a column that's already been celebrated.
-  // Same name-based mapping as the cell patch above: `domHeaders` (DOM's
-  // real, current order) drives which wrapper gets updated, while `i` below
-  // is looked up per-header into THIS payload's own arrays -- never assumed
-  // to equal the DOM position, since the payload's own header order can
-  // differ from it (a stale relay push especially).
-  const incomingHeaders = mergeHeaderStatus(data.headers);
-  const incomingHeaderByName = {};
-  incomingHeaders.forEach(h => { incomingHeaderByName[h.name] = h; });
+  // Columns are permanently fixed (see the cell patch above), so this maps
+  // straight by position, same as data.headers[i] <-> headerWrappers[i].
+  const headers = data.headers || [];
   const headerWrappers = right.querySelectorAll('.header-pill-wrapper[data-col-idx]');
-  if (headerWrappers.length === domHeaders.length) {
-    domHeaders.forEach((dh, domIdx) => {
-      const h = incomingHeaderByName[dh.name];
-      const i = incomingIndexByName[dh.name];
-      if (!h || i === undefined) return;
-      const pill = headerWrappers[domIdx].querySelector('.header-pill');
+  if (headerWrappers.length === headers.length) {
+    const stats = computeColumnStats(headers, matches, data.betSummary);
+    const ranks = rankColumns(stats);
+    headers.forEach((h, i) => {
+      const pill = headerWrappers[i].querySelector('.header-pill');
       if (!pill) return;
-      // Replicates the sheet's own 3 conditional-formatting rules on the
-      // header cell exactly, straight from real formulas the sheet owner
-      // pasted in (CALC!D1 = ALIVE/DEAD, plus the header's RED/ORANGE/GREEN
-      // rules), instead of a from-scratch guess:
-      //   DEAD  = any leg is RED on an FT match, OR any leg is GRAY
-      //           (an exact-score pick already mathematically impossible,
-      //           dead immediately, doesn't wait for FT)
-      //   ORANGE = ALIVE, 1-2 legs currently ORANGE, 0 legs currently RED
-      //            (RED here counts ANY red leg, live or finished -- a
-      //            live leg losing by more than "1 away" is RED too, not
-      //            just an FT-confirmed loss)
-      //   GREEN  = ALIVE, not ORANGE, and every single pick is CURRENTLY
-      //            green (this last part is deliberately stricter than the
-      //            sheet's own GREEN rule, which has no such requirement --
-      //            the app's avatar should show no colour at all for a bet
-      //            that's merely alive with nothing decided yet, e.g. most
-      //            matches not even kicked off, rather than defaulting to
-      //            green the way the raw sheet formula technically would).
-      //            Solid + celebration once every match is FT (pen===0),
-      //            shivering while still pending.
-      //   (none) = alive, not orange, not all-green yet -- shown with no
-      //            status class at all.
-      let hasB = false, pen = 0, tot = 0;
-      let hasDeadFT = false, hasGray = false, orangeCount = 0, redCount = 0, allGreen = true;
-      matches.forEach(m => {
-        const c = m.cells[i], st = m.status ? m.status.trim().toUpperCase() : '';
-        if (!c || !c.value) return;
-        hasB = true;
-        if (!isCorrectColor(c.color)) allGreen = false;
-        if (isWrongColor(c.color)) { redCount++; if (st === 'FT') hasDeadFT = true; }
-        if (isGrayColor(c.color)) hasGray = true;
-        if (isOrangeColor(c.color)) orangeCount++;
-        if (st !== 'FT') pen++;
-      });
-      const isDead = hasDeadFT || hasGray;
-      const isOrangeState = !isDead && orangeCount >= 1 && orangeCount <= 2 && redCount === 0;
-      if (hasB && data.betSummary && data.betSummary[1] && data.betSummary[1].cells[i]) tot += (data.betSummary[1].cells[i].value || 0);
+      const s = stats[i];
       pill.classList.remove('status-green', 'status-green-live', 'status-orange', 'status-red');
-      if (hasB && isDead) {
+      if (s.hasB && s.isDead) {
         pill.classList.add('status-red');
-      } else if (hasB && isOrangeState) {
+      } else if (s.hasB && s.isOrangeState) {
         pill.classList.add('status-orange');
-      } else if (hasB && allGreen && pen === 0) {
+      } else if (s.hasB && s.allGreen && s.pen === 0) {
         pill.classList.add('status-green');
         if (window.__celebratedColumns && !window.__celebratedColumns.has(h.name)) {
           window.__celebratedColumns.add(h.name);
@@ -3574,12 +3535,13 @@ function patchFastScores(data, opts) {
           // what happens here -- a confetti-library hiccup (CDN blip, ad
           // blocker, etc.) must never cascade into treating this whole
           // update as failed and falling back to a slower path.
-          try { fireScreenBlaster(pill); showBigWin(formatGBP(tot), celebrationAvatars[h.name] || null); }
+          try { fireScreenBlaster(pill); showBigWin(formatGBP(s.tot), celebrationAvatars[h.name] || null); }
           catch (e) { console.error('celebration failed (non-fatal)', e); }
         }
-      } else if (hasB && allGreen) {
+      } else if (s.hasB && s.allGreen) {
         pill.classList.add('status-green-live');
       }
+      updateRankBadge(pill, s.hasB ? ranks[i] : null);
     });
   }
 }
@@ -3638,11 +3600,7 @@ function applyRelayState(state) {
     })),
     betSummary: [null, { cells: state.winCells || [] }],
   };
-  // trustOrder: false -- the relay's own header list can be up to
-  // BETS_SYNC_MS (2 minutes) stale (see the comment in patchFastScores()),
-  // so it must never physically reorder columns, only patch values into
-  // whatever column each name already occupies.
-  try { patchFastScores(adapted, { trustOrder: false }); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
+  try { patchFastScores(adapted); } catch (e) { console.error('relay state patch failed', e); loadFastData(); }
 }
 
 function connectRelay() {
@@ -3802,9 +3760,6 @@ function renderDashboard(data, opts){
         window.ppData = (data.betSummary && data.betSummary[2]) ? data.betSummary[2].cells : []; // NEW: Save PP data for combos
         data.headers = mergeHeaderStatus(data.headers);
         window.globalHeaders = data.headers; // moved up so hasAnyCombos() can use it later
-        // Baseline the fast poll's reorder check (see patchFastScores) against
-        // whatever order this full render just drew.
-        window.__lastHeaderOrder = (data.headers || []).map(h => h.name);
         // Which columns/special bets have already had their celebration --
         // fired once, the moment a column first resolves, never repeated
         // for that same win. Reset only on a genuine new matchweek (the
@@ -3878,52 +3833,36 @@ function renderDashboard(data, opts){
         }
 
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
-        const isWinningGreen=h=>h&&['#7cff5b','#00ff00','#b6d7a8','#93c47d','#6aa84f','#38761d','#d9ead3'].includes(h.toLowerCase());
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
+        // computeColumnStats/rankColumns replicate the real sheet's own
+        // conditional-formatting + CALC!D21 ranking formulas exactly (see
+        // their fuller comment just above patchFastScores() -- shared here
+        // so the initial full render and every later fast/relay update
+        // compute this identically).
+        const headerStats = computeColumnStats(data.headers, data.matches, data.betSummary);
+        const headerRanks = rankColumns(headerStats);
         data.headers.forEach((h,i)=>{
-           // Replicates the sheet's own 3 conditional-formatting rules
-           // exactly -- see the matching, fuller comment in
-           // patchFastScores()'s copy of this same aggregate.
-           // GREEN (either flavour) additionally requires every single pick
-           // to be CURRENTLY green -- deliberately stricter than the sheet's
-           // own rule (see the fuller comment in patchFastScores()'s copy),
-           // so a bet that's merely alive with most matches not even
-           // kicked off yet shows no colour at all instead of defaulting
-           // to green.
-           let tot=0,pen=0,hasB=false;
-           let hasDeadFT=false, hasGray=false, orangeCount=0, redCount=0, allGreen=true;
-           data.matches.forEach(m=>{
-             const c=m.cells[i], st=m.status?m.status.trim().toUpperCase():"";
-             if(!c||!c.value)return;
-             hasB=true;
-             if (!isWinningGreen(c.color)) allGreen=false;
-             if (isWrongColor(c.color)) { redCount++; if (st==="FT") hasDeadFT=true; }
-             if (isGrayColor(c.color)) hasGray=true;
-             if (isOrangeColor(c.color)) orangeCount++;
-             if(st!=="FT")pen++;
-           });
-           const isDead = hasDeadFT || hasGray;
-           const isOrangeState = !isDead && orangeCount>=1 && orangeCount<=2 && redCount===0;
-           if(hasB&&data.betSummary&&data.betSummary[1]&&data.betSummary[1].cells[i]) tot+=(data.betSummary[1].cells[i].value||0);
+           const s = headerStats[i];
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
            const p=document.createElement("div"); p.className="header-pill";
            if(AVATARS[h.name]) { p.classList.add("has-avatar"); p.innerHTML = `<img src="${AVATARS[h.name]}" class="avatar-img" alt="${h.name}">`; } else { p.textContent=h.name; }
-           if(hasB&&isDead){
+           if(s.hasB&&s.isDead){
              p.classList.add("status-red");
            }
-           else if(hasB&&isOrangeState) p.classList.add("status-orange");
-           else if(hasB&&allGreen&&pen===0){
+           else if(s.hasB&&s.isOrangeState) p.classList.add("status-orange");
+           else if(s.hasB&&s.allGreen&&s.pen===0){
              p.classList.add("status-green");
              if(!suppressCelebration && !window.__celebratedColumns.has(h.name)){
                window.__celebratedColumns.add(h.name);
                // A confetti-library hiccup here must not abort the rest of
                // this render (ranking podium, hall of fame, ticker, etc.
                // all still need to run after this loop finishes).
-               const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(tot), AVATARS[h.name]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
+               const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(s.tot), AVATARS[h.name]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
                if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
              }
            }
-           else if(hasB&&allGreen) p.classList.add("status-green-live");
+           else if(s.hasB&&s.allGreen) p.classList.add("status-green-live");
+           updateRankBadge(p, s.hasB ? headerRanks[i] : null);
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 

@@ -128,10 +128,13 @@ function broadcast(msg) {
   }
 }
 
-// Logged at most once per process lifetime -- a real confirmation, not
-// hope, that this endpoint variant behaves the way fetchTrackedFixtures()'s
-// own comment says it should.
-let loggedStatsCheck = false;
+// Debug only, temporary -- logged once per fixture (not once per process),
+// the first time that fixture's response actually carries a non-empty
+// statistics array. Settles a real open question (does API-Football send
+// an "Expected Goals" stat at all for these fixtures, and does
+// parseTeamStats() actually pick it up) with real evidence instead of
+// guessing -- remove once that's confirmed one way or the other.
+const loggedStatsFixtureIds = new Set();
 
 // Switched from ?live=all to ?ids=<this week's fixture IDs> -- the exact
 // same query Code.gs's updateAllData() already uses and already gets full
@@ -157,14 +160,17 @@ async function fetchTrackedFixtures() {
   const data = await res.json();
   const fixtures = data.response || [];
 
-  if (!loggedStatsCheck && fixtures.length > 0) {
-    loggedStatsCheck = true;
-    const sample = fixtures.find((f) => f.statistics && f.statistics.length) || fixtures[0];
-    console.log(
-      "[stats-check] ?ids= sample -- statistics present:", !!(sample.statistics && sample.statistics.length),
-      "| events present:", !!(sample.events && sample.events.length)
-    );
-  }
+  fixtures.forEach((f) => {
+    if (loggedStatsFixtureIds.has(f.fixture.id)) return;
+    if (!f.statistics || !f.statistics.length) return; // not populated for this fixture yet -- wait, don't log an empty snapshot
+    loggedStatsFixtureIds.add(f.fixture.id);
+    const homeTypes = ((f.statistics[0] && f.statistics[0].statistics) || []).map((s) => `${s.type}=${s.value}`);
+    const awayTypes = ((f.statistics[1] && f.statistics[1].statistics) || []).map((s) => `${s.type}=${s.value}`);
+    const parsed = parseLiveStats(f.statistics);
+    console.log(`[stats-check] fixture ${f.fixture.id} (${f.teams.home.name} - ${f.teams.away.name}) raw home stats:`, homeTypes.join(" | "));
+    console.log(`[stats-check] fixture ${f.fixture.id} raw away stats:`, awayTypes.join(" | "));
+    console.log(`[stats-check] fixture ${f.fixture.id} parsed h_xg=${parsed && parsed.h_xg} a_xg=${parsed && parsed.a_xg}`);
+  });
 
   return fixtures.map((f) => ({
     id: f.fixture.id,

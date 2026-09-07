@@ -797,7 +797,11 @@ body {
 .bet{
   width:var(--bet-w);
   height:var(--row-h);
-  border-radius: 16px;
+  /* Matches --rad-md, same radius as the avatar header-pill sitting right
+     above it and the place-bets-btn/filter buttons elsewhere -- was a
+     hardcoded 16px, which looked like a different, more-rounded shape next
+     to everything else's consistent radius. */
+  border-radius: var(--rad-md);
   display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800;
   color: #111;

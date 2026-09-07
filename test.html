@@ -785,24 +785,37 @@ body {
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.4)); z-index: 5;
 }
 
-/* --- ROUNDED BET PILLS --- */
+/* --- ROUNDED BET PILLS ---
+   Modernized: same dynamic --bet-bg colour driving everything (sheet/relay
+   still pick the exact hue -- this never touches that), just layered with
+   a diagonal glass highlight + soft base shade for depth, a real drop
+   shadow instead of a flat one, and a bit more corner rounding. Split into
+   background-color/background-image (was a single `background` shorthand)
+   so the gradient survives the two later rules that still only touch
+   background-color (line ~1550's glass-panel fix and the
+   [style*="background-color"] force-rule) instead of being wiped by them. */
 .bet{
-  width:var(--bet-w); 
+  width:var(--bet-w);
   height:var(--row-h);
-  border-radius: var(--rad-md); 
+  border-radius: 16px;
   display:flex; align-items:center; justify-content:center;
-  font-size:13px; font-weight:800; 
-  color: #111; 
+  font-size:13px; font-weight:800;
+  color: #111;
   position: relative;
-  background: var(--bet-bg); 
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-  border: 1px solid rgba(255,255,255,0.05); 
+  background-color: var(--bet-bg);
+  background-image:
+    linear-gradient(135deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(0deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0) 60%);
+  box-shadow: 0 3px 9px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.14);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
 }
 .bet.empty {
-    background: transparent !important;
-    border: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 1px dashed rgba(255,255,255,0.1) !important;
     box-shadow: none !important;
-    color: var(--text-muted); 
+    color: var(--text-muted);
 }
 
 .col-hidden { display: none !important; }
@@ -1548,11 +1561,13 @@ img[alt="AVI"] {
 
 /* FIXED: Allow betting colors to show */
 .bet, .left-cell {
-  /* Use the color variable if it exists, otherwise gray */
-  background: var(--bet-bg, rgba(255, 255, 255, 0.05)); 
-  backdrop-filter: none !important; 
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* background-color only (not the `background` shorthand) -- .bet's own
+     gradient overlay above is a background-image, which a shorthand here
+     would otherwise reset to none. */
+  background-color: var(--bet-bg, rgba(255, 255, 255, 0.05));
+  backdrop-filter: none !important;
 }
+.left-cell { border: 1px solid rgba(255, 255, 255, 0.1); }
 
 /* Force the color to stick if JavaScript sets it */
 .bet[style*="background-color"] {

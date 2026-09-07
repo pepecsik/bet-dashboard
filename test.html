@@ -771,20 +771,6 @@ body {
   background:var(--bg-soft);
   border-radius:var(--rad-md); display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:800; transition: all 0.5s ease;
-  position: relative;
-}
-
-/* Live rank number, matching the sheet's own "1. Snackbar" -- the number
-   updates, the avatar itself never moves (see computeColumnStats/
-   rankColumns in index.html). */
-.rank-badge {
-  position: absolute; top: -4px; left: -4px;
-  min-width: 16px; height: 16px; padding: 0 3px;
-  border-radius: 999px; background: var(--bg-main, #141619);
-  border: 1.5px solid var(--text-main, #fff);
-  color: var(--text-main, #fff);
-  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
-  z-index: 6;
 }
 
 /* AVATARS */
@@ -3339,14 +3325,50 @@ function rankColumns(stats) {
   return stats.map(s => s.hasB ? 1 + activeScores.filter(v => v < s.rankScore).length : null);
 }
 
-// Small numbered badge on a header avatar showing its live sheet rank
-// (matching DASHBOARD!D2's "1. Snackbar" -- the number, not the physical
-// column, is what moves in the real sheet). rank === null removes it.
-function updateRankBadge(pill, rank) {
-  let badge = pill.querySelector('.rank-badge');
-  if (rank == null) { if (badge) badge.remove(); return; }
-  if (!badge) { badge = document.createElement('span'); badge.className = 'rank-badge'; pill.appendChild(badge); }
-  badge.textContent = rank;
+// The actual product feature: left-to-right column POSITION is driven by
+// the same rank the real sheet computes as a number label -- the bet
+// closest to winning sits leftmost. Uses CSS `order` on the existing flex
+// rows (.right-card's .row/.header-row-sticky are display:flex) instead of
+// moving DOM nodes: every regular header wrapper and bet cell already
+// carries a stable data-col-idx (set once, at creation, never touched
+// again -- columns are NEVER physically moved or recreated for this), so
+// re-running this just reassigns each one's `order` style to match its
+// current rank. Since the rank is computed HERE, from this same payload's
+// own live cell colours -- already fresh from every source (full render,
+// fast poll, relay) -- there's no separate "header order" field to trust
+// or go stale; every source produces the identical order for the same
+// data, which is what actually fixes the old "columns fighting" bug
+// (that came from trusting an EXTERNALLY-provided order that could be
+// stale, not from reordering itself being wrong).
+function applyColumnOrder(headers, matches, betSummary) {
+  if (!headers || !headers.length) return;
+  const stats = computeColumnStats(headers, matches, betSummary);
+  const ranks = rankColumns(stats);
+  const indices = headers.map((_, i) => i);
+  // Stable sort: ties (including two "no bet placed" columns, rank===null)
+  // keep their original relative position -- same D,E,F,G,H,I sequence the
+  // sheet itself would never reorder anyway.
+  indices.sort((a, b) => {
+    const ra = ranks[a] == null ? Infinity : ranks[a];
+    const rb = ranks[b] == null ? Infinity : ranks[b];
+    return ra - rb || a - b;
+  });
+  const orderByIndex = new Array(headers.length);
+  indices.forEach((origIdx, pos) => { orderByIndex[origIdx] = pos; });
+
+  document.querySelectorAll('#right .header-pill-wrapper[data-col-idx]').forEach(el => {
+    const idx = parseInt(el.getAttribute('data-col-idx'), 10);
+    if (orderByIndex[idx] !== undefined) el.style.order = orderByIndex[idx];
+  });
+  document.querySelectorAll('#right .bet[data-col-idx]').forEach(el => {
+    const idx = parseInt(el.getAttribute('data-col-idx'), 10);
+    if (orderByIndex[idx] !== undefined) el.style.order = orderByIndex[idx];
+  });
+  // Special-bet/what-if columns don't participate in the ranking (they're
+  // not one of the sheet's D:I columns) -- pin them after every regular
+  // column, same relative order among themselves as they were appended in.
+  document.querySelectorAll('#right .header-pill-wrapper.special-bet-header, #right .header-pill-wrapper.whatif-header, #right .bet.special-bet, #right .bet.whatif-pill')
+    .forEach(el => { el.style.order = headers.length; });
 }
 
 function patchFastScores(data) {
@@ -3516,7 +3538,6 @@ function patchFastScores(data) {
   const headerWrappers = right.querySelectorAll('.header-pill-wrapper[data-col-idx]');
   if (headerWrappers.length === headers.length) {
     const stats = computeColumnStats(headers, matches, data.betSummary);
-    const ranks = rankColumns(stats);
     headers.forEach((h, i) => {
       const pill = headerWrappers[i].querySelector('.header-pill');
       if (!pill) return;
@@ -3541,9 +3562,9 @@ function patchFastScores(data) {
       } else if (s.hasB && s.allGreen) {
         pill.classList.add('status-green-live');
       }
-      updateRankBadge(pill, s.hasB ? ranks[i] : null);
     });
   }
+  applyColumnOrder(headers, matches, data.betSummary);
 }
 
 function loadFastData(){
@@ -3834,13 +3855,13 @@ function renderDashboard(data, opts){
 
         const headerRow=document.createElement("div"); headerRow.className="row header-row-sticky";
         const AVATARS = { "Snackbar": "./snackbar.png", "Timbo": "./timbo.png", "Pepe": "./pepe.png" };
-        // computeColumnStats/rankColumns replicate the real sheet's own
-        // conditional-formatting + CALC!D21 ranking formulas exactly (see
-        // their fuller comment just above patchFastScores() -- shared here
-        // so the initial full render and every later fast/relay update
-        // compute this identically).
+        // computeColumnStats replicates the real sheet's own conditional-
+        // formatting formulas exactly (see the fuller comment just above
+        // patchFastScores() -- shared here so the initial full render and
+        // every later fast/relay update compute this identically). The
+        // column ORDER itself (rank-based, applyColumnOrder() at the end
+        // of this function) uses the sheet's CALC!D21 ranking formula.
         const headerStats = computeColumnStats(data.headers, data.matches, data.betSummary);
-        const headerRanks = rankColumns(headerStats);
         data.headers.forEach((h,i)=>{
            const s = headerStats[i];
            const wrapper = document.createElement("div"); wrapper.className = "header-pill-wrapper"; wrapper.setAttribute('data-col-idx', i);
@@ -3862,7 +3883,6 @@ function renderDashboard(data, opts){
              }
            }
            else if(s.hasB&&s.allGreen) p.classList.add("status-green-live");
-           updateRankBadge(p, s.hasB ? headerRanks[i] : null);
            wrapper.appendChild(p); headerRow.appendChild(wrapper);
         });
 
@@ -4146,6 +4166,12 @@ function renderDashboard(data, opts){
 
           right.appendChild(rr);
         });
+        // Every regular header/bet/short-row cell is in the DOM now -- set
+        // their visual left-to-right order here, not at the very end of
+        // this function, so an unrelated failure further down (totals,
+        // ranking podium, ticker, etc.) can never leave the board looking
+        // un-ordered.
+        applyColumnOrder(data.headers, data.matches, data.betSummary);
         applyFilterLogic();
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);

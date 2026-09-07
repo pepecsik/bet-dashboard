@@ -22,6 +22,8 @@ import { WebSocketServer } from "ws";
 import http from "http";
 import { combineState } from "./combine.js";
 import { normalizeStatus } from "./normalizeStatus.js";
+import { parseLiveStats, parseScorers } from "./parseStats.js";
+import { shouldPollNow } from "./pollGate.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -126,23 +128,45 @@ function broadcast(msg) {
   }
 }
 
-async function fetchLiveFixtures() {
+// Logged at most once per process lifetime -- a real confirmation, not
+// hope, that this endpoint variant behaves the way fetchTrackedFixtures()'s
+// own comment says it should.
+let loggedStatsCheck = false;
+
+// Switched from ?live=all to ?ids=<this week's fixture IDs> -- the exact
+// same query Code.gs's updateAllData() already uses and already gets full
+// statistics/events/players back from. combine.js's own comment used to
+// note live/cards data "isn't included" in the bulk live listing; rather
+// than add a second, separate per-match call to get it, this just asks for
+// the specific matches the relay already knows about (from betsCache, via
+// Code.gs's ?mode=bets) via the endpoint already proven to carry the rich
+// data -- same one bulk request either way, no extra API cost, and no
+// longer dependent on a match happening to be in API-Football's global
+// "currently live" listing (which also means a fixture that's NS or has
+// just gone FT is reported correctly too, not just genuinely-live ones).
+async function fetchTrackedFixtures() {
   if (MOCK_MODE) return mockFixtures();
-  // API-Football's `live` param is used ALONE -- `all` for every live match
-  // globally, or a `-`-separated list of league IDs. It's not meant to be
-  // combined with a separate league/season filter (which is what this used
-  // to do, and likely why a live fixture outside LEAGUE_ID never showed
-  // up). Costs the same single request either way -- combineState() only
-  // ever looks up fixtureIds that are actually in betsCache anyway, so
-  // fetching every live match globally instead of pre-filtering costs
-  // nothing extra and just works regardless of which league a match is in.
+  const ids = (betsCache.matches || []).map((m) => m.fixtureId).filter(Boolean);
+  if (ids.length === 0) return []; // nothing to track yet (before the first bets sync, or between matchweeks)
+
   const res = await fetch(
-    `https://v3.football.api-sports.io/fixtures?live=all`,
+    `https://v3.football.api-sports.io/fixtures?ids=${ids.join("-")}`,
     { headers: { "x-apisports-key": API_KEY } }
   );
   if (!res.ok) throw new Error(`API-Football ${res.status}`);
   const data = await res.json();
-  return (data.response || []).map((f) => ({
+  const fixtures = data.response || [];
+
+  if (!loggedStatsCheck && fixtures.length > 0) {
+    loggedStatsCheck = true;
+    const sample = fixtures.find((f) => f.statistics && f.statistics.length) || fixtures[0];
+    console.log(
+      "[stats-check] ?ids= sample -- statistics present:", !!(sample.statistics && sample.statistics.length),
+      "| events present:", !!(sample.events && sample.events.length)
+    );
+  }
+
+  return fixtures.map((f) => ({
     id: f.fixture.id,
     status: f.fixture.status.short, // raw API-Football code -- normalizeStatus() runs centrally in pollOnce()
     elapsed: f.fixture.status.elapsed,
@@ -153,6 +177,12 @@ async function fetchLiveFixtures() {
     extra: f.fixture.status.extra ?? null,
     score: `${f.goals.home ?? 0}-${f.goals.away ?? 0}`,
     match: `${f.teams.home.name} - ${f.teams.away.name}`,
+    homeTeamId: f.teams.home.id,
+    // null/empty on a match with nothing reported yet (NS, or a league API-
+    // Football hasn't published stats for) -- degrades to "no live stats
+    // yet" rather than asserting a fact about a match with nothing to show.
+    stats: parseLiveStats(f.statistics),
+    scorers: parseScorers(f.events, f.teams.home.id),
   }));
 }
 
@@ -274,14 +304,20 @@ function computeFullState() {
 }
 
 async function pollOnce() {
+  // Gated -- see pollGate.js. MOCK_MODE always polls regardless (there's no
+  // real quota to protect, and the manual /trigger page expects every tick
+  // to actually run).
+  if (!MOCK_MODE && !shouldPollNow(betsCache.matches, lastKnown, Date.now())) return;
+
   let fixtures;
   try {
-    fixtures = await fetchLiveFixtures();
+    fixtures = await fetchTrackedFixtures();
   } catch (err) {
     console.error("poll failed:", err.message);
     return;
   }
   let anyChanged = false;
+  const justFinished = [];
   for (const f of fixtures) {
     // Normalized here (once, centrally) so both mock and real fixtures go
     // through the same conversion, and lastKnown always holds the same
@@ -292,16 +328,67 @@ async function pollOnce() {
     // sitting frozen between actual events.
     const status = normalizeStatus(f.status, f.elapsed);
     const prev = lastKnown.get(f.id);
+    const wasFT = !!prev && prev.status === "FT";
     // extra is compared separately from status -- status itself stays
     // frozen at e.g. "90'" for the whole of stoppage time (elapsed doesn't
     // move), so without this an added-time announcement (extra going from
     // null to 3) would never be seen as a change and never get broadcast.
-    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra;
-    if (!changed) continue;
-    anyChanged = true;
-    lastKnown.set(f.id, { status, score: f.score, elapsed: f.elapsed, extra: f.extra, match: f.match });
+    // stats/scorers are compared too now -- a stat ticking (a shot, a
+    // corner, a possession swing) with no goal and no status change is
+    // still a real update once stats are live-tracked, not a no-op.
+    const statsChanged = JSON.stringify((prev && prev.stats) || null) !== JSON.stringify(f.stats);
+    const scorersChanged = ((prev && prev.scorers) || "") !== (f.scorers || "");
+    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged;
+    if (changed) {
+      anyChanged = true;
+      lastKnown.set(f.id, {
+        status, score: f.score, elapsed: f.elapsed, extra: f.extra, match: f.match,
+        stats: f.stats, scorers: f.scorers, homeTeamId: f.homeTeamId,
+      });
+    }
+    // Recorded on the FIRST poll that sees FT, whether or not this counted
+    // as "changed" above (a restart right after full time, for instance,
+    // would already have status===FT on its very first sighting -- still
+    // worth recording once). The Sheet write happens after the broadcast
+    // below, off the hot path, so a slow or failing Apps Script call never
+    // delays what connected clients see.
+    if (!wasFT && status === "FT") {
+      justFinished.push({ id: f.id, score: f.score, status, stats: f.stats, scorers: f.scorers });
+    }
   }
   if (anyChanged) broadcast({ type: "state", ...computeFullState() });
+  justFinished.forEach((fx) => {
+    postFinalResult(fx).catch((err) => console.error("final-result POST failed for fixture", fx.id, ":", err.message));
+  });
+}
+
+// The ONE durable write this relay ever makes into the Sheet -- fired once,
+// the first time a tracked match is confirmed FT, instead of the old
+// applyLiveScoreOverrides() writing continuously throughout play (which
+// stops being necessary once nobody reads live state from the Sheet
+// anymore -- see Code.gs's relayRecordFinalResult, delivered separately).
+// Best-effort: if this fails, updateAllData()'s own periodic write (kept
+// as a safety net) still eventually catches the same final score, so a
+// relay hiccup at the exact moment of full time can't silently lose a
+// result forever.
+async function postFinalResult(fx) {
+  const parts = String(fx.score || "0-0").split("-").map((n) => parseInt(n, 10));
+  const homeGoals = Number.isFinite(parts[0]) ? parts[0] : 0;
+  const awayGoals = Number.isFinite(parts[1]) ? parts[1] : 0;
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "relayRecordFinalResult",
+      fixtureId: fx.id,
+      homeGoals, awayGoals,
+      status: fx.status,
+      stats: fx.stats || null,
+      scorers: fx.scorers || "",
+    }),
+  });
+  const data = await res.json();
+  if (data.status !== "success") throw new Error(data.message || "Code.gs rejected the write");
+  console.log("final result recorded for fixture", fx.id);
 }
 
 async function fetchBetsSnapshot() {

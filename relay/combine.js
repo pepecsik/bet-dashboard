@@ -7,11 +7,12 @@
 // A pure function of its two inputs (no reading of server.js's own module
 // state) so it can be unit-tested in isolation, same as scoring.js.
 //
-// Known gap: yellow/red-card and goalscorer bets need live cards/events
-// data this relay doesn't fetch yet (API-Football's bulk live-fixtures
-// listing doesn't include it -- would need a separate call per match).
-// Rather than guess wrong on those specific cells, they're left uncomputed
-// (color: null) so a client falls back to whatever it already had for them.
+// Card/goalscorer bets: still left uncomputed (color: null, see below) even
+// though live `scorers` is now available (server.js switched from ?live=all
+// to ?ids=, which does carry it) -- yellow/red CARD counts specifically
+// still aren't captured anywhere in this relay, so only goalscorer bets
+// could theoretically be scored live now, not cards. Left as a known
+// follow-up rather than half-fixing just one of the two market types.
 
 import { scoreBet } from "./scoring.js";
 
@@ -21,6 +22,9 @@ function combineState(betsCache, lastKnown) {
     const status = live ? live.status : "NS";
     const score = live ? live.score : "";
     const extra = live ? (live.extra ?? null) : null;
+    // null (not a zeroed object) until the relay has actually captured a
+    // stats-bearing response for this fixture -- see parseStats.js.
+    const stats = live ? (live.stats ?? null) : null;
     const parts = String(score || "0-0").split("-").map((n) => parseInt(n, 10));
     const homeGoals = Number.isFinite(parts[0]) ? parts[0] : 0;
     const awayGoals = Number.isFinite(parts[1]) ? parts[1] : 0;
@@ -44,7 +48,7 @@ function combineState(betsCache, lastKnown) {
       return { value: c.value, color };
     });
 
-    return { match: m.match, fixtureId: m.fixtureId, status, score, extra, cells };
+    return { match: m.match, fixtureId: m.fixtureId, status, score, extra, stats, cells };
   });
 
   // Passed straight through, not recomputed -- the £ WIN amount per column

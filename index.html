@@ -3451,6 +3451,27 @@ function patchFastScores(data) {
 
     const live = getMatchStatusType(m) === 'live';
 
+    // A relay/fast-poll payload that says NS for a match we ALREADY have
+    // real live data for is not "the match restarted" -- it's the relay's
+    // own fallback for "I don't have a live-score entry for this fixture
+    // yet" (see combine.js: `status = live ? live.status : "NS"`, `score =
+    // live ? live.score : ""`) -- e.g. right after a relay restart, or a
+    // brand-new WebSocket connection getting an initial snapshot before
+    // its first real poll has landed. Trusting it would blank out
+    // window.__liveMatchState's cached score, and the VERY NEXT genuine
+    // update would then look like a goal just went in relative to that
+    // blanked value -- exactly the "row flashes purple every so often
+    // with no real score change" bug, and only ever on matches that have
+    // actually scored (a real blank normalizes to the same "0-0" a
+    // still-scoreless match already shows, so only a match that's NOT 0-0
+    // can ever show a spurious jump away from and back to its real
+    // score). Same "don't let stale/empty data regress what we already
+    // know" philosophy as the FT lock above -- just for "we know it's
+    // already under way" instead of "we know it's already over".
+    if (!window.__liveMatchState) window.__liveMatchState = {};
+    const prevLive = window.__liveMatchState[m.match];
+    if (m.status === 'NS' && prevLive && prevLive.status !== 'NS') return;
+
     // A not-yet-started match has no startTime in this fast payload (that's
     // DATA-sheet-only info, deliberately left out to keep this poll cheap)
     // -- overwriting the pill here would flip it back to a bare "NS" every
@@ -3468,9 +3489,8 @@ function patchFastScores(data) {
     // (see its merge step) instead of trusting data.matches[] from a plain
     // sheet fetch, which can be a beat stale by the time it lands and would
     // otherwise flash the board back to an older status/score. Keyed by
-    // match string, same key prevMatches already uses.
-    if (!window.__liveMatchState) window.__liveMatchState = {};
-    const prevLive = window.__liveMatchState[m.match];
+    // match string, same key prevMatches already uses. (window.__liveMatchState
+    // and prevLive are already set up above, by the NS-fallback guard.)
     // Normalized (not a raw string compare) because the sheet-derived and
     // relay-derived score strings for the SAME actual score aren't always
     // byte-identical (whitespace, formatting) -- a raw compare treated that

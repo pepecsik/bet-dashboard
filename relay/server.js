@@ -135,6 +135,7 @@ function broadcast(msg) {
 // parseTeamStats() actually pick it up) with real evidence instead of
 // guessing -- remove once that's confirmed one way or the other.
 const loggedStatsFixtureIds = new Set();
+const loggedEmptyStatsFixtureIds = new Set();
 
 // Switched from ?live=all to ?ids=<this week's fixture IDs> -- the exact
 // same query Code.gs's updateAllData() already uses and already gets full
@@ -162,7 +163,23 @@ async function fetchTrackedFixtures() {
 
   fixtures.forEach((f) => {
     if (loggedStatsFixtureIds.has(f.fixture.id)) return;
-    if (!f.statistics || !f.statistics.length) return; // not populated for this fixture yet -- wait, don't log an empty snapshot
+    if (!f.statistics || !f.statistics.length) {
+      // A full weekend of matches went by with zero [stats-check] lines --
+      // that was ambiguous: it could mean "polled every fixture, stats
+      // just never populated" (an API-Football data-availability question)
+      // OR "the poll never actually reached this fixture at all" (a gate/
+      // config question) -- this log alone couldn't tell those apart,
+      // since it only ever fired for the non-empty case. Logging once here
+      // too (via its own dedup set, not `loggedStatsFixtureIds` -- that one
+      // stays reserved for "real stats seen") closes that gap: seeing THIS
+      // line at all proves the poll reached this fixture, even if
+      // statistics stayed empty every time.
+      if (!loggedEmptyStatsFixtureIds.has(f.fixture.id)) {
+        loggedEmptyStatsFixtureIds.add(f.fixture.id);
+        console.log(`[stats-check] fixture ${f.fixture.id} (${f.teams.home.name} - ${f.teams.away.name}) polled OK (status=${f.fixture.status.short}) but f.statistics is empty/missing so far`);
+      }
+      return;
+    }
     loggedStatsFixtureIds.add(f.fixture.id);
     const homeTypes = ((f.statistics[0] && f.statistics[0].statistics) || []).map((s) => `${s.type}=${s.value}`);
     const awayTypes = ((f.statistics[1] && f.statistics[1].statistics) || []).map((s) => `${s.type}=${s.value}`);
@@ -309,11 +326,24 @@ function computeFullState() {
   return combineState(betsCache, lastKnown);
 }
 
+// Debug only, temporary -- see the [stats-check] logging in
+// fetchTrackedFixtures(). That log only ever fires from INSIDE a poll that
+// actually ran, so total silence from it was ambiguous between "polled
+// every tick, stats just never showed up" and "the gate never let a poll
+// through in the first place". Throttled to roughly once a minute (every
+// 6th tick at the default 10s POLL_MS) instead of every tick, so it stays
+// readable rather than flooding the log for however long nothing's live.
+let gateBlockLogCounter = 0;
+
 async function pollOnce() {
   // Gated -- see pollGate.js. MOCK_MODE always polls regardless (there's no
   // real quota to protect, and the manual /trigger page expects every tick
   // to actually run).
-  if (!MOCK_MODE && !shouldPollNow(betsCache.matches, lastKnown, Date.now())) return;
+  if (!MOCK_MODE && !shouldPollNow(betsCache.matches, lastKnown, Date.now())) {
+    gateBlockLogCounter++;
+    if (gateBlockLogCounter % 6 === 1) console.log("[stats-check] poll gate blocked this tick (shouldPollNow=false) -- no fixture within 10min of kickoff or still live");
+    return;
+  }
 
   let fixtures;
   try {

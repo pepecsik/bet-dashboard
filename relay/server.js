@@ -430,7 +430,23 @@ async function postFinalResult(fx) {
 async function fetchBetsSnapshot() {
   try {
     const res = await fetch(`${APPS_SCRIPT_URL}?mode=bets`);
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      // Google Apps Script serves its own HTML error page (not JSON) for a
+      // handful of distinct failure modes -- an uncaught exception inside
+      // doGet, the daily/per-minute URL-fetch or execution quota, the
+      // concurrent-executions-per-script limit, or (rarer) a deployment/
+      // auth problem. `err.message` from a failed res.json() never said
+      // which -- reading the body as text first and logging the actual
+      // HTTP status plus a slice of what Google sent back (its error pages
+      // carry a human-readable title/message) does, without having to dig
+      // through the Apps Script Executions dashboard by hand every time.
+      console.error(`bets sync failed: non-JSON response, HTTP ${res.status} ${res.statusText} -- body starts: ${text.slice(0, 300).replace(/\s+/g, " ")}`);
+      return;
+    }
     if (!data || !Array.isArray(data.matches)) {
       console.error("bets sync: unexpected response shape", JSON.stringify(data).slice(0, 200));
       return;

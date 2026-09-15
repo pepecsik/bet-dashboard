@@ -1216,6 +1216,28 @@ body {
   background: var(--accent-green); color: #000; opacity: 1; pointer-events: auto; cursor: pointer;
 }
 .betfair-lock-btn.ready:active { transform: scale(0.96); }
+
+/* Custom "are you sure" for the Betfair button -- real money, deliberately
+   more visually weighted than a plain browser confirm() so it actually
+   registers before someone taps through it. */
+.betfair-confirm-sheet { text-align: center; align-items: center; border: 1px solid rgba(251,146,60,0.35) !important; }
+.betfair-confirm-badge {
+  display: inline-block; background: rgba(251,146,60,0.15); color: var(--accent-orange);
+  border: 1px solid var(--accent-orange); border-radius: 20px; padding: 5px 14px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
+}
+.betfair-confirm-title { font-size: 19px; font-weight: 900; line-height: 1.3; margin-top: 2px; }
+.betfair-confirm-body { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.betfair-confirm-actions { display: flex; gap: 10px; margin-top: 6px; width: 100%; }
+.betfair-confirm-cancel, .betfair-confirm-go {
+  flex: 1; border: none; border-radius: 12px; padding: 15px 10px; font-weight: 800;
+  font-size: 13px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.betfair-confirm-cancel { background: var(--bg-soft); color: var(--text-main); }
+.betfair-confirm-go { background: var(--accent-orange); color: #000; box-shadow: 0 4px 15px rgba(251,146,60,0.35); }
+.betfair-confirm-cancel:active, .betfair-confirm-go:active { transform: scale(0.96); }
+.betfair-confirm-go:disabled { opacity: 0.6; cursor: default; }
+.betfair-confirm-sheet.is-queued .betfair-confirm-badge { background: rgba(74,222,128,0.15); color: var(--accent-green); border-color: var(--accent-green); }
 /* Betting modal: wider than the other modal-sheets so it fits an iPhone
    screen more fully instead of leaving big side margins. */
 #modalBetList .modal-sheet { width: 94%; max-width: 460px; }
@@ -2290,6 +2312,21 @@ img[alt="AVI"] {
         </div>
         <div class="betfair-lock-btn" id="betfair-btn-Pepe" onclick="event.stopPropagation(); lockBetfairBets('Pepe')">Place bets<br>on Betfair</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalBetfairConfirm" style="align-items:center; z-index: 2400;">
+  <div class="modal-sheet betfair-confirm-sheet">
+    <div class="betfair-confirm-badge">Real money &mdash; check twice</div>
+    <div class="betfair-confirm-title">Place <span id="betfairConfirmPlayerName">this player's</span> bets on Betfair?</div>
+    <div class="betfair-confirm-body">
+      This sends both of <b id="betfairConfirmPlayerName2">their</b> bets to be placed for real on Betfair.
+      Double-check their picks are correct before confirming &mdash; this can't be undone once it's placed.
+    </div>
+    <div class="betfair-confirm-actions">
+      <button class="betfair-confirm-cancel" id="betfairConfirmCancelBtn" onclick="closeModal('modalBetfairConfirm')">Cancel</button>
+      <button class="betfair-confirm-go" id="betfairConfirmGoBtn" onclick="confirmBetfairLock()">Yes, place them</button>
     </div>
   </div>
 </div>
@@ -6654,10 +6691,39 @@ async function startBettingProcess() {
 // relay forces an immediate fresh Sheet sync itself before queueing, and
 // acca (polling that queue) does the actual building/confirming/placing on
 // Betfair from there. Nothing here ever touches Betfair directly.
-async function lockBetfairBets(name) {
+// Hung off window (not a bare top-level let) -- same convention as
+// window.allMatches/window.globalHeaders elsewhere in this file, and it
+// also sidesteps a real Chrome/CDP quirk where a fresh top-level `let`
+// referenced from a separately-injected evaluation (e.g. Playwright's
+// page.evaluate, or certain devtools flows) can throw "Cannot access
+// before initialization" even though the declaration already ran.
+window.pendingBetfairPlayer = null;
+
+// Opens the custom confirm modal (see modalBetfairConfirm) instead of a
+// plain browser confirm() -- this is a real-money action, worth more
+// visual weight than a dismiss-by-reflex native popup.
+function lockBetfairBets(name) {
   if (!playerReadyForBetfair(name)) return; // guards a stale/racy click on a card that just went gray
-  const ok = confirm(`Are you sure? Did ${name} place all their bets correctly? This will send both of ${name}'s bets to be placed on Betfair.`);
-  if (!ok) return;
+  window.pendingBetfairPlayer = name;
+  const sheet = document.querySelector('#modalBetfairConfirm .modal-sheet');
+  sheet.classList.remove('is-queued');
+  document.getElementById('betfairConfirmPlayerName').textContent = name + "'s";
+  document.getElementById('betfairConfirmPlayerName2').textContent = name;
+  const goBtn = document.getElementById('betfairConfirmGoBtn');
+  goBtn.disabled = false; goBtn.textContent = 'Yes, place them';
+  document.getElementById('betfairConfirmCancelBtn').hidden = false;
+  document.querySelector('#modalBetfairConfirm .betfair-confirm-badge').textContent = 'Real money — check twice';
+  document.getElementById('modalBetfairConfirm').classList.add('active');
+}
+
+// Actually queues the request -- only ever reached via the confirm modal's
+// "Yes" button, never automatically. Reuses the same modal to show a brief
+// success state instead of a jarring native alert(), then closes it.
+async function confirmBetfairLock() {
+  const name = window.pendingBetfairPlayer;
+  if (!name) return;
+  const goBtn = document.getElementById('betfairConfirmGoBtn');
+  goBtn.disabled = true; goBtn.textContent = 'Sending…';
 
   const btn = document.getElementById('betfair-btn-' + name);
   if (btn) { btn.classList.remove('ready'); btn.innerHTML = 'Sending&hellip;'; }
@@ -6670,12 +6736,24 @@ async function lockBetfairBets(name) {
     });
     const data = await res.json();
     if (data.status !== 'queued') throw new Error(data.error || 'Unexpected response');
-    alert(`${name}'s bets are queued. Your winnings will show up in the app once they're placed.`);
+
+    const sheet = document.querySelector('#modalBetfairConfirm .modal-sheet');
+    sheet.classList.add('is-queued');
+    document.querySelector('#modalBetfairConfirm .betfair-confirm-badge').textContent = 'Queued';
+    document.querySelector('#modalBetfairConfirm .betfair-confirm-title').textContent = name + "'s bets are on their way";
+    document.querySelector('#modalBetfairConfirm .betfair-confirm-body').textContent = "You'll get a Telegram message to confirm each one before it's actually placed. Winnings will show up in the app automatically once they're both in.";
+    goBtn.textContent = 'Done';
+    goBtn.disabled = false;
+    goBtn.onclick = () => closeModal('modalBetfairConfirm');
+    document.getElementById('betfairConfirmCancelBtn').hidden = true; // already sent -- cancelling isn't a real option anymore
+
     const col = document.getElementById('col-' + name);
     if (col) col.style.display = 'none'; // optimistic -- next modal open re-confirms via /status anyway
   } catch (e) {
+    closeModal('modalBetfairConfirm');
     alert(`Couldn't queue ${name}'s bets (relay unreachable or busy) -- try again in a moment.`);
     if (btn) { btn.classList.add('ready'); btn.innerHTML = 'Place bets<br>on Betfair'; }
+    goBtn.disabled = false; goBtn.textContent = 'Yes, place them'; goBtn.onclick = confirmBetfairLock;
   }
 }
 

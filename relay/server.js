@@ -138,11 +138,12 @@ const server = http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/betfair-place-request") {
     readJsonBody(req, async (body) => {
       const player = body && body.player;
+      const test = !!(body && body.test);
       if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
       try { await fetchBetsSnapshot(); } catch (e) { /* stale cache is still better than failing the request -- fetchBetsSnapshot already logs its own failure */ }
-      betfairQueue = addRequest(betfairQueue, player, Date.now());
+      betfairQueue = addRequest(betfairQueue, player, Date.now(), test);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "queued", player }));
+      res.end(JSON.stringify({ status: "queued", player, test }));
     });
     return;
   }
@@ -157,7 +158,7 @@ const server = http.createServer((req, res) => {
     const exportData = buildBetfairExport(betsCache);
     const bets = exportData.bets.filter((b) => b.player === job.player);
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt }, bets }, null, 2));
+    res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test }, bets }, null, 2));
     return;
   }
   // Which players currently have an active (pending or claimed) request --
@@ -178,31 +179,42 @@ const server = http.createServer((req, res) => {
   // admin page's manual entry already uses (see Code.gs), so nothing new
   // was needed there. Also clears the queue claim, freeing the next
   // player's request to be picked up.
+  //
+  // test:true (a dry-run job -- see PLACEMENT_MANUAL.md's test branch)
+  // skips every adminSetWinValue POST entirely: a test job never actually
+  // placed real bets, so there's no real Potential Return to write into the
+  // Sheet, and doing so would corrupt real WIN data with a fake number.
+  // Still clears the queue claim exactly the same as a real result would,
+  // so the mechanical build/screenshot/recap/queue-clear flow can be proven
+  // end to end without risking real money or real Sheet data.
   if (req.method === "POST" && req.url === "/betfair-place-result") {
     readJsonBody(req, async (body) => {
       const player = body && body.player;
+      const test = !!(body && body.test);
       const results = (body && body.results) || [];
-      if (!player || !Array.isArray(results) || results.length === 0) {
+      if (!player || (!test && (!Array.isArray(results) || results.length === 0))) {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Missing player or results" }));
         return;
       }
       const outcomes = [];
-      for (const r of results) {
-        try {
-          const resp = await fetch(APPS_SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "adminSetWinValue", colIdx: r.sheetColIdx, value: r.winAmount }),
-          });
-          const data = await resp.json();
-          outcomes.push({ sheetColIdx: r.sheetColIdx, status: data.status || "error" });
-        } catch (e) {
-          outcomes.push({ sheetColIdx: r.sheetColIdx, status: "error", message: e.message });
+      if (!test) {
+        for (const r of results) {
+          try {
+            const resp = await fetch(APPS_SCRIPT_URL, {
+              method: "POST",
+              body: JSON.stringify({ action: "adminSetWinValue", colIdx: r.sheetColIdx, value: r.winAmount }),
+            });
+            const data = await resp.json();
+            outcomes.push({ sheetColIdx: r.sheetColIdx, status: data.status || "error" });
+          } catch (e) {
+            outcomes.push({ sheetColIdx: r.sheetColIdx, status: "error", message: e.message });
+          }
         }
       }
       betfairQueue = completeRequest(betfairQueue, player);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "success", outcomes }));
+      res.end(JSON.stringify({ status: "success", test, outcomes }));
     });
     return;
   }

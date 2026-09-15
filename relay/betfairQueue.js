@@ -20,10 +20,10 @@ const DEFAULT_CLAIM_TTL_MS = 15 * 60 * 1000; // 15 minutes
 // Adds a new pending request for `player`, unless one is already
 // pending/claimed for them (avoids piling up duplicate requests if the
 // button gets pressed more than once before the first is picked up).
-function addRequest(queue, player, now = Date.now()) {
+function addRequest(queue, player, now = Date.now(), test = false) {
   const alreadyQueued = queue.some((r) => r.player === player && r.status !== "done");
   if (alreadyQueued) return queue;
-  queue.push({ player, status: "pending", requestedAt: now, claimedAt: null });
+  queue.push({ player, status: "pending", requestedAt: now, claimedAt: null, test: !!test });
   return queue;
 }
 

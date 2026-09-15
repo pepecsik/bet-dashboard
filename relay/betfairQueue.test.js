@@ -19,6 +19,18 @@ test("addRequest queues a new request, ignores a duplicate for the same player",
   assert.equal(queue.length, 2);
 });
 
+test("addRequest defaults test to false, and stores true when passed -- carried through by getNext", () => {
+  let queue = [];
+  queue = addRequest(queue, "Snackbar", NOW);
+  assert.equal(queue[0].test, false);
+
+  queue = addRequest(queue, "Timbo", NOW + 1000, true);
+  assert.equal(queue[1].test, true);
+
+  const job = getNext(queue, NOW + 2000); // claims Snackbar's (oldest first)
+  assert.equal(job.test, false);
+});
+
 test("getNext returns null on an empty queue", () => {
   assert.equal(getNext([], NOW), null);
 });

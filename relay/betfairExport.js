@@ -26,6 +26,10 @@ const TEAM_NAMES = {
   NOT: "Nottingham Forest", SUN: "Sunderland", TOT: "Tottenham Hotspur",
   WHA: "West Ham United", WOL: "Wolverhampton Wanderers", LEI: "Leicester City",
   SOU: "Southampton", IPS: "Ipswich Town",
+  // Seen in real test data (a cup-style fixture against a non-PL club) --
+  // this list is inherently incomplete for anything outside the current PL
+  // roster above; add codes here as they turn up rather than guessing.
+  HUL: "Hull City", COV: "Coventry City",
 };
 
 function teamName(code) {
@@ -36,25 +40,44 @@ function teamName(code) {
 
 // One pick's raw cell value -> a Betfair market + selection, or null if it
 // doesn't match one of the 3 bet types actually in use (team/draw win,
-// exact score, goals over/under -- see combine.js/scoring.js for the same
-// set). Deliberately returns null instead of guessing -- a wrong guess here
-// is worse than no answer at all, since this feeds a real-money bet.
+// exact score, goals over -- see combine.js/scoring.js for the same set).
+// Deliberately returns null instead of guessing -- a wrong guess here is
+// worse than no answer at all, since this feeds a real-money bet.
+//
+// Corrected against real test data: a team-win pick is stored as the
+// literal team CODE (e.g. "BRE", "ARS"), not a generic "1"/"2" -- matches
+// combine.js's own `bet === m.homeCode || bet === m.awayCode` check. "1"/
+// "2" are still recognized too as a defensive fallback, in case that
+// shorthand is ever used elsewhere, but they're not the real format.
+// Likewise the goals market is stored as "Goals 2.5" (always an Over pick
+// -- there's no separate Under market in this product, see combine.js's
+// isGoalsMarket and the bet type literally being called "Goals Over"), not
+// "Over 2.5"/"Under 2.5" -- both phrasings are recognized, "Goals X" is
+// the one that actually shows up.
 function translatePick(rawValue, homeCode, awayCode) {
   const val = String(rawValue || "").trim();
   if (!val) return null;
 
   const upper = val.toUpperCase();
-  if (upper === "1") return { market: "Match Odds", selection: teamName(homeCode) };
-  if (upper === "2") return { market: "Match Odds", selection: teamName(awayCode) };
+  const home = String(homeCode || "").trim().toUpperCase();
+  const away = String(awayCode || "").trim().toUpperCase();
+
   if (upper === "X") return { market: "Match Odds", selection: "The Draw" };
+  if (upper === "1" || (home && upper === home)) return { market: "Match Odds", selection: teamName(homeCode) };
+  if (upper === "2" || (away && upper === away)) return { market: "Match Odds", selection: teamName(awayCode) };
 
   const scoreMatch = val.match(/^(\d+)\s*-\s*(\d+)$/);
   if (scoreMatch) return { market: "Correct Score", selection: `${scoreMatch[1]}-${scoreMatch[2]}` };
 
-  const goalsMatch = upper.match(/^(OVER|UNDER)\s*(\d+(?:\.\d+)?)$/);
-  if (goalsMatch) {
-    const line = goalsMatch[2];
-    const verb = goalsMatch[1] === "OVER" ? "Over" : "Under";
+  const goalsOnlyMatch = upper.match(/^GOALS\s*(\d+(?:\.\d+)?)$/);
+  if (goalsOnlyMatch) {
+    const line = goalsOnlyMatch[1];
+    return { market: `Over/Under ${line} Goals`, selection: `Over ${line}` };
+  }
+  const overUnderMatch = upper.match(/^(OVER|UNDER)\s*(\d+(?:\.\d+)?)$/);
+  if (overUnderMatch) {
+    const line = overUnderMatch[2];
+    const verb = overUnderMatch[1] === "OVER" ? "Over" : "Under";
     return { market: `Over/Under ${line} Goals`, selection: `${verb} ${line}` };
   }
 

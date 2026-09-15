@@ -11,11 +11,21 @@ test("teamName maps a known code, falls back to the raw code for an unknown one"
   assert.equal(teamName(null), null);
 });
 
-test("translatePick handles all 3 real bet types", () => {
-  assert.deepEqual(translatePick("1", "ARS", "CHE"), { market: "Match Odds", selection: "Arsenal" });
-  assert.deepEqual(translatePick("2", "ARS", "CHE"), { market: "Match Odds", selection: "Chelsea" });
+test("translatePick handles all 3 real bet types, using the real cell-value formats", () => {
+  // Real format (confirmed against live test data): a team-win pick is the
+  // literal team code, not a generic "1"/"2".
+  assert.deepEqual(translatePick("ARS", "ARS", "CHE"), { market: "Match Odds", selection: "Arsenal" });
+  assert.deepEqual(translatePick("CHE", "ARS", "CHE"), { market: "Match Odds", selection: "Chelsea" });
   assert.deepEqual(translatePick("X", "ARS", "CHE"), { market: "Match Odds", selection: "The Draw" });
   assert.deepEqual(translatePick("2-1", "ARS", "CHE"), { market: "Correct Score", selection: "2-1" });
+  // Real format: "Goals 2.5", not "Over 2.5" -- always an Over pick, no
+  // Under variant exists in this product.
+  assert.deepEqual(translatePick("Goals 2.5", "ARS", "CHE"), { market: "Over/Under 2.5 Goals", selection: "Over 2.5" });
+});
+
+test("translatePick still recognizes 1/2 and Over/Under X.X as a defensive fallback", () => {
+  assert.deepEqual(translatePick("1", "ARS", "CHE"), { market: "Match Odds", selection: "Arsenal" });
+  assert.deepEqual(translatePick("2", "ARS", "CHE"), { market: "Match Odds", selection: "Chelsea" });
   assert.deepEqual(translatePick("Over 2.5", "ARS", "CHE"), { market: "Over/Under 2.5 Goals", selection: "Over 2.5" });
   assert.deepEqual(translatePick("Under 1.5", "ARS", "CHE"), { market: "Over/Under 1.5 Goals", selection: "Under 1.5" });
 });
@@ -32,11 +42,11 @@ const betsCache = {
   matches: [
     {
       match: "ARS - CHE", fixtureId: 1, homeCode: "ARS", awayCode: "CHE",
-      cells: [{ value: "1" }, { value: "2-1" }, { value: "" }], // Timbo hasn't picked this match yet
+      cells: [{ value: "ARS" }, { value: "2-1" }, { value: "" }], // Timbo hasn't picked this match yet
     },
     {
       match: "LIV - MCI", fixtureId: 2, homeCode: "LIV", awayCode: "CTY",
-      cells: [{ value: "X" }, { value: "Over 2.5" }, { value: "Yellow Cards Over 3.5" }],
+      cells: [{ value: "X" }, { value: "Goals 2.5" }, { value: "Yellow Cards Over 3.5" }],
     },
   ],
 };

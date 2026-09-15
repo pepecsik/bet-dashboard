@@ -25,6 +25,7 @@ import { normalizeStatus } from "./normalizeStatus.js";
 import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
+import { addRequest, getNext, completeRequest, activePlayers } from "./betfairQueue.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -59,6 +60,19 @@ if (!MOCK_MODE && !API_KEY) {
 const lastKnown = new Map();
 const clients = new Set();
 
+// Reads a request body, JSON.parse()s it, and calls onBody(parsedOrEmptyObject)
+// -- malformed/missing JSON becomes {} rather than throwing, so a route
+// using this can just check for the specific field(s) it needs.
+function readJsonBody(req, onBody) {
+  let body = "";
+  req.on("data", (chunk) => { body += chunk; });
+  req.on("end", () => {
+    let parsed = {};
+    try { parsed = JSON.parse(body || "{}"); } catch (e) { /* leave {} */ }
+    onBody(parsed);
+  });
+}
+
 // The relay's own cached copy of this matchweek's bets -- what Phase 2
 // exists to fill in. { headers, matches, fetchedAt } -- matches[] carries
 // each match's fixtureId/homeCode/awayCode plus its bet cells, straight
@@ -66,6 +80,13 @@ const clients = new Set();
 // sync; nothing reads this yet (that's Phase 3), it's just being proven to
 // refresh correctly first.
 let betsCache = { headers: [], matches: [], winCells: [], fetchedAt: 0 };
+
+// The "place this person's bets on Betfair" request queue -- see
+// betfairQueue.js for the state machine (one-at-a-time serialization,
+// claim expiry). In-memory only, same as betsCache/lastKnown -- lost on a
+// relay restart, which is an accepted, low-stakes edge case (see the
+// comment on the /betfair-place-request/status route below).
+let betfairQueue = [];
 
 const server = http.createServer((req, res) => {
   // Phase 2 visibility -- read-only, just the same bet picks anyone with
@@ -105,6 +126,84 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(exportData, null, 2));
     }
+    return;
+  }
+  // App -> acca handoff, poll-not-push (see acca's own reply on why: the
+  // Gateway only speaks WebSocket RPC and can't be reached from Render
+  // anyway, so acca polls this on a cron instead of the relay trying to
+  // push to it). Forces an immediate fresh Sheet sync on request -- the
+  // whole point of this button is placing real money on exactly what was
+  // just confirmed, not whatever betsCache happened to have cached up to
+  // 2 minutes ago.
+  if (req.method === "POST" && req.url === "/betfair-place-request") {
+    readJsonBody(req, async (body) => {
+      const player = body && body.player;
+      if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
+      try { await fetchBetsSnapshot(); } catch (e) { /* stale cache is still better than failing the request -- fetchBetsSnapshot already logs its own failure */ }
+      betfairQueue = addRequest(betfairQueue, player, Date.now());
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "queued", player }));
+    });
+    return;
+  }
+  // acca's cron poll (~every 30s). Returns null whenever anything is
+  // already claimed, not just when the queue is empty -- see
+  // betfairQueue.js's getNext() for why that alone gives one-at-a-time
+  // serialization across players with no locking logic needed on acca's
+  // side.
+  if (req.method === "GET" && req.url === "/betfair-place-request/next") {
+    const job = getNext(betfairQueue, Date.now());
+    if (!job) { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ job: null })); return; }
+    const exportData = buildBetfairExport(betsCache);
+    const bets = exportData.bets.filter((b) => b.player === job.player);
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt }, bets }, null, 2));
+    return;
+  }
+  // Which players currently have an active (pending or claimed) request --
+  // what the app polls to hide an avatar that's mid-flow, ahead of the
+  // Sheet's own WIN value eventually taking that job over permanently once
+  // placement actually completes (see startBettingProcess()'s existing
+  // hide-on-winData check). In-memory only, so a relay restart mid-flow
+  // can lose this -- an accepted, low-stakes edge case: the avatar could
+  // briefly reappear, but the queue's busy-check (see getNext()) still
+  // prevents two placement runs from ever actually overlapping.
+  if (req.method === "GET" && req.url === "/betfair-place-request/status") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ active: activePlayers(betfairQueue, Date.now()) }));
+    return;
+  }
+  // acca calls this once both of a player's bets are placed -- reports the
+  // Potential Return per bet back via the SAME adminSetWinValue action the
+  // admin page's manual entry already uses (see Code.gs), so nothing new
+  // was needed there. Also clears the queue claim, freeing the next
+  // player's request to be picked up.
+  if (req.method === "POST" && req.url === "/betfair-place-result") {
+    readJsonBody(req, async (body) => {
+      const player = body && body.player;
+      const results = (body && body.results) || [];
+      if (!player || !Array.isArray(results) || results.length === 0) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing player or results" }));
+        return;
+      }
+      const outcomes = [];
+      for (const r of results) {
+        try {
+          const resp = await fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "adminSetWinValue", colIdx: r.sheetColIdx, value: r.winAmount }),
+          });
+          const data = await resp.json();
+          outcomes.push({ sheetColIdx: r.sheetColIdx, status: data.status || "error" });
+        } catch (e) {
+          outcomes.push({ sheetColIdx: r.sheetColIdx, status: "error", message: e.message });
+        }
+      }
+      betfairQueue = completeRequest(betfairQueue, player);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "success", outcomes }));
+    });
     return;
   }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray

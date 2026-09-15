@@ -24,6 +24,7 @@ import { combineState } from "./combine.js";
 import { normalizeStatus } from "./normalizeStatus.js";
 import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
+import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -82,6 +83,25 @@ const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/snapshot") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(computeFullState(), null, 2));
+    return;
+  }
+  // This week's 6 bets translated into Betfair market/selection wording --
+  // the task input an external automation agent (or a human) needs to
+  // build the accumulator on Betfair's Sportsbook. Same openness reasoning
+  // as /bets-debug and /snapshot: it's just a differently-shaped view of
+  // the same bet picks anyone with the app can already see, nothing new
+  // exposed. ?format=text returns the plain-English recap instead of JSON
+  // -- easier to hand straight to a person or paste into an agent prompt.
+  if (req.method === "GET" && req.url.startsWith("/betfair-export")) {
+    const exportData = buildBetfairExport(betsCache);
+    const wantsText = new URL(req.url, "http://x").searchParams.get("format") === "text";
+    if (wantsText) {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end(formatBetfairExportText(exportData));
+    } else {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(exportData, null, 2));
+    }
     return;
   }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray

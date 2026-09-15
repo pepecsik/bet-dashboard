@@ -1197,10 +1197,25 @@ body {
 .modal-sheet { width: 90%; max-width: 400px; background: var(--bg-card); border-radius: 20px; padding: 25px; max-height: 85vh; display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
 .modal-overlay { justify-content: center; align-items: center; }
 .player-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; }
+.player-col { display:flex; flex-direction:column; gap:8px; }
 .player-card { background: var(--bg-soft); padding: 10px; border-radius: 12px; display:flex; align-items:center; justify-content:center; border: 2px solid transparent; cursor: pointer; aspect-ratio: 1/1; }
 .player-card:active { border-color: var(--accent-green); background: rgba(74, 222, 128, 0.1); }
 .player-avatar { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; display: block; }
 .player-name-text { display: none; }
+/* "Place bets on Betfair" -- gray/disabled until that person has at least
+   one pick in EACH of their two bet-slots (see playerReadyForBetfair()),
+   green/tappable once they do. Sits directly under that person's avatar in
+   the same Who-are-you modal, not a separate flow. */
+.betfair-lock-btn {
+  border: none; border-radius: 8px; padding: 7px 4px; font-size: 9.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.3px; text-align: center; line-height: 1.3;
+  background: var(--bg-soft); color: var(--text-muted); opacity: 0.45;
+  pointer-events: none; cursor: default; transition: opacity 0.2s, background 0.2s, color 0.2s;
+}
+.betfair-lock-btn.ready {
+  background: var(--accent-green); color: #000; opacity: 1; pointer-events: auto; cursor: pointer;
+}
+.betfair-lock-btn.ready:active { transform: scale(0.96); }
 /* Betting modal: wider than the other modal-sheets so it fits an iPhone
    screen more fully instead of leaving big side margins. */
 #modalBetList .modal-sheet { width: 94%; max-width: 460px; }
@@ -2257,14 +2272,23 @@ img[alt="AVI"] {
     <div class="close-btn" onclick="closeModal('modalPlayer')">×</div>
     <div class="picker-title">WHO ARE YOU?</div>
     <div class="player-grid">
-      <div class="player-card" id="card-Snackbar" onclick="selectPlayer('Snackbar')">
-        <img src="./snackbar.png" class="player-avatar">
+      <div class="player-col" id="col-Snackbar">
+        <div class="player-card" id="card-Snackbar" onclick="selectPlayer('Snackbar')">
+          <img src="./snackbar.png" class="player-avatar">
+        </div>
+        <div class="betfair-lock-btn" id="betfair-btn-Snackbar" onclick="event.stopPropagation(); lockBetfairBets('Snackbar')">Place bets<br>on Betfair</div>
       </div>
-      <div class="player-card" id="card-Timbo" onclick="selectPlayer('Timbo')">
-        <img src="./timbo.png" class="player-avatar">
+      <div class="player-col" id="col-Timbo">
+        <div class="player-card" id="card-Timbo" onclick="selectPlayer('Timbo')">
+          <img src="./timbo.png" class="player-avatar">
+        </div>
+        <div class="betfair-lock-btn" id="betfair-btn-Timbo" onclick="event.stopPropagation(); lockBetfairBets('Timbo')">Place bets<br>on Betfair</div>
       </div>
-      <div class="player-card" id="card-Pepe" onclick="selectPlayer('Pepe')">
-        <img src="./pepe.png" class="player-avatar">
+      <div class="player-col" id="col-Pepe">
+        <div class="player-card" id="card-Pepe" onclick="selectPlayer('Pepe')">
+          <img src="./pepe.png" class="player-avatar">
+        </div>
+        <div class="betfair-lock-btn" id="betfair-btn-Pepe" onclick="event.stopPropagation(); lockBetfairBets('Pepe')">Place bets<br>on Betfair</div>
       </div>
     </div>
   </div>
@@ -6574,33 +6598,85 @@ function openCombosModal() {
     });
 }
  
-function startBettingProcess() { 
-  // 1. Check which players are fully finished (Both columns paid/locked)
+// A player needs a pick in EACH of their two bet-slots (not every match --
+// partial accumulators are completely normal, see playerColumns()) before
+// "Place bets on Betfair" makes sense to offer at all.
+function playerColumns(name) {
+  const pIndices = [];
+  if (window.globalHeaders) {
+    window.globalHeaders.forEach((h, i) => { if (h.name === name) pIndices.push(i); });
+  }
+  return pIndices;
+}
+function playerReadyForBetfair(name) {
+  const pIndices = playerColumns(name);
+  if (pIndices.length < 2) return false;
+  return pIndices.every(idx =>
+    window.allMatches && window.allMatches.some(m => m.cells && m.cells[idx] && m.cells[idx].value)
+  );
+}
+
+async function startBettingProcess() {
   const players = ['Snackbar', 'Timbo', 'Pepe'];
-  
+
+  // Anyone with a pending/claimed Betfair placement request right now
+  // should stay hidden too, same as an already-fully-locked (winData set)
+  // player -- see the comment on the relay's /betfair-place-request/status
+  // route for why this is best-effort (in-memory on the relay) rather than
+  // a hard guarantee, and why that's an acceptable trade-off here.
+  let activeBetfair = [];
+  try {
+    const res = await fetch(RELAY_URL.replace(/^wss:\/\//, 'https://') + '/betfair-place-request/status');
+    const data = await res.json();
+    activeBetfair = data.active || [];
+  } catch (e) { /* relay unreachable -- fall back to just the winData check below */ }
+
   players.forEach(name => {
-      let pIndices = [];
-      // Find columns belonging to this player
-      if(window.globalHeaders) {
-          window.globalHeaders.forEach((h, i) => { if(h.name === name) pIndices.push(i); });
-      }
-
-      // Check if locked (Value exists in Row 18 / winData)
-      // We check for truthy value (e.g. 8, "£8", etc).
+      const pIndices = playerColumns(name);
+      // Check if locked (Value exists in Row 18 / winData) -- truthy value
+      // (e.g. 8, "£8", etc), same check as before.
       const allLocked = pIndices.length > 0 && pIndices.every(idx => window.winData && window.winData[idx] && window.winData[idx].value);
+      const inFlight = activeBetfair.includes(name);
 
-      const card = document.getElementById('card-' + name);
-      if(card) {
-          // If ALL bet columns are locked, hide the player card entirely
-          if(allLocked) {
-              card.style.display = 'none';
-          } else {
-              card.style.display = 'flex';
-          }
-      }
+      const col = document.getElementById('col-' + name);
+      if (col) col.style.display = (allLocked || inFlight) ? 'none' : 'flex';
+
+      const btn = document.getElementById('betfair-btn-' + name);
+      if (btn) btn.classList.toggle('ready', playerReadyForBetfair(name));
   });
 
-  document.getElementById('modalPlayer').classList.add('active'); 
+  document.getElementById('modalPlayer').classList.add('active');
+}
+
+// Confirm-then-request flow for the "Place bets on Betfair" button -- see
+// startBettingProcess() for the gray/green (playerReadyForBetfair) gating.
+// This only ever QUEUES the request (POST /betfair-place-request) -- the
+// relay forces an immediate fresh Sheet sync itself before queueing, and
+// acca (polling that queue) does the actual building/confirming/placing on
+// Betfair from there. Nothing here ever touches Betfair directly.
+async function lockBetfairBets(name) {
+  if (!playerReadyForBetfair(name)) return; // guards a stale/racy click on a card that just went gray
+  const ok = confirm(`Are you sure? Did ${name} place all their bets correctly? This will send both of ${name}'s bets to be placed on Betfair.`);
+  if (!ok) return;
+
+  const btn = document.getElementById('betfair-btn-' + name);
+  if (btn) { btn.classList.remove('ready'); btn.innerHTML = 'Sending&hellip;'; }
+
+  try {
+    const res = await fetch(RELAY_URL.replace(/^wss:\/\//, 'https://') + '/betfair-place-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: name }),
+    });
+    const data = await res.json();
+    if (data.status !== 'queued') throw new Error(data.error || 'Unexpected response');
+    alert(`${name}'s bets are queued. Your winnings will show up in the app once they're placed.`);
+    const col = document.getElementById('col-' + name);
+    if (col) col.style.display = 'none'; // optimistic -- next modal open re-confirms via /status anyway
+  } catch (e) {
+    alert(`Couldn't queue ${name}'s bets (relay unreachable or busy) -- try again in a moment.`);
+    if (btn) { btn.classList.add('ready'); btn.innerHTML = 'Place bets<br>on Betfair'; }
+  }
 }
 
 function selectPlayer(name) {

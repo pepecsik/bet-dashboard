@@ -92,10 +92,15 @@ function buildBetfairExport(betsCache) {
   const headers = (betsCache && betsCache.headers) || [];
   const matches = (betsCache && betsCache.matches) || [];
 
-  const bets = headers.map((h, colIdx) => {
+  // arrIdx (position in this response's headers/cells arrays) is only used
+  // for aligning a header with its own cell in each match -- it is NOT the
+  // real sheet column. h.idx is the real one (see buildBetsSnapshot() in
+  // Code.gs), needed downstream to report a result back via
+  // adminSetWinValue, which addresses columns by their true sheet position.
+  const bets = headers.map((h, arrIdx) => {
     const legs = [];
     matches.forEach((m) => {
-      const cell = (m.cells || [])[colIdx];
+      const cell = (m.cells || [])[arrIdx];
       if (!cell || !cell.value) return;
       const translated = translatePick(cell.value, m.homeCode, m.awayCode);
       legs.push({
@@ -106,7 +111,7 @@ function buildBetfairExport(betsCache) {
         needsManualCheck: !translated,
       });
     });
-    return { player: h.name, stake: 2, legCount: legs.length, legs };
+    return { player: h.name, sheetColIdx: h.idx, stake: 2, legCount: legs.length, legs };
   });
 
   return { generatedAt: new Date().toISOString(), bets };

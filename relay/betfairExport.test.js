@@ -57,6 +57,7 @@ test("buildBetfairExport groups legs by column, skipping matches with no pick ye
 
   const snackbarBet1 = result.bets[0];
   assert.equal(snackbarBet1.player, "Snackbar");
+  assert.equal(snackbarBet1.sheetColIdx, 3); // the real sheet column, not the array position
   assert.equal(snackbarBet1.stake, 2);
   assert.equal(snackbarBet1.legCount, 2);
   assert.equal(snackbarBet1.legs[0].match, "Arsenal vs Chelsea");

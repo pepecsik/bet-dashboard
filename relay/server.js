@@ -96,10 +96,13 @@ const server = http.createServer((req, res) => {
     const exportData = buildBetfairExport(betsCache);
     const wantsText = new URL(req.url, "http://x").searchParams.get("format") === "text";
     if (wantsText) {
-      res.writeHead(200, { "Content-Type": "text/plain" });
+      // charset=utf-8 explicitly -- without it, the £ in "stake £2.00" (a
+      // multi-byte UTF-8 sequence) gets read back as "Â£" by a client that
+      // defaults to Latin-1, which is exactly what happened in testing.
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
       res.end(formatBetfairExportText(exportData));
     } else {
-      res.writeHead(200, { "Content-Type": "application/json" });
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(exportData, null, 2));
     }
     return;

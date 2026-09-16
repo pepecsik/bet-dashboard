@@ -30,6 +30,10 @@ function addRequest(queue, player, now = Date.now(), test = false) {
 // Expires any claimed request older than claimTtlMs back to pending, in
 // place. Separated out so getNext() and status() both see the same
 // up-to-date view without duplicating the expiry logic.
+//
+// Deliberately does NOT touch "awaiting_confirmation" -- see
+// markAwaitingConfirmation()'s comment for why that status has no auto-
+// expiry at all, unlike a plain claim.
 function expireStaleClaims(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_MS) {
   queue.forEach((r) => {
     if (r.status === "claimed" && now - r.claimedAt > claimTtlMs) {
@@ -41,17 +45,39 @@ function expireStaleClaims(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_T
 }
 
 // Returns the next request to work on, or null if either the queue is
-// empty or something else is already claimed (busy) -- global one-at-a-
-// time serialization, no per-player logic needed on the caller's side.
-// Mutates the matched entry to "claimed" in place before returning it.
+// empty or something else is already claimed/awaiting-confirmation (busy)
+// -- global one-at-a-time serialization, no per-player logic needed on the
+// caller's side. Mutates the matched entry to "claimed" in place before
+// returning it.
 function getNext(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_MS) {
   expireStaleClaims(queue, now, claimTtlMs);
-  if (queue.some((r) => r.status === "claimed")) return null; // busy
+  if (queue.some((r) => r.status === "claimed" || r.status === "awaiting_confirmation")) return null; // busy
   const next = queue.find((r) => r.status === "pending");
   if (!next) return null;
   next.status = "claimed";
   next.claimedAt = now;
   return next;
+}
+
+// Marks `player`'s claimed request as paused, waiting on a real per-bet
+// Telegram reply before acca can place (or, for a test job, confirm) the
+// next bet -- see PLACEMENT_MANUAL.md's Step 5/5a. No-op (returns the
+// queue unchanged) if that player doesn't currently have a claimed
+// request, e.g. a stale/duplicate call.
+//
+// Deliberately has NO expiry, unlike a plain claim: by the time a job
+// reaches this state, bet 1 may already have been placed for real. Auto-
+// recycling it back to "pending" after some timeout -- the way a plain
+// stale claim does -- would let it get claimed and rebuilt from scratch,
+// risking a genuine duplicate real-money placement. A wait that's
+// stuck for real (acca crashed before ever getting Winston's reply, say)
+// needs a human to notice and clear it via the normal report-back/complete
+// path, not an automatic guess that it's safe to retry.
+function markAwaitingConfirmation(queue, player) {
+  const entry = queue.find((r) => r.player === player && r.status === "claimed");
+  if (!entry) return queue;
+  entry.status = "awaiting_confirmation";
+  return queue;
 }
 
 // Marks `player`'s request done (removed from the active queue) -- called
@@ -74,4 +100,4 @@ function activePlayers(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_M
   return queue.filter((r) => r.status !== "done").map((r) => r.player);
 }
 
-export { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims, DEFAULT_CLAIM_TTL_MS };
+export { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims, markAwaitingConfirmation, DEFAULT_CLAIM_TTL_MS };

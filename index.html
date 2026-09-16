@@ -1212,7 +1212,14 @@ body {
   background: var(--bg-soft); color: var(--text-muted); opacity: 0.45;
   pointer-events: none; cursor: default; transition: opacity 0.2s, background 0.2s, color 0.2s;
 }
-.betfair-lock-btn.ready {
+/* Scoped under .modal-overlay.active, not just .ready, on purpose: pointer-events
+   is CSS-inherited, so an unscoped "pointer-events: auto" here would override the
+   "none" the closed #modalPlayer overlay relies on to stop clicks once it's gone
+   -- leaving an already-green button invisibly clickable at its old screen
+   position, on top of whatever modal opens next (e.g. the bet-picking modal
+   underneath it in z-index), able to trigger a real placement confirm from a tap
+   that looks like it's hitting something else entirely. */
+.modal-overlay.active .betfair-lock-btn.ready {
   background: var(--accent-green); color: #000; opacity: 1; pointer-events: auto; cursor: pointer;
 }
 .betfair-lock-btn.ready:active { transform: scale(0.96); }

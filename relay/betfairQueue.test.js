@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addRequest, getNext, completeRequest, activePlayers, DEFAULT_CLAIM_TTL_MS } from "./betfairQueue.js";
+import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation, DEFAULT_CLAIM_TTL_MS } from "./betfairQueue.js";
 
 const NOW = new Date("2026-09-20T15:00:00Z").getTime();
 
@@ -91,6 +91,55 @@ test("completeRequest is a safe no-op if there's nothing to complete", () => {
   let queue = addRequest([], "Snackbar", NOW);
   queue = completeRequest(queue, "Someone Else");
   assert.equal(queue.length, 1);
+});
+
+test("markAwaitingConfirmation moves a claimed request to awaiting_confirmation, and is a no-op for anything else", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000); // claims Pepe's
+  queue = markAwaitingConfirmation(queue, "Pepe");
+  assert.equal(queue[0].status, "awaiting_confirmation");
+
+  // No-op: nothing claimed for Snackbar.
+  queue = addRequest(queue, "Snackbar", NOW + 2000);
+  queue = markAwaitingConfirmation(queue, "Snackbar");
+  assert.equal(queue[1].status, "pending"); // untouched, still pending not awaiting_confirmation
+
+  // No-op: calling it again on an already-awaiting_confirmation entry doesn't error.
+  queue = markAwaitingConfirmation(queue, "Pepe");
+  assert.equal(queue[0].status, "awaiting_confirmation");
+});
+
+test("getNext treats awaiting_confirmation as busy, same as claimed -- blocks the whole queue", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  queue = addRequest(queue, "Timbo", NOW + 1000);
+  getNext(queue, NOW + 2000); // claims Pepe's
+  queue = markAwaitingConfirmation(queue, "Pepe");
+
+  assert.equal(getNext(queue, NOW + 3000), null); // still busy, even though nothing is "claimed" anymore
+  assert.equal(getNext(queue, NOW + 3000 + DEFAULT_CLAIM_TTL_MS * 10), null); // and never times out, unlike a plain claim
+});
+
+test("expireStaleClaims never touches an awaiting_confirmation entry, no matter how much time passes", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000);
+  queue = markAwaitingConfirmation(queue, "Pepe");
+
+  const farFuture = NOW + DEFAULT_CLAIM_TTL_MS * 1000;
+  activePlayers(queue, farFuture); // runs expireStaleClaims internally
+  assert.equal(queue[0].status, "awaiting_confirmation"); // still paused, not silently recycled back to pending
+});
+
+test("completeRequest clears an awaiting_confirmation entry the same as any other active status", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000);
+  queue = markAwaitingConfirmation(queue, "Pepe");
+
+  queue = completeRequest(queue, "Pepe");
+  assert.equal(queue.length, 0);
 });
 
 test("activePlayers lists everyone with a pending or claimed request, not stale-expired ones", () => {

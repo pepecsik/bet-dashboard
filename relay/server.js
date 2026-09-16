@@ -25,7 +25,7 @@ import { normalizeStatus } from "./normalizeStatus.js";
 import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
-import { addRequest, getNext, completeRequest, activePlayers } from "./betfairQueue.js";
+import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation } from "./betfairQueue.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -159,6 +159,26 @@ const server = http.createServer((req, res) => {
     const bets = exportData.bets.filter((b) => b.player === job.player);
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test }, bets }, null, 2));
+    return;
+  }
+  // acca calls this once it's sent Winston the per-bet confirmation
+  // question and is about to end its turn to wait for his real reply (see
+  // PLACEMENT_MANUAL.md Step 5) -- moves that player's claim to
+  // "awaiting_confirmation" so it keeps blocking the queue (still "busy" in
+  // getNext()) but stops counting against the normal 15-minute stale-claim
+  // timer, since a real confirmation reply can reasonably take Winston
+  // minutes or hours. See markAwaitingConfirmation()'s comment for why this
+  // state has no expiry of its own.
+  if (req.method === "POST" && req.url === "/betfair-place-request/awaiting-confirmation") {
+    readJsonBody(req, (body) => {
+      const player = body && body.player;
+      if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
+      const before = betfairQueue.find((r) => r.player === player && r.status === "claimed");
+      betfairQueue = markAwaitingConfirmation(betfairQueue, player);
+      if (!before) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "No claimed request found for that player" })); return; }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "awaiting_confirmation", player }));
+    });
     return;
   }
   // Which players currently have an active (pending or claimed) request --

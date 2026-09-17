@@ -308,6 +308,27 @@
   .bf-ledger td.neg { color: #ff6b6b; }
   .bf-ledger td.pos { color: #4ade80; }
   .bf-ledger td.paid { color: #ffd166; font-weight: 800; }
+
+  /* Betfair placement queue -- direct visibility/control over the relay's
+     queue (see betfairQueue.js), so a stuck job doesn't require relaying
+     curl commands through chat every time. */
+  .queue-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .queue-row:last-of-type { border-bottom: none; }
+  .queue-player { font-weight: 800; font-size: 13px; }
+  .queue-player .queue-test-tag { opacity: 0.55; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+  .queue-meta { font-size: 10px; color: #b79ecf; margin-top: 2px; }
+  .queue-status-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .queue-status-pending { background: rgba(255,255,255,0.1); color: #b79ecf; }
+  .queue-status-claimed { background: rgba(255,209,102,0.18); color: #ffd166; }
+  .queue-status-awaiting_confirmation { background: rgba(255,40,130,0.18); color: #ff7ac6; }
+  .queue-row-right { display: flex; align-items: center; gap: 8px; }
+  .queue-clear-btn {
+    padding: 7px 12px; border-radius: 8px; border: none; background: rgba(239,68,68,0.18);
+    color: #ff6b6b; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .queue-clear-btn:disabled { opacity: 0.35; cursor: default; }
+  .queue-refresh-btn { margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -419,11 +440,17 @@
       </div>
       <div id="balanceContent"><div class="placeholder">Loading…</div></div>
       <div id="betfairContent" style="display:none;"><div class="placeholder">Loading…</div></div>
+      <div id="queuePanel" style="display:none;">
+        <div class="mw-section-title" style="margin-top:20px;">Betfair Placement Queue</div>
+        <div id="queuePanelContent"><div class="placeholder">Connecting…</div></div>
+        <button class="action queue-refresh-btn" id="queueRefreshBtn" onclick="loadQueuePanel()" disabled>Checking connection…</button>
+      </div>
     </div>
   </main>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
+const RELAY_URL = "https://bet-dashboard-relay.onrender.com";
 
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1020,6 +1047,82 @@ function showBalView(view) {
   document.getElementById('balToggleBetfair').classList.toggle('active', view === 'betfair');
   document.getElementById('balanceContent').style.display = view === 'balance' ? 'block' : 'none';
   document.getElementById('betfairContent').style.display = view === 'betfair' ? 'block' : 'none';
+  document.getElementById('queuePanel').style.display = view === 'betfair' ? 'block' : 'none';
+  if (view === 'betfair') loadQueuePanel();
+}
+
+/* ===== BETFAIR PLACEMENT QUEUE ===== */
+// Direct visibility/control over the relay's job queue (see
+// relay/betfairQueue.js) -- who's queued, what state they're in, and a way
+// to clear a stuck one -- without relaying curl commands through chat every
+// time something needs a look. Read-only fetch, same openness reasoning as
+// every other relay route here (no auth, nothing sensitive).
+
+function fmtAgo(ms) {
+  if (!ms) return '';
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+const QUEUE_STATUS_LABEL = { pending: 'Pending', claimed: 'Building', awaiting_confirmation: 'Awaiting reply' };
+
+function renderQueuePanel(queue) {
+  if (!queue.length) return '<div class="placeholder">Queue is empty — nothing pending.</div>';
+  return queue.map(q => `
+    <div class="queue-row">
+      <div>
+        <div class="queue-player">${q.player}${q.test ? ' <span class="queue-test-tag">Test</span>' : ''}</div>
+        <div class="queue-meta">Requested ${fmtAgo(q.requestedAt)}${q.claimedAt ? ' &middot; Claimed ' + fmtAgo(q.claimedAt) : ''}</div>
+      </div>
+      <div class="queue-row-right">
+        <span class="queue-status-badge queue-status-${q.status}">${QUEUE_STATUS_LABEL[q.status] || q.status}</span>
+        <button class="queue-clear-btn" onclick="clearQueueEntry('${q.player}', this)">Clear</button>
+      </div>
+    </div>`).join('');
+}
+
+// The gray-until-connected button: starts disabled in the HTML itself, and
+// only becomes pressable once a real fetch to the relay has actually
+// succeeded -- not just "the panel finished rendering", which could still
+// be gray-fast-tap territory if the relay (a free Render instance, can be
+// slow to wake from idle) hasn't actually responded yet. Per-row Clear
+// buttons don't need their own version of this guard -- they simply don't
+// exist until real queue data has already loaded successfully.
+function loadQueuePanel() {
+  const content = document.getElementById('queuePanelContent');
+  const refreshBtn = document.getElementById('queueRefreshBtn');
+  refreshBtn.disabled = true; refreshBtn.textContent = 'Checking connection…';
+  content.innerHTML = '<div class="placeholder">Connecting…</div>';
+  fetch(RELAY_URL + '/betfair-place-request/queue')
+    .then(r => r.json())
+    .then(data => {
+      content.innerHTML = renderQueuePanel(data.queue || []);
+      refreshBtn.disabled = false; refreshBtn.textContent = 'Refresh';
+    })
+    .catch(() => {
+      content.innerHTML = '<div class="placeholder">Could not reach the relay — it may be waking up from idle, try again in a moment.</div>';
+      // Enabled, not disabled: a failed connection attempt still needs a
+      // way back in, so this becomes the retry trigger rather than staying
+      // dead -- gray-until-connected only applies to the "never tried yet
+      // or currently trying" state, not to "tried and failed".
+      refreshBtn.disabled = false; refreshBtn.textContent = 'Retry connecting…';
+    });
+}
+
+function clearQueueEntry(player, btn) {
+  if (!confirm('Clear ' + player + '\'s queued/pending Betfair placement?\n\nThis only releases the relay\'s queue slot -- it does not touch anything already placed on Betfair or written to the Sheet.')) return;
+  btn.disabled = true; btn.textContent = '...';
+  fetch(RELAY_URL + '/betfair-place-request/clear', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player: player }),
+  }).then(r => r.json())
+    .then(() => loadQueuePanel())
+    .catch(() => { btn.disabled = false; btn.textContent = 'Clear'; alert('Request failed -- try again.'); });
 }
 
 function toggleBetfairLedger() {

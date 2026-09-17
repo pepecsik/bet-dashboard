@@ -25,7 +25,7 @@ import { normalizeStatus } from "./normalizeStatus.js";
 import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
-import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation } from "./betfairQueue.js";
+import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation, expireStaleClaims } from "./betfairQueue.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -89,6 +89,24 @@ let betsCache = { headers: [], matches: [], winCells: [], fetchedAt: 0 };
 let betfairQueue = [];
 
 const server = http.createServer((req, res) => {
+  // CORS -- every route below is either public read data (bets, snapshot,
+  // queue status) or an action gated by knowing a player's name, same
+  // openness reasoning already documented route by route; nothing here
+  // needs auth, so a wildcard origin is consistent with that, not a
+  // widening of it. This was missing entirely until now, which is a real
+  // gap, not a formality: index.html's own POST /betfair-place-request sets
+  // an explicit Content-Type: application/json header, which triggers a
+  // CORS preflight in a real cross-origin browser call (GitHub Pages ->
+  // onrender.com) -- without this, that preflight has no answer and the
+  // browser silently blocks the real request. Every test of this flow
+  // until now went through either Playwright's page.route() (mocks the
+  // network call entirely) or a direct curl (curl never enforces CORS --
+  // it's a browser-only mechanism), so this never actually got exercised
+  // by a real browser making a real cross-origin call.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
   // Phase 2 visibility -- read-only, just the same bet picks anyone with
   // the app can already see, so this stays open (unlike /trigger) even
   // once MOCK_MODE is off. Useful for confirming the sync is actually
@@ -192,6 +210,41 @@ const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/betfair-place-request/status") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ active: activePlayers(betfairQueue, Date.now()) }));
+    return;
+  }
+  // Full queue detail for the admin page's queue panel -- /status above only
+  // ever gave a bare list of names (enough for the app to hide an avatar),
+  // not enough to show an admin what's actually going on (whose job, what
+  // state, how long it's been sitting, real or test). Read-only, same
+  // openness reasoning as everything else here -- no admin auth, just like
+  // adminSetWinValue and friends already have none of their own either.
+  if (req.method === "GET" && req.url === "/betfair-place-request/queue") {
+    expireStaleClaims(betfairQueue, Date.now());
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      queue: betfairQueue.map((r) => ({
+        player: r.player, status: r.status, test: !!r.test,
+        requestedAt: r.requestedAt, claimedAt: r.claimedAt,
+      })),
+    }));
+    return;
+  }
+  // Manual "unstick this" for the admin page -- same completeRequest() used
+  // by the normal Step 6 report-back, just callable directly instead of
+  // requiring a curl relayed through chat every time a job needs clearing
+  // (see the real incidents this was built in response to). Clears
+  // regardless of status (pending/claimed/awaiting_confirmation) -- there's
+  // nothing to "undo" here, it only ever removes the relay's own queue
+  // entry, never anything already placed or written to the Sheet.
+  if (req.method === "POST" && req.url === "/betfair-place-request/clear") {
+    readJsonBody(req, (body) => {
+      const player = body && body.player;
+      if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
+      const before = betfairQueue.find((r) => r.player === player);
+      betfairQueue = completeRequest(betfairQueue, player);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "cleared", player, wasPresent: !!before }));
+    });
     return;
   }
   // acca calls this once both of a player's bets are placed -- reports the

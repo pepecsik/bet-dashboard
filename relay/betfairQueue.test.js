@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation, DEFAULT_CLAIM_TTL_MS } from "./betfairQueue.js";
+import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation, recordDecision, takeDecision, DEFAULT_CLAIM_TTL_MS } from "./betfairQueue.js";
 
 const NOW = new Date("2026-09-20T15:00:00Z").getTime();
 
@@ -140,6 +140,51 @@ test("completeRequest clears an awaiting_confirmation entry the same as any othe
 
   queue = completeRequest(queue, "Pepe");
   assert.equal(queue.length, 0);
+});
+
+test("markAwaitingConfirmation stores the optional pendingBet detail and resets any stale decision", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000);
+  const bet1 = { betNumber: 1, legs: [{ match: "ARS v CHE", selection: "ARS" }], stake: 2 };
+  queue = markAwaitingConfirmation(queue, "Pepe", bet1);
+  assert.deepEqual(queue[0].pendingBet, bet1);
+  assert.equal(queue[0].decision, null);
+
+  // Simulate a decision being recorded, then this same function getting
+  // called again for bet 2 -- the stale "approve" from bet 1 must not
+  // silently carry over and auto-approve bet 2.
+  queue = recordDecision(queue, "Pepe", "approve", NOW + 2000);
+  assert.equal(queue[0].decision, "approve");
+  queue[0].status = "claimed"; // simulate having acted on bet 1 and moved on
+  const bet2 = { betNumber: 2, legs: [{ match: "LIV v MCI", selection: "LIV" }], stake: 2 };
+  queue = markAwaitingConfirmation(queue, "Pepe", bet2);
+  assert.deepEqual(queue[0].pendingBet, bet2);
+  assert.equal(queue[0].decision, null, "a stale decision from bet 1 must not survive into bet 2's wait");
+});
+
+test("recordDecision only applies to a player currently awaiting confirmation, and is a safe no-op otherwise", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW); // still just "pending", not awaiting_confirmation
+  queue = recordDecision(queue, "Pepe", "approve", NOW + 1000);
+  assert.equal(queue[0].decision, undefined, "no-op -- Pepe isn't awaiting confirmation yet");
+
+  queue = recordDecision(queue, "Someone Else", "approve", NOW + 1000);
+  assert.equal(queue.length, 1, "no-op for a player with no entry at all -- doesn't throw or add one");
+});
+
+test("takeDecision reads and clears atomically -- a second read sees null, not the same decision again", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000);
+  queue = markAwaitingConfirmation(queue, "Pepe", { betNumber: 1 });
+
+  assert.equal(takeDecision(queue, "Pepe"), null, "nobody's decided yet");
+
+  queue = recordDecision(queue, "Pepe", "reject", NOW + 2000);
+  assert.equal(takeDecision(queue, "Pepe"), "reject", "first read gets the real decision");
+  assert.equal(takeDecision(queue, "Pepe"), null, "second read is empty -- already consumed, no double-processing");
+  assert.equal(queue[0].decision, null);
 });
 
 test("activePlayers lists everyone with a pending or claimed request, not stale-expired ones", () => {

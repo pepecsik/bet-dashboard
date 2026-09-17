@@ -73,11 +73,48 @@ function getNext(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_MS) {
 // stuck for real (acca crashed before ever getting Winston's reply, say)
 // needs a human to notice and clear it via the normal report-back/complete
 // path, not an automatic guess that it's safe to retry.
-function markAwaitingConfirmation(queue, player) {
+// `pendingBet` (optional) is the actual bet acca is asking about -- legs,
+// stake, combined odds, potential return -- so the admin app can show what's
+// being decided, not just a bare "awaiting reply" status. Always resets
+// `decision`/`decisionAt` to null, even on a second call for the same
+// player (bet 2's ask re-using this same function): a stale decision from
+// bet 1 must never carry over and silently auto-approve bet 2.
+function markAwaitingConfirmation(queue, player, pendingBet = null) {
   const entry = queue.find((r) => r.player === player && r.status === "claimed");
   if (!entry) return queue;
   entry.status = "awaiting_confirmation";
+  entry.pendingBet = pendingBet;
+  entry.decision = null;
+  entry.decisionAt = null;
   return queue;
+}
+
+// Records the app's decision ("approve" or "reject") for whichever bet is
+// currently awaiting confirmation for `player` -- called by the admin
+// panel's Approve/Reject buttons. No-op if that player isn't actually
+// awaiting confirmation right now (e.g. a stale double-click after the job
+// already moved on).
+function recordDecision(queue, player, decision, now = Date.now()) {
+  const entry = queue.find((r) => r.player === player && r.status === "awaiting_confirmation");
+  if (!entry) return queue;
+  entry.decision = decision;
+  entry.decisionAt = now;
+  return queue;
+}
+
+// Atomically reads AND clears `player`'s pending decision -- same
+// claim-on-read pattern as getNext(), so acca's poll can never double-act on
+// the same decision (e.g. clicking Place Bet twice) if it happens to poll
+// again before finishing whatever the first read triggered. Returns null if
+// there's no decision waiting (not awaiting confirmation at all, or awaiting
+// but nobody's decided yet).
+function takeDecision(queue, player) {
+  const entry = queue.find((r) => r.player === player && r.status === "awaiting_confirmation");
+  if (!entry || !entry.decision) return null;
+  const decision = entry.decision;
+  entry.decision = null;
+  entry.decisionAt = null;
+  return decision;
 }
 
 // Marks `player`'s request done (removed from the active queue) -- called
@@ -100,4 +137,4 @@ function activePlayers(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_M
   return queue.filter((r) => r.status !== "done").map((r) => r.player);
 }
 
-export { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims, markAwaitingConfirmation, DEFAULT_CLAIM_TTL_MS };
+export { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims, markAwaitingConfirmation, recordDecision, takeDecision, DEFAULT_CLAIM_TTL_MS };

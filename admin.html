@@ -320,6 +320,23 @@
   }
   .queue-clear-btn:disabled { opacity: 0.35; cursor: default; }
   .queue-refresh-btn { margin-top: 12px; }
+  .queue-bet-card { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  .queue-bet-title { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .queue-leg { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); line-height: 1.4; }
+  .queue-leg:last-of-type { border-bottom: none; }
+  .queue-leg b { white-space: nowrap; }
+  .queue-bet-summary { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .queue-decision-row { display: flex; gap: 8px; margin-top: 10px; }
+  .queue-approve-btn, .queue-reject-btn {
+    flex: 1; padding: 9px; border-radius: 8px; border: none; font-weight: 800; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer;
+  }
+  .queue-approve-btn { background: linear-gradient(135deg, #00e676, #00b359); color: #06210f; }
+  .queue-reject-btn { background: rgba(239,68,68,0.18); color: #ff6b6b; }
+  .queue-approve-btn:disabled, .queue-reject-btn:disabled { opacity: 0.5; cursor: default; }
+  .queue-decided-msg { margin-top: 10px; font-size: 11px; font-weight: 800; text-align: center; padding: 8px; border-radius: 8px; }
+  .queue-decided-msg.approve { background: rgba(0,255,133,0.12); color: #00ff85; }
+  .queue-decided-msg.reject { background: rgba(255,77,77,0.12); color: #ff4d4d; }
 </style>
 </head>
 <body>
@@ -1059,19 +1076,88 @@ function fmtAgo(ms) {
 
 const QUEUE_STATUS_LABEL = { pending: 'Pending', claimed: 'Building', awaiting_confirmation: 'Awaiting reply' };
 
+// A leg's own text is trusted data from acca (via the relay), not user
+// input -- same trust boundary as everything else this admin page already
+// renders straight from the Sheet/relay (bet picks, ledger rows, etc).
+function renderPendingBet(q) {
+  const bet = q.pendingBet;
+  const legsHtml = (bet.legs || []).map(l => `
+    <div class="queue-leg">
+      ${l.selection || ''} <span style="opacity:0.6;">&mdash; ${l.market || ''}${l.match ? ' (' + l.match + ')' : ''}</span>
+      ${l.odds ? ' <b>' + l.odds + '</b>' : ''}
+    </div>`).join('');
+  const returnAmt = Number(bet.potentialReturn || 0).toFixed(2);
+  const summaryHtml = `
+    <div class="queue-bet-summary">
+      <span>Stake &pound;${bet.stake ?? '?'} @ ${bet.combinedOdds || '?'}</span>
+      <span>Returns &pound;${returnAmt}</span>
+    </div>`;
+
+  // A decision's already been sent but acca hasn't consumed/acted on it yet
+  // (takeDecision() only clears it once acca's own poll reads it) -- show
+  // that plainly instead of the buttons again, so a slow poll cycle doesn't
+  // look like the click did nothing and invite a confusing double-press.
+  if (q.decision) {
+    const label = q.decision === 'approve' ? 'Approved — waiting for acca to act on it' : 'Rejected — waiting for acca to act on it';
+    return `
+      <div class="queue-bet-card">
+        <div class="queue-bet-title">Bet ${bet.betNumber || ''}</div>
+        ${legsHtml}
+        ${summaryHtml}
+        <div class="queue-decided-msg ${q.decision}">${label}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="queue-bet-card">
+      <div class="queue-bet-title">Bet ${bet.betNumber || ''} &mdash; awaiting your decision</div>
+      ${legsHtml}
+      ${summaryHtml}
+      <div class="queue-decision-row">
+        <button class="queue-approve-btn" onclick="decideQueueEntry('${q.player}', 'approve', this)">Approve</button>
+        <button class="queue-reject-btn" onclick="decideQueueEntry('${q.player}', 'reject', this)">Reject</button>
+      </div>
+    </div>`;
+}
+
 function renderQueuePanel(queue) {
   if (!queue.length) return '<div class="placeholder">Queue is empty — nothing pending.</div>';
   return queue.map(q => `
-    <div class="queue-row">
-      <div>
+    <div class="queue-row" style="align-items:flex-start;">
+      <div style="flex:1;">
         <div class="queue-player">${q.player}${q.test ? ' <span class="queue-test-tag">Test</span>' : ''}</div>
         <div class="queue-meta">Requested ${fmtAgo(q.requestedAt)}${q.claimedAt ? ' &middot; Claimed ' + fmtAgo(q.claimedAt) : ''}</div>
+        ${q.pendingBet ? renderPendingBet(q) : ''}
       </div>
       <div class="queue-row-right">
         <span class="queue-status-badge queue-status-${q.status}">${QUEUE_STATUS_LABEL[q.status] || q.status}</span>
         <button class="queue-clear-btn" onclick="clearQueueEntry('${q.player}', this)">Clear</button>
       </div>
     </div>`).join('');
+}
+
+// Approve/Reject from the app -- this is the whole point of the queue panel
+// existing: acca stops waiting on a Telegram reply and instead polls
+// GET .../decision for whatever gets recorded here. Doesn't place anything
+// itself; it only sets the flag acca's own poll picks up and acts on.
+function decideQueueEntry(player, decision, btn) {
+  const row = btn.closest('.queue-row');
+  row.querySelectorAll('.queue-approve-btn, .queue-reject-btn').forEach(b => { b.disabled = true; });
+  btn.textContent = '...';
+  fetch(RELAY_URL + '/betfair-place-request/decision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player: player, decision: decision }),
+  }).then(r => r.json())
+    .then(res => {
+      if (res.status !== 'recorded') throw new Error(res.error || 'Failed to record decision');
+      loadQueuePanel();
+    })
+    .catch(err => {
+      row.querySelectorAll('.queue-approve-btn, .queue-reject-btn').forEach(b => { b.disabled = false; });
+      alert('Request failed -- try again: ' + err.message);
+      loadQueuePanel();
+    });
 }
 
 // The gray-until-connected button: starts disabled in the HTML itself, and

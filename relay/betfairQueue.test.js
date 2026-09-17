@@ -187,6 +187,37 @@ test("takeDecision reads and clears atomically -- a second read sees null, not t
   assert.equal(queue[0].decision, null);
 });
 
+test("takeDecision moves the entry back to claimed and refreshes claimedAt -- real bug: bet 2's markAwaitingConfirmation used to 404", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000); // claimed, claimedAt = NOW + 1000
+  const bet1 = { betNumber: 1, legs: [{ selection: "ARS" }], stake: 2 };
+  queue = markAwaitingConfirmation(queue, "Pepe", bet1); // status -> awaiting_confirmation
+
+  queue = recordDecision(queue, "Pepe", "approve", NOW + 2000);
+  // Simulate a confirmation that took a long time -- well past the 15-minute
+  // TTL from the ORIGINAL claim -- to prove claimedAt actually gets refreshed,
+  // not just left stale.
+  const muchLater = NOW + 1000 + DEFAULT_CLAIM_TTL_MS + 60000;
+  const decision = takeDecision(queue, "Pepe", muchLater);
+  assert.equal(decision, "approve");
+  assert.equal(queue[0].status, "claimed", "back to claimed so the next markAwaitingConfirmation() call can find it");
+  assert.equal(queue[0].claimedAt, muchLater, "claimedAt refreshed, not left at the original (now long-expired) claim time");
+
+  // Prove the refresh actually matters: while still in the brief "claimed"
+  // window (before bet 2's build even starts), a check using the OLD
+  // claimedAt would have looked stale and expired immediately. With the
+  // refresh, it correctly stays busy.
+  assert.equal(getNext(queue, muchLater + 1000), null, "still busy right after resuming -- not wrongly swept as a stale claim");
+
+  // This is the exact real-world sequence that used to fail: acca resumes
+  // after approve, builds bet 2, and signals awaiting-confirmation again.
+  const bet2 = { betNumber: 2, legs: [{ selection: "CHE" }], stake: 2 };
+  queue = markAwaitingConfirmation(queue, "Pepe", bet2);
+  assert.equal(queue[0].status, "awaiting_confirmation", "bet 2's awaiting-confirmation call must succeed, not 404");
+  assert.deepEqual(queue[0].pendingBet, bet2, "bet 2's detail replaces bet 1's stale data");
+});
+
 test("activePlayers lists everyone with a pending or claimed request, not stale-expired ones", () => {
   let queue = [];
   queue = addRequest(queue, "Snackbar", NOW);

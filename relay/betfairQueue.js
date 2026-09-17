@@ -108,10 +108,33 @@ function recordDecision(queue, player, decision, now = Date.now()) {
 // again before finishing whatever the first read triggered. Returns null if
 // there's no decision waiting (not awaiting confirmation at all, or awaiting
 // but nobody's decided yet).
-function takeDecision(queue, player) {
+//
+// Also moves the entry's status back to "claimed" once a real decision is
+// taken -- acca is actively handling it again now (placing/confirming, then
+// either building the next bet or stopping on reject), the same state it
+// was in before markAwaitingConfirmation() paused it. Without this, the
+// entry stays stuck at "awaiting_confirmation" with the now-stale pendingBet
+// from the bet that just got decided -- markAwaitingConfirmation()'s own
+// lookup for the NEXT bet requires status "claimed", so bet 2 would
+// wrongly 404 ("no claimed request found") even though the job is very
+// much still in progress. Confirmed via a real end-to-end run: Bet 1
+// resolved correctly, then Bet 2's awaiting-confirmation call failed with
+// exactly this 404 because of this missing transition.
+//
+// Also refreshes claimedAt to `now` -- without this, the 15-minute
+// stale-claim timer (see expireStaleClaims()) would resume counting from
+// whenever the job was ORIGINALLY claimed, before the wait for a decision
+// even started. A confirmation can easily take longer than 15 minutes
+// (that's the whole reason awaiting_confirmation is exempt from the timer
+// in the first place), so without this refresh, resuming to "claimed"
+// could immediately -- or very soon -- expire a claim that's actually
+// still genuinely in progress.
+function takeDecision(queue, player, now = Date.now()) {
   const entry = queue.find((r) => r.player === player && r.status === "awaiting_confirmation");
   if (!entry || !entry.decision) return null;
   const decision = entry.decision;
+  entry.status = "claimed";
+  entry.claimedAt = now;
   entry.decision = null;
   entry.decisionAt = null;
   return decision;

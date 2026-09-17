@@ -253,15 +253,6 @@
   .total-card { background: linear-gradient(135deg, rgba(255,40,130,0.14), rgba(200,20,102,0.08)); border: 1px solid rgba(255,40,130,0.4); }
   .total-card .season-name { color: #ff7ac6; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
 
-  /* Balance/Betfair toggle */
-  .bal-toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .bal-toggle-btn {
-    flex: 1; padding: 9px; border-radius: 8px; background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12); color: #b79ecf; font-size: 11px; font-weight: 800;
-    text-transform: uppercase; letter-spacing: 0.5px; text-align: center; cursor: pointer;
-  }
-  .bal-toggle-btn.active { background: linear-gradient(135deg, #ff2882, #c81466); color: #fff; border-color: transparent; }
-
   /* Betfair tab -- mirrors the BETFAIR sheet's running deposit ledger */
   .bf-warning {
     background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); border-radius: 10px;
@@ -365,13 +356,23 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
+    <button class="tab-btn active" id="tabBtnBetfair" onclick="switchTab('betfair')">Betfair</button>
+    <button class="tab-btn" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
     <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
     <button class="tab-btn" id="tabBtnBalance" onclick="switchTab('balance')">Balance</button>
   </div>
 
   <main>
-    <div class="tab-pane active" id="paneMatchweek">
+    <div class="tab-pane active" id="paneBetfair">
+      <div class="mw-section-title">Betfair Placement Queue</div>
+      <div id="queuePanelContent"><div class="placeholder">Connecting…</div></div>
+      <button class="action queue-refresh-btn" id="queueRefreshBtn" onclick="loadQueuePanel()" disabled>Checking connection…</button>
+
+      <div class="mw-section-title" style="margin-top:24px;">Betfair Ledger</div>
+      <div id="betfairContent"><div class="placeholder">Loading…</div></div>
+    </div>
+
+    <div class="tab-pane" id="paneMatchweek">
       <div class="mw-section-title">Active Bets</div>
       <div id="betsGridContent"><div class="placeholder">Loading…</div></div>
 
@@ -434,17 +435,7 @@
 
     <div class="tab-pane" id="paneBalance">
       <div class="mw-section-title">Balance</div>
-      <div class="bal-toggle-row">
-        <div class="bal-toggle-btn active" id="balToggleBalance" onclick="showBalView('balance')">Balance</div>
-        <div class="bal-toggle-btn" id="balToggleBetfair" onclick="showBalView('betfair')">Betfair</div>
-      </div>
       <div id="balanceContent"><div class="placeholder">Loading…</div></div>
-      <div id="betfairContent" style="display:none;"><div class="placeholder">Loading…</div></div>
-      <div id="queuePanel" style="display:none;">
-        <div class="mw-section-title" style="margin-top:20px;">Betfair Placement Queue</div>
-        <div id="queuePanelContent"><div class="placeholder">Connecting…</div></div>
-        <button class="action queue-refresh-btn" id="queueRefreshBtn" onclick="loadQueuePanel()" disabled>Checking connection…</button>
-      </div>
     </div>
   </main>
 
@@ -463,6 +454,11 @@ function switchTab(name) {
   if (name === 'scoreboard') loadScoreboard();
   if (name === 'matchweek') loadBetsGrid();
   if (name === 'balance') loadBalance();
+  // loadBalance() also fills #betfairContent (the ledger), which now lives
+  // in this tab instead of Balance's own -- same one fetch, just read by
+  // whichever tab is open. loadQueuePanel() is the separate relay call for
+  // the actual placement queue, unrelated to the Sheet-backed ledger.
+  if (name === 'betfair') { loadBalance(); loadQueuePanel(); }
 }
 
 function toggleMatchweekSteps() {
@@ -540,10 +536,12 @@ function runSendMatchweekEmail() {
     .finally(() => { btn.disabled = false; btn.textContent = 'Send to Everyone'; });
 }
 
-// Matchweek/BETS is the default active tab, so it needs its own initial
-// load here too -- switchTab()'s "load once when opened" only fires on
-// clicks, not on the tab that's already showing at page load.
-loadBetsGrid();
+// Betfair is the default active tab, so it needs its own initial load here
+// too -- switchTab()'s "load once when opened" only fires on clicks, not on
+// the tab that's already showing at page load. Both functions are declared
+// further down this same script but hoisted, so calling them here is fine.
+loadBalance();
+loadQueuePanel();
 
 function runClearAndSetDate() {
   const date = document.getElementById('mwDate').value;
@@ -1040,15 +1038,6 @@ function renderBalance(balance) {
     <div class="bal-subhead">By Season</div>
     ${seasonsHtml}
   `;
-}
-
-function showBalView(view) {
-  document.getElementById('balToggleBalance').classList.toggle('active', view === 'balance');
-  document.getElementById('balToggleBetfair').classList.toggle('active', view === 'betfair');
-  document.getElementById('balanceContent').style.display = view === 'balance' ? 'block' : 'none';
-  document.getElementById('betfairContent').style.display = view === 'betfair' ? 'block' : 'none';
-  document.getElementById('queuePanel').style.display = view === 'betfair' ? 'block' : 'none';
-  if (view === 'betfair') loadQueuePanel();
 }
 
 /* ===== BETFAIR PLACEMENT QUEUE ===== */

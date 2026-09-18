@@ -42,6 +42,14 @@ const API_KEY = process.env.API_FOOTBALL_KEY || "";
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrVLFVLhdr4deKPUznv8Rk2I9tz3plm4O0kfgfxkGdskwFw/exec";
 const TEST_MATCH_HOME_CODE = process.env.TEST_MATCH_HOME_CODE || "ABC";
 const TEST_MATCH_AWAY_CODE = process.env.TEST_MATCH_AWAY_CODE || "DEF";
+// Forces every /betfair-place-request to be a test job, regardless of what
+// the caller sends -- a deploy-time safety switch so the REAL "Place bets on
+// Betfair" button in the app (which has never had its own test-mode option;
+// only acca's manual curl calls ever set test:true) can be exercised
+// end-to-end without any risk of a real placement, without needing any app
+// changes. Meant to be temporary: set this on Render while deliberately
+// testing the real button flow, then unset it before any real matchweek.
+const FORCE_BETFAIR_TEST_MODE = process.env.FORCE_BETFAIR_TEST_MODE === "1";
 
 // Fast/slow split, Phase 2: a periodic, read-only pull of the week's bets
 // from Code.gs's ?mode=bets (see scoring.js for what it's for). Runs
@@ -156,7 +164,7 @@ const server = http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/betfair-place-request") {
     readJsonBody(req, async (body) => {
       const player = body && body.player;
-      const test = !!(body && body.test);
+      const test = FORCE_BETFAIR_TEST_MODE || !!(body && body.test);
       if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
       try { await fetchBetsSnapshot(); } catch (e) { /* stale cache is still better than failing the request -- fetchBetsSnapshot already logs its own failure */ }
       betfairQueue = addRequest(betfairQueue, player, Date.now(), test);
@@ -716,5 +724,5 @@ setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
-  console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms`);
+  console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms, FORCE_BETFAIR_TEST_MODE=${FORCE_BETFAIR_TEST_MODE}`);
 });

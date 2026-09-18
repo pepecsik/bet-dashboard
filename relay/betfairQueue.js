@@ -79,8 +79,26 @@ function getNext(queue, now = Date.now(), claimTtlMs = DEFAULT_CLAIM_TTL_MS) {
 // `decision`/`decisionAt` to null, even on a second call for the same
 // player (bet 2's ask re-using this same function): a stale decision from
 // bet 1 must never carry over and silently auto-approve bet 2.
+// `pendingBet` (optional) is the actual bet acca is asking about -- legs,
+// stake, combined odds, potential return -- so the admin app can show what's
+// being decided, not just a bare "awaiting reply" status. Always resets
+// `decision`/`decisionAt` to null, even on a second call for the same
+// player (bet 2's ask re-using this same function): a stale decision from
+// bet 1 must never carry over and silently auto-approve bet 2.
+//
+// Also accepts a player already sitting at "awaiting_confirmation", not just
+// "claimed" -- on purpose: this is the only way to correct a bet's detail
+// after it's already been signaled (e.g. a leg that needed a second search
+// attempt to find, arriving after the first, incomplete version was already
+// sent). Without this, the only way to fix a mistake was reject-and-restart
+// the whole job -- a real gap found live: acca found a missing leg, tried to
+// re-signal the corrected bet, and got rejected because the entry was
+// already in awaiting_confirmation. Resetting decision on every call (see
+// above) already makes this safe even if Winston had approved the earlier,
+// wrong version before the correction arrived -- that stale approval is
+// wiped, exactly as it should be, since it was approving different data.
 function markAwaitingConfirmation(queue, player, pendingBet = null) {
-  const entry = queue.find((r) => r.player === player && r.status === "claimed");
+  const entry = queue.find((r) => r.player === player && (r.status === "claimed" || r.status === "awaiting_confirmation"));
   if (!entry) return queue;
   entry.status = "awaiting_confirmation";
   entry.pendingBet = pendingBet;

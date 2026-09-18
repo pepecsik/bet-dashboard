@@ -163,6 +163,30 @@ test("markAwaitingConfirmation stores the optional pendingBet detail and resets 
   assert.equal(queue[0].decision, null, "a stale decision from bet 1 must not survive into bet 2's wait");
 });
 
+test("markAwaitingConfirmation can correct an already-awaiting bet, real bug: a leg found on a second search attempt couldn't be re-signaled", () => {
+  let queue = [];
+  queue = addRequest(queue, "Pepe", NOW);
+  getNext(queue, NOW + 1000);
+  const incomplete = { betNumber: 1, legCount: 6, legs: [{ selection: "ARS" }, { selection: "CHE" }], stake: 2, combinedOdds: "342.67/1", potentialReturn: 687.34 };
+  queue = markAwaitingConfirmation(queue, "Pepe", incomplete);
+  assert.equal(queue[0].status, "awaiting_confirmation");
+
+  // Winston approves the incomplete version before the correction arrives --
+  // this stale approval must be wiped when the corrected data lands, not
+  // silently treated as authorization for different figures.
+  queue = recordDecision(queue, "Pepe", "approve", NOW + 1500);
+  assert.equal(queue[0].decision, "approve");
+
+  // The real scenario: acca finds the missing leg and needs to re-signal
+  // while the entry is STILL "awaiting_confirmation", not "claimed" -- this
+  // used to be a no-op (entry not found), leaving the stale 5-fold stuck.
+  const corrected = { betNumber: 1, legCount: 6, legs: [{ selection: "ARS" }, { selection: "CHE" }, { selection: "Nottm Forest" }], stake: 2, combinedOdds: "554.16/1", potentialReturn: 1110.32 };
+  queue = markAwaitingConfirmation(queue, "Pepe", corrected);
+  assert.equal(queue[0].status, "awaiting_confirmation", "still awaiting -- the correction doesn't complete the job, it just updates what's pending");
+  assert.deepEqual(queue[0].pendingBet, corrected, "the app now shows the corrected 6-fold, not the stale 5-fold");
+  assert.equal(queue[0].decision, null, "the earlier approval was for the WRONG data and must not carry over to the corrected bet");
+});
+
 test("recordDecision only applies to a player currently awaiting confirmation, and is a safe no-op otherwise", () => {
   let queue = [];
   queue = addRequest(queue, "Pepe", NOW); // still just "pending", not awaiting_confirmation

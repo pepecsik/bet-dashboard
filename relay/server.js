@@ -197,9 +197,14 @@ const server = http.createServer((req, res) => {
       const player = body && body.player;
       const bet = (body && body.bet) || null;
       if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
-      const before = betfairQueue.find((r) => r.player === player && r.status === "claimed");
+      // Matches markAwaitingConfirmation()'s own lookup -- also accepts an
+      // entry already at "awaiting_confirmation" so a correction (e.g. a
+      // leg found on a second search attempt) can be re-signaled without
+      // needing to abandon and re-queue the whole job. This 404 used to
+      // fire for exactly that real, live case.
+      const before = betfairQueue.find((r) => r.player === player && (r.status === "claimed" || r.status === "awaiting_confirmation"));
       betfairQueue = markAwaitingConfirmation(betfairQueue, player, bet);
-      if (!before) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "No claimed request found for that player" })); return; }
+      if (!before) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "No claimed or awaiting-confirmation request found for that player" })); return; }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "awaiting_confirmation", player }));
     });

@@ -56,6 +56,35 @@ only the Exchange API (a different product) is open to individual accounts.
   handles the small remaining fraction. Will verify with real token/cost tracking once live,
   same as every other cost claim tonight.
 
-## Status
+## Status (last updated 2026-09-21)
 
-Not started. Recon pass is the first concrete step — begin there next session.
+**Step 1 (recon pass) is done.** OpenClaw/Anne ran a deliberate, unhurried
+recon pass on Betfair Sportsbook (not Exchange) and the findings are saved in
+`relay/SPORTSBOOK_RECON.md` — real URLs, selectors, and page structure for the
+EPL fixtures list (Match Odds) and match pages (Over/Under Goals, Correct
+Score), plus an important gotcha: legs from the same match silently switch
+the betslip into "Bet Builder" mode instead of a normal accumulator, which
+needs explicit detection (check the betslip tab reads "Multiples").
+
+Also worth remembering from tonight, for context if it comes up again:
+- Recon hit a Cloudflare Turnstile challenge once, triggered by a UI tab
+  click (not direct URL navigation) — Winston cleared it manually once, and
+  the resulting `cf_clearance` cookie on the persistent `betfair` browser
+  profile prevented any repeat challenges for the rest of the session.
+  Automating a click-through of that checkbox was explicitly requested by
+  Winston and explicitly declined — that stays a hard stop requiring a human
+  to clear it, not something to script around, regardless of account
+  ownership. `TOOLS.md` on OpenClaw's side has this as a permanent rule.
+- Scope is deliberately narrow: English Premier League only, Match Odds +
+  Over/Under Goals + Correct Score only. Nothing else.
+
+**Step 2 (build the actual flow as real code, Stagehand on top of
+Playwright) is next** — not started yet. This is a real coding session:
+write the automation against `SPORTSBOOK_RECON.md`'s selectors/URLs, doing
+all main-page Match Odds legs first, then match-page Goals/Correct-Score legs
+second (skipping any fixture that would create a same-match pairing, or
+splitting it into a separate bet), running against the existing local
+Chrome/Betfair-logged-in `betfair` profile — not a cloud VM. AI (GPT-5 mini,
+tentatively) only gets invoked for what the reference file doesn't cover.
+
+Pick this up here next session.

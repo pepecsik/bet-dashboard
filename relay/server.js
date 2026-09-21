@@ -89,6 +89,13 @@ function readJsonBody(req, onBody) {
 // refresh correctly first.
 let betsCache = { headers: [], matches: [], winCells: [], fetchedAt: 0 };
 
+// Raw API-Football stat types/values per tracked fixture, refreshed on
+// every poll (not just once, unlike the [stats-check] log lines) -- added
+// so the actual xG question can be checked directly via /stats-debug at
+// any time, instead of racing a log line that only fires once per fixture
+// and is easy to miss in Render's log search/retention window.
+let lastRawStats = {};
+
 // The "place this person's bets on Betfair" request queue -- see
 // betfairQueue.js for the state machine (one-at-a-time serialization,
 // claim expiry). In-memory only, same as betsCache/lastKnown -- lost on a
@@ -122,6 +129,15 @@ const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/bets-debug") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(betsCache, null, 2));
+    return;
+  }
+  // Raw API-Football stat types/values per tracked fixture, refreshed every
+  // poll -- see lastRawStats's own comment. Check this any time (mid-match
+  // or after) to see exactly what API-Football is sending, instead of
+  // digging through Render logs for a line that only fires once.
+  if (req.method === "GET" && req.url === "/stats-debug") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(lastRawStats, null, 2));
     return;
   }
   // Phase 3 visibility -- the actual combined output (live score + bets +
@@ -423,6 +439,19 @@ async function fetchTrackedFixtures() {
   const fixtures = data.response || [];
 
   fixtures.forEach((f) => {
+    if (f.statistics && f.statistics.length) {
+      const homeTypesNow = ((f.statistics[0] && f.statistics[0].statistics) || []).map((s) => `${s.type}=${s.value}`);
+      const awayTypesNow = ((f.statistics[1] && f.statistics[1].statistics) || []).map((s) => `${s.type}=${s.value}`);
+      const parsedNow = parseLiveStats(f.statistics);
+      lastRawStats[f.fixture.id] = {
+        match: `${f.teams.home.name} - ${f.teams.away.name}`,
+        status: f.fixture.status.short,
+        home: homeTypesNow,
+        away: awayTypesNow,
+        parsed: { h_xg: parsedNow && parsedNow.h_xg, a_xg: parsedNow && parsedNow.a_xg },
+        updatedAt: Date.now(),
+      };
+    }
     if (loggedStatsFixtureIds.has(f.fixture.id)) return;
     if (!f.statistics || !f.statistics.length) {
       // A full weekend of matches went by with zero [stats-check] lines --

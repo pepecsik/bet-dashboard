@@ -290,16 +290,22 @@ async function verifyMultiples(page) {
 
 // Confirmed live (2026-09-22): driver.js was never filling the stake at
 // all, which is why every "successful" build showed Potential Return as £0
-// -- nothing to do with the legs, just a missing step. aria-label="Stake"
-// is the stable selector (the input's own id is dynamically generated per
-// render). .first() matters, not incidental -- once there are 3+ legs,
-// Betfair shows a separate Stake field for the main combined bet AND one
-// for every "Additional Multiples" sub-bet (Double, Treble, etc.); an
-// unscoped getByRole would match all of them, and the first in document
-// order is confirmed to be the primary combined-bet stake.
+// -- nothing to do with the legs, just a missing step. First attempt used a
+// bare .first() on aria-label="Stake" and was ALSO wrong, confirmed live
+// (2026-09-22): the Singles tab's own Stake boxes coexist in the accessible
+// DOM even while Multiples is the visually active tab (7 boxes counted
+// with Multiples active, more than Multiples' own 5), and Singles' boxes
+// come first in document order -- so .first() silently filled Arsenal's
+// single-leg stake, not the 6-fold's. Fixed by anchoring to the "Additional
+// Multiples" heading instead: the Stake textbox immediately preceding it in
+// document order is confirmed (bounding-box-verified against the visible
+// box) to always be the primary combined-bet's own field, not any hashed
+// CSS class or the fold-count text (which varies: "6 Fold" for 6 legs,
+// different counts otherwise). Assumes 2+ legs, so "Additional Multiples"
+// exists at all -- true for every accumulator this project builds.
 async function fillStake(page, stake) {
   const stakeAmount = Number(stake);
-  const stakeBox = page.getByRole("textbox", { name: "Stake" }).first();
+  const stakeBox = page.getByText("Additional Multiples").locator('xpath=preceding::input[@aria-label="Stake"][1]');
   await stakeBox.fill(String(stakeAmount));
   // Verified, not trusted -- confirmed live that a successful fill flips
   // the Place Bet button's own label to include the amount ("Please Enter
@@ -548,7 +554,24 @@ async function main() {
       // @browserbasehq/stagehand source directly: a bare "gpt-5-mini" isn't
       // in this version's native modelToProviderMap, so it silently
       // resolves to no LLM client at all rather than erroring clearly.
-      const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: undefined }, page });
+      //
+      // cdpUrl set explicitly, `page` option dropped -- confirmed live
+      // (2026-09-22), read directly from the installed
+      // @browserbasehq/stagehand@2.5.9 source: `page` was NEVER a
+      // recognized constructor parameter in this version at all (destructured
+      // property list has no `page` in it -- JS destructuring just silently
+      // ignores it). With cdpUrl left undefined, init() unconditionally fell
+      // through to launching its OWN separate, unauthenticated throwaway
+      // browser via launchPersistentContext -- confirmed as the exact source
+      // of a blank Chrome window opening on every bet build. Passing the
+      // same CDP_URL driver.js itself connects with should make Stagehand
+      // attach to Anne's real browser instead of launching a new one.
+      // UNVERIFIED LIVE AS OF THIS FIX: whether stagehand.page after this
+      // ends up being the SAME tab/page driver.js already has open, or a
+      // new one within the same browser -- test this specifically, watching
+      // whether the blank window stops appearing and whether a triggered
+      // fallback still lands on the right tab.
+      const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: CDP_URL } });
       // Confirmed live (2026-09-22), Stagehand's own error was explicit:
       // init() is required before .page/.act() are usable, the constructor
       // alone doesn't set it up.

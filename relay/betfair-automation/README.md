@@ -1,19 +1,23 @@
 # Betfair automation driver
 
 Runs on the Mac (needs GB routing + a real Betfair login) -- NOT deployed to
-Render, unlike the rest of `relay/`. Builds one player's weekly accumulator
-on Betfair Sportsbook using `../betfairPlan.js`'s ordered plan and the page
-structure documented in `../SPORTSBOOK_RECON.md`, then reports the built
-slip to the relay for the existing app-based approve/reject flow. It never
-clicks Place Bet itself.
+Render, unlike the rest of `relay/`. Builds **both** of a player's weekly
+accumulators (Bet 1, then Bet 2 -- this product's actual two-bet-per-player
+structure) on Betfair Sportsbook using `../betfairPlan.js`'s ordered plan and
+the page structure documented in `../SPORTSBOOK_RECON.md`, then reports each
+built slip to the relay and **waits for Winston's approve/reject in the app
+before continuing** -- screenshotting each slip and polling for the decision,
+same lifecycle Anne always had, just via a script instead of an LLM agent
+driving every click. It never clicks Place Bet itself in real mode (see
+"Real placement" below).
 
-## Status: first draft, not yet run against the live site
+## Status: proven live for the deterministic build+wait+two-bet flow
 
-`driver.js` was written from `SPORTSBOOK_RECON.md`'s notes, without live
-browser access to verify the exact selectors. Expect the first real run to
-surface selector mismatches -- that's what the AI fallback (Stagehand) and
-its logging are for. Treat this as a solid starting point to test and fix
-against the real page, not a finished script.
+Two full end-to-end test runs succeeded (2026-09-22, both `test: true`, no
+real money): one needed 2 AI fallback calls for then-unmapped team names,
+the second was fully deterministic with zero AI cost. The two-bet loop and
+decision-wait loop (this file's newest part) haven't had a live run yet as
+of this edit -- write-time only, same caveat as everything untested here.
 
 ## Setup: connects to Anne/OpenClaw's browser, doesn't launch its own
 
@@ -61,13 +65,47 @@ went straight to the read-only `/betfair-export`, which is why the very
 first full run 404'd on the final report-back step -- there was never a
 claimed entry for it to attach to.
 
+For each of the (up to 2) bets in the claimed job, in order:
+1. Clears whatever's in the betslip first (idempotent -- stops Bet 1's legs
+   bleeding into Bet 2's build and merging into one wrong combined slip).
+2. Builds the slip, screenshots it, logs `SCREENSHOT_READY: <path>`, and
+   posts it to the relay as `awaiting_confirmation`.
+3. **Polls `/betfair-place-request/decision` until Winston approves or
+   rejects** in the app -- no timeout, matches `awaiting_confirmation`'s own
+   no-expiry design (a real confirmation can take minutes or hours). Logs a
+   heartbeat every 5 minutes so it's visibly still waiting, not stuck.
+4. On reject: clears the job via `/betfair-place-request/clear`, stops --
+   does NOT build any further bets for that job.
+5. On approve, test mode: logs "simulating," does not click anything, moves
+   on to the next bet (or reports fully placed if that was the last one).
+6. On approve, real mode: **hard-stops on purpose.** Clicking the real
+   Place Bet button is not implemented in this file at all -- see "Real
+   placement" below.
+
+**`driver.js` has no Telegram/messaging capability of its own.** The
+`SCREENSHOT_READY: <path>` log line is the hand-off contract -- whatever
+wraps this script (OpenClaw, per the pending integration decision) is
+responsible for finding that path and actually sending the screenshot +
+a notification to Winston. This was Winston's explicit requirement after
+the first test runs: a real notification per bet, not a silent relay POST.
+
 - Exits 0 and logs "No pending job" if the queue is empty -- nothing to do.
-- Exits 0 and logs the AI-fallback count on success (slip built, reported to
-  the relay as `awaiting_confirmation`).
+- Exits 0 on a fully successful job (every bet approved and reported).
 - Exits 1 and logs the error on any hard stop -- including a genuine
   Cloudflare Turnstile challenge (never auto-clicked, per the project's
-  standing rule) or a same-match conflict (shouldn't happen given
-  `betfairPlan.js`'s data shape, but checked for real on-page state anyway).
+  standing rule), a same-match conflict (shouldn't happen given
+  `betfairPlan.js`'s data shape, but checked for real on-page state anyway),
+  or an approve in real mode (not implemented, see below).
+
+## Real placement is NOT implemented
+
+`buildBetOnBetfair` stops at "slip built, verified" and never clicks Place
+Bet. On a real-mode approve, `main()` deliberately throws
+`RealPlacementNotImplementedError` rather than guessing at that click.
+Given this project's own history (a real accidental live placement earlier
+from a missed env var), this needs careful, explicit implementation and
+review before it exists -- not something to add casually alongside other
+fixes.
 
 ## Known open questions for whoever tests this first
 
@@ -81,7 +119,15 @@ claimed entry for it to attach to.
   and tighten the deterministic locator for any step that falls back
   often -- the whole point of this design is that the fallback rate should
   trend toward zero as selectors get corrected, not stay a fixed 10%.
-- **Integration/trigger**: not decided yet -- see `../STAGEHAND_PLAN.md`'s
-  status section. For now this is a standalone script; something (most
-  likely OpenClaw) needs to actually invoke it when a placement is due, and
-  relay a hard-stop failure to Winston the same way Anne does today.
+- **Integration/trigger**: partly decided -- `driver.js` now owns the full
+  wait-for-approval, two-bet lifecycle itself (it didn't before this edit),
+  so OpenClaw's job narrows to: (1) invoke it when a placement is due, (2)
+  watch its stdout for `SCREENSHOT_READY:` lines and actually send that
+  screenshot + a notification to Winston, and (3) relay a hard-stop failure
+  to Winston the same way Anne does today. None of that wrapping exists
+  yet -- see `../STAGEHAND_PLAN.md`'s status section.
+- **Two-bet/decision-wait loop is untested live** -- written this session,
+  not yet run against a real queue job. Watch specifically: does
+  `clearBetslip`'s "Remove all" selector actually work (recon never tested
+  it), does the poll loop actually pick up a decision recorded while it's
+  mid-sleep, and does Bet 2 build cleanly after Bet 1's slip is cleared.

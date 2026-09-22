@@ -1,11 +1,13 @@
 // Drives a real Betfair Sportsbook bet build for whichever player is next
-// in the relay's placement queue, using the ordered plan from
-// ../betfairPlan.js and the page structure documented in
-// ../SPORTSBOOK_RECON.md. Runs on the Mac (needs GB routing + a real
-// Betfair login), invoked as `node driver.js` -- no player arg, it claims
-// /betfair-place-request/next the same way Anne's own poll does, so there
-// needs to be an actual pending request first (the app's "place bet"
-// button, or POST /betfair-place-request manually).
+// in the relay's placement queue -- BOTH of their bets (Bet 1 then Bet 2,
+// this product's actual two-bet-per-player structure), waiting for
+// Winston's approval in the app between each one, same lifecycle Anne
+// always had. Uses the ordered plan from ../betfairPlan.js and the page
+// structure documented in ../SPORTSBOOK_RECON.md. Runs on the Mac (needs GB
+// routing + a real Betfair login), invoked as `node driver.js` -- no player
+// arg, it claims /betfair-place-request/next the same way Anne's own poll
+// does, so there needs to be an actual pending request first (the app's
+// "place bet" button, or POST /betfair-place-request manually).
 //
 // Connects to Anne/OpenClaw's own already-running "betfair" browser via CDP
 // (chromium.connectOverCDP) instead of maintaining a separate profile.
@@ -240,6 +242,22 @@ async function verifyMultiples(page) {
 
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+// Saves a screenshot of the built slip and logs its path with a distinct,
+// greppable prefix -- driver.js has no Telegram integration of its own (no
+// messaging capability exists in this file at all), so this is the hand-off
+// contract: whatever wraps this script (OpenClaw, per the pending
+// integration decision) is responsible for finding this path and actually
+// sending it to Winston. Winston's own explicit requirement after tonight's
+// test runs: a screenshot + notification per bet, not a silent relay POST.
+async function takeScreenshot(page, player, label) {
+  const dir = "./screenshots";
+  await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
+  const path = `${dir}/${player}-${label}-${Date.now()}.png`;
+  await page.screenshot({ path, fullPage: true });
+  console.log(`[betfair-driver] SCREENSHOT_READY: ${path}`);
+  return path;
+}
+
 // Claims the next pending job from the relay's queue -- the same
 // /betfair-place-request/next endpoint Anne's own cron poll uses, with the
 // same one-at-a-time serialization (getNext() returns null if anything's
@@ -249,14 +267,21 @@ function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"
 // 404'd later -- there was never a claimed entry for it to attach to.
 // Whoever the queue hands back is who gets processed; there's no way to
 // request a specific player, same as Anne never could either.
+// Confirmed live (2026-09-22): /next already server-side filters bets to
+// just this player -- data.bets normally holds BOTH of their bet columns
+// (Bet 1, Bet 2, the product's actual two-bet-per-player structure), not
+// one. An earlier version used .find() here and silently discarded the
+// second one, with no mechanism at all to build/report it afterward. Kept
+// sorted by sheetColIdx so Bet 1 always processes before Bet 2, matching
+// how the columns are laid out in the Sheet.
 async function claimNextJob() {
   const res = await fetch(`${RELAY_URL}/betfair-place-request/next`);
   if (!res.ok) throw new Error(`betfair-place-request/next ${res.status}`);
   const data = await res.json();
   if (!data.job) return null;
-  const bet = (data.bets || []).find((b) => b.player === data.job.player);
-  if (!bet) throw new Error(`Claimed a job for "${data.job.player}" but /next returned no matching bet for them`);
-  return { player: data.job.player, test: data.job.test, bet };
+  const bets = (data.bets || []).filter((b) => b.player === data.job.player).sort((a, b) => a.sheetColIdx - b.sheetColIdx);
+  if (!bets.length) throw new Error(`Claimed a job for "${data.job.player}" but /next returned no matching bets for them`);
+  return { player: data.job.player, test: data.job.test, bets };
 }
 
 async function postAwaitingConfirmation(player, pendingBet) {
@@ -265,6 +290,58 @@ async function postAwaitingConfirmation(player, pendingBet) {
     body: JSON.stringify({ player, bet: pendingBet }),
   });
   if (!res.ok) throw new Error(`awaiting-confirmation ${res.status}`);
+}
+
+// Atomically reads (and clears) Winston's decision, same as Anne's own poll
+// always used -- see betfairQueue.js's takeDecision(). Polls rather than a
+// single check, since a real confirmation can reasonably take minutes or
+// hours (awaiting_confirmation deliberately has no expiry of its own, see
+// markAwaitingConfirmation()'s own comment) -- this loop is the actual
+// decision-consumer that was entirely missing before tonight (confirmed
+// live: no cron/launchd/agent process existed anywhere to do this).
+async function pollForDecision(player, { intervalMs = 20000, logEveryMs = 300000 } = {}) {
+  let lastLog = Date.now();
+  console.log(`[betfair-driver] SCREENSHOT_READY handoff above -- now waiting for ${player}'s approval in the app. Whatever wraps this script should send that screenshot + a notification now.`);
+  for (;;) {
+    const res = await fetch(`${RELAY_URL}/betfair-place-request/decision?player=${encodeURIComponent(player)}`);
+    if (!res.ok) throw new Error(`betfair-place-request/decision ${res.status}`);
+    const data = await res.json();
+    if (data.decision) return data.decision;
+    if (Date.now() - lastLog > logEveryMs) { console.log(`[betfair-driver] Still waiting on ${player}'s decision...`); lastLog = Date.now(); }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
+// Best-effort, idempotent -- safe to call even if the slip's already empty
+// (real placement clears it automatically; test mode never does, so this is
+// what stops Bet 1's legs bleeding into Bet 2's build and merging into one
+// wrong combined slip instead of two separate accumulators).
+async function clearBetslip(page) {
+  await page.getByRole("button", { name: "Remove all" }).click({ timeout: 5000 }).catch(() => {});
+}
+
+async function reportPlaced(player, test) {
+  // test:true skips every real Sheet write (see server.js's own comment on
+  // this endpoint) -- no real win amounts exist for a job that was only
+  // ever simulated, and sending fake ones would corrupt real Sheet data.
+  // Still clears the queue claim exactly like a real result would.
+  const res = await fetch(`${RELAY_URL}/betfair-place-result`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player, test, results: [] }),
+  });
+  if (!res.ok) throw new Error(`betfair-place-result ${res.status}`);
+}
+
+// A reject means nothing was (or, in test mode, would have been) placed --
+// there's no result to report, just an unstick. /betfair-place-result
+// assumes something WAS placed (or is a test run standing in for one); it
+// isn't the right shape for "never placed, stop here."
+async function clearJob(player) {
+  const res = await fetch(`${RELAY_URL}/betfair-place-request/clear`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player }),
+  });
+  if (!res.ok) throw new Error(`betfair-place-request/clear ${res.status}`);
 }
 
 // Builds the bet on Betfair up to (never including) the actual Place Bet
@@ -299,6 +376,18 @@ async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
   await verifyMultiples(page);
 }
 
+// Raised deliberately, not silently skipped -- real placement (clicking
+// Place Bet with real money) is NOT implemented in this file. Given this
+// project's own history (a real accidental live placement earlier from a
+// missed env var), guessing at that click without careful, explicit review
+// is exactly the kind of shortcut this whole rewrite exists to avoid. Test
+// mode's approve path is fully implemented (simulate, don't click,
+// continue); real mode's approve path hard-stops here on purpose until
+// someone deliberately builds and reviews it.
+class RealPlacementNotImplementedError extends Error {
+  constructor(player) { super(`${player}'s bet was approved for REAL placement, but driver.js doesn't implement clicking Place Bet yet -- refusing to proceed automatically. Needs deliberate review before this path exists.`); this.name = "RealPlacementNotImplementedError"; }
+}
+
 async function main() {
   // No player CLI arg anymore -- claimNextJob() (like Anne's own poll)
   // takes whichever job the queue hands back, it can't be requested by
@@ -306,13 +395,8 @@ async function main() {
   // or manually) first to actually have something pending to claim.
   const claimed = await claimNextJob();
   if (!claimed) { console.log("[betfair-driver] No pending job in the queue -- nothing to do."); process.exit(0); }
-  const { player, test, bet: exportedBet } = claimed;
-  console.log(`[betfair-driver] Claimed job for ${player}${test ? " (test mode)" : ""}.`);
-
-  const plan = buildBetPlan(exportedBet);
-  if (plan.skipped.length) {
-    console.log(`[betfair-driver] ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
-  }
+  const { player, test, bets } = claimed;
+  console.log(`[betfair-driver] Claimed job for ${player}${test ? " (test mode)" : ""} -- ${bets.length} bet(s) to build.`);
 
   // Connect to Anne/OpenClaw's already-running browser rather than
   // launching anything -- confirmed live (2026-09-22) via a standalone
@@ -344,16 +428,47 @@ async function main() {
   // wasn't optional for this installed version.
   await stagehand.init();
 
-  // Created here, not inside buildBetOnBetfair -- entries is mutated in
-  // place via push(), so it stays populated and reachable from the catch
-  // block below even if buildBetOnBetfair throws partway through, not just
-  // on a clean return.
+  // One shared log across BOTH bets -- real cost data should reflect the
+  // whole job, not reset per bet.
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
 
   try {
-    await buildBetOnBetfair(page, stagehand, plan, withAiFallback);
-    await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped });
-    console.log(`[betfair-driver] Slip built and reported for ${player}. AI fallback used ${fallbackLog.length} time(s):`, fallbackLog);
+    for (const [i, exportedBet] of bets.entries()) {
+      const label = `bet${i + 1}`;
+      const plan = buildBetPlan(exportedBet);
+      if (plan.skipped.length) {
+        console.log(`[betfair-driver] ${label}: ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
+      }
+
+      // Idempotent, always run -- Bet 1's legs are still sitting in the
+      // slip going into Bet 2's build (test mode never places for real, so
+      // nothing clears it automatically), which would otherwise merge into
+      // one wrong combined slip instead of two separate accumulators.
+      await clearBetslip(page);
+      await buildBetOnBetfair(page, stagehand, plan, withAiFallback);
+      const screenshotPath = await takeScreenshot(page, player, label);
+      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1 });
+      console.log(`[betfair-driver] ${label} built and reported for ${player}.`);
+
+      const decision = await pollForDecision(player);
+      console.log(`[betfair-driver] ${label} decision: ${decision}`);
+
+      if (decision === "reject") {
+        await clearJob(player);
+        console.log(`[betfair-driver] ${player} rejected ${label} -- stopping here, not building any further bets for this job.`);
+        break;
+      }
+
+      // decision === "approve" from here on.
+      if (!test) throw new RealPlacementNotImplementedError(player);
+      console.log(`[betfair-driver] ${label} approved (test mode) -- simulating placement, not clicking Place Bet.`);
+
+      // Only report as fully placed once every bet in this job has been
+      // approved -- reportPlaced() clears the queue claim, which should
+      // only happen after the LAST bet, not after Bet 1 while Bet 2 is
+      // still pending.
+      if (i === bets.length - 1) await reportPlaced(player, test);
+    }
   } catch (err) {
     console.error(`[betfair-driver] Hard stop for ${player}:`, err.message);
     process.exitCode = 1;
@@ -367,6 +482,7 @@ async function main() {
     // different calls). Real, per-call measured cost data, logged
     // regardless of success or hard stop -- a fallback may have already run
     // and cost something before a later step failed.
+    console.log(`[betfair-driver] AI fallback used ${fallbackLog.length} time(s) across this job:`, fallbackLog);
     console.log(`[betfair-driver] Real summed usage/cost this run:`, sumMetrics(fallbackLog.map((e) => e.metrics)));
     // Close only the tab this script opened -- never context.close() or
     // browser.close() here, either of those would tear down Anne's actual

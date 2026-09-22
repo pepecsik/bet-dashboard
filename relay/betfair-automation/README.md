@@ -48,9 +48,20 @@ instead of maintaining a separate profile.
 ## Running it
 
 ```
-node driver.js Pepe
+node driver.js
 ```
 
+No player argument -- confirmed live (2026-09-22) this needs a real pending
+request in the relay's queue first (the app's "place bet" button, or
+`POST /betfair-place-request` manually), the same way Anne's own poll does.
+`driver.js` claims whichever job `/betfair-place-request/next` hands back
+(one-at-a-time serialization, same as always); there's no way to request a
+specific player. An earlier version skipped this claim step entirely and
+went straight to the read-only `/betfair-export`, which is why the very
+first full run 404'd on the final report-back step -- there was never a
+claimed entry for it to attach to.
+
+- Exits 0 and logs "No pending job" if the queue is empty -- nothing to do.
 - Exits 0 and logs the AI-fallback count on success (slip built, reported to
   the relay as `awaiting_confirmation`).
 - Exits 1 and logs the error on any hard stop -- including a genuine

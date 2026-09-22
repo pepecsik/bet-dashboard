@@ -1,7 +1,11 @@
-// Drives a real Betfair Sportsbook bet build for one player, using the
-// ordered plan from ../betfairPlan.js and the page structure documented in
+// Drives a real Betfair Sportsbook bet build for whichever player is next
+// in the relay's placement queue, using the ordered plan from
+// ../betfairPlan.js and the page structure documented in
 // ../SPORTSBOOK_RECON.md. Runs on the Mac (needs GB routing + a real
-// Betfair login), invoked as `node driver.js <player>`.
+// Betfair login), invoked as `node driver.js` -- no player arg, it claims
+// /betfair-place-request/next the same way Anne's own poll does, so there
+// needs to be an actual pending request first (the app's "place bet"
+// button, or POST /betfair-place-request manually).
 //
 // Connects to Anne/OpenClaw's own already-running "betfair" browser via CDP
 // (chromium.connectOverCDP) instead of maintaining a separate profile.
@@ -195,13 +199,23 @@ async function verifyMultiples(page) {
 
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
-async function fetchExportedBet(player) {
-  const res = await fetch(`${RELAY_URL}/betfair-export`);
-  if (!res.ok) throw new Error(`betfair-export ${res.status}`);
+// Claims the next pending job from the relay's queue -- the same
+// /betfair-place-request/next endpoint Anne's own cron poll uses, with the
+// same one-at-a-time serialization (getNext() returns null if anything's
+// already claimed, not just when the queue is empty). Confirmed live
+// (2026-09-22): driver.js originally skipped this and went straight to the
+// read-only /betfair-export instead, so /awaiting-confirmation correctly
+// 404'd later -- there was never a claimed entry for it to attach to.
+// Whoever the queue hands back is who gets processed; there's no way to
+// request a specific player, same as Anne never could either.
+async function claimNextJob() {
+  const res = await fetch(`${RELAY_URL}/betfair-place-request/next`);
+  if (!res.ok) throw new Error(`betfair-place-request/next ${res.status}`);
   const data = await res.json();
-  const bet = (data.bets || []).find((b) => b.player === player);
-  if (!bet) throw new Error(`No exported bet found for player "${player}"`);
-  return bet;
+  if (!data.job) return null;
+  const bet = (data.bets || []).find((b) => b.player === data.job.player);
+  if (!bet) throw new Error(`Claimed a job for "${data.job.player}" but /next returned no matching bet for them`);
+  return { player: data.job.player, test: data.job.test, bet };
 }
 
 async function postAwaitingConfirmation(player, pendingBet) {
@@ -244,10 +258,15 @@ async function buildBetOnBetfair(page, stagehand, plan) {
 }
 
 async function main() {
-  const player = process.argv[2];
-  if (!player) { console.error("Usage: node driver.js <Player>"); process.exit(1); }
+  // No player CLI arg anymore -- claimNextJob() (like Anne's own poll)
+  // takes whichever job the queue hands back, it can't be requested by
+  // name. Run `POST /betfair-place-request` (the app's "place bet" button,
+  // or manually) first to actually have something pending to claim.
+  const claimed = await claimNextJob();
+  if (!claimed) { console.log("[betfair-driver] No pending job in the queue -- nothing to do."); process.exit(0); }
+  const { player, test, bet: exportedBet } = claimed;
+  console.log(`[betfair-driver] Claimed job for ${player}${test ? " (test mode)" : ""}.`);
 
-  const exportedBet = await fetchExportedBet(player);
   const plan = buildBetPlan(exportedBet);
   if (plan.skipped.length) {
     console.log(`[betfair-driver] ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);

@@ -302,6 +302,17 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     const m = step.selection.match(/^(Over|Under)\s+(\d+(?:\.\d+)?)$/);
     if (!m) throw new Error(`Unrecognized Over/Under selection format: "${step.selection}"`);
     const [, direction, line] = m;
+    // Explicit wait for the card itself, before checking for the requested
+    // line -- confirmed live (2026-09-22): the scoped "Show More" click
+    // (below) still timed out on a freshly-navigated page despite the
+    // exact same selector resolving instantly on a settled instance of the
+    // same page. Leading hypothesis, untested until now: waitUntil:
+    // "networkidle" doesn't guarantee every accordion card has actually
+    // finished rendering, particularly ones with their own async pricing
+    // calls (e.g. Bet Builder). "0.5 Goals" is always visible by default
+    // per SPORTSBOOK_RECON.md, so waiting for it directly tests the
+    // settle-timing theory instead of assuming it.
+    await page.getByText("0.5 Goals", { exact: true }).waitFor({ state: "visible" });
     const lineLabel = page.getByText(`${line} Goals`, { exact: true });
     if ((await lineLabel.count()) === 0) {
       // Higher goal lines are hidden behind "Show More" by default.

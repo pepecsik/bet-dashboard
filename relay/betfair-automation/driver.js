@@ -204,7 +204,11 @@ async function main() {
     console.log(`[betfair-driver] ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
   }
 
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, { headless: false });
+  // ignoreDefaultArgs is required -- Playwright's default persistent-context
+  // launch passes --disable-extensions, which would silently kill the
+  // NordVPN extension this profile depends on for GB routing on every real
+  // run, not just the one-time setup (found live while setting this up).
+  const context = await chromium.launchPersistentContext(PROFILE_DIR, { headless: false, ignoreDefaultArgs: ["--disable-extensions"] });
   const page = context.pages()[0] || (await context.newPage());
   const stagehand = new Stagehand({ env: "LOCAL", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
 

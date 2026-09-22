@@ -78,7 +78,139 @@ Also worth remembering from tonight, for context if it comes up again:
 - Scope is deliberately narrow: English Premier League only, Match Odds +
   Over/Under Goals + Correct Score only. Nothing else.
 
-## Status (last updated 2026-09-22, later same day, third session)
+## Status (last updated 2026-09-22, end of third session -- stopped here, pick up next session)
+
+**Where things actually stand right now**: the deterministic build path is
+solid (Bet 1 -- always Match Odds only in this test data -- has now built
+correctly, independently verified, on every single run for the last ~6
+consecutive attempts). Bet 2 (which includes match-page picks: Correct
+Score / Over-Under Goals) has hit a real, still-unresolved timing bug on
+its Over/Under leg's "Show More" click, three times in a row, even after a
+fix aimed directly at it. The very last diagnostic step (getting the exact
+error from the third attempt, with the settle-wait fix applied) was cut off
+mid-check by a session usage limit -- **that's the literal next thing to do
+next session**: ask OpenClaw to re-check what error the third attempt
+actually produced (it had already confirmed the leftover tab stayed
+untouched -- tab-binding fix still holding -- but hadn't yet reported
+whether the settle-wait fix changed the Show More timeout itself).
+
+**Big confirmed win this session**: the long-open "does the AI fallback act
+on driver.js's own tab or a different one" question is now definitively
+resolved. Root cause found by reading the installed
+`@browserbasehq/stagehand@2.5.9` source directly: `page` was never a real
+constructor parameter in this version at all (silently dropped by JS
+destructuring), and `Stagehand.init()` -- with no existing-page option
+anywhere in its actual full parameter list (confirmed complete: env,
+apiKey, projectId, verbose, llmProvider, llmClient, logger,
+browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching,
+browserbaseSessionID, modelName, modelClientOptions, systemPrompt, useAPI,
+localBrowserLaunchOptions, waitForCaptchaSolves, logInferenceToFile,
+selfHeal, disablePino, experimental) -- was activating whichever page
+`context.pages()` happened to return first, which for most of tonight was a
+leftover tab, not driver.js's own. Confirmed live twice with a screenshot:
+once catching the fallback actually navigating the wrong tab, once
+confirming a real fix (`stagehand.stagehandContext.getStagehandPage(page)`,
+the actual public, intended override) left that same leftover tab
+completely untouched on the next run. This was deliberately NOT fixed by
+closing other tabs first, since that could close something Anne is
+genuinely using.
+
+### Every fix shipped this session, in order (all in `relay/betfair-automation/driver.js` unless noted)
+
+1. Two-bet handling: `claimNextJob()` was using `.find()` and silently
+   discarding the second of a player's two bet columns; `/next` already
+   returns both (server-side filter). Switched to `.filter()`+sort.
+2. Added the entire missing decision-wait lifecycle: `pollForDecision()`
+   (same atomic `takeDecision()` endpoint Anne's poll always used),
+   looped per-bet: build -> clear betslip -> screenshot -> report ->
+   wait for decision -> reject clears the job and stops, approve
+   continues to the next bet.
+3. Added the Telegram hand-off contract (`SCREENSHOT_READY: <path>` log
+   line) -- driver.js has zero messaging capability of its own, on
+   purpose; something else has to watch for this line and act on it.
+4. Explicitly refuses real-mode placement
+   (`RealPlacementNotImplementedError`) rather than guessing at the Place
+   Bet click -- stays unbuilt pending careful review.
+5. **The actual empty-slip bug, found via extensive live diagnosis**:
+   Betfair's price buttons are toggles (clicking an already-selected one
+   deselects it); `clearBetslip()`'s old `.catch(() => {})` silently
+   swallowed failures to actually clear. Fixed: `clearBetslip()` now
+   verifies the slip reads empty and throws if not; every leg-click now
+   verifies via a real betslip snapshot (`betslipSnapshot()`,
+   `clickAndVerifyLeg()`) that the leg actually appears, retrying once
+   before throwing.
+6. Fixed `clearBetslip()` running before ANY navigation on Bet 1 (a
+   brand-new tab starts on `about:blank`) -- navigate once before the
+   per-bet loop starts, not inside it.
+7. Fixed the stake never being filled at all (Potential Return always
+   showed £0) -- then fixed AGAIN when the first attempt's `.first()`
+   selector turned out to hit the Singles tab's stake box instead of the
+   Multiples one (both coexist in the DOM regardless of active tab).
+   Final, verified-working version anchors to the "Additional Multiples"
+   heading.
+8. Fixed Stagehand launching its own separate, unauthenticated throwaway
+   browser (the blank-Chrome-window bug Winston kept noticing) --
+   `cdpUrl` was left `undefined`; set to the same `CDP_URL` driver.js
+   itself connects with.
+9. Rebuilt Stagehand fresh per bet instead of once for the whole job --
+   a `StagehandTargetClosedError` hit exactly at the Bet 1 -> Bet 2
+   handoff after a real multi-minute idle wait in `pollForDecision`;
+   theory is the CDP session isn't resilient to sitting idle that long.
+10. Fixed a match-page URL bug (missing slash, produced
+    `net::ERR_TUNNEL_CONNECTION_FAILED`) -- first with a manual fix, then
+    properly with the real `URL` class for robust joining.
+11. Added 10 total confirmed Betfair display-name overrides this session
+    (Leeds United, Ipswich Town, Brighton & Hove Albion, Manchester
+    United, Tottenham Hotspur, Nottingham Forest, Coventry City,
+    Newcastle United, Hull City, Manchester City -- this last one
+    inferred from a garbled report, worth a real re-confirm).
+12. Added real verification to the AI fallback path itself -- it never
+    checked whether its own claimed-successful `.act()` calls had
+    actually added a leg; a run with 7 "successful" fallback calls later
+    hard-stopped because too few legs had actually landed. Now checks the
+    real page's betslip after every fallback call.
+13. **The tab-binding fix** (see above, the big one) --
+    `getStagehandPage(page)`.
+14. Fixed the "Show More" button being completely unscoped (3 matching
+    buttons existed on the page, causing a 30s ambiguous-actionability
+    hang, not a clean error) -- anchored to the "Over / Under Goals"
+    card's own heading.
+15. Added an explicit wait for "0.5 Goals" (always visible by default)
+    before attempting the Show More click, testing a settle-timing
+    hypothesis -- **result of this specific test is what got cut off**,
+    pick this up first next session.
+
+### Known open items, not yet fixed
+
+- **The Show More timing bug itself** -- still open as of this save, see
+  above. Three consecutive Bet 2 attempts hit the identical failure
+  signature (`waiting for getByRole('button', {name:'Over / Under
+  Goals'})...Show More...`) despite the selector being independently
+  re-verified correct and resolving instantly on a settled instance of the
+  same page each time. Whether the settle-wait (fix #15) actually changes
+  this is unconfirmed -- check first.
+- **Potential Return / combined odds never reported to the relay** -- the
+  app still shows £0 even on a fully correct build, because
+  `postAwaitingConfirmation()`'s payload never included this figure.
+  Winston flagged this; a selector was never actually nailed down (the one
+  attempt got interrupted by a live race with Bet 1's approval). Still
+  needs doing.
+- **No Telegram screenshot has ever actually been sent** -- explained,
+  not a bug: the Claude Code CLI session running all of tonight's tests
+  has no Telegram-sending capability at all. `DRIVER_MANUAL.md` (written
+  this session, lives in OpenClaw's `workspace-betfair` folder, not this
+  repo) is the procedure for whoever DOES have that capability (Anne) to
+  follow -- but Anne has not been the one running these tests tonight.
+  This needs a real decision about who/what actually runs driver.js going
+  forward.
+- **Real placement (clicking Place Bet) is still entirely unimplemented**,
+  on purpose -- stays that way until deliberately built and reviewed.
+- **The trigger/integration question (task 3, original plan)** is still
+  not fully decided -- `DRIVER_MANUAL.md` exists as a manual, on-demand
+  procedure, deliberately not automated yet, given how many real bugs
+  nearly every run has surfaced this session alone.
+
+### Old status (superseded by the above, kept for history)
 
 **Important correction to the two "successful" runs noted below**: both
 were validated only by trusting driver.js's own reported success, never by

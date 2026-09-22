@@ -78,13 +78,88 @@ Also worth remembering from tonight, for context if it comes up again:
 - Scope is deliberately narrow: English Premier League only, Match Odds +
   Over/Under Goals + Correct Score only. Nothing else.
 
-**Step 2 (build the actual flow as real code, Stagehand on top of
-Playwright) is next** — not started yet. This is a real coding session:
-write the automation against `SPORTSBOOK_RECON.md`'s selectors/URLs, doing
-all main-page Match Odds legs first, then match-page Goals/Correct-Score legs
-second (skipping any fixture that would create a same-match pairing, or
-splitting it into a separate bet), running against the existing local
-Chrome/Betfair-logged-in `betfair` profile — not a cloud VM. AI (GPT-5 mini,
-tentatively) only gets invoked for what the reference file doesn't cover.
+## Status (last updated 2026-09-22, later same session)
 
-Pick this up here next session.
+**Step 2 is built and has had two full successful end-to-end test runs**,
+in `relay/betfair-automation/` (`betfairPlan.js` for the pure ordered-plan
+layer, `driver.js` for the actual browser driving). Architecture ended up
+different from the original guess in one big way, plus several real bugs
+found and fixed only by actually running it live:
+
+- **Doesn't launch its own Chrome profile** -- that was tried first and
+  abandoned after real, repeated failures: the NordVPN extension wouldn't
+  reliably land on GB across restarts (Brazil, then Portugal, on
+  consecutive clean relaunches), plus the Chrome Web Store refusing to
+  install extensions into Playwright's bundled Chromium. Switched to
+  `chromium.connectOverCDP` against Anne/OpenClaw's own already-running,
+  already-logged-in, already-GB-routed browser instead -- confirmed live
+  this works cleanly, `driver.js` just opens its own new tab there.
+- Real bugs found only through live testing, all fixed: Betfair displaying
+  some teams under short/different names than the full official name
+  (Leeds United->Leeds, Ipswich Town->Ipswich, Brighton & Hove
+  Albion->Brighton, Manchester United->Man Utd, Tottenham Hotspur
+  ->Tottenham -- see `BETFAIR_DISPLAY_NAME_OVERRIDES` in driver.js);
+  `buildFixtureIndex` bypassing the AI fallback entirely and aborting the
+  whole batch on one match's failure instead of isolating it; a missing
+  `NordVPN extension dropped on launch` fix (`ignoreDefaultArgs`); a missing
+  `stagehand.init()` call; `modelName` needing an `"openai/"` prefix for
+  this Stagehand version; a process that never exited on its own (CDP
+  WebSocket keeps a handle open); and, biggest one, `driver.js` originally
+  skipped the actual queue-claim step (`/betfair-place-request/next`)
+  entirely and went straight to a read-only export endpoint, so the final
+  report-back 404'd -- fixed to claim properly, same as Anne's own poll
+  always did.
+- Cost tracking fixed too: `stagehand.metrics` (the raw aggregate) was
+  shown to report identical token counts across different calls with
+  different prompt lengths -- not plausible for genuine measurements.
+  Switched to snapshotting metrics before/after each individual fallback
+  call and summing real deltas, with the raw before/after pairs also kept
+  in case `.metrics` turns out to reset per call rather than accumulate
+  (still not confirmed either way -- needs a run that actually hits an
+  unmapped name again to get real evidence).
+- **Two full test runs** (both `test: true`, no real money): first needed 2
+  AI fallback calls (Leeds United, Ipswich Town, before they were mapped) and
+  succeeded; second was fully deterministic, zero fallback calls, zero AI
+  cost -- exactly the "fallback rate trends to zero" goal.
+
+## Real gaps found, NOT yet built -- pick up here next session
+
+1. **No decision-consumer at all.** `driver.js` posts the bet to
+   `awaiting_confirmation` and exits. Nothing watches for Winston's
+   Approve/Reject afterward -- approving in the app right now just records
+   a decision that sits there forever, untouched. Confirmed live: no cron,
+   no launchd job, no live agent session exists anywhere that would pick
+   this up (checked directly, not assumed).
+2. **Only handles one of a player's two bets, silently.** Each player has
+   two separate accumulator columns (Bet 1 and Bet 2, the original
+   structure this whole project has always used), but `claimNextJob()`'s
+   `.find()` grabs the first matching header for that player and ignores
+   the second entirely. No mechanism exists for "approve bet 1 -> build and
+   report bet 2." This is a real, silent gap, not just unfinished --
+   whoever picks this up needs to fix `claimNextJob`/`betfairPlan.js` to
+   handle both, not just notice the second one is missing.
+3. **No Telegram screenshot/notification at all.** Winston's explicit
+   requirement, stated after tonight's test runs: after building each bet,
+   the flow should send a screenshot + message via Telegram (same as Anne
+   always did), then genuinely pause and wait for the app approval -- not
+   just silently post to the relay and exit. After approval, it should
+   build and report the *second* bet the same way, wait again, and only
+   then be done. None of this exists yet -- `driver.js` currently has zero
+   Telegram/messaging capability, it's a silent CLI script.
+
+Net: the deterministic build-and-report half works and is proven live. The
+whole "wait for approval, notify, continue to bet 2" half -- which is most
+of what actually makes this usable day-to-day -- doesn't exist yet. That's
+the next real chunk of work, not a quick patch.
+
+## Rough real cost data (from actual runs, not estimates)
+
+- Fully deterministic run (all names already mapped): **$0.00**, zero LLM
+  calls.
+- Run needing 2 AI fallback calls (unmapped names): roughly 1383 prompt +
+  32 completion tokens reported, under a tenth of a cent at GPT-5 mini
+  pricing -- but that number came from the metrics tracking later proven
+  unreliable (identical counts across different calls), so treat it as
+  rough-order-of-magnitude only, not confirmed. The fix shipped this
+  session (real per-call delta snapshotting) should give trustworthy
+  numbers the next time the fallback actually fires.

@@ -104,7 +104,19 @@ function makeFallbackLog() {
   const entries = [];
   return {
     entries,
-    async withAiFallback(stagehand, description, deterministicFn) {
+    // page (driver.js's own real page, NOT stagehand.page) plus matchLabel
+    // and selection are used to verify the fallback actually worked, not
+    // just that .act() didn't throw. Confirmed live (2026-09-22): a run
+    // with 7 fallback calls, all reporting success with real non-zero token
+    // usage, hit a hard stop later because too few legs had actually
+    // landed -- nothing had ever checked whether a fallback call's claimed
+    // success matched reality, unlike the deterministic path's own
+    // clickAndVerifyLeg. Checking the REAL page's betslip (not
+    // stagehand.page) also incidentally covers the still-open question of
+    // whether stagehand.page is even the same tab -- if the fallback acted
+    // on a disconnected tab, the real page's betslip genuinely won't show
+    // the leg, and this now catches that loudly instead of silently.
+    async withAiFallback(page, stagehand, description, matchLabel, selection, deterministicFn) {
       try {
         return await deterministicFn();
       } catch (err) {
@@ -122,6 +134,11 @@ function makeFallbackLog() {
         // actual sequence be inspected directly to settle which model is
         // true, rather than trusting either guess blind.
         entries.push({ description, deterministicError: err.message, at: new Date().toISOString(), metricsBefore: before, metricsAfter: after, metrics: metricsDelta(before, after) });
+
+        const snapshot = await betslipSnapshot(page);
+        if (!selectionAppearsIn(snapshot, selection)) {
+          throw new Error(`AI fallback for ${matchLabel} ("${selection}") reported success but the leg never appeared in the betslip -- betslip shows: "${snapshot}"`);
+        }
         return result;
       }
     },
@@ -143,6 +160,14 @@ const BETFAIR_DISPLAY_NAME_OVERRIDES = {
   "Brighton & Hove Albion": "Brighton",
   "Manchester United": "Man Utd",
   "Tottenham Hotspur": "Tottenham",
+  "Nottingham Forest": "Nottm Forest",
+  "Coventry City": "Coventry",
+  "Newcastle United": "Newcastle",
+  "Hull City": "Hull",
+  // "Man City" is inferred (consistent with the "Man Utd" pattern), not
+  // explicitly re-confirmed from a garbled report -- verify this one
+  // specifically against a real screenshot before trusting it blindly.
+  "Manchester City": "Man City",
 };
 function betfairDisplayName(fullName) { return BETFAIR_DISPLAY_NAME_OVERRIDES[fullName] || fullName; }
 
@@ -242,7 +267,16 @@ async function executeListPick(page, step, fixtureEntry) {
 
 async function executeMatchPagePick(page, step, fixtureEntry) {
   if (!fixtureEntry || !fixtureEntry.href) throw new Error(`No captured href for "${step.match}" -- can't navigate without guessing the URL`);
-  const url = step.tab === "all-markets" ? `https://www.betfair.com${fixtureEntry.href}?tab=all-markets` : `https://www.betfair.com${fixtureEntry.href}`;
+  // Confirmed live (2026-09-22): fixtureEntry.href (a real getAttribute("href")
+  // read, per SPORTSBOOK_RECON.md's documented format) has no leading slash --
+  // the old template concatenated it directly onto ".com", producing
+  // "betfair.comfootball/..." and a hard network failure
+  // (net::ERR_TUNNEL_CONNECTION_FAILED), not a selector issue. This bug had
+  // never been exercised live before now -- every prior successful test
+  // job's plan happened to be all Match Odds (list-pick) legs, with zero
+  // match-page-pick legs in the mix, until this run's Bet 2 included some.
+  const base = `https://www.betfair.com/${fixtureEntry.href}`;
+  const url = step.tab === "all-markets" ? `${base}?tab=all-markets` : base;
   await page.goto(url, { waitUntil: "networkidle" });
   assertNotChallenged(page);
 
@@ -461,7 +495,7 @@ async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
     const description = step.type === "list-pick"
       ? `On the EPL fixtures list (${EPL_FIXTURES_URL}), find the ${step.match} fixture and click its ${step.position} price button`
       : `Navigate to the ${step.match} match page (search the EPL fixtures list at ${EPL_FIXTURES_URL} first if you're not already there), then back "${step.selection}" in the ${step.market} market`;
-    await withAiFallback(stagehand, description, () =>
+    await withAiFallback(page, stagehand, description, step.match, step.selection, () =>
       step.type === "list-pick" ? executeListPick(page, step, fixtureEntry) : executeMatchPagePick(page, step, fixtureEntry)
     );
   }

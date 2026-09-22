@@ -95,6 +95,7 @@ function makeFallbackLog() {
 // falls through to the AI fallback, same as before.
 const BETFAIR_DISPLAY_NAME_OVERRIDES = {
   "Leeds United": "Leeds",
+  "Ipswich Town": "Ipswich",
 };
 function betfairDisplayName(fullName) { return BETFAIR_DISPLAY_NAME_OVERRIDES[fullName] || fullName; }
 
@@ -110,16 +111,28 @@ async function buildFixtureIndex(page, matchesNeeded) {
 
   const index = {};
   for (const { match, homeTeam, awayTeam } of matchesNeeded) {
-    // The fixture link's accessible name is "<Home> <Away> <date/time>" --
-    // matching on both team names anchors it even though the exact date/time
-    // text isn't known ahead of time.
-    const link = page.getByRole("link", { name: new RegExp(`${escapeRegex(betfairDisplayName(homeTeam))}.*${escapeRegex(betfairDisplayName(awayTeam))}`, "i") }).first();
-    const href = await link.getAttribute("href");
-    // The three price buttons (home/draw/away) are the row's next three
-    // sibling buttons after the link, per the documented row structure.
-    const row = link.locator("xpath=ancestor::*[self::tr or self::li or self::div][1]");
-    const priceButtons = row.getByRole("button");
-    index[match] = { href, priceButtons };
+    try {
+      // The fixture link's accessible name is "<Home> <Away> <date/time>" --
+      // matching on both team names anchors it even though the exact
+      // date/time text isn't known ahead of time.
+      const link = page.getByRole("link", { name: new RegExp(`${escapeRegex(betfairDisplayName(homeTeam))}.*${escapeRegex(betfairDisplayName(awayTeam))}`, "i") }).first();
+      const href = await link.getAttribute("href");
+      // The three price buttons (home/draw/away) are the row's next three
+      // sibling buttons after the link, per the documented row structure.
+      const row = link.locator("xpath=ancestor::*[self::tr or self::li or self::div][1]");
+      const priceButtons = row.getByRole("button");
+      index[match] = { href, priceButtons };
+    } catch (err) {
+      if (err instanceof CloudflareChallengeError) throw err;
+      // Isolated per match, on purpose -- confirmed live (2026-09-22) this
+      // used to throw and abort the WHOLE batch on a single unmapped name
+      // (Leeds United, then Ipswich Town), silently losing every other
+      // match's already-working lookup too. Left null here instead;
+      // executeListPick/executeMatchPagePick's own AI fallback (see the
+      // main loop below) is what's meant to recover this specific match --
+      // this function's job is just to not take the rest down with it.
+      index[match] = null;
+    }
   }
   return index;
 }
@@ -212,9 +225,15 @@ async function buildBetOnBetfair(page, stagehand, plan) {
 
   for (const step of plan.steps) {
     const fixtureEntry = fixtureIndex[step.match];
+    // Self-contained on purpose -- fixtureEntry may be null (buildFixtureIndex
+    // couldn't resolve this match deterministically), so the fallback can't
+    // assume it's already on the right page or even knows the match's URL.
+    // Telling it to navigate from the fixtures list itself if needed means it
+    // can still recover a match buildFixtureIndex missed entirely, not just
+    // one where the index resolved but a click/type target didn't.
     const description = step.type === "list-pick"
-      ? `Click the ${step.position} price button for the ${step.match} fixture on this list`
-      : `On the ${step.match} match page, back "${step.selection}" in the ${step.market} market`;
+      ? `On the EPL fixtures list (${EPL_FIXTURES_URL}), find the ${step.match} fixture and click its ${step.position} price button`
+      : `Navigate to the ${step.match} match page (search the EPL fixtures list at ${EPL_FIXTURES_URL} first if you're not already there), then back "${step.selection}" in the ${step.market} market`;
     await withAiFallback(stagehand, description, () =>
       step.type === "list-pick" ? executeListPick(page, step, fixtureEntry) : executeMatchPagePick(page, step, fixtureEntry)
     );

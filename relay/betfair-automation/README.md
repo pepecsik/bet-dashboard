@@ -25,15 +25,25 @@ against the real page, not a finished script.
    whatever Anne already has.
 3. Set `BETFAIR_PROFILE_DIR` to wherever you want that profile stored
    (defaults to `./betfair-chrome-profile` in this folder). Launch it once
-   manually to seed it:
+   manually to seed it -- **must match `driver.js`'s exact launch options**
+   (`channel: "chrome"` + `ignoreDefaultArgs`), confirmed live: a plain
+   `launchPersistentContext` call without these launches bare Chromium
+   (which the Chrome Web Store refuses to install extensions into) and
+   drops the NordVPN extension on launch:
    ```
    BETFAIR_PROFILE_DIR=./betfair-chrome-profile node -e "
      import('playwright').then(async ({chromium}) => {
-       const ctx = await chromium.launchPersistentContext(process.env.BETFAIR_PROFILE_DIR, { headless: false });
-       console.log('Log in to Betfair in the window that opened, clear any Cloudflare check, then close it.');
+       const ctx = await chromium.launchPersistentContext(process.env.BETFAIR_PROFILE_DIR, {
+         headless: false,
+         channel: 'chrome',
+         ignoreDefaultArgs: ['--disable-extensions'],
+       });
+       console.log('Install the NordVPN extension, sign in, set it to GB, log in to Betfair, clear any Cloudflare check, then close the window.');
      });
    "
    ```
+   Requires real Google Chrome installed on the machine (not just
+   Chromium) -- `channel: "chrome"` fails otherwise.
    Log in for real, clear the Cloudflare Turnstile check if it appears (a
    normal human click -- see the project's own rule on why this script
    itself must never do that automatically), then close the window. The

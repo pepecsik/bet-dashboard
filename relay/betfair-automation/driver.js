@@ -496,6 +496,20 @@ async function main() {
   // whole job, not reset per bet.
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
 
+  // Navigate once, up front -- confirmed live (2026-09-22): a brand-new
+  // page.newPage() tab starts on about:blank, and clearBetslip() (called at
+  // the top of the loop below, for every bet including Bet 1) needs a real
+  // Betfair page loaded to find the "Betslip" panel at all. Calling it
+  // before any navigation threw immediately (getByText('Betslip') timing
+  // out on a blank page), a real bug from Bet 1 never even reaching the
+  // build step. This isn't just a Bet-1-specific skip, though -- account-
+  // level betslip state (confirmed live) persists and gets restored on ANY
+  // fresh navigation, so Bet 1 needs the same clear-and-verify protection
+  // Bet 2 does, not an exemption. Navigating once here, before the loop,
+  // gives clearBetslip() a real page to check on every iteration.
+  await page.goto(EPL_FIXTURES_URL, { waitUntil: "networkidle" });
+  assertNotChallenged(page);
+
   try {
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;

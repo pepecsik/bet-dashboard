@@ -124,8 +124,15 @@ fixes.
   so OpenClaw's job narrows to: (1) invoke it when a placement is due, (2)
   watch its stdout for `SCREENSHOT_READY:` lines and actually send that
   screenshot + a notification to Winston, and (3) relay a hard-stop failure
-  to Winston the same way Anne does today. None of that wrapping exists
-  yet -- see `../STAGEHAND_PLAN.md`'s status section.
+  to Winston the same way Anne does today. This wrapper now exists as a
+  manual, on-demand procedure -- `DRIVER_MANUAL.md` in OpenClaw's own
+  `workspace-betfair` folder on the Mac (not in this repo, same as
+  `PLACEMENT_MANUAL.md`/`TOOLS.md`/etc.) -- deliberately not automated yet:
+  most runs so far have surfaced a real bug, so an unattended trigger would
+  mean silent failures with nobody watching. Revisit automating it once
+  there have been several consecutive clean runs *and* a reviewed,
+  deliberately-built real-placement path exists (see "Real placement is NOT
+  implemented" above). See `../STAGEHAND_PLAN.md`'s status section too.
 - **Two-bet/decision-wait loop is untested live** -- written this session,
   not yet run against a real queue job. Watch specifically: does
   `clearBetslip`'s "Remove all" selector actually work (recon never tested

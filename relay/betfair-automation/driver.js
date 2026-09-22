@@ -3,12 +3,25 @@
 // ../SPORTSBOOK_RECON.md. Runs on the Mac (needs GB routing + a real
 // Betfair login), invoked as `node driver.js <player>`.
 //
-// Deliberately does NOT reuse OpenClaw/Anne's own browser session -- that's
-// managed through OpenClaw's gateway, not something a plain script can
-// attach to. Instead this launches its own independent, persistent Chrome
-// profile via Playwright (chromium.launchPersistentContext), so it never
-// depends on OpenClaw's internals to run. See README.md for the one-time
-// manual login this profile needs before the first real run.
+// Connects to Anne/OpenClaw's own already-running "betfair" browser via CDP
+// (chromium.connectOverCDP) instead of maintaining a separate profile.
+// History: an earlier version launched its own independent, persistent
+// Chrome profile -- abandoned after repeated real failures (2026-09-22): the
+// NordVPN extension wouldn't reliably land on GB across restarts (landed in
+// Brazil, then Portugal, on consecutive clean relaunches), and a fresh
+// profile needs its own from-scratch login/extension/Cloudflare setup with
+// none of that pain. Confirmed live that connectOverCDP against Anne's
+// profile works and inherits its already-working GB routing + login, so
+// this reuses it instead. Two real constraints that come with that:
+// 1. Anne's browser process needs to actually be running (and logged in --
+//    the login session itself doesn't survive a full process restart, only
+//    cf_clearance and the VPN extension's own state do) for this to work at
+//    all -- same constraint Anne's own workflow already has day to day.
+// 2. Concurrency: this opens its OWN new tab in that browser rather than
+//    touching whatever tab Anne might have open, but driver.js and Anne
+//    still shouldn't both be actively driving the browser at the same
+//    time -- not something this file can fully enforce on its own, see
+//    ../STAGEHAND_PLAN.md's status section on Anne's narrowing role.
 //
 // Deterministic Playwright locators do essentially everything -- that's the
 // whole point of this rewrite (see ../STAGEHAND_PLAN.md's "why"). Stagehand
@@ -30,7 +43,10 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { buildBetPlan } from "../betfairPlan.js";
 
 const RELAY_URL = process.env.RELAY_URL || "https://bet-dashboard-relay.onrender.com";
-const PROFILE_DIR = process.env.BETFAIR_PROFILE_DIR || "./betfair-chrome-profile";
+// Anne/OpenClaw's browser must already be running with this CDP port open
+// (confirmed live: `openclaw browser start`) before driver.js runs -- this
+// script connects to it, it doesn't launch anything of its own.
+const CDP_URL = process.env.BETFAIR_CDP_URL || "http://127.0.0.1:8092";
 const EPL_FIXTURES_URL = "https://www.betfair.com/betting/football/english-premier-league/c-10932509";
 
 // Per TOOLS.md's hard-stop rule (same one Anne follows) -- this script must
@@ -204,23 +220,18 @@ async function main() {
     console.log(`[betfair-driver] ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
   }
 
-  // channel: "chrome" launches real, installed Google Chrome instead of
-  // Playwright's bundled open-source Chromium -- the Chrome Web Store
-  // refuses to install extensions into bare Chromium (found live while
-  // seeding the profile: it prompted "Switch to Chrome?" instead of
-  // installing), and real Chrome is also a far more common, less
-  // automation-associated browser than bare Chromium, which likely helps
-  // with Cloudflare sensitivity too. ignoreDefaultArgs is required
-  // separately -- Playwright's default persistent-context launch passes
-  // --disable-extensions, which would silently kill the NordVPN extension
-  // this profile depends on for GB routing on every real run, not just the
-  // one-time setup.
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: false,
-    channel: "chrome",
-    ignoreDefaultArgs: ["--disable-extensions"],
-  });
-  const page = context.pages()[0] || (await context.newPage());
+  // Connect to Anne/OpenClaw's already-running browser rather than
+  // launching anything -- confirmed live (2026-09-22) via a standalone
+  // connectOverCDP test that this works and inherits its already-working
+  // GB routing + login. Caller must have already run `openclaw browser
+  // start` (or equivalent) so this port is actually open; driver.js doesn't
+  // start it, only connects to it.
+  const browser = await chromium.connectOverCDP(CDP_URL);
+  const context = browser.contexts()[0];
+  if (!context) throw new Error(`No browser context found at ${CDP_URL} -- is Anne's browser actually running and logged in?`);
+  // A NEW page, deliberately -- never touch whatever tab Anne might already
+  // have open, per this file's own concurrency note above.
+  const page = await context.newPage();
   const stagehand = new Stagehand({ env: "LOCAL", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
 
   try {
@@ -234,7 +245,10 @@ async function main() {
     // stdout/exit code only. Whatever wraps it (OpenClaw, per the pending
     // integration decision) owns telling Winston, same as it does today.
   } finally {
-    await context.close();
+    // Close only the tab this script opened, and disconnect the CDP client
+    // -- never context.close() or browser.close() here, either of those
+    // would tear down Anne's actual running browser out from under her.
+    await page.close().catch(() => {});
   }
 }
 

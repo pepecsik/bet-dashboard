@@ -69,9 +69,35 @@ function assertNotChallenged(page) {
   if (url.includes("cf-challenge") || url.includes("betfair.com/challenge")) throw new CloudflareChallengeError(url);
 }
 
-// Every AI fallback call gets recorded here (step description, timestamp) --
-// returned alongside the run's result so the caller can log/report real
-// fallback-rate data instead of the plan's original guess.
+// Numeric-field delta between two stagehand.metrics snapshots. Written
+// generically (whatever numeric keys exist, not a hardcoded field list) so
+// it doesn't need updating if the field set changes between versions.
+function metricsDelta(before, after) {
+  const delta = {};
+  Object.keys(after || {}).forEach((k) => {
+    if (typeof after[k] === "number") delta[k] = after[k] - ((before && before[k]) || 0);
+  });
+  return delta;
+}
+function sumMetrics(deltas) {
+  const total = {};
+  deltas.forEach((d) => Object.keys(d).forEach((k) => { total[k] = (total[k] || 0) + d[k]; }));
+  return total;
+}
+
+// Every AI fallback call gets recorded here (step description, timestamp,
+// and its own real metrics delta) -- returned alongside the run's result so
+// the caller can log/report real fallback-rate AND real cost data instead
+// of the plan's original guess. Snapshotting metrics before/after each
+// individual call (rather than trusting stagehand.metrics as a running
+// total) is deliberate -- confirmed live (2026-09-22): the raw aggregate
+// showed IDENTICAL token counts across three separate calls with different,
+// differently-sized prompts, which isn't plausible for genuine independent
+// measurements. Strong evidence this installed version's .metrics reflects
+// only the most recent call, not an accumulated total -- so reading it once
+// at the end of a multi-fallback run would silently undercount every call
+// but the last. Per-call snapshotting sidesteps that regardless of which
+// explanation turns out to be correct.
 function makeFallbackLog() {
   const entries = [];
   return {
@@ -81,8 +107,20 @@ function makeFallbackLog() {
         return await deterministicFn();
       } catch (err) {
         if (err instanceof CloudflareChallengeError) throw err; // never paper over a hard stop
-        entries.push({ description, deterministicError: err.message, at: new Date().toISOString() });
-        return await stagehand.page.act(description);
+        const before = { ...stagehand.metrics };
+        const result = await stagehand.page.act(description);
+        const after = { ...stagehand.metrics };
+        // Both the raw before/after snapshots AND the computed delta are
+        // kept, not just the delta -- the delta assumes .metrics accumulates
+        // (standard for most SDKs), but that's not actually confirmed for
+        // this installed version, only suspected NOT to hold (see this
+        // function's own comment). If .metrics instead resets per call, the
+        // delta math here would be wrong (even negative), not just
+        // approximate. Keeping the raw pair lets a real multi-fallback run's
+        // actual sequence be inspected directly to settle which model is
+        // true, rather than trusting either guess blind.
+        entries.push({ description, deterministicError: err.message, at: new Date().toISOString(), metricsBefore: before, metricsAfter: after, metrics: metricsDelta(before, after) });
+        return result;
       }
     },
   };
@@ -100,6 +138,9 @@ function makeFallbackLog() {
 const BETFAIR_DISPLAY_NAME_OVERRIDES = {
   "Leeds United": "Leeds",
   "Ipswich Town": "Ipswich",
+  "Brighton & Hove Albion": "Brighton",
+  "Manchester United": "Man Utd",
+  "Tottenham Hotspur": "Tottenham",
 };
 function betfairDisplayName(fullName) { return BETFAIR_DISPLAY_NAME_OVERRIDES[fullName] || fullName; }
 
@@ -230,9 +271,11 @@ async function postAwaitingConfirmation(player, pendingBet) {
 // click -- that stays gated behind the app's existing approve/reject flow
 // (admin.html's queue panel), same as every other placement path in this
 // project. This function's job ends at "slip built, verified, reported."
-async function buildBetOnBetfair(page, stagehand, plan) {
-  const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
-
+// withAiFallback is passed in (not created here) so its entries array --
+// and every real metrics delta recorded in it -- stays reachable from
+// main()'s catch block even if this function throws partway through, not
+// just on a clean return.
+async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
   if (plan.conflicts.length) throw new SameMatchConflictError(plan.conflicts);
 
   const fixtureIndex = await buildFixtureIndex(page, plan.matchesNeeded);
@@ -254,7 +297,6 @@ async function buildBetOnBetfair(page, stagehand, plan) {
   }
 
   await verifyMultiples(page);
-  return { fallbackLog };
 }
 
 async function main() {
@@ -302,26 +344,30 @@ async function main() {
   // wasn't optional for this installed version.
   await stagehand.init();
 
+  // Created here, not inside buildBetOnBetfair -- entries is mutated in
+  // place via push(), so it stays populated and reachable from the catch
+  // block below even if buildBetOnBetfair throws partway through, not just
+  // on a clean return.
+  const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
+
   try {
-    const { fallbackLog } = await buildBetOnBetfair(page, stagehand, plan);
+    await buildBetOnBetfair(page, stagehand, plan, withAiFallback);
     await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped });
-    // stagehand.metrics is Stagehand's own built-in usage/cost tracking --
-    // logged explicitly here (not just the fallback count) so real per-run
-    // cost is visible every time without digging through a separate
-    // dashboard, per the project's standing rule of verifying cost claims
-    // against real data rather than estimates. Field name/shape unverified
-    // against the actual installed version -- check and adjust if this
-    // logs undefined.
     console.log(`[betfair-driver] Slip built and reported for ${player}. AI fallback used ${fallbackLog.length} time(s):`, fallbackLog);
-    console.log(`[betfair-driver] Stagehand usage/cost this run:`, stagehand.metrics);
   } catch (err) {
     console.error(`[betfair-driver] Hard stop for ${player}:`, err.message);
-    console.log(`[betfair-driver] Stagehand usage/cost before the hard stop:`, stagehand.metrics); // a fallback may have already run and cost something before a later step failed
     process.exitCode = 1;
     // Deliberately no Telegram/notify call here -- this script reports via
     // stdout/exit code only. Whatever wraps it (OpenClaw, per the pending
     // integration decision) owns telling Winston, same as it does today.
   } finally {
+    // Summed from each call's own before/after delta, not the raw
+    // stagehand.metrics aggregate -- see makeFallbackLog()'s comment for why
+    // that aggregate was confirmed unreliable (identical counts across
+    // different calls). Real, per-call measured cost data, logged
+    // regardless of success or hard stop -- a fallback may have already run
+    // and cost something before a later step failed.
+    console.log(`[betfair-driver] Real summed usage/cost this run:`, sumMetrics(fallbackLog.map((e) => e.metrics)));
     // Close only the tab this script opened -- never context.close() or
     // browser.close() here, either of those would tear down Anne's actual
     // running browser out from under her.

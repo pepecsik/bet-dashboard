@@ -84,6 +84,20 @@ function makeFallbackLog() {
   };
 }
 
+// Betfair displays some teams under a shorter/different name than
+// betfairExport.js's own full official name (see TEAM_NAMES there) --
+// confirmed live (2026-09-22): "Leeds United" appears on the fixtures list
+// as plain "Leeds", which a full-name match against the link's accessible
+// text can't find (a real hard stop on the first live test run, not a
+// hypothetical). Only mapping what's actually been confirmed on the real
+// site here, not guessing every club's Betfair-specific short form blind --
+// extend this as more mismatches turn up in practice. Anything not listed
+// falls through to the AI fallback, same as before.
+const BETFAIR_DISPLAY_NAME_OVERRIDES = {
+  "Leeds United": "Leeds",
+};
+function betfairDisplayName(fullName) { return BETFAIR_DISPLAY_NAME_OVERRIDES[fullName] || fullName; }
+
 // Scans the EPL fixtures list once and returns a map keyed by "Home vs Away"
 // -> { href, priceButtons: Locator[3] } (home/draw/away, by position -- see
 // SPORTSBOOK_RECON.md, buttons are price-only with no team name). Built
@@ -99,7 +113,7 @@ async function buildFixtureIndex(page, matchesNeeded) {
     // The fixture link's accessible name is "<Home> <Away> <date/time>" --
     // matching on both team names anchors it even though the exact date/time
     // text isn't known ahead of time.
-    const link = page.getByRole("link", { name: new RegExp(`${escapeRegex(homeTeam)}.*${escapeRegex(awayTeam)}`, "i") }).first();
+    const link = page.getByRole("link", { name: new RegExp(`${escapeRegex(betfairDisplayName(homeTeam))}.*${escapeRegex(betfairDisplayName(awayTeam))}`, "i") }).first();
     const href = await link.getAttribute("href");
     // The three price buttons (home/draw/away) are the row's next three
     // sibling buttons after the link, per the documented row structure.
@@ -245,11 +259,18 @@ async function main() {
     // stdout/exit code only. Whatever wraps it (OpenClaw, per the pending
     // integration decision) owns telling Winston, same as it does today.
   } finally {
-    // Close only the tab this script opened, and disconnect the CDP client
-    // -- never context.close() or browser.close() here, either of those
-    // would tear down Anne's actual running browser out from under her.
+    // Close only the tab this script opened -- never context.close() or
+    // browser.close() here, either of those would tear down Anne's actual
+    // running browser out from under her.
     await page.close().catch(() => {});
   }
+
+  // The CDP WebSocket connection keeps a live handle open even after the
+  // page is closed, which stops the process from exiting naturally --
+  // confirmed live (2026-09-22): the first real test run hung indefinitely
+  // and had to be killed by signal (exit code 143) despite finishing its
+  // work. Doesn't touch the remote browser at all, just this process.
+  process.exit(process.exitCode || 0);
 }
 
 main();

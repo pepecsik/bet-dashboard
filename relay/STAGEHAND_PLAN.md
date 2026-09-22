@@ -78,7 +78,26 @@ Also worth remembering from tonight, for context if it comes up again:
 - Scope is deliberately narrow: English Premier League only, Match Odds +
   Over/Under Goals + Correct Score only. Nothing else.
 
-## Status (last updated 2026-09-22, later same session)
+## Status (last updated 2026-09-22, later same day, third session)
+
+**Important correction to the two "successful" runs noted below**: both
+were validated only by trusting driver.js's own reported success, never by
+checking the live betslip. This session found (and fixed) a real bug where
+a run could complete with zero errors while the betslip was actually
+EMPTY -- so those two earlier runs should be treated as unverified, not
+proven, until re-run with the fix in place. Root cause, confirmed live:
+Betfair's price buttons are toggles (clicking an already-selected one
+deselects it), and `clearBetslip()`'s old `.catch(() => {})` silently
+swallowed any failure to actually empty the slip -- so leftover legs from a
+prior run could cause this run's own "successful" clicks to toggle them all
+back OFF. Fixed: `clearBetslip()` now verifies the slip actually reads
+empty and throws if not; every leg-click now verifies via a real betslip
+snapshot that the leg actually appears, retrying once before throwing. Also
+added the full two-bet + wait-for-Winston's-approval + screenshot lifecycle
+this session (was entirely missing before -- driver.js used to just exit
+after posting the first bet). None of this (two-bet loop, decision-wait
+loop, or the click/clear verification fix) has had a live end-to-end run
+yet as of this update -- next session's first job is exactly that.
 
 **Step 2 is built and has had two full successful end-to-end test runs**,
 in `relay/betfair-automation/` (`betfairPlan.js` for the pure ordered-plan

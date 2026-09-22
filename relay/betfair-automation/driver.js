@@ -288,6 +288,29 @@ async function verifyMultiples(page) {
   }
 }
 
+// Confirmed live (2026-09-22): driver.js was never filling the stake at
+// all, which is why every "successful" build showed Potential Return as £0
+// -- nothing to do with the legs, just a missing step. aria-label="Stake"
+// is the stable selector (the input's own id is dynamically generated per
+// render). .first() matters, not incidental -- once there are 3+ legs,
+// Betfair shows a separate Stake field for the main combined bet AND one
+// for every "Additional Multiples" sub-bet (Double, Treble, etc.); an
+// unscoped getByRole would match all of them, and the first in document
+// order is confirmed to be the primary combined-bet stake.
+async function fillStake(page, stake) {
+  const stakeAmount = Number(stake);
+  const stakeBox = page.getByRole("textbox", { name: "Stake" }).first();
+  await stakeBox.fill(String(stakeAmount));
+  // Verified, not trusted -- confirmed live that a successful fill flips
+  // the Place Bet button's own label to include the amount ("Please Enter
+  // Stake" -> "Place £X.XX Bet"), a real signal the fill actually
+  // registered, not just that .fill() didn't throw.
+  const placeButton = page.getByRole("button", { name: `Place £${stakeAmount.toFixed(2)} Bet` });
+  if ((await placeButton.count()) === 0) {
+    throw new Error(`Stake fill for £${stakeAmount.toFixed(2)} didn't produce the matching "Place Bet" button -- may not have registered`);
+  }
+}
+
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
 // Saves a screenshot of the built slip and logs its path with a distinct,
@@ -438,6 +461,7 @@ async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
   }
 
   await verifyMultiples(page);
+  await fillStake(page, plan.stake);
 }
 
 // Raised deliberately, not silently skipped -- real placement (clicking

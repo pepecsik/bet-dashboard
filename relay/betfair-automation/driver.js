@@ -204,11 +204,22 @@ async function main() {
     console.log(`[betfair-driver] ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
   }
 
-  // ignoreDefaultArgs is required -- Playwright's default persistent-context
-  // launch passes --disable-extensions, which would silently kill the
-  // NordVPN extension this profile depends on for GB routing on every real
-  // run, not just the one-time setup (found live while setting this up).
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, { headless: false, ignoreDefaultArgs: ["--disable-extensions"] });
+  // channel: "chrome" launches real, installed Google Chrome instead of
+  // Playwright's bundled open-source Chromium -- the Chrome Web Store
+  // refuses to install extensions into bare Chromium (found live while
+  // seeding the profile: it prompted "Switch to Chrome?" instead of
+  // installing), and real Chrome is also a far more common, less
+  // automation-associated browser than bare Chromium, which likely helps
+  // with Cloudflare sensitivity too. ignoreDefaultArgs is required
+  // separately -- Playwright's default persistent-context launch passes
+  // --disable-extensions, which would silently kill the NordVPN extension
+  // this profile depends on for GB routing on every real run, not just the
+  // one-time setup.
+  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
+    headless: false,
+    channel: "chrome",
+    ignoreDefaultArgs: ["--disable-extensions"],
+  });
   const page = context.pages()[0] || (await context.newPage());
   const stagehand = new Stagehand({ env: "LOCAL", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
 

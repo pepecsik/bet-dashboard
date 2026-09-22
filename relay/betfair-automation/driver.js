@@ -272,6 +272,11 @@ async function main() {
   // README's open question: verify this option name against whatever
   // Stagehand version actually installs.
   const stagehand = new Stagehand({ env: "LOCAL", modelName: "gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
+  // Confirmed live (2026-09-22), Stagehand's own error was explicit: init()
+  // is required before .page/.act() are usable, the constructor alone
+  // doesn't set it up. This resolves the README's flagged open question --
+  // wasn't optional for this installed version.
+  await stagehand.init();
 
   try {
     const { fallbackLog } = await buildBetOnBetfair(page, stagehand, plan);

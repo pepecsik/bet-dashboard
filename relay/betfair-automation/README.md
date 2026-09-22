@@ -60,11 +60,9 @@ node driver.js Pepe
 
 ## Known open questions for whoever tests this first
 
-- **Exact Stagehand wiring**: `driver.js` constructs `Stagehand` with
-  `env: "LOCAL"` pointed at the same Playwright `page` this script already
-  has -- verify this matches whatever Stagehand version actually installs,
-  since the exact local-mode constructor options may have changed. Check
-  Stagehand's own docs/CHANGELOG against `package.json`'s pinned version.
+- ~~**Exact Stagehand wiring**~~ -- resolved (2026-09-22): confirmed live that
+  `await stagehand.init()` is required after the constructor, before
+  `.page`/`.act()` are usable. Now called in `driver.js`.
 - **Selector accuracy**: every locator in `driver.js` (fixture row matching,
   price button positions, Correct Score scoreline rows, Over/Under goal
   lines) was written from `SPORTSBOOK_RECON.md`'s notes, not verified live.

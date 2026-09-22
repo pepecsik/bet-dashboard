@@ -269,13 +269,19 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
   if (!fixtureEntry || !fixtureEntry.href) throw new Error(`No captured href for "${step.match}" -- can't navigate without guessing the URL`);
   // Confirmed live (2026-09-22): fixtureEntry.href (a real getAttribute("href")
   // read, per SPORTSBOOK_RECON.md's documented format) has no leading slash --
-  // the old template concatenated it directly onto ".com", producing
-  // "betfair.comfootball/..." and a hard network failure
-  // (net::ERR_TUNNEL_CONNECTION_FAILED), not a selector issue. This bug had
-  // never been exercised live before now -- every prior successful test
-  // job's plan happened to be all Match Odds (list-pick) legs, with zero
-  // match-page-pick legs in the mix, until this run's Bet 2 included some.
-  const base = `https://www.betfair.com/${fixtureEntry.href}`;
+  // naive string concatenation onto ".com" produced "betfair.comfootball/...",
+  // a hard network failure (net::ERR_TUNNEL_CONNECTION_FAILED), not a
+  // selector issue. Never exercised live before now -- every prior
+  // successful test job's plan happened to be all Match Odds (list-pick)
+  // legs, with zero match-page-pick legs in the mix, until this run's Bet 2
+  // included some. Fixed with the real URL class (joins base+relative
+  // correctly regardless of leading/trailing slashes) instead of another
+  // manual string-concat guess -- deliberately keeping direct URL
+  // navigation rather than switching to clicking the fixture's own link,
+  // since SPORTSBOOK_RECON.md's own finding is that UI clicks (a
+  // Competitions-tab click, specifically) were the one confirmed Cloudflare
+  // trigger all night, while direct URL loads were clean every time.
+  const base = new URL(fixtureEntry.href, "https://www.betfair.com").toString();
   const url = step.tab === "all-markets" ? `${base}?tab=all-markets` : base;
   await page.goto(url, { waitUntil: "networkidle" });
   assertNotChallenged(page);

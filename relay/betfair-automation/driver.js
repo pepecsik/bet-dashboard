@@ -246,14 +246,29 @@ async function main() {
   // A NEW page, deliberately -- never touch whatever tab Anne might already
   // have open, per this file's own concurrency note above.
   const page = await context.newPage();
-  const stagehand = new Stagehand({ env: "LOCAL", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
+  // modelName pinned explicitly to gpt-5-mini -- same model tested and
+  // approved for this project already (zero Sonnet anywhere in the chain).
+  // Without this, Stagehand falls back to its own default model, which
+  // isn't necessarily gpt-5-mini and wasn't the intended test. See
+  // README's open question: verify this option name against whatever
+  // Stagehand version actually installs.
+  const stagehand = new Stagehand({ env: "LOCAL", modelName: "gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context -- see README's open question on exact wiring for this Stagehand version
 
   try {
     const { fallbackLog } = await buildBetOnBetfair(page, stagehand, plan);
     await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped });
+    // stagehand.metrics is Stagehand's own built-in usage/cost tracking --
+    // logged explicitly here (not just the fallback count) so real per-run
+    // cost is visible every time without digging through a separate
+    // dashboard, per the project's standing rule of verifying cost claims
+    // against real data rather than estimates. Field name/shape unverified
+    // against the actual installed version -- check and adjust if this
+    // logs undefined.
     console.log(`[betfair-driver] Slip built and reported for ${player}. AI fallback used ${fallbackLog.length} time(s):`, fallbackLog);
+    console.log(`[betfair-driver] Stagehand usage/cost this run:`, stagehand.metrics);
   } catch (err) {
     console.error(`[betfair-driver] Hard stop for ${player}:`, err.message);
+    console.log(`[betfair-driver] Stagehand usage/cost before the hard stop:`, stagehand.metrics); // a fallback may have already run and cost something before a later step failed
     process.exitCode = 1;
     // Deliberately no Telegram/notify call here -- this script reports via
     // stdout/exit code only. Whatever wraps it (OpenClaw, per the pending

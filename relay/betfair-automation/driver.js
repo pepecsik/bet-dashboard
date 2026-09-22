@@ -498,24 +498,6 @@ async function main() {
   // A NEW page, deliberately -- never touch whatever tab Anne might already
   // have open, per this file's own concurrency note above.
   const page = await context.newPage();
-  // modelName pinned explicitly to gpt-5-mini -- same model tested and
-  // approved for this project already (zero Sonnet anywhere in the chain).
-  // Without this, Stagehand falls back to its own default model, which
-  // isn't necessarily gpt-5-mini and wasn't the intended test. Provider
-  // prefix ("openai/") is required, not optional -- confirmed live
-  // (2026-09-22) by reading the installed @browserbasehq/stagehand source
-  // directly: a bare "gpt-5-mini" isn't in this version's native
-  // modelToProviderMap (predates that model existing), so it silently
-  // resolves to no LLM client at all rather than erroring clearly at
-  // construction time. A "/"-prefixed name routes through the separate,
-  // more general AISDKProviders check instead, which does have "openai".
-  const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: undefined }, page }); // reuses this same page/context
-  // Confirmed live (2026-09-22), Stagehand's own error was explicit: init()
-  // is required before .page/.act() are usable, the constructor alone
-  // doesn't set it up. This resolves the README's flagged open question --
-  // wasn't optional for this installed version.
-  await stagehand.init();
-
   // One shared log across BOTH bets -- real cost data should reflect the
   // whole job, not reset per bet.
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
@@ -547,6 +529,31 @@ async function main() {
       // nothing clears it automatically), which would otherwise merge into
       // one wrong combined slip instead of two separate accumulators.
       await clearBetslip(page);
+
+      // Constructed fresh per bet, not once for the whole job -- confirmed
+      // live (2026-09-22): a StagehandTargetClosedError ("Target closed
+      // before CDP session could attach") hit exactly at the Bet 1 -> Bet 2
+      // handoff, right after a real multi-minute idle wait in
+      // pollForDecision for Winston's approval. Leading hypothesis: the CDP
+      // session Stagehand attaches during init() isn't resilient to sitting
+      // idle that long -- rebuilding it right before each bet needs it,
+      // rather than once up front, means it's never asked to survive an
+      // idle gap. Untested live as of this fix; watch whether this recurs
+      // on the next Bet 1 -> Bet 2 transition.
+      //
+      // modelName pinned explicitly to gpt-5-mini -- same model tested and
+      // approved for this project already (zero Sonnet anywhere in the
+      // chain). Provider prefix ("openai/") is required, not optional --
+      // confirmed live (2026-09-22) by reading the installed
+      // @browserbasehq/stagehand source directly: a bare "gpt-5-mini" isn't
+      // in this version's native modelToProviderMap, so it silently
+      // resolves to no LLM client at all rather than erroring clearly.
+      const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: undefined }, page });
+      // Confirmed live (2026-09-22), Stagehand's own error was explicit:
+      // init() is required before .page/.act() are usable, the constructor
+      // alone doesn't set it up.
+      await stagehand.init();
+
       await buildBetOnBetfair(page, stagehand, plan, withAiFallback);
       const screenshotPath = await takeScreenshot(page, player, label);
       await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1 });

@@ -305,7 +305,15 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     const lineLabel = page.getByText(`${line} Goals`, { exact: true });
     if ((await lineLabel.count()) === 0) {
       // Higher goal lines are hidden behind "Show More" by default.
-      await page.getByRole("button", { name: "Show More" }).click();
+      // Confirmed live (2026-09-22): an unscoped page-wide
+      // getByRole("button", {name:"Show More"}) matches 3 separate buttons
+      // (one per market card on the page) -- that ambiguity is what was
+      // causing a 30s hang (Playwright's actionability retry against an
+      // unstable/ambiguous match set), not a clean strict-mode throw.
+      // Anchored to the "Over / Under Goals" card's own heading instead,
+      // same pattern as every other selector fix tonight -- verified via
+      // bounding-box match against the correct one of the three.
+      await page.getByRole("button", { name: "Over / Under Goals" }).locator('xpath=following::button[text()="Show More"][1]').click();
     }
     const columnIdx = direction === "Over" ? 0 : 1; // Over column, then Under column, per the recon file
     const priceButton = lineLabel.locator("xpath=following::button").nth(columnIdx);
@@ -598,24 +606,32 @@ async function main() {
       // cdpUrl set explicitly, `page` option dropped -- confirmed live
       // (2026-09-22), read directly from the installed
       // @browserbasehq/stagehand@2.5.9 source: `page` was NEVER a
-      // recognized constructor parameter in this version at all (destructured
-      // property list has no `page` in it -- JS destructuring just silently
-      // ignores it). With cdpUrl left undefined, init() unconditionally fell
-      // through to launching its OWN separate, unauthenticated throwaway
-      // browser via launchPersistentContext -- confirmed as the exact source
-      // of a blank Chrome window opening on every bet build. Passing the
-      // same CDP_URL driver.js itself connects with should make Stagehand
-      // attach to Anne's real browser instead of launching a new one.
-      // UNVERIFIED LIVE AS OF THIS FIX: whether stagehand.page after this
-      // ends up being the SAME tab/page driver.js already has open, or a
-      // new one within the same browser -- test this specifically, watching
-      // whether the blank window stops appearing and whether a triggered
-      // fallback still lands on the right tab.
+      // recognized constructor parameter in this version at all (the full
+      // constructor param list has no `page` anywhere in it -- JS
+      // destructuring just silently ignores it). With cdpUrl left
+      // undefined, init() unconditionally fell through to launching its OWN
+      // separate, unauthenticated throwaway browser via
+      // launchPersistentContext -- confirmed as the exact source of a
+      // blank Chrome window opening on every bet build. Passing the same
+      // CDP_URL driver.js itself connects with makes Stagehand attach to
+      // Anne's real browser instead of launching a new one.
       const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: CDP_URL } });
       // Confirmed live (2026-09-22), Stagehand's own error was explicit:
       // init() is required before .page/.act() are usable, the constructor
       // alone doesn't set it up.
       await stagehand.init();
+      // Confirmed live (2026-09-22) with a screenshot: without this,
+      // Stagehand's fallback acted on a completely different, leftover tab
+      // than driver.js's own real one -- a lost leg, not a lost error.
+      // Traced directly in source: StagehandContext.init() walks
+      // context.pages() and activates whichever page it finds first, with
+      // no way to specify one via the constructor. getStagehandPage() is
+      // the real, public (not underscore-prefixed) override -- wraps the
+      // given page and sets it as the active one, which stagehand.page's
+      // proxy reads from. This is the confirmed, intended mechanism, not a
+      // workaround (e.g. closing other tabs first, which risked closing
+      // something Anne was actually using).
+      await stagehand.stagehandContext.getStagehandPage(page);
 
       await buildBetOnBetfair(page, stagehand, plan, withAiFallback);
       const screenshotPath = await takeScreenshot(page, player, label);

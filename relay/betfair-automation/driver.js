@@ -184,12 +184,60 @@ async function buildFixtureIndex(page, matchesNeeded) {
   return index;
 }
 
+// Ground truth for "what does Betfair itself think is selected right now" --
+// never trust a click's own success/no-error as proof it worked. Confirmed
+// live (2026-09-22): "Betslip" renders as plain text, NOT a heading role --
+// getByRole('heading', {name:'Betslip'}) times out every time and never
+// resolves. getByText('Betslip', {exact:true}) is what actually works.
+async function betslipSnapshot(page) {
+  const label = page.getByText("Betslip", { exact: true }).first();
+  return await label.evaluate((el) => {
+    let node = el;
+    for (let i = 0; i < 4 && node.parentElement; i++) node = node.parentElement;
+    return node.innerText;
+  }, undefined, { timeout: 5000 }).catch((e) => `<error: ${e.message}>`);
+}
+
+// Loose substring match, not exact -- the betslip's own rendering of a
+// selection wasn't fully verified for every case (particularly "The Draw"
+// -- unconfirmed whether it renders literally or as plain "Draw"), so this
+// stays deliberately forgiving rather than risk false negatives on a
+// genuinely-successful click. False positives are the bigger risk to avoid
+// here, but a same-match false positive (this leg's own text appearing
+// because SOME OTHER already-present leg happens to share a word) is
+// vanishingly unlikely given team names/scorelines are specific.
+function selectionAppearsIn(snapshot, selection) {
+  if (selection === "The Draw") return snapshot.includes("Draw");
+  return snapshot.includes(selection) || snapshot.includes(betfairDisplayName(selection));
+}
+
+// The actual root cause of the empty-slip bug (confirmed live, 2026-09-22,
+// after ruling out row-scoping and a hydration race with direct evidence):
+// Betfair's price buttons are TOGGLES -- clicking an already-selected one
+// deselects it. clearBetslip()'s old .catch(() => {}) silently swallowed
+// any failure to actually empty the slip, so a prior run's leftover legs
+// would still be selected going in; this run's own "successful" clicks on
+// those same buttons then toggled them all back OFF -- zero errors thrown
+// anywhere, betslip left empty, nobody the wiser. Retrying-until-verified
+// here handles this uniformly regardless of exact cause: if a click didn't
+// produce the expected end state (this leg present), clicking again toggles
+// it the other way, which is exactly the fix whether the first click was a
+// genuine no-op or a toggle-off of stale state.
+async function clickAndVerifyLeg(page, button, matchLabel, selection) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await button.click();
+    assertNotChallenged(page);
+    const snapshot = await betslipSnapshot(page);
+    if (selectionAppearsIn(snapshot, selection)) return;
+    if (attempt === 2) throw new Error(`Click for ${matchLabel} ("${selection}") didn't add a leg to the betslip after 2 attempts -- betslip shows: "${snapshot}"`);
+  }
+}
+
 async function executeListPick(page, step, fixtureEntry) {
   if (!fixtureEntry) throw new Error(`No fixture-index entry for "${step.match}" -- link not found on the fixtures list`);
   const positionIdx = { home: 0, draw: 1, away: 2 }[step.position];
   const button = fixtureEntry.priceButtons.nth(positionIdx);
-  await button.click();
-  assertNotChallenged(page);
+  await clickAndVerifyLeg(page, button, step.match, step.selection);
 }
 
 async function executeMatchPagePick(page, step, fixtureEntry) {
@@ -206,7 +254,7 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     // The price button is the label's next sibling in the same row, not the
     // label itself -- clicking the label wasn't confirmed to add a leg.
     const priceButton = label.locator("xpath=following-sibling::button[1]");
-    await priceButton.click();
+    await clickAndVerifyLeg(page, priceButton, step.match, step.selection);
     return;
   }
 
@@ -221,7 +269,7 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     }
     const columnIdx = direction === "Over" ? 0 : 1; // Over column, then Under column, per the recon file
     const priceButton = lineLabel.locator("xpath=following::button").nth(columnIdx);
-    await priceButton.click();
+    await clickAndVerifyLeg(page, priceButton, step.match, step.selection);
     return;
   }
 
@@ -316,8 +364,24 @@ async function pollForDecision(player, { intervalMs = 20000, logEveryMs = 300000
 // (real placement clears it automatically; test mode never does, so this is
 // what stops Bet 1's legs bleeding into Bet 2's build and merging into one
 // wrong combined slip instead of two separate accumulators).
+// Verified, not swallowed -- this is the actual root cause of the empty-slip
+// bug, confirmed live (2026-09-22): the old version's .catch(() => {})
+// silently ate any failure to actually clear the slip. If a prior run left
+// legs selected and this call silently didn't remove them, every leg-click
+// afterward would land on an already-selected (toggle) button and turn it
+// back OFF instead of adding it -- zero errors thrown anywhere, final
+// betslip empty. "Remove all" only shows up when the slip is non-empty, so
+// skip clicking it if the slip already reads empty (avoids a pointless
+// timeout on a genuinely-fresh slip), but always verify the end state
+// either way.
 async function clearBetslip(page) {
+  const before = await betslipSnapshot(page);
+  if (before.toLowerCase().includes("betslip is empty")) return;
   await page.getByRole("button", { name: "Remove all" }).click({ timeout: 5000 }).catch(() => {});
+  const after = await betslipSnapshot(page);
+  if (!after.toLowerCase().includes("betslip is empty")) {
+    throw new Error(`clearBetslip failed -- betslip not empty after Remove all: "${after}"`);
+  }
 }
 
 async function reportPlaced(player, test) {

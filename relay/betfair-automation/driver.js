@@ -670,6 +670,26 @@ async function main() {
     }
   } catch (err) {
     console.error(`[betfair-driver] Hard stop for ${player}:`, err.message);
+    console.error(`[betfair-driver] Page URL at hard stop: ${page.url()}`);
+    // Captured here, before finally's page.close() -- confirmed live
+    // (2026-09-22): a genuinely unreproducible timing bug (Bet 2's first
+    // match-page leg intermittently timing out even on an always-visible
+    // element) forced three rounds of after-the-fact reasoning about an
+    // already-closed tab, with two isolated repro attempts both failing to
+    // reproduce it. A screenshot of the REAL failing state, taken before
+    // cleanup, turns the next occurrence into direct evidence (blank page?
+    // a Cloudflare-adjacent state assertNotChallenged isn't catching? a
+    // genuinely slow widget?) instead of another dead end. Wrapped in its
+    // own try/catch so a screenshot failure can never mask the real error.
+    try {
+      const dir = "./screenshots";
+      await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true })); // may not exist yet if this is the very first screenshot of the run
+      const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
+      await page.screenshot({ path: failurePath, fullPage: true });
+      console.error(`[betfair-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
+    } catch (screenshotErr) {
+      console.error(`[betfair-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
+    }
     process.exitCode = 1;
     // Deliberately no Telegram/notify call here -- this script reports via
     // stdout/exit code only. Whatever wraps it (OpenClaw, per the pending

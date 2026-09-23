@@ -41,10 +41,47 @@ didn't fully pin down and need confirming on the first real run:
   on this until a real empty-state string is confirmed live.
 - The stake textbox's exact selector in Multiple mode (`fillStake`) --
   scoped to "the only textbox in the betslip container," not a specific
-  confirmed `aria-label` the way Betfair's was.
+  confirmed `aria-label` the way Betfair's was. The selector itself has
+  held up on live runs (the fill always registered); what needed fixing
+  was the verification step below.
 
-Expect the first real run to surface some of these -- that's what the AI
-fallback + this file's own logging are for, same as before.
+## Fixed, confirmed live (2026-09-23)
+
+- **Stake-fill verification race.** `fillStake` used to read the BET NOW
+  button's label once, immediately after `.fill()`. Betano debounces that
+  label's recompute by roughly 300-500ms after the input changes, so a
+  run's very first stake entry (empty -> a real number) reliably caught
+  the stale, pre-debounce "disabled" label -- a false failure on a fill
+  that had actually worked. Confirmed via three separate live
+  reproductions (label still stale at +200ms, caught up by +500ms).
+  `fillStake` now polls the label for up to 2s instead of checking once.
+
+Expect further runs to surface more of the remaining unverified items
+above -- that's what the AI fallback + this file's own logging are for,
+same as before.
+
+## Test-run log
+
+1. **Run 1** -- `networkidle` navigation timeout + hard-stop path gap
+   (main()'s initial nav ran before the try block). Both fixed.
+2. **Run 2** -- Stagehand's constructor validated `OPENAI_API_KEY` eagerly
+   and it wasn't set anywhere in the driver's environment. Fixed by
+   setting it in a (git-ignored) `.env` and launching with
+   `node --env-file=.env driver.js`.
+3. **Run 3** -- widespread `locator.click` timeouts on fixture price
+   buttons, initially suspected to be the row-scoping bug below but first
+   traced to the `betano` browser profile being logged out (confirmed live
+   via the real page showing REGISTER/LOGIN instead of DEPOSIT). Not a
+   code bug -- Winston logged back in by hand.
+4. **Run 4** -- same click-timeout pattern reproduced with a confirmed,
+   freshly-verified logged-in session, ruling out login as the cause and
+   confirming a real bug: the row-scoping heuristic (see "Fixed" above).
+   Fixed and pushed.
+5. **Run 5 (pending as of this writing)** -- row-scoping fix confirmed
+   working (zero AI fallback calls needed, all 6 legs added
+   deterministically). New, isolated failure in `fillStake` -- diagnosed
+   and fixed (see "Fixed, confirmed live" above), not yet re-run against
+   the live site.
 
 ## Setup
 

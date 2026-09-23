@@ -258,11 +258,26 @@ async function fillStake(page, stake) {
   // potential-winnings figure once a stake is entered (see
   // BETANO_RECON.md section 5) -- if it still reads as disabled/no amount,
   // the fill didn't register.
+  //
+  // Polled, not a single immediate check -- confirmed live (2026-09-23),
+  // three separate reproductions: Betano debounces the label's
+  // recomputation by roughly 300-500ms after the input changes. A single
+  // read right after .fill() reliably catches the stale pre-debounce
+  // value, which on a run's very first stake entry (empty -> a real
+  // number) is the untouched disabled "BET NOW" label -- can never match
+  // the regex, a false failure on a fill that actually worked. Polling up
+  // to 2s is robust to render/network variance without guessing a fixed
+  // sleep length.
   const betNow = page.getByRole("button", { name: /BET NOW/i });
-  const label = await betNow.innerText().catch(() => "");
-  if (!new RegExp(String(stakeAmount).replace(".", "[.,]")).test(label)) {
-    throw new Error(`Stake fill for ${stakeAmount} didn't appear to register on BET NOW's label: "${label}"`);
+  const pattern = new RegExp(String(stakeAmount).replace(".", "[.,]"));
+  const deadline = Date.now() + 2000;
+  let label = "";
+  while (Date.now() < deadline) {
+    label = await betNow.innerText().catch(() => "");
+    if (pattern.test(label)) return;
+    await page.waitForTimeout(150);
   }
+  throw new Error(`Stake fill for ${stakeAmount} didn't appear to register on BET NOW's label after 2s: "${label}"`);
 }
 
 async function takeScreenshot(page, player, label) {

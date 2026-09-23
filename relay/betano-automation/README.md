@@ -24,9 +24,14 @@ didn't fully pin down and need confirming on the first real run:
 - The exact CDP port for the `betano` browser profile (`BETANO_CDP_URL`,
   defaults to `8093` -- a guess based on the port mentioned during recon,
   not independently confirmed).
-- The fixture row's DOM wrapper (used to scope list-page button searches to
-  the correct fixture) -- using the same tr/li/div-ancestor heuristic that
-  worked for Betfair, not confirmed for Betano's own markup.
+- ~~The fixture row's DOM wrapper~~ -- **fixed, confirmed live (2026-09-23)**.
+  The tr/li/div-ancestor heuristic borrowed from Betfair was wrong on two
+  counts on Betano: it stopped one level too shallow (no `<tr>`/`<li>` at
+  all on this site's fixtures list), and it implicitly assumed native
+  `<button>` tags when Betano's price controls are `<div role="button">`.
+  `buildFixtureIndex` now walks up from the fixture link until it finds an
+  ancestor whose subtree actually contains a `role="button"` descendant,
+  depth-agnostic rather than a fixed tag/depth guess.
 - The "Remove selections" button's top-level-vs-per-leg disambiguation
   (`clearBetslip`) -- both share the same accessible name, using `.first()`
   as a best guess.

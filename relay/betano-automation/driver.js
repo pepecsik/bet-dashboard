@@ -140,12 +140,20 @@ async function clearBetslip(page) {
 // match-page href (never guessed/reconstructed from team names -- per
 // BETANO_RECON.md, Betano silently 302-redirects some slugs).
 //
-// UNVERIFIED row-scoping -- confirm live. BETANO_RECON.md documents the
-// fixture row's accessibility-tree shape (link, then 3 named price
-// buttons) but not the exact DOM wrapper tag/class the way it did for
-// Betfair's `couponEventScoreContainer`. Using the same
-// nearest-tr/li/div-ancestor heuristic that worked for Betfair as a
-// starting hypothesis, not a confirmed fact for this site.
+// Row-scoping fix, confirmed live (2026-09-23): the nearest-tr/li/div-
+// ancestor heuristic borrowed from Betfair was wrong on two counts here --
+// it stopped one level too shallow (Betano's fixtures list has no
+// <tr>/<li> at all, so the link's immediate parent is already a plain
+// div, matching the filter one level before the real row wrapper that
+// actually holds the price controls), and it implicitly assumed native
+// <button> tags, when Betano's price controls are actually
+// `<div role="button">` (confirmed via the real accessibility tree --
+// Playwright's getByRole("button", ...) still matches these fine, since
+// it's role-based, but any tag-based DOM probing silently misses them).
+// Fixed depth-agnostically: instead of a fixed ancestor depth/tag list,
+// walk up from the link until the ancestor's subtree actually contains a
+// role="button" descendant -- won't break if some other part of the site
+// (e.g. live vs upcoming fixtures) nests things one level differently.
 async function buildFixtureIndex(page, matchesNeeded) {
   await gotoFixturesList(page);
 
@@ -154,7 +162,7 @@ async function buildFixtureIndex(page, matchesNeeded) {
     try {
       const link = page.getByRole("link", { name: new RegExp(`${escapeRegex(homeTeam)}.*${escapeRegex(awayTeam)}`, "i") }).first();
       const href = await link.getAttribute("href");
-      const row = link.locator("xpath=ancestor::*[self::tr or self::li or self::div][1]");
+      const row = link.locator('xpath=ancestor::*[.//*[@role="button"]][1]');
       index[match] = { href, row };
     } catch (err) {
       if (err instanceof CloudflareChallengeError) throw err;

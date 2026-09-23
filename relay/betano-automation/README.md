@@ -1,0 +1,101 @@
+# Betano automation driver
+
+Runs on the Mac -- NOT deployed to Render, unlike the rest of `relay/`. Builds
+**both** of a player's weekly accumulators (Bet 1, then Bet 2) on Betano
+using `../betanoPlan.js`'s ordered plan and the page structure documented in
+`../BETANO_RECON.md`, then reports each built slip to the relay and waits
+for Winston's approve/reject in the app before continuing -- same lifecycle
+as the retired Betfair driver, just pointed at a different site with
+different mechanics.
+
+This is Winston's own, ID-verified Betano account -- no VPN, no
+third-party-account-access question, unlike the retired Betfair attempt.
+
+## Status: first draft, not yet run against the live site
+
+Applies everything learned from the Betfair build (deterministic URL
+navigation, real click/clear verification via the betslip's actual state,
+correct Stagehand tab-binding from the start, per-bet Stagehand rebuild,
+never trusting a clean exit as proof) as a starting point, rather than
+rediscovering each of those from scratch. But several selectors below are
+marked **UNVERIFIED** in the code's own comments -- things `BETANO_RECON.md`
+didn't fully pin down and need confirming on the first real run:
+
+- The exact CDP port for the `betano` browser profile (`BETANO_CDP_URL`,
+  defaults to `8093` -- a guess based on the port mentioned during recon,
+  not independently confirmed).
+- The fixture row's DOM wrapper (used to scope list-page button searches to
+  the correct fixture) -- using the same tr/li/div-ancestor heuristic that
+  worked for Betfair, not confirmed for Betano's own markup.
+- The "Remove selections" button's top-level-vs-per-leg disambiguation
+  (`clearBetslip`) -- both share the same accessible name, using `.first()`
+  as a best guess.
+- The exact confirmed "empty" state text for the betslip (Betfair had a
+  literal "betslip is empty" string to check against; Betano's equivalent
+  wasn't captured during recon) -- `clearBetslip` can only warn, not hard-fail,
+  on this until a real empty-state string is confirmed live.
+- The stake textbox's exact selector in Multiple mode (`fillStake`) --
+  scoped to "the only textbox in the betslip container," not a specific
+  confirmed `aria-label` the way Betfair's was.
+
+Expect the first real run to surface some of these -- that's what the AI
+fallback + this file's own logging are for, same as before.
+
+## Setup
+
+1. `npm install` in this folder.
+2. Winston logs into his own Betano account on the `betano` browser
+   profile (already done as of this writing -- ID-verified, saved login,
+   67% zoom set by hand). Before running `driver.js`, that browser must
+   already be running with its CDP port open.
+3. Set `BETANO_CDP_URL` if it's not the default (`http://127.0.0.1:8093`)
+   -- confirm the actual port with whoever started the profile.
+4. Confirm `RELAY_URL` (env var, defaults to the deployed Render URL) is
+   reachable from the Mac.
+
+**Never resize this profile's viewport once Betano is loaded, if a human is
+watching the real window** -- per `BETANO_RECON.md`'s own gotcha, this
+breaks the floating betslip's positioning and page layout, fixed only by a
+full reload. `driver.js` doesn't call resize anywhere; keep it that way.
+
+## Running it
+
+```
+node driver.js
+```
+
+No player argument -- claims whichever job `/betfair-place-request/next`
+hands back, same one-at-a-time serialization as always. Needs a real
+pending request in the relay's queue first (the app's "place bet" button,
+or `POST /betfair-place-request` manually, `test: true` for any test run).
+
+For each of the (up to 2) bets in the claimed job, in order:
+1. Clears whatever's in the betslip first (best-effort -- see the
+   UNVERIFIED note on `clearBetslip` above).
+2. Builds the slip, screenshots just the betslip element (not a full-page
+   screenshot -- the betslip is `position: fixed` and won't composite into
+   one correctly), logs `SCREENSHOT_READY: <path>`, and posts it to the
+   relay as `awaiting_confirmation`.
+3. Polls `/betfair-place-request/decision` until Winston approves or
+   rejects, no timeout, heartbeat logged every 5 minutes.
+4. On reject: clears the job, stops -- does not build further bets for
+   that job.
+5. On approve, test mode: logs "simulating," does not click anything, moves
+   to the next bet (or reports fully placed if that was the last one).
+6. On approve, real mode: hard-stops on purpose --
+   `RealPlacementNotImplementedError`. Clicking the real BET NOW button is
+   not implemented in this file at all, stays that way pending deliberate
+   review, same standing rule as the retired Betfair driver.
+
+`driver.js` has no Telegram/messaging capability of its own -- the
+`SCREENSHOT_READY: <path>` log line is the hand-off contract for whatever
+wraps this script (see the retired `DRIVER_MANUAL.md` for the pattern; a
+Betano equivalent needs writing once this is live-tested).
+
+- Exits 0 and logs "No pending job" if the queue is empty.
+- Exits 0 on a fully successful job (every bet approved and reported).
+- Exits 1 and logs the error, the page URL, and a full-page hard-stop
+  screenshot (`HARDSTOP_SCREENSHOT_READY: <path>`) on any failure --
+  captured before the page closes, so the real failing state is always
+  directly inspectable rather than requiring after-the-fact reasoning
+  about an already-closed tab.

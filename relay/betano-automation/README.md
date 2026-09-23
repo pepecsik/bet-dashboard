@@ -52,6 +52,15 @@ fallback + this file's own logging are for, same as before.
    -- confirm the actual port with whoever started the profile.
 4. Confirm `RELAY_URL` (env var, defaults to the deployed Render URL) is
    reachable from the Mac.
+5. Set `OPENAI_API_KEY` in the environment `driver.js` runs in -- Stagehand
+   validates this eagerly at construction time (once per bet, even on a
+   run where the AI fallback path never actually fires), so a missing key
+   hard-stops the whole job before a single leg is attempted. Confirmed
+   live (2026-09-23): the same key used for the retired Betfair build's
+   fallback (also GPT-5 mini via Stagehand) works here too -- it just
+   needs to be present in this folder's environment specifically, since
+   `betano-automation/` is a separate directory from the old
+   `betfair-automation/` one it may have been scoped to.
 
 **Never resize this profile's viewport once Betano is loaded, if a human is
 watching the real window** -- per `BETANO_RECON.md`'s own gotcha, this

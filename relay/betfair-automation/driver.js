@@ -116,11 +116,26 @@ function makeFallbackLog() {
     // whether stagehand.page is even the same tab -- if the fallback acted
     // on a disconnected tab, the real page's betslip genuinely won't show
     // the leg, and this now catches that loudly instead of silently.
-    async withAiFallback(page, stagehand, description, matchLabel, selection, deterministicFn) {
+    // knownUrl, when given, gets navigated to deterministically (plain
+    // Playwright, zero LLM) before the AI is ever invoked -- confirmed live
+    // (2026-09-22), TWICE, that Stagehand's .act() is not reliable for
+    // verbatim URL reproduction no matter how explicit the instruction:
+    // first attempt hallucinated a wrong domain entirely
+    // (sports.betfair.com), second attempt (given the exact URL and told
+    // explicitly not to guess) still mangled the real one (dropped
+    // "/betting" from the path). LLMs aren't suited to literal string
+    // reproduction -- the fix isn't a better prompt, it's not asking for
+    // that part at all. Only the part that genuinely needs visual/semantic
+    // judgment (finding and clicking the right selection) goes to the AI.
+    async withAiFallback(page, stagehand, description, matchLabel, selection, knownUrl, deterministicFn) {
       try {
         return await deterministicFn();
       } catch (err) {
         if (err instanceof CloudflareChallengeError) throw err; // never paper over a hard stop
+        if (knownUrl) {
+          await page.goto(knownUrl, { waitUntil: "networkidle" });
+          assertNotChallenged(page);
+        }
         const before = { ...stagehand.metrics };
         const result = await stagehand.page.act(description);
         const after = { ...stagehand.metrics };
@@ -517,20 +532,26 @@ async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
     // already known (fixtureEntry.href resolved fine, and only a later step
     // like Show More/the price click failed), hand it over explicitly
     // instead of leaving navigation open to interpretation. Confirmed live
-    // (2026-09-22) via a hard-stop screenshot: Stagehand's .act() had
-    // improvised its own guess at Betfair's sportsbook root URL
-    // (https://sports.betfair.com/, appearing nowhere in this codebase)
-    // instead of using the real, already-known match URL, and that guess
-    // hard-failed (ERR_TUNNEL_CONNECTION_FAILED) -- three rounds of what
-    // looked like a settle-timing bug on the SAME leg were actually this,
-    // only ever visible once a screenshot was captured before cleanup.
-    const knownUrl = fixtureEntry && fixtureEntry.href ? new URL(fixtureEntry.href, "https://www.betfair.com").toString() : null;
+    // (2026-09-22) via a hard-stop screenshot, TWICE, across two different
+    // attempts: first Stagehand's .act() improvised a wrong domain entirely
+    // (https://sports.betfair.com/, appearing nowhere in this codebase);
+    // after being given the exact URL explicitly and told not to guess, it
+    // still mangled the real one (dropped "/betting" from the path). LLMs
+    // aren't reliable for verbatim string reproduction no matter how
+    // explicit the instruction -- so this URL is no longer handed to the AI
+    // as text to reproduce at all. When known, it's navigated to
+    // deterministically (see withAiFallback's own knownUrl handling), and
+    // the description below only ever describes the part that actually
+    // needs judgment: finding and clicking the right selection.
+    const knownUrl = fixtureEntry && fixtureEntry.href
+      ? `${new URL(fixtureEntry.href, "https://www.betfair.com").toString()}${step.tab === "all-markets" ? "?tab=all-markets" : ""}`
+      : null;
     const description = step.type === "list-pick"
       ? `On the EPL fixtures list (${EPL_FIXTURES_URL}), find the ${step.match} fixture and click its ${step.position} price button`
       : knownUrl
-        ? `Navigate directly to this exact URL: ${knownUrl}${step.tab === "all-markets" ? "?tab=all-markets" : ""} -- do not search for it or guess a different URL, this is the correct one. Then back "${step.selection}" in the ${step.market} market.`
+        ? `Back "${step.selection}" in the ${step.market} market on this page.`
         : `Navigate to the ${step.match} match page (search the EPL fixtures list at ${EPL_FIXTURES_URL} first if you're not already there), then back "${step.selection}" in the ${step.market} market`;
-    await withAiFallback(page, stagehand, description, step.match, step.selection, () =>
+    await withAiFallback(page, stagehand, description, step.match, step.selection, step.type === "match-page-pick" ? knownUrl : null, () =>
       step.type === "list-pick" ? executeListPick(page, step, fixtureEntry) : executeMatchPagePick(page, step, fixtureEntry)
     );
   }

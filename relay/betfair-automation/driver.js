@@ -513,13 +513,23 @@ async function buildBetOnBetfair(page, stagehand, plan, withAiFallback) {
     const fixtureEntry = fixtureIndex[step.match];
     // Self-contained on purpose -- fixtureEntry may be null (buildFixtureIndex
     // couldn't resolve this match deterministically), so the fallback can't
-    // assume it's already on the right page or even knows the match's URL.
-    // Telling it to navigate from the fixtures list itself if needed means it
-    // can still recover a match buildFixtureIndex missed entirely, not just
-    // one where the index resolved but a click/type target didn't.
+    // always assume it already knows the match's URL. But when the URL IS
+    // already known (fixtureEntry.href resolved fine, and only a later step
+    // like Show More/the price click failed), hand it over explicitly
+    // instead of leaving navigation open to interpretation. Confirmed live
+    // (2026-09-22) via a hard-stop screenshot: Stagehand's .act() had
+    // improvised its own guess at Betfair's sportsbook root URL
+    // (https://sports.betfair.com/, appearing nowhere in this codebase)
+    // instead of using the real, already-known match URL, and that guess
+    // hard-failed (ERR_TUNNEL_CONNECTION_FAILED) -- three rounds of what
+    // looked like a settle-timing bug on the SAME leg were actually this,
+    // only ever visible once a screenshot was captured before cleanup.
+    const knownUrl = fixtureEntry && fixtureEntry.href ? new URL(fixtureEntry.href, "https://www.betfair.com").toString() : null;
     const description = step.type === "list-pick"
       ? `On the EPL fixtures list (${EPL_FIXTURES_URL}), find the ${step.match} fixture and click its ${step.position} price button`
-      : `Navigate to the ${step.match} match page (search the EPL fixtures list at ${EPL_FIXTURES_URL} first if you're not already there), then back "${step.selection}" in the ${step.market} market`;
+      : knownUrl
+        ? `Navigate directly to this exact URL: ${knownUrl}${step.tab === "all-markets" ? "?tab=all-markets" : ""} -- do not search for it or guess a different URL, this is the correct one. Then back "${step.selection}" in the ${step.market} market.`
+        : `Navigate to the ${step.match} match page (search the EPL fixtures list at ${EPL_FIXTURES_URL} first if you're not already there), then back "${step.selection}" in the ${step.market} market`;
     await withAiFallback(page, stagehand, description, step.match, step.selection, () =>
       step.type === "list-pick" ? executeListPick(page, step, fixtureEntry) : executeMatchPagePick(page, step, fixtureEntry)
     );

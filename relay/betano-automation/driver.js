@@ -74,6 +74,27 @@ function assertNotChallenged(page) {
 
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+// Confirmed live (2026-09-23): waitUntil: "networkidle" never resolves on
+// Betano within its 30s timeout, even on a page that's fully loaded and
+// completely usable -- independently verified via a real browser check,
+// not assumed from the timeout error alone. Betano almost certainly keeps
+// some background traffic running continuously (live-odds polling,
+// analytics), which "networkidle" (500ms of zero network activity) can
+// never satisfy on this kind of page. Using "domcontentloaded" instead,
+// paired with an explicit wait for a real, meaningful element -- a
+// reliable substitute for "is this page actually usable yet."
+async function gotoFixturesList(page) {
+  await page.goto(EPL_FIXTURES_URL, { waitUntil: "domcontentloaded" });
+  assertNotChallenged(page);
+  await page.getByRole("button", { name: /^Bet on 1 with odds/i }).first().waitFor({ state: "visible" });
+}
+
+async function gotoMatchPage(page, url) {
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  assertNotChallenged(page);
+  await page.getByText("Match Result", { exact: true }).first().waitFor({ state: "visible" });
+}
+
 // Ground truth for "what does Betano itself think is selected right now" --
 // never trust a click's own success/no-error as proof it worked. Scoped to
 // the floating betslip widget specifically (`.bet-slip-container`), per
@@ -126,8 +147,7 @@ async function clearBetslip(page) {
 // nearest-tr/li/div-ancestor heuristic that worked for Betfair as a
 // starting hypothesis, not a confirmed fact for this site.
 async function buildFixtureIndex(page, matchesNeeded) {
-  await page.goto(EPL_FIXTURES_URL, { waitUntil: "networkidle" });
-  assertNotChallenged(page);
+  await gotoFixturesList(page);
 
   const index = {};
   for (const { match, homeTeam, awayTeam } of matchesNeeded) {
@@ -170,8 +190,7 @@ async function executeListPick(page, step, fixtureEntry) {
 async function executeMatchPagePick(page, step, fixtureEntry) {
   if (!fixtureEntry || !fixtureEntry.href) throw new Error(`No captured href for "${step.match}" -- can't navigate without guessing the URL`);
   const url = new URL(fixtureEntry.href, "https://www.betano.pt").toString();
-  await page.goto(url, { waitUntil: "networkidle" });
-  assertNotChallenged(page);
+  await gotoMatchPage(page, url);
 
   if (step.needsExpand) {
     // Correct Score is a collapsed accordion by default -- expand it first.
@@ -271,8 +290,7 @@ function makeFallbackLog() {
       } catch (err) {
         if (err instanceof CloudflareChallengeError) throw err;
         if (knownUrl) {
-          await page.goto(knownUrl, { waitUntil: "networkidle" });
-          assertNotChallenged(page);
+          await gotoMatchPage(page, knownUrl);
         }
         const before = { ...stagehand.metrics };
         const result = await stagehand.page.act(description);
@@ -370,14 +388,16 @@ async function main() {
 
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
 
-  // Navigate once, up front -- same lesson as Betfair's build: a brand-new
-  // page.newPage() tab starts on about:blank, and clearBetslip() (called
-  // at the top of the loop below, for every bet including Bet 1) needs a
-  // real page loaded to check at all.
-  await page.goto(EPL_FIXTURES_URL, { waitUntil: "networkidle" });
-  assertNotChallenged(page);
-
   try {
+    // Navigate once, up front -- same lesson as Betfair's build: a brand-new
+    // page.newPage() tab starts on about:blank, and clearBetslip() (called
+    // at the top of the loop below, for every bet including Bet 1) needs a
+    // real page loaded to check at all. Moved inside the try block on
+    // purpose: a failure here used to skip the hard-stop screenshot + relay
+    // error report entirely, leaving the job stuck "claimed" with zero
+    // failure trace -- confirmed live (2026-09-23).
+    await gotoFixturesList(page);
+
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;
       const plan = buildBetPlan(exportedBet);

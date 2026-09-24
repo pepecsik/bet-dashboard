@@ -64,6 +64,18 @@ const CDP_URL = process.env.BETANO_CDP_URL || "http://127.0.0.1:8093";
 // them. Set to an absolute path under the agent's workspace when running
 // via OpenClaw, e.g. /Users/winston/.openclaw/workspace-betfair/screenshots.
 const SCREENSHOT_DIR = process.env.SCREENSHOT_DIR || "./screenshots";
+// Last-resort hard-stop notification, added 2026-09-24: OpenClaw's own
+// agent turn relaying SCREENSHOT_READY/HARDSTOP_SCREENSHOT_READY to
+// Telegram is the primary, tested path -- but confirmed live that when
+// that turn dies (a recurring OpenAI rate-limit issue this session) right
+// as a hard stop happens, Winston gets zero notification at all. The
+// failure sits silently until someone manually digs through raw logs.
+// Both unset by design (opt-in, not required) -- if either is missing,
+// notifyHardStopDirect() below just logs and does nothing, same as
+// today's behavior; this is a fallback on top of the existing path, not
+// a replacement for it.
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
 const EPL_FIXTURES_URL = "https://www.betano.pt/en/sport/soccer/england/premier-league/1/";
 const POSITION_LABEL = { home: "1", draw: "X", away: "2" };
 // Testing lever, opt-in, test-mode only: lets bet 1's full
@@ -441,6 +453,38 @@ async function uploadScreenshot(localPath) {
   }
 }
 
+// Last-resort direct Telegram send on a hard stop -- see the
+// TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID comment above for why this exists
+// alongside (not instead of) OpenClaw's own relay. Uses Telegram's Bot
+// API directly, passing screenshotUrl straight through as the `photo`
+// parameter -- Telegram's own servers fetch it from the relay, so this
+// needs no local file handling at all, sidestepping every problem the
+// local-path/buffer approaches hit earlier. No-ops quietly (just a log
+// line) if either env var is unset, or if the send itself fails for any
+// reason -- this must never throw and turn a hard-stop's own error
+// reporting into a second, worse failure.
+async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.error(`[betano-driver] Direct Telegram notify skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
+    return;
+  }
+  const caption = `🛑 Hard stop building a bet for ${player} (direct notify -- OpenClaw's own relay may not have gotten to this).\n\n${errorMessage}`;
+  try {
+    const endpoint = screenshotUrl ? "sendPhoto" : "sendMessage";
+    const body = screenshotUrl
+      ? { chat_id: TELEGRAM_CHAT_ID, photo: screenshotUrl, caption }
+      : { chat_id: TELEGRAM_CHAT_ID, text: caption };
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(JSON.stringify(data));
+    console.error(`[betano-driver] Direct Telegram notify sent (messageId: ${data.result.message_id}).`);
+  } catch (err) {
+    console.error(`[betano-driver] Direct Telegram notify failed:`, err.message);
+  }
+}
+
 // Confirmed live (2026-09-24): a run reached awaiting_confirmation with a
 // fully correct pendingBet payload (all 6 legs, right stake/return --
 // verifyBetslipMatchesPlan had genuinely passed, immediately beforehand,
@@ -727,17 +771,23 @@ async function main() {
   } catch (err) {
     console.error(`[betano-driver] Hard stop for ${player}:`, err.message);
     console.error(`[betano-driver] Page URL at hard stop: ${page.url()}`);
+    let failureUrl = null;
     try {
       const dir = SCREENSHOT_DIR;
       await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
       const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
       await page.screenshot({ path: failurePath, fullPage: true });
       console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
-      const failureUrl = await uploadScreenshot(failurePath);
+      failureUrl = await uploadScreenshot(failurePath);
       if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);
     } catch (screenshotErr) {
       console.error(`[betano-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
     }
+    // Fires regardless of whether the screenshot itself succeeded above --
+    // even a text-only notification beats the silent-failure blind spot
+    // this exists to close. Never allowed to throw (see the function's
+    // own comment), so it can't turn this hard-stop path into a worse one.
+    await notifyHardStopDirect(player, err.message, failureUrl);
     process.exitCode = 1;
   } finally {
     console.log(`[betano-driver] AI fallback used ${fallbackLog.length} time(s) across this job:`, fallbackLog);

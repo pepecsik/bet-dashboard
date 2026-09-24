@@ -544,6 +544,17 @@ async function buildBetOnBetano(page, stagehand, plan, withAiFallback) {
   const fixtureIndex = await buildFixtureIndex(page, plan.matchesNeeded);
 
   for (const step of plan.steps) {
+    // Confirmed live (2026-09-24): the Session Timer can appear mid-build,
+    // not just after fillStake or between navigations -- one real
+    // occurrence covered the page and intercepted every click attempt on
+    // a leg for 30+ seconds straight (the deterministic click retrying
+    // against an overlay it couldn't get past), timed out, fell through
+    // to the AI fallback (which also couldn't add the leg through the
+    // same overlay), hard-stopped -- and the countdown expired during all
+    // of this, force-logging the session out and wiping all 5 already-
+    // built legs. Checking proactively before every single leg's click
+    // attempt, not just reactively after something already went wrong.
+    await dismissSessionTimer(page);
     const fixtureEntry = fixtureIndex[step.match];
     const knownUrl = fixtureEntry && fixtureEntry.href ? new URL(fixtureEntry.href, "https://www.betano.pt").toString() : null;
     const description = step.type === "list-pick"

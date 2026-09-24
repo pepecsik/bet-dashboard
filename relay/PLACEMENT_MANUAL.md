@@ -39,6 +39,13 @@ cd relay/betano-automation
 STOP_AFTER_FIRST_BET=1 SCREENSHOT_DIR=/Users/winston/.openclaw/workspace-betfair/screenshots node --env-file=.env driver.js
 ```
 
+Add `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` to that same `.env` (not the
+inline command -- they're already loaded via `--env-file=.env`) for the
+direct hard-stop notification, per `betano-automation/README.md`'s Setup
+step 6. Optional, but closes a real blind spot: if this session's own
+agent turn dies at the wrong moment, this is the only thing that still
+notifies Winston at all.
+
 `STOP_AFTER_FIRST_BET=1` is deliberate, for right now: the driver reports
 the job fully done after bet 1 is approved instead of auto-continuing to
 build bet 2 in the same run. Drop it once bet 1's full loop (below) has

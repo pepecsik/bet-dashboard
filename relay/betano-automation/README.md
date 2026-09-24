@@ -126,6 +126,15 @@ same as before.
    needs to be present in this folder's environment specifically, since
    `betano-automation/` is a separate directory from the old
    `betfair-automation/` one it may have been scoped to.
+6. Optionally set `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` for the
+   direct hard-stop notification (added 2026-09-24) -- a last-resort
+   fallback that sends Winston a Telegram message straight from
+   `driver.js` itself on a hard stop, independent of whether OpenClaw's
+   own agent turn survives to relay it (confirmed live: it can die, e.g.
+   on an OpenAI rate limit, at the exact moment a hard stop happens,
+   leaving zero notification with just the primary path). Genuinely
+   optional -- if either is unset, `driver.js` just logs that it skipped
+   this and carries on exactly as before.
 
 **Never resize this profile's viewport once Betano is loaded, if a human is
 watching the real window** -- per `BETANO_RECON.md`'s own gotcha, this

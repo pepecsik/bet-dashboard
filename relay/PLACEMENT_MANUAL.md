@@ -21,6 +21,16 @@ stuck (bet 1 worked, bet 2 never got fully unstuck).
    player you're testing. Clear a stale entry first if there is one.
 3. Queue a fresh job if the queue's empty: `POST /betfair-place-request`
    with `{"player": "<name>", "test": true}`.
+4. Check for orphaned `driver.js`/diagnostic-script processes still
+   holding a CDP connection into the same browser profile --
+   `ps aux | grep "[n]ode.*driver.js"` (and similarly for any leftover
+   `_check_*.mjs`/`_test_*.mjs` scripts from earlier debugging). Confirmed
+   live (2026-09-24): a driver.js process from ~6 hours earlier was still
+   alive, parented by openclaw-gateway with no matching queue entry,
+   sharing the same CDP session as the run actually being tested --
+   two processes on one tab is exactly the kind of thing that can produce
+   confusing, hard-to-explain DOM behavior. Kill anything stale before
+   trusting a run's results.
 
 ## Running
 

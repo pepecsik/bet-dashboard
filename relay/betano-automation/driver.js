@@ -649,15 +649,20 @@ async function main() {
       await stagehand.stagehandContext.getStagehandPage(page);
 
       const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
-      // Winston observed this live, separately from everything else found
-      // today: after the stake gets filled in, the marketing/bonus popup
-      // can reappear on its own, with no navigation involved -- neither
-      // dismiss function is currently called anywhere after fillStake()
-      // runs, only at navigation points (gotoFixturesList/gotoMatchPage)
-      // and inside pollForDecision's poll loop. Not yet root-caused (could
-      // be a timed re-trigger, could be something fillStake's own
-      // interaction incidentally causes) -- dismissing defensively here,
-      // right after the build and before anything else, same idempotent
+      // Root-caused, confirmed live (2026-09-24) via an independent
+      // CDP-level navigation watcher outside driver.js's own process, not
+      // just observed: a genuine top-level page reload occurs around when
+      // fillStake() fires -- a real GET "Document" request to the exact
+      // same fixtures-list URL, followed by fresh DOMContentLoaded/LOAD
+      // events, not merely a DOM element reappearing. Cause of the reload
+      // itself is still unknown (Betano's own doing, not driver.js's --
+      // nothing else touches the page at that point), but the effect is
+      // fully handled: Betano persists betslip selections across a reload
+      // (confirmed, BETANO_RECON.md section 3), and this defensive
+      // dismiss + the verifyBetslipMatchesPlan check right after already
+      // recover from it cleanly -- confirmed end to end on a genuinely
+      // clean run, all 6 legs intact post-reload. Kept here, right after
+      // the build and before anything else, same idempotent
       // no-op-if-absent pattern as everywhere else these get called.
       await dismissMarketingPopup(page);
       await dismissSessionTimer(page);

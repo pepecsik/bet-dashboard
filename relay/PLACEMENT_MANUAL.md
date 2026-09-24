@@ -35,29 +35,34 @@ build bet 2 in the same run. Drop it once bet 1's full loop (below) has
 been proven clean and we're ready to bring bet 2 back in -- see
 `betano-automation/README.md` for what it does exactly.
 
-`SCREENSHOT_DIR` alone is **not sufficient** for the Telegram hand-off to
-work -- superseded by the finding below. Still worth setting (costs
-nothing, keeps screenshots out of the project folder), but don't expect
-it to fix the send on its own.
+`SCREENSHOT_DIR` is still worth setting (costs nothing, keeps screenshots
+out of the project folder), but **it's no longer what the Telegram
+hand-off depends on** -- superseded by the URL-based fix below.
 
-**Confirmed live (2026-09-24), by reading acca's own raw session
-transcript directly, not the wrapper's summary:** every attempt to send a
-screenshot via a local file path failed with "not under an allowed
-directory," including one pointed at `SCREENSHOT_DIR` set to acca's own
-workspace directory -- which should be allowed per the message tool's own
-`getAgentScopedMediaLocalRoots` logic, but wasn't. Traced to
-`params.mediaLocalRoots` apparently not getting populated correctly at
-that call site -- a real gap in OpenClaw's own platform wiring, not
-anything fixable from this repo or `driver.js`.
+**History, for context (both attempts genuinely failed, confirmed live
+2026-09-24 by reading acca's own raw session transcript, not the
+wrapper's summary -- don't retry either of these):**
+1. A local file path was rejected outright: "not under an allowed
+   directory," including one pointed at `SCREENSHOT_DIR` set to acca's own
+   workspace directory, which should have been allowed per the message
+   tool's own `getAgentScopedMediaLocalRoots` logic but wasn't --
+   apparently `params.mediaLocalRoots` isn't populated correctly at that
+   call site. A real gap in OpenClaw's own platform wiring, not anything
+   fixable from this repo.
+2. An inline base64 buffer, built via `base64 -i <file>` through exec, was
+   silently truncated to ~10KB by exec's own output-capture limit -- a real
+   ~1.3MB base64 screenshot never survived intact, so Telegram got a
+   corrupted/unusable image fragment (or nothing) even though the send
+   call itself reported success.
 
-**Workaround: send the screenshot as inline content, not a file path.**
-The message tool also accepts `params.args.buffer` (base64) +
-`contentType` directly -- this bypasses the local-path allowlist check
-entirely, since no file-path resolution happens when a buffer is already
-provided. Acca has filesystem read access: read the screenshot file
-itself, base64-encode it, and pass it as `buffer`/`contentType` instead
-of a path. Use this method for the Telegram hand-off below, not a raw
-file path, until/unless the platform-side allowlist bug gets fixed.
+**The actual fix: `driver.js` now uploads every screenshot to the relay
+and hands back a real, publicly reachable URL** (`SCREENSHOT_URL:`/
+`HARDSTOP_SCREENSHOT_URL:` log lines, alongside the existing local-path
+ones) -- the relay is already a live Render service, unlike the Mac
+`driver.js` runs on, so this sidesteps both the local-path allowlist and
+the exec truncation ceiling at once. Give the message tool this URL
+directly (whatever its own remote-URL delivery mechanism is), not a local
+path or a buffer.
 
 ## Step 1 -- the screenshot hand-off
 
@@ -65,21 +70,27 @@ Watch the driver's own log output for:
 
 ```
 [betano-driver] SCREENSHOT_READY: <path>
+[betano-driver] SCREENSHOT_URL: <url>
 ```
 
-The moment this appears, **send that screenshot file to Winston via
-Telegram**, with a short caption: player name, bet number, stake, and the
-potential return (same figure that's also going into the app -- read it
-back from the relay's `/betfair-place-request/queue` response,
-`pendingBet.potentialReturn`, so the Telegram message and the app agree).
-This is the actual point of `STOP_AFTER_FIRST_BET` and today's
-`potentialReturn` fix -- Winston should be able to look at the Telegram
-message and the app's Approve/Reject screen and see the same real numbers
-in both places, not just a bare "check the app" prompt.
+The moment `SCREENSHOT_URL` appears, **send that URL to Winston via
+Telegram** (the local path is upload-best-effort -- if `SCREENSHOT_URL`
+didn't appear, the upload itself failed; check the driver's own error log
+for why before falling back to anything else), with a short caption:
+player name, bet number, stake, and the potential return (same figure
+that's also going into the app -- read it back from the relay's
+`/betfair-place-request/queue` response, `pendingBet.potentialReturn`, so
+the Telegram message and the app agree). This is the actual point of
+`STOP_AFTER_FIRST_BET` and the `potentialReturn`/`screenshotUrl` fixes --
+Winston should be able to look at the Telegram message and the app's
+Approve/Reject screen (which now shows the same screenshot inline, per
+`admin.html`'s `renderPendingBet`) and see the same real bet in both
+places, not just a bare "check the app" prompt.
 
-If a hard stop happens instead (`HARDSTOP_SCREENSHOT_READY: <path>` in the
-log), send that screenshot too, with the actual error message from the
-log -- don't let Winston find out some other way that a run failed.
+If a hard stop happens instead (`HARDSTOP_SCREENSHOT_READY:`/
+`HARDSTOP_SCREENSHOT_URL:` in the log), send that URL too, with the actual
+error message from the log -- don't let Winston find out some other way
+that a run failed.
 
 ## Step 2 -- wait for the decision
 

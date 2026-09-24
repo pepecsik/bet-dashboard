@@ -322,6 +322,7 @@
   .queue-refresh-btn { margin-top: 12px; }
   .queue-bet-card { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
   .queue-bet-title { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .queue-bet-screenshot { display: block; width: 100%; max-width: 320px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); }
   .queue-leg { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); line-height: 1.4; }
   .queue-leg:last-of-type { border-bottom: none; }
   .queue-leg b { white-space: nowrap; }
@@ -1081,6 +1082,15 @@ const QUEUE_STATUS_LABEL = { pending: 'Pending', claimed: 'Building', awaiting_c
 // renders straight from the Sheet/relay (bet picks, ledger rows, etc).
 function renderPendingBet(q) {
   const bet = q.pendingBet;
+  // Confirmed live (2026-09-24): the driver's screenshot never had a real
+  // way to reach the app before this -- screenshotPath is a local file
+  // path on the Mac driver.js runs on, useless to a browser. screenshotUrl
+  // (added the same day) is a real URL served by this same relay. Omitted
+  // entirely, not a broken-image placeholder, on an older/test entry that
+  // predates this field or hit the best-effort upload failing.
+  const screenshotHtml = bet.screenshotUrl
+    ? `<img class="queue-bet-screenshot" src="${bet.screenshotUrl}" alt="Bet ${bet.betNumber || ''} betslip screenshot" loading="lazy">`
+    : '';
   const legsHtml = (bet.legs || []).map(l => `
     <div class="queue-leg">
       ${l.selection || ''} <span style="opacity:0.6;">&mdash; ${l.market || ''}${l.match ? ' (' + l.match + ')' : ''}</span>
@@ -1102,6 +1112,7 @@ function renderPendingBet(q) {
     return `
       <div class="queue-bet-card">
         <div class="queue-bet-title">Bet ${bet.betNumber || ''}</div>
+        ${screenshotHtml}
         ${legsHtml}
         ${summaryHtml}
         <div class="queue-decided-msg ${q.decision}">${label}</div>
@@ -1111,6 +1122,7 @@ function renderPendingBet(q) {
   return `
     <div class="queue-bet-card">
       <div class="queue-bet-title">Bet ${bet.betNumber || ''} &mdash; awaiting your decision</div>
+      ${screenshotHtml}
       ${legsHtml}
       ${summaryHtml}
       <div class="queue-decision-row">

@@ -103,6 +103,24 @@ let lastRawStats = {};
 // comment on the /betfair-place-request/status route below).
 let betfairQueue = [];
 
+// Screenshot hand-off store for the Betano driver -- confirmed live
+// (2026-09-24): a bet-build screenshot handed to OpenClaw's Telegram
+// message tool as either a local file path (blocked by its own
+// directory allowlist) or an inline base64 buffer (silently truncated to
+// ~10KB by the exec tool that produced it, well short of a real ~1MB
+// screenshot's ~1.3MB base64 size) never actually reached Telegram
+// intact. The relay is already a live, publicly reachable Node service
+// (unlike the Mac driver.js runs on) -- serving the file over a real URL
+// sidesteps both problems, since the message tool's own fetch mechanism
+// is built to handle remote URLs as the primary case. In-memory only,
+// same acceptable-loss-on-restart tradeoff as betfairQueue/betsCache --
+// these are short-lived hand-off artifacts (superseded the moment the
+// next bet is built), not something that needs to survive a restart.
+// Capped at MAX_SCREENSHOTS entries, oldest evicted first, so a long
+// Render uptime can't accumulate unbounded memory from repeated test runs.
+const screenshotStore = new Map(); // filename -> { buffer, contentType, storedAt }
+const MAX_SCREENSHOTS = 20;
+
 const server = http.createServer((req, res) => {
   // CORS -- every route below is either public read data (bets, snapshot,
   // queue status) or an action gated by knowing a player's name, same
@@ -359,6 +377,44 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "success", test, outcomes }));
     });
+    return;
+  }
+  // driver.js calls this right after saving a screenshot locally, so both
+  // the admin app and a Telegram send have a real, publicly reachable URL
+  // to use instead of a local file path or a raw buffer -- see the
+  // screenshotStore comment above for why. filename should be unique per
+  // screenshot (driver.js already includes a timestamp); dataBase64 is the
+  // raw PNG bytes, base64-encoded.
+  if (req.method === "POST" && req.url === "/betano-screenshot") {
+    readJsonBody(req, (body) => {
+      const filename = body && body.filename;
+      const dataBase64 = body && body.dataBase64;
+      if (!filename || !dataBase64) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing filename or dataBase64" }));
+        return;
+      }
+      let buffer;
+      try { buffer = Buffer.from(dataBase64, "base64"); } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "dataBase64 isn't valid base64" }));
+        return;
+      }
+      while (screenshotStore.size >= MAX_SCREENSHOTS) {
+        screenshotStore.delete(screenshotStore.keys().next().value);
+      }
+      screenshotStore.set(filename, { buffer, contentType: (body && body.contentType) || "image/png", storedAt: Date.now() });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "stored", path: `/betano-screenshot/${encodeURIComponent(filename)}` }));
+    });
+    return;
+  }
+  if (req.method === "GET" && req.url.startsWith("/betano-screenshot/")) {
+    const filename = decodeURIComponent(req.url.slice("/betano-screenshot/".length));
+    const entry = screenshotStore.get(filename);
+    if (!entry) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Not found (never uploaded, evicted, or relay restarted since)" })); return; }
+    res.writeHead(200, { "Content-Type": entry.contentType });
+    res.end(entry.buffer);
     return;
   }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray

@@ -32,13 +32,19 @@ didn't fully pin down and need confirming on the first real run:
   `buildFixtureIndex` now walks up from the fixture link until it finds an
   ancestor whose subtree actually contains a `role="button"` descendant,
   depth-agnostic rather than a fixed tag/depth guess.
-- The "Remove selections" button's top-level-vs-per-leg disambiguation
-  (`clearBetslip`) -- both share the same accessible name, using `.first()`
-  as a best guess.
-- The exact confirmed "empty" state text for the betslip (Betfair had a
-  literal "betslip is empty" string to check against; Betano's equivalent
-  wasn't captured during recon) -- `clearBetslip` can only warn, not hard-fail,
-  on this until a real empty-state string is confirmed live.
+- ~~The "Remove selections" button's top-level-vs-per-leg disambiguation~~
+  -- **confirmed correct, fixed, live (2026-09-24)**. `.first()` genuinely
+  does target the top-level clear-all button (verified against a real
+  2-leg betslip: 3 elements match, element #0 sits above the leg rows
+  with no per-leg DOM scoping, clicking it removes `.bet-slip-container`
+  from the DOM entirely). The real bug was elsewhere: no popup dismissal
+  before the click (right after `pollForDecision`'s idle wait, the exact
+  window a popup can intercept it) and a silent `.catch(() => {})`
+  swallowing any failure without a trace -- explains bet 1's legs
+  surviving into bet 2's build. `clearBetslip` now dismisses both popups
+  and retries (verifying via the confirmed "container's gone" signal)
+  up to 3 times, hard-stopping if it's still not empty rather than
+  building on top of it.
 - The stake textbox's exact selector in Multiple mode (`fillStake`) --
   scoped to "the only textbox in the betslip container," not a specific
   confirmed `aria-label` the way Betfair's was. The selector itself has

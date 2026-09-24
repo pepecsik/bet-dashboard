@@ -143,12 +143,29 @@ The `betano` profile is persistently set to **67% browser zoom** (Winston's own 
 - **A viewport/emulation mismatch causes two distinct symptoms, both seen during this pass:** (a) the floating betslip widget (`.bet-slip-container`) renders at a stale/incorrect `left` position — sometimes far enough negative to be entirely off-screen and unclickable — and (b) page content visibly overflows the real window because it's laid out for a wider viewport than what's actually being displayed. **The fix for both is the same: reload the page** once the viewport is correct — Betano recalculates layout cleanly on a fresh load, it just doesn't react correctly to a live resize event.
 - The floating betslip is genuinely `position: fixed`, so scrolling the page doesn't move it and `scrollIntoView` on an element inside it has no visible effect — don't use scroll position to try to bring it into view; if it's not visible, it's a positioning bug (see above), not a scroll problem.
 
+## 9. Session/login recovery — confirmed live (2026-09-24)
+
+The `betano` profile's login does not reliably survive overnight — observed logged-out (REGISTER/LOGIN visible instead of DEPOSIT) at the start of two separate sessions in this test cycle, with no code change or crash in between. Treat "confirm logged in" as a real per-session check, not a one-time setup step — see `betano-automation/README.md`/`PLACEMENT_MANUAL.md` for where this fits in the run checklist.
+
+**Recovery is low-friction when it works, because Chrome autofill (saved credentials) does the actual work, not a live Google OAuth flow:**
+
+1. Click the `LOGIN` button — `getByRole("button", { name: "LOGIN" })`. This opens a **modal iframe**, not a same-page form — `#iframe-modal` wrapping `<iframe class="myaccount-iframe" src=".../en/myaccount/login">`. Scope everything below to that frame, e.g. `page.frameLocator("#iframe-modal iframe[src*='myaccount/login']")`.
+2. Inside that frame, if Chrome has saved credentials for this profile, **both fields arrive pre-filled** — nothing needs to be typed:
+   - Username/email: `frame.getByRole("textbox", { name: "username" })`
+   - Password: `frame.getByRole("textbox", { name: "Password" })`
+   - Submit button: `frame.getByRole("button", { name: "submit" })` — note the accessible **name** is `"submit"` even though `"LOGIN"` is the visible label; match by role+name as given here, not by visible text.
+3. Click submit. Reload the fixtures list afterward and confirm success **via a screenshot check, not an immediate post-reload state read** — `evaluate`-ing for a `DEPOSIT` button (or balance) right after `navigate` raced false at least twice during this session, catching the page mid-hydration before it had re-resolved auth. A screenshot taken a beat later reliably shows the true state (`DEPOSIT` + real balance = success; `REGISTER`/`LOGIN` still there = actually still logged out, not a race).
+
+**Hard line — where this stops being something to automate:** the above is all "click a pre-filled autofill button," never typing or handling actual credentials. If the popup ever appears *without* both fields pre-filled — asking for a password, a 2FA code, or anything not already populated — stop and hand it back to Winston, same as every other credential boundary held throughout this project.
+
+**Security note, not a Betano quirk:** the accessible-name/value pair Playwright (and any accessibility-tree snapshot) reads for the password field exposes its **real underlying value in plaintext**, regardless of the field's visual dot-masking. A snapshot taken to merely locate the submit button's ref will incidentally capture the actual password. Confirmed live — this is exactly how Winston's real password ended up in a session transcript on 2026-09-24. Avoid snapshotting that field at all once the three selectors above are already known; there's no need to re-discover them by inspecting the live form each time.
+
+## 10. "Session Timer" popup — found live (2026-09-24), not yet handled in code
+
+Separate from the marketing bonus popup (section covered by `dismissMarketingPopup` in `driver.js`): a periodic responsible-gambling session-continuation prompt, likely SRIJ-mandated, that appeared mid-run with a **live 1-minute countdown to auto-logout** if ignored. Dismissed by hand (clicking CONTINUE) during this pass, not yet automated — `driver.js` has no handler for it. Given the countdown, this needs addressing before a run is left unattended for any length of time (e.g. during `pollForDecision`'s multi-minute wait): confirm the exact selector/accessible name for the CONTINUE button on the next occurrence, then add a `dismissSessionTimer(page)` alongside `dismissMarketingPopup`, called the same defensive way (after every navigation, idempotent no-op when not present) -- and consider whether `pollForDecision`'s 20s poll loop should also check for it, since this popup can appear independently of navigation, while the driver is just sitting idle waiting on Winston's decision.
+
 ---
 
 ## Cloudflare / bot-check notes
 
 No Cloudflare Turnstile or other CAPTCHA challenge was encountered anywhere in this pass (fixtures list, match pages, direct URL loads, and UI click-throughs alike). If one appears in a real run anyway: stop, screenshot, notify Winston, do not attempt to solve or click through it — same hard-stop rule as the retired Betfair workflow.
-
-## 10. "Session Timer" popup — found live (2026-09-24), not yet handled in code
-
-Separate from the marketing bonus popup (section covered by `dismissMarketingPopup` in `driver.js`): a periodic responsible-gambling session-continuation prompt, likely SRIJ-mandated, that appeared mid-run with a **live 1-minute countdown to auto-logout** if ignored. Dismissed by hand (clicking CONTINUE) during this pass, not yet automated — `driver.js` has no handler for it. Given the countdown, this needs addressing before a run is left unattended for any length of time (e.g. during `pollForDecision`'s multi-minute wait): confirm the exact selector/accessible name for the CONTINUE button on the next occurrence, then add a `dismissSessionTimer(page)` alongside `dismissMarketingPopup`, called the same defensive way (after every navigation, idempotent no-op when not present) -- and consider whether `pollForDecision`'s 20s poll loop should also check for it, since this popup can appear independently of navigation, while the driver is just sitting idle waiting on Winston's decision.

@@ -55,6 +55,19 @@ didn't fully pin down and need confirming on the first real run:
   that had actually worked. Confirmed via three separate live
   reproductions (label still stale at +200ms, caught up by +500ms).
   `fillStake` now polls the label for up to 2s instead of checking once.
+- **Marketing bonus popup blocking every fresh tab.** Betano shows a
+  dismissible "Available bonus" popup (an iframe modal pointing at
+  `/en/myaccount/marketingbonus`) on every brand-new browser tab.
+  `driver.js` opens one via `context.newPage()` every run and never
+  dismissed it. The modal physically intercepts pointer events
+  (`esc-close:false`, `bg-close:false` -- can't be dismissed via Escape or
+  a background click) and turned out to be the real root cause behind
+  the run-5 `fillStake` failure, not the debounce race alone -- confirmed
+  by reproducing the identical 6-leg build + stake fill sequence twice on
+  a genuinely fresh tab: hard-timed-out at 30s with the modal up, worked
+  cleanly (debounce settled ~1000ms, well within the 2s poll window) once
+  dismissed first. New `dismissMarketingPopup(page)` called once, right
+  after the initial fixtures-list navigation, before building any bets.
 
 Expect further runs to surface more of the remaining unverified items
 above -- that's what the AI fallback + this file's own logging are for,
@@ -77,11 +90,21 @@ same as before.
    freshly-verified logged-in session, ruling out login as the cause and
    confirming a real bug: the row-scoping heuristic (see "Fixed" above).
    Fixed and pushed.
-5. **Run 5 (pending as of this writing)** -- row-scoping fix confirmed
-   working (zero AI fallback calls needed, all 6 legs added
-   deterministically). New, isolated failure in `fillStake` -- diagnosed
-   and fixed (see "Fixed, confirmed live" above), not yet re-run against
-   the live site.
+5. **Run 5** -- row-scoping fix confirmed working (zero AI fallback calls
+   needed, all 6 legs added deterministically). New, isolated failure in
+   `fillStake` -- initially diagnosed as a debounce race and fixed.
+6. **Run 6 (pending as of this writing)** -- `fillStake`'s debounce fix
+   deployed, but the login didn't persist overnight (browser was actually
+   logged out this time, not a race -- Winston logged back in by hand
+   again, and confirmed the saved-Google-login popup is low-friction
+   enough that OpenClaw was able to click through it directly, no manual
+   credential entry needed). On the actual test run, `fillStake` still
+   timed out -- but this time traced to the real root cause: the
+   marketing bonus popup (see "Fixed, confirmed live" above), which was
+   still open and physically blocking clicks the whole time. Debounce fix
+   was correct all along; it just never got a fair test until the popup
+   was also dismissed. Fixed and pushed, not yet re-run against the live
+   site.
 
 ## Setup
 

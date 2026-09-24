@@ -95,6 +95,30 @@ async function gotoMatchPage(page, url) {
   await page.getByText("Match Result", { exact: true }).first().waitFor({ state: "visible" });
 }
 
+// Confirmed live (2026-09-24): Betano shows a dismissible "Available
+// bonus" marketing popup (a modal wrapping an iframe pointing at
+// /en/myaccount/marketingbonus) on every fresh browser tab -- exactly the
+// "bonus/deposit popup" Winston already knew to dismiss with the X by
+// hand during manual login. driver.js opens a brand-new tab every run
+// (context.newPage()), which triggers this popup every single time, and
+// nothing dismissed it before this fix. The modal physically intercepts
+// pointer events (esc-close:false, bg-close:false -- can't be dismissed
+// via Escape or a background click) and was the real root cause behind
+// repeated click/stake-fill failures previously misattributed to other
+// things (row-scoping, debounce timing) -- proved by reproducing the
+// exact same 6-leg build + stake fill sequence twice on a genuinely fresh
+// tab: it hard-timed-out at 30s with the modal up, then worked cleanly
+// once the modal was dismissed first. Called once, right after the
+// initial fixtures-list navigation, before building any bets -- doesn't
+// reappear within the same tab/session once dismissed.
+async function dismissMarketingPopup(page) {
+  const modal = page.locator("#iframe-modal");
+  if (!(await modal.isVisible().catch(() => false))) return;
+  const bonusFrame = page.frameLocator("#iframe-modal iframe[src*='marketingbonus']");
+  await bonusFrame.locator('img[alt="header header-times"]').click({ timeout: 5000 }).catch(() => {});
+  await modal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
 // Ground truth for "what does Betano itself think is selected right now" --
 // never trust a click's own success/no-error as proof it worked. Scoped to
 // the floating betslip widget specifically (`.bet-slip-container`), per
@@ -420,6 +444,7 @@ async function main() {
     // error report entirely, leaving the job stuck "claimed" with zero
     // failure trace -- confirmed live (2026-09-23).
     await gotoFixturesList(page);
+    await dismissMarketingPopup(page);
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;

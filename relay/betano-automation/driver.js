@@ -372,6 +372,37 @@ async function verifyBetslipMatchesPlan(page, plan) {
   }
 }
 
+// Confirmed live (2026-09-24): a local file path is useless to the relay
+// (a Render service, not on this machine) and to the admin app, and both
+// ways tried of handing a screenshot to OpenClaw's Telegram message tool
+// directly failed structurally -- a local path is blocked by its own
+// directory allowlist, and an inline base64 buffer built via exec gets
+// silently truncated to ~10KB (nowhere near a real ~1.3MB base64
+// screenshot), sending a corrupt fragment without erroring. Uploading to
+// the relay, which is already a live public Node service, and handing
+// back a real URL sidesteps both -- the message tool's own fetch
+// mechanism is built to handle remote URLs as the primary case. This is
+// deliberately best-effort: returns null (not a throw) on any failure, so
+// a relay hiccup doesn't turn a successful bet-build into a hard stop --
+// the local file and SCREENSHOT_READY log line remain the fallback.
+async function uploadScreenshot(localPath) {
+  try {
+    const fs = await import("node:fs/promises");
+    const buffer = await fs.readFile(localPath);
+    const filename = localPath.split("/").pop();
+    const res = await fetch(`${RELAY_URL}/betano-screenshot`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, dataBase64: buffer.toString("base64"), contentType: "image/png" }),
+    });
+    if (!res.ok) throw new Error(`betano-screenshot upload ${res.status}`);
+    const { path } = await res.json();
+    return `${RELAY_URL}${path}`;
+  } catch (err) {
+    console.error(`[betano-driver] Screenshot upload failed (non-fatal, local file/log line remain the fallback):`, err.message);
+    return null;
+  }
+}
+
 async function takeScreenshot(page, player, label) {
   const dir = SCREENSHOT_DIR;
   await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
@@ -381,7 +412,9 @@ async function takeScreenshot(page, player, label) {
   // full-page screenshot correctly.
   await page.locator(".bet-slip-container").screenshot({ path });
   console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
-  return path;
+  const url = await uploadScreenshot(path);
+  if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);
+  return { path, url };
 }
 
 function metricsDelta(before, after) {
@@ -539,8 +572,8 @@ async function main() {
 
       const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
       await verifyBetslipMatchesPlan(page, plan);
-      const screenshotPath = await takeScreenshot(page, player, label);
-      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1, potentialReturn });
+      const { path: screenshotPath, url: screenshotUrl } = await takeScreenshot(page, player, label);
+      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, screenshotUrl, betNumber: i + 1, potentialReturn });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
       const decision = await pollForDecision(player);
@@ -572,6 +605,8 @@ async function main() {
       const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
       await page.screenshot({ path: failurePath, fullPage: true });
       console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
+      const failureUrl = await uploadScreenshot(failurePath);
+      if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);
     } catch (screenshotErr) {
       console.error(`[betano-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
     }

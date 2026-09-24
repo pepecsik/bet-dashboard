@@ -776,7 +776,19 @@ async function main() {
       const dir = SCREENSHOT_DIR;
       await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
       const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
-      await page.screenshot({ path: failurePath, fullPage: true });
+      // Confirmed live (2026-09-24): this path still used fullPage: true,
+      // the same mode already documented (BETANO_RECON.md section 3) as
+      // not compositing the position:fixed betslip widget correctly --
+      // it never got the fullPage:false-plus-CSS-viewport-clip fix
+      // takeScreenshot() got, so a hard-stop screenshot could show the
+      // rest of the page fine while the betslip itself (often the most
+      // relevant part) came out missing or malformed. Same fix, same
+      // reasoning, applied here too.
+      const { width: cssW, height: cssH } = await page.evaluate(() => ({
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+      }));
+      await page.screenshot({ path: failurePath, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
       console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
       failureUrl = await uploadScreenshot(failurePath);
       if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);
@@ -788,6 +800,17 @@ async function main() {
     // this exists to close. Never allowed to throw (see the function's
     // own comment), so it can't turn this hard-stop path into a worse one.
     await notifyHardStopDirect(player, err.message, failureUrl);
+    // Confirmed live (2026-09-24): a hard stop leaves the queue entry
+    // stuck "claimed" -- nothing auto-releases it, blocking any future
+    // job for anyone until someone notices and clears it manually.
+    // Deliberately test-mode only: for a real job, auto-recycling the
+    // claim back to available risks it getting re-claimed and rebuilt
+    // from scratch after a hard stop that happened mid-real-placement --
+    // same real-money duplicate-placement risk markAwaitingConfirmation's
+    // own no-expiry design already guards against elsewhere. A test job
+    // has no such risk (nothing real was ever placed), so auto-clearing
+    // it is safe and removes real friction from testing.
+    if (test) await clearJob(player).catch((clearErr) => console.error(`[betano-driver] Auto-clear after test-mode hard stop failed:`, clearErr.message));
     process.exitCode = 1;
   } finally {
     console.log(`[betano-driver] AI fallback used ${fallbackLog.length} time(s) across this job:`, fallbackLog);

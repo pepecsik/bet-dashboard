@@ -437,6 +437,13 @@ async function buildBetOnBetano(page, stagehand, plan, withAiFallback) {
     await withAiFallback(page, stagehand, description, step.match, step.selection, step.type === "match-page-pick" ? knownUrl : null, () =>
       step.type === "list-pick" ? executeListPick(page, step, fixtureEntry) : executeMatchPagePick(page, step, fixtureEntry)
     );
+    // Winston observed, repeatedly, across multiple live runs: clicking
+    // straight into the next leg with no pause after one lands doesn't
+    // give Betano's own UI time to settle (the live-odds/betslip re-render
+    // that follows each click) before the next click arrives. A flat 1s
+    // pause between legs, every leg (not just list-picks -- match-page
+    // picks get it too, on top of whatever navigation already took).
+    await page.waitForTimeout(1000);
   }
 
   await verifyMultiple(page);

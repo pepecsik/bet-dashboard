@@ -51,6 +51,19 @@ const RELAY_URL = process.env.RELAY_URL || "https://bet-dashboard-relay.onrender
 // start it. Port UNVERIFIED against whatever OpenClaw actually assigns the
 // betano profile -- confirm and override via env var if different.
 const CDP_URL = process.env.BETANO_CDP_URL || "http://127.0.0.1:8093";
+// Confirmed live (2026-09-24): OpenClaw's own message tool refuses to
+// attach a local file unless it's under one of two specific allowed
+// roots (its own state/media directory, or the calling agent's workspace
+// directory) -- confirmed by reading the installed package source, not
+// guessed. driver.js's own default ("./screenshots", relative to this
+// project folder) is neither, so PLACEMENT_MANUAL.md's Telegram hand-off
+// fails on every single run until this is pointed somewhere allowed.
+// Configurable rather than hardcoded to a specific agent's workspace path
+// -- driver.js shouldn't need to know OpenClaw's own directory allowlist
+// scheme, just where to put files so whatever's relaying them can reach
+// them. Set to an absolute path under the agent's workspace when running
+// via OpenClaw, e.g. /Users/winston/.openclaw/workspace-betfair/screenshots.
+const SCREENSHOT_DIR = process.env.SCREENSHOT_DIR || "./screenshots";
 const EPL_FIXTURES_URL = "https://www.betano.pt/en/sport/soccer/england/premier-league/1/";
 const POSITION_LABEL = { home: "1", draw: "X", away: "2" };
 // Testing lever, opt-in, test-mode only: lets bet 1's full
@@ -360,7 +373,7 @@ async function verifyBetslipMatchesPlan(page, plan) {
 }
 
 async function takeScreenshot(page, player, label) {
-  const dir = "./screenshots";
+  const dir = SCREENSHOT_DIR;
   await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
   const path = `${dir}/${player}-${label}-${Date.now()}.png`;
   // Element-scoped, not a full-page screenshot -- per BETANO_RECON.md, the
@@ -547,7 +560,7 @@ async function main() {
     console.error(`[betano-driver] Hard stop for ${player}:`, err.message);
     console.error(`[betano-driver] Page URL at hard stop: ${page.url()}`);
     try {
-      const dir = "./screenshots";
+      const dir = SCREENSHOT_DIR;
       await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
       const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
       await page.screenshot({ path: failurePath, fullPage: true });

@@ -26,7 +26,7 @@ stuck (bet 1 worked, bet 2 never got fully unstuck).
 
 ```
 cd relay/betano-automation
-STOP_AFTER_FIRST_BET=1 node --env-file=.env driver.js
+STOP_AFTER_FIRST_BET=1 SCREENSHOT_DIR=/Users/winston/.openclaw/workspace-betfair/screenshots node --env-file=.env driver.js
 ```
 
 `STOP_AFTER_FIRST_BET=1` is deliberate, for right now: the driver reports
@@ -34,6 +34,14 @@ the job fully done after bet 1 is approved instead of auto-continuing to
 build bet 2 in the same run. Drop it once bet 1's full loop (below) has
 been proven clean and we're ready to bring bet 2 back in -- see
 `betano-automation/README.md` for what it does exactly.
+
+`SCREENSHOT_DIR` is required for the Telegram hand-off below to actually
+work -- confirmed live (2026-09-24): OpenClaw's message tool only accepts
+local media paths under two roots (its own state/media directory, or the
+calling agent's own workspace directory), and driver.js's default
+(`./screenshots`, relative to its own project folder) is neither. Point
+it at somewhere under acca's workspace directory -- adjust the path above
+if that's not actually `/Users/winston/.openclaw/workspace-betfair/`.
 
 ## Step 1 -- the screenshot hand-off
 

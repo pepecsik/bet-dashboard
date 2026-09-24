@@ -148,3 +148,7 @@ The `betano` profile is persistently set to **67% browser zoom** (Winston's own 
 ## Cloudflare / bot-check notes
 
 No Cloudflare Turnstile or other CAPTCHA challenge was encountered anywhere in this pass (fixtures list, match pages, direct URL loads, and UI click-throughs alike). If one appears in a real run anyway: stop, screenshot, notify Winston, do not attempt to solve or click through it — same hard-stop rule as the retired Betfair workflow.
+
+## 10. "Session Timer" popup — found live (2026-09-24), not yet handled in code
+
+Separate from the marketing bonus popup (section covered by `dismissMarketingPopup` in `driver.js`): a periodic responsible-gambling session-continuation prompt, likely SRIJ-mandated, that appeared mid-run with a **live 1-minute countdown to auto-logout** if ignored. Dismissed by hand (clicking CONTINUE) during this pass, not yet automated — `driver.js` has no handler for it. Given the countdown, this needs addressing before a run is left unattended for any length of time (e.g. during `pollForDecision`'s multi-minute wait): confirm the exact selector/accessible name for the CONTINUE button on the next occurrence, then add a `dismissSessionTimer(page)` alongside `dismissMarketingPopup`, called the same defensive way (after every navigation, idempotent no-op when not present) -- and consider whether `pollForDecision`'s 20s poll loop should also check for it, since this popup can appear independently of navigation, while the driver is just sitting idle waiting on Winston's decision.

@@ -304,6 +304,30 @@ async function fillStake(page, stake) {
   throw new Error(`Stake fill for ${stakeAmount} didn't appear to register on BET NOW's label after 2s: "${label}"`);
 }
 
+// Final live re-verification, right before ever reporting a build as
+// ready for approval -- confirmed live (2026-09-24): a real run reported
+// a clean awaiting_confirmation (SCREENSHOT_READY logged, relay payload
+// posted) while the actual live betslip had already gone back to empty
+// ("You have no open bets at this moment") and the saved screenshot came
+// out blank. The relay payload is built from the driver's own in-memory
+// `plan` object -- it was never re-checked against the live page at
+// report time, so it can go stale (something resets the client-side
+// selection state between the last successful click and the report)
+// without the driver ever noticing. Harmless in test mode (approving just
+// logs "simulating," nothing real happens), but this is exactly the
+// failure shape that could let a broken/emptied slip get approved as if
+// it were intact in real mode. Throws (caught by main()'s existing
+// hard-stop path -- screenshot + relay error report) rather than
+// reporting, if the live betslip doesn't actually contain every leg the
+// plan expects.
+async function verifyBetslipMatchesPlan(page, plan) {
+  const snapshot = await betslipSnapshot(page);
+  const missing = plan.steps.filter((step) => !selectionAppearsIn(snapshot, step.selection));
+  if (missing.length) {
+    throw new Error(`Betslip no longer matches the plan right before reporting -- missing ${missing.length} leg(s) (${missing.map((s) => `${s.match}: ${s.selection}`).join(", ")}). Betslip shows: "${snapshot}"`);
+  }
+}
+
 async function takeScreenshot(page, player, label) {
   const dir = "./screenshots";
   await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
@@ -463,6 +487,7 @@ async function main() {
       await stagehand.stagehandContext.getStagehandPage(page);
 
       await buildBetOnBetano(page, stagehand, plan, withAiFallback);
+      await verifyBetslipMatchesPlan(page, plan);
       const screenshotPath = await takeScreenshot(page, player, label);
       await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1 });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);

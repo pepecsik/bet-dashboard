@@ -649,6 +649,18 @@ async function main() {
       await stagehand.stagehandContext.getStagehandPage(page);
 
       const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
+      // Winston observed this live, separately from everything else found
+      // today: after the stake gets filled in, the marketing/bonus popup
+      // can reappear on its own, with no navigation involved -- neither
+      // dismiss function is currently called anywhere after fillStake()
+      // runs, only at navigation points (gotoFixturesList/gotoMatchPage)
+      // and inside pollForDecision's poll loop. Not yet root-caused (could
+      // be a timed re-trigger, could be something fillStake's own
+      // interaction incidentally causes) -- dismissing defensively here,
+      // right after the build and before anything else, same idempotent
+      // no-op-if-absent pattern as everywhere else these get called.
+      await dismissMarketingPopup(page);
+      await dismissSessionTimer(page);
       // Verified once here, right after the build (catches slower drift
       // early, before wasting time on a screenshot that's already
       // doomed), and again inside takeScreenshot itself, immediately

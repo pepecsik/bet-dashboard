@@ -122,6 +122,7 @@ async function gotoMatchPage(page, url) {
   // navigation is the other place a fresh page load could plausibly
   // retrigger it. Defensive, not yet confirmed as the actual explanation.
   await dismissMarketingPopup(page);
+  await dismissSessionTimer(page);
 }
 
 // Confirmed live (2026-09-24): Betano shows a dismissible "Available
@@ -146,6 +147,21 @@ async function dismissMarketingPopup(page) {
   const bonusFrame = page.frameLocator("#iframe-modal iframe[src*='marketingbonus']");
   await bonusFrame.locator('img[alt="header header-times"]').click({ timeout: 5000 }).catch(() => {});
   await modal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+// Confirmed live (2026-09-24), real selector from a real specimen (see
+// BETANO_RECON.md section 10): a periodic responsible-gambling "Session
+// Timer" popup (data-test-id="session-timer-v3", a plain
+// <button>CONTINUE</button> inside it, no aria-label needed) with a live
+// countdown to auto-logout -- confirmed to actually cause a real logout
+// when the countdown expired before it got dismissed. Click immediately
+// on detection, no delay -- the countdown can be down to a handful of
+// seconds by the time it's even noticed. Idempotent no-op if not present,
+// same pattern as dismissMarketingPopup.
+async function dismissSessionTimer(page) {
+  const timer = page.locator('[data-test-id="session-timer-v3"]');
+  if (!(await timer.isVisible().catch(() => false))) return;
+  await timer.getByRole("button", { name: "CONTINUE" }).click({ timeout: 5000 }).catch(() => {});
 }
 
 // Ground truth for "what does Betano itself think is selected right now" --
@@ -448,10 +464,21 @@ async function takeScreenshot(page, player, label, plan) {
   const dir = SCREENSHOT_DIR;
   await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
   const path = `${dir}/${player}-${label}-${Date.now()}.png`;
-  // Element-scoped, not a full-page screenshot -- per BETANO_RECON.md, the
-  // betslip is position:fixed and doesn't composite into an ordinary
-  // full-page screenshot correctly.
-  await page.locator(".bet-slip-container").screenshot({ path });
+  // Confirmed live (2026-09-24), after an extensive misdirected hunt
+  // (toggle races, Stagehand DOM instrumentation, zoom, CDP scale
+  // overrides -- all ruled out): element-scoped .screenshot() on this
+  // specific position:fixed widget is fundamentally broken in Playwright
+  // and reliably produces a blank capture, full stop -- independent of
+  // leg count, timing, or actual on-page state (verifyBetslipMatchesPlan,
+  // a completely different code path checking .innerText(), was correct
+  // every single time; only the pixel capture was broken). A plain
+  // viewport screenshot (fullPage: false, NOT fullPage: true -- that one
+  // still has the documented position:fixed stitching problem below)
+  // captures the identical fixed-position content correctly, confirmed
+  // directly. Every earlier "the betslip vanished" observation was
+  // unrelated noise (checked well after the fact, on a tab that had since
+  // had test-script interference), not a real second bug.
+  await page.screenshot({ path, fullPage: false });
   console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
   const url = await uploadScreenshot(path);
   if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);
@@ -542,7 +569,15 @@ async function postAwaitingConfirmation(player, pendingBet) {
   if (!res.ok) throw new Error(`awaiting-confirmation ${res.status}`);
 }
 
-async function pollForDecision(player, { intervalMs = 20000, logEveryMs = 300000 } = {}) {
+// Checks/dismisses the session-timer popup on every poll cycle (every
+// intervalMs, 20s by default), not just on navigation -- confirmed live
+// (2026-09-24) this popup can appear with the browser tab otherwise
+// completely idle (nothing else touches `page` during this wait), which
+// is exactly this function's whole purpose, and a real countdown expiry
+// during exactly this kind of idle wait already caused a real logout
+// once. `page` is optional so this stays testable/usable without a
+// browser where it isn't needed.
+async function pollForDecision(player, page, { intervalMs = 20000, logEveryMs = 300000 } = {}) {
   let lastLog = Date.now();
   console.log(`[betano-driver] SCREENSHOT_READY handoff above -- now waiting for ${player}'s approval in the app.`);
   for (;;) {
@@ -551,6 +586,7 @@ async function pollForDecision(player, { intervalMs = 20000, logEveryMs = 300000
     const data = await res.json();
     if (data.decision) return data.decision;
     if (Date.now() - lastLog > logEveryMs) { console.log(`[betano-driver] Still waiting on ${player}'s decision...`); lastLog = Date.now(); }
+    if (page) await dismissSessionTimer(page).catch(() => {});
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
@@ -594,6 +630,7 @@ async function main() {
     // failure trace -- confirmed live (2026-09-23).
     await gotoFixturesList(page);
     await dismissMarketingPopup(page);
+    await dismissSessionTimer(page);
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;
@@ -623,7 +660,7 @@ async function main() {
       await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, screenshotUrl, betNumber: i + 1, potentialReturn });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
-      const decision = await pollForDecision(player);
+      const decision = await pollForDecision(player, page);
       console.log(`[betano-driver] ${label} decision: ${decision}`);
 
       if (decision === "reject") {

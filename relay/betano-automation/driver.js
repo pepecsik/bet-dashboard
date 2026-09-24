@@ -425,7 +425,26 @@ async function uploadScreenshot(localPath) {
   }
 }
 
-async function takeScreenshot(page, player, label) {
+// Confirmed live (2026-09-24): a run reached awaiting_confirmation with a
+// fully correct pendingBet payload (all 6 legs, right stake/return --
+// verifyBetslipMatchesPlan had genuinely passed, immediately beforehand,
+// in main()) and STILL sent Winston a completely blank screenshot --
+// .bet-slip-container had vanished from the DOM entirely by the time
+// this function's own .screenshot() call ran. Confirmed not a
+// compositing artifact (element-scoped betslip screenshots of a real
+// populated slip have rendered correctly all session) and not a stale
+// download (the live page, checked directly afterward, matched the
+// blank screenshot exactly). Something resets the client-side selection
+// state in the narrow window between that verification and this
+// function running -- root cause not yet found. Re-verifying here, as
+// the very first thing this function does, collapses that race to the
+// minimum possible (verify and capture now sequential, nothing else
+// between them) and, more importantly, converts a silent false-success
+// report into a proper hard-stop with an accurate error -- the same
+// value verifyBetslipMatchesPlan's original call already provides for
+// slower drift, just tightened to catch a wipe this fast too.
+async function takeScreenshot(page, player, label, plan) {
+  await verifyBetslipMatchesPlan(page, plan);
   const dir = SCREENSHOT_DIR;
   await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
   const path = `${dir}/${player}-${label}-${Date.now()}.png`;
@@ -593,8 +612,14 @@ async function main() {
       await stagehand.stagehandContext.getStagehandPage(page);
 
       const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
+      // Verified once here, right after the build (catches slower drift
+      // early, before wasting time on a screenshot that's already
+      // doomed), and again inside takeScreenshot itself, immediately
+      // before capturing -- which check ends up throwing narrows down
+      // roughly when a wipe happened, useful diagnostic signal until the
+      // actual root cause (see takeScreenshot's own comment) is found.
       await verifyBetslipMatchesPlan(page, plan);
-      const { path: screenshotPath, url: screenshotUrl } = await takeScreenshot(page, player, label);
+      const { path: screenshotPath, url: screenshotUrl } = await takeScreenshot(page, player, label, plan);
       await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, screenshotUrl, betNumber: i + 1, potentialReturn });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 

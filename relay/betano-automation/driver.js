@@ -53,6 +53,15 @@ const RELAY_URL = process.env.RELAY_URL || "https://bet-dashboard-relay.onrender
 const CDP_URL = process.env.BETANO_CDP_URL || "http://127.0.0.1:8093";
 const EPL_FIXTURES_URL = "https://www.betano.pt/en/sport/soccer/england/premier-league/1/";
 const POSITION_LABEL = { home: "1", draw: "X", away: "2" };
+// Testing lever, opt-in, test-mode only: lets bet 1's full
+// build -> screenshot -> approve -> report loop be validated end to end
+// without the driver auto-continuing to bet 2 in the same run -- matches
+// where the retired Betfair build got stuck (bet 1 worked, never got bet
+// 2 fully unstuck), so proving bet 1 solid first, deliberately, rather
+// than debugging both at once. No effect on a real (non-test) job --
+// stopping a real job after bet 1 would leave bet 2's real money never
+// placed while still reporting the job "done."
+const STOP_AFTER_FIRST_BET = process.env.STOP_AFTER_FIRST_BET === "1";
 
 class CloudflareChallengeError extends Error {
   constructor(url) { super(`Cloudflare/CAPTCHA challenge at ${url} -- hard stop, needs manual clearing`); this.name = "CloudflareChallengeError"; }
@@ -281,6 +290,18 @@ async function verifyMultiple(page) {
 // Scoped to the betslip container and taking the only textbox in it, which
 // should be correct once verifyMultiple() has already confirmed single
 // shared-stake mode.
+// Betano's own EU number formatting (`.` thousands separator, `,`
+// decimal) per BETANO_RECON.md section 5 -- e.g. "2.000,00" -> 2000. Never
+// parse these figures as US-formatted numbers.
+function parseEuNumber(s) {
+  return Number(String(s).replace(/\./g, "").replace(",", "."));
+}
+
+// Returns the actual potential-return figure, parsed from BET NOW's own
+// label ("BET NOW <stake> € Potential winnings <total> €" in Multiple
+// mode, per BETANO_RECON.md section 5) -- null if the label doesn't
+// contain a recognizable figure, so the caller can decide whether that's
+// worth hard-failing over rather than silently reporting a wrong number.
 async function fillStake(page, stake) {
   const stakeAmount = Number(stake);
   const stakeBox = page.locator(".bet-slip-container").getByRole("textbox").first();
@@ -305,7 +326,10 @@ async function fillStake(page, stake) {
   let label = "";
   while (Date.now() < deadline) {
     label = await betNow.innerText().catch(() => "");
-    if (pattern.test(label)) return;
+    if (pattern.test(label)) {
+      const match = label.match(/Potential winnings\s*([\d.,]+)\s*€/i);
+      return match ? parseEuNumber(match[1]) : null;
+    }
     await page.waitForTimeout(150);
   }
   throw new Error(`Stake fill for ${stakeAmount} didn't appear to register on BET NOW's label after 2s: "${label}"`);
@@ -403,7 +427,7 @@ async function buildBetOnBetano(page, stagehand, plan, withAiFallback) {
   }
 
   await verifyMultiple(page);
-  await fillStake(page, plan.stake);
+  return fillStake(page, plan.stake);
 }
 
 async function claimNextJob() {
@@ -493,10 +517,10 @@ async function main() {
       await stagehand.init();
       await stagehand.stagehandContext.getStagehandPage(page);
 
-      await buildBetOnBetano(page, stagehand, plan, withAiFallback);
+      const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
       await verifyBetslipMatchesPlan(page, plan);
       const screenshotPath = await takeScreenshot(page, player, label);
-      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1 });
+      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, betNumber: i + 1, potentialReturn });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
       const decision = await pollForDecision(player);
@@ -511,7 +535,13 @@ async function main() {
       if (!test) throw new RealPlacementNotImplementedError(player);
       console.log(`[betano-driver] ${label} approved (test mode) -- simulating placement, not clicking BET NOW.`);
 
-      if (i === bets.length - 1) await reportPlaced(player, test);
+      const isLastBet = i === bets.length - 1;
+      const stopEarly = test && STOP_AFTER_FIRST_BET && i === 0 && !isLastBet;
+      if (isLastBet || stopEarly) {
+        if (stopEarly) console.log(`[betano-driver] STOP_AFTER_FIRST_BET set -- reporting ${player} done after bet 1 only, not building bet 2 this run.`);
+        await reportPlaced(player, test);
+        break;
+      }
     }
   } catch (err) {
     console.error(`[betano-driver] Hard stop for ${player}:`, err.message);

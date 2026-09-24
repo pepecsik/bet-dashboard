@@ -155,16 +155,25 @@ For each of the (up to 2) bets in the claimed job, in order:
 4. On reject: clears the job, stops -- does not build further bets for
    that job.
 5. On approve, test mode: logs "simulating," does not click anything, moves
-   to the next bet (or reports fully placed if that was the last one).
+   to the next bet (or reports fully placed if that was the last one) --
+   unless `STOP_AFTER_FIRST_BET=1` is set (see below).
 6. On approve, real mode: hard-stops on purpose --
    `RealPlacementNotImplementedError`. Clicking the real BET NOW button is
    not implemented in this file at all, stays that way pending deliberate
    review, same standing rule as the retired Betfair driver.
 
+Set `STOP_AFTER_FIRST_BET=1` to report the job as fully done right after
+bet 1 is approved, instead of auto-continuing to build bet 2 in the same
+run -- for validating bet 1's full loop end to end on its own before
+bringing bet 2 back in, matching where the retired Betfair build got
+stuck (bet 1 worked, bet 2 never got fully unstuck). Test-mode only; has
+no effect on a real job.
+
 `driver.js` has no Telegram/messaging capability of its own -- the
-`SCREENSHOT_READY: <path>` log line is the hand-off contract for whatever
-wraps this script (see the retired `DRIVER_MANUAL.md` for the pattern; a
-Betano equivalent needs writing once this is live-tested).
+`SCREENSHOT_READY: <path>` / `HARDSTOP_SCREENSHOT_READY: <path>` log lines
+are the hand-off contract for whatever wraps this script. See
+`../PLACEMENT_MANUAL.md` for what OpenClaw actually does with that
+hand-off (Telegram delivery, the approve/reject wait, reporting back).
 
 - Exits 0 and logs "No pending job" if the queue is empty.
 - Exits 0 on a fully successful job (every bet approved and reported).

@@ -194,25 +194,44 @@ function selectionAppearsIn(snapshot, selection) {
   return snapshot.includes(selection);
 }
 
-// UNVERIFIED -- confirm live. Per BETANO_RECON.md, "Remove selections"
-// appears both as the top-level clear-all button (right after the
-// "Betslip" heading) AND once per leg (removes just that leg) -- same
-// accessible name for both, no distinguishing detail captured during
-// recon. Using .first() as a best guess (the top-level one is documented
-// as appearing first, before any per-leg content), not a confirmed fact.
+// Confirmed live (2026-09-24): .first() correctly targets the top-level
+// clear-all button, not a per-leg one -- verified directly against a real
+// 2-leg betslip: 3 elements match this locator (element #0 has no
+// kb-trash-button/data-v- scoping and sits above the leg rows; #1 and #2
+// share that scoping and sit at each leg's own row), and clicking
+// .first() made .bet-slip-container disappear from the DOM entirely --
+// not just drop to one leg. So "the container itself is gone" is the
+// real, confirmed signal of a genuine clear, matching betslipSnapshot's
+// own <error> fallback when the locator can't resolve at all.
+//
+// What was actually broken: this used to run right after
+// pollForDecision's multi-minute idle wait -- the same kind of idle
+// window that already let the Session Timer popup intercept clicks and
+// wipe a session earlier this session -- with no popup dismissal before
+// the click, and a silent .catch(() => {}) that swallowed any click
+// failure without a trace. A popup blocking this exact click, unlogged,
+// is the leading explanation for bet 1's legs surviving into bet 2's
+// build.
+//
+// Fixed: dismiss both popups first, then retry the clear (dismissing
+// again each attempt) up to 3 times, verifying via the real confirmed
+// signal each time instead of a single silent click. Hard stops if it
+// still isn't empty after that -- building bet 2 on top of bet 1's
+// leftover legs is worse than stopping and asking for help.
 async function clearBetslip(page) {
   const snapshot = await betslipSnapshot(page);
   if (!snapshot || /^<error/.test(snapshot)) return; // no betslip container at all yet -- nothing to clear
-  await page.locator(".bet-slip-container").getByRole("button", { name: "Remove selections" }).first().click({ timeout: 5000 }).catch(() => {});
-  const after = await betslipSnapshot(page);
-  if (after && !/^<error/.test(after) && after.trim().length > 0 && !/betslip/i.test(after.split("\n")[0] || "")) {
-    // Best-effort check only -- there's no single confirmed "empty" string
-    // to match against (unlike Betfair's literal "betslip is empty" text),
-    // so this can't throw confidently on failure the way Betfair's version
-    // could. Logged, not hard-failed, pending a real confirmed empty-state
-    // string from a live run.
-    console.warn(`[betano-driver] clearBetslip: betslip may not be empty after clearing -- "${after}"`);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await dismissMarketingPopup(page);
+    await dismissSessionTimer(page);
+    await page.locator(".bet-slip-container").getByRole("button", { name: "Remove selections" }).first().click({ timeout: 5000 }).catch((err) => {
+      console.warn(`[betano-driver] clearBetslip attempt ${attempt}: clear-click failed -- ${err.message}`);
+    });
+    const after = await betslipSnapshot(page);
+    if (!after || /^<error/.test(after)) return; // container genuinely gone -- confirmed clear
+    console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing -- "${after}"`);
   }
+  throw new Error(`clearBetslip: betslip still not empty after 3 attempts -- refusing to build bet on top of it`);
 }
 
 // Scans the EPL fixtures list once and returns a map keyed by "Home vs Away"

@@ -228,14 +228,36 @@ async function buildFixtureIndex(page, matchesNeeded) {
   return index;
 }
 
+// Confirmed live (2026-09-24), precisely, via a controlled single-click
+// repro: Betano's price buttons are genuine toggles, same as Betfair's --
+// clicking an already-selected button removes it. The retry loop this
+// used to have was unsafe by construction as a result: an immediate
+// post-click snapshot read can race ahead of the real re-render and
+// report "not found" even when the click actually landed (confirmed:
+// present at +0ms only as a stale pre-render read, gone from +100ms
+// onward once toggled again) -- attempt 2 would then click the SAME
+// button again, toggling OFF the leg attempt 1 had already correctly
+// added, and the final check would then (accurately, by that point)
+// report failure. This fully explained the recurring "AI fallback
+// reported success but the leg never landed" pattern across several
+// different legs -- not scattered misclicks, one systematic bug: a
+// button whose real name is nested inside/near the row.
+//
+// Fixed the same way as fillStake's own debounce race: poll for up to 2s
+// before ever deciding the click didn't register, instead of a single
+// immediate check -- and never click the (toggle) button a second time
+// just because a check raced ahead of the DOM.
 async function clickAndVerifyLeg(page, button, matchLabel, selection) {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    await button.click();
-    assertNotChallenged(page);
-    const snapshot = await betslipSnapshot(page);
+  await button.click();
+  assertNotChallenged(page);
+  const deadline = Date.now() + 2000;
+  let snapshot = "";
+  while (Date.now() < deadline) {
+    snapshot = await betslipSnapshot(page);
     if (selectionAppearsIn(snapshot, selection)) return;
-    if (attempt === 2) throw new Error(`Click for ${matchLabel} ("${selection}") didn't add a leg to the betslip after 2 attempts -- betslip shows: "${snapshot}"`);
+    await page.waitForTimeout(150);
   }
+  throw new Error(`Click for ${matchLabel} ("${selection}") didn't add a leg to the betslip after 2s -- betslip shows: "${snapshot}"`);
 }
 
 async function executeListPick(page, step, fixtureEntry) {

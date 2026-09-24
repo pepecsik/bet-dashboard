@@ -93,6 +93,13 @@ async function gotoMatchPage(page, url) {
   await page.goto(url, { waitUntil: "domcontentloaded" });
   assertNotChallenged(page);
   await page.getByText("Match Result", { exact: true }).first().waitFor({ state: "visible" });
+  // The marketing popup was only ever confirmed live on a fresh tab's
+  // first navigation (see dismissMarketingPopup below), but it's cheap
+  // and idempotent to check here too (no-ops instantly if not present) --
+  // real runs after that fix still saw it reappear, and match-page
+  // navigation is the other place a fresh page load could plausibly
+  // retrigger it. Defensive, not yet confirmed as the actual explanation.
+  await dismissMarketingPopup(page);
 }
 
 // Confirmed live (2026-09-24): Betano shows a dismissible "Available

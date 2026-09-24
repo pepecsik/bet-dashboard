@@ -35,13 +35,29 @@ build bet 2 in the same run. Drop it once bet 1's full loop (below) has
 been proven clean and we're ready to bring bet 2 back in -- see
 `betano-automation/README.md` for what it does exactly.
 
-`SCREENSHOT_DIR` is required for the Telegram hand-off below to actually
-work -- confirmed live (2026-09-24): OpenClaw's message tool only accepts
-local media paths under two roots (its own state/media directory, or the
-calling agent's own workspace directory), and driver.js's default
-(`./screenshots`, relative to its own project folder) is neither. Point
-it at somewhere under acca's workspace directory -- adjust the path above
-if that's not actually `/Users/winston/.openclaw/workspace-betfair/`.
+`SCREENSHOT_DIR` alone is **not sufficient** for the Telegram hand-off to
+work -- superseded by the finding below. Still worth setting (costs
+nothing, keeps screenshots out of the project folder), but don't expect
+it to fix the send on its own.
+
+**Confirmed live (2026-09-24), by reading acca's own raw session
+transcript directly, not the wrapper's summary:** every attempt to send a
+screenshot via a local file path failed with "not under an allowed
+directory," including one pointed at `SCREENSHOT_DIR` set to acca's own
+workspace directory -- which should be allowed per the message tool's own
+`getAgentScopedMediaLocalRoots` logic, but wasn't. Traced to
+`params.mediaLocalRoots` apparently not getting populated correctly at
+that call site -- a real gap in OpenClaw's own platform wiring, not
+anything fixable from this repo or `driver.js`.
+
+**Workaround: send the screenshot as inline content, not a file path.**
+The message tool also accepts `params.args.buffer` (base64) +
+`contentType` directly -- this bypasses the local-path allowlist check
+entirely, since no file-path resolution happens when a buffer is already
+provided. Acca has filesystem read access: read the screenshot file
+itself, base64-encode it, and pass it as `buffer`/`contentType` instead
+of a path. Use this method for the Telegram hand-off below, not a raw
+file path, until/unless the platform-side allowlist bug gets fixed.
 
 ## Step 1 -- the screenshot hand-off
 

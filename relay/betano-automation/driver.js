@@ -478,7 +478,23 @@ async function takeScreenshot(page, player, label, plan) {
   // directly. Every earlier "the betslip vanished" observation was
   // unrelated noise (checked well after the fact, on a tab that had since
   // had test-script interference), not a real second bug.
-  await page.screenshot({ path, fullPage: false });
+  //
+  // Black bars on the right/bottom, confirmed and precisely quantified
+  // live (2026-09-24), separate bug: these are raw CDP-attached tabs, not
+  // Playwright-launched pages, so page.viewportSize() is null and
+  // page.screenshot() falls back to sizing its capture buffer with a
+  // hardcoded/default deviceScaleFactor of 2 -- but this profile's real
+  // effective DPR is ~1.333 (native 2.0 retina x the 67% Chrome zoom set
+  // by hand). Confirmed via CDP's Page.getLayoutMetrics(): real content
+  // painted into a ~1996x1824 device-pixel area, while the PNG came out
+  // 2994x2736 -- exactly cssLayoutViewport x 2, not x the real 1.333.
+  // Fixed by clipping to the live CSS-pixel viewport size measured right
+  // before capture, instead of depending on (or guessing) the DPR at all.
+  const { width: cssW, height: cssH } = await page.evaluate(() => ({
+    width: document.documentElement.clientWidth,
+    height: document.documentElement.clientHeight,
+  }));
+  await page.screenshot({ path, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
   console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
   const url = await uploadScreenshot(path);
   if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);

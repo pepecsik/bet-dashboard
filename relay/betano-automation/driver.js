@@ -223,26 +223,37 @@ async function clearBetslip(page) {
   const snapshot = await betslipSnapshot(page);
   if (!snapshot || /^<error/.test(snapshot)) return; // no betslip container at all yet -- nothing to clear
   for (let attempt = 1; attempt <= 3; attempt++) {
-    // Diagnostic widened 2026-09-25: the first version of this diagnostic
-    // (a single .count() taken once, only at the very end, after all 3
-    // attempts) gave a genuinely ambiguous result on its first real
-    // occurrence -- 1 element found once, then 0 the next time, which
-    // can't be told apart from "always 0" vs. "became 0 only right at
-    // that final check" without per-attempt data. Counting before AND
-    // after each click, every attempt, so a flickering/reloading DOM
-    // shows up as changing counts across the sequence, not just one
-    // end-of-loop snapshot that might not reflect what was true during
-    // the actual failed attempts.
     const beforeCount = await page.locator(".bet-slip-container").count();
     await dismissMarketingPopup(page);
     await dismissSessionTimer(page);
     await page.locator(".bet-slip-container").getByRole("button", { name: "Remove selections" }).first().click({ timeout: 5000 }).catch((err) => {
       console.warn(`[betano-driver] clearBetslip attempt ${attempt}: clear-click failed -- ${err.message}`);
     });
-    const after = await betslipSnapshot(page);
-    const afterCount = await page.locator(".bet-slip-container").count();
-    if (!after || /^<error/.test(after)) return; // container genuinely gone -- confirmed clear
-    console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing (container count before=${beforeCount}, after=${afterCount}) -- "${after}"`);
+    // Root-caused, confirmed live (2026-09-25), via two fully-instrumented
+    // isolated repros (main-frame navigation, new-tab/window creation, CDP
+    // target creation, and raw network Document requests all tracked --
+    // zero signal of any reload or navigation) plus per-attempt container
+    // counts pulled from a real failing run: the click mechanism itself
+    // works fine. The bug was in *this function's own success detection*
+    // -- betslipSnapshot()'s .innerText() read was racing against the
+    // click's own DOM removal, so an attempt that had already genuinely
+    // succeeded (container count already 0) still got logged as "still
+    // present" because the text read caught a stale moment just before
+    // removal completed. Real data from one run: attempt 3 went
+    // count 1 -> 0 (a real, immediate success) but the old text-based
+    // check still reported failure.
+    //
+    // Fixed by trusting a polled container count instead -- same
+    // debounce-style pattern as fillStake/clickAndVerifyLeg elsewhere in
+    // this file, not a single racy read right after a UI action.
+    const deadline = Date.now() + 2000;
+    let afterCount = beforeCount;
+    while (Date.now() < deadline) {
+      afterCount = await page.locator(".bet-slip-container").count();
+      if (afterCount === 0) return; // container genuinely gone -- confirmed clear
+      await page.waitForTimeout(150);
+    }
+    console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing (container count before=${beforeCount}, after=${afterCount})`);
   }
   // Diagnostic added 2026-09-24: live investigation ruled out .first()
   // targeting the wrong button, popup interception, AND (on the first

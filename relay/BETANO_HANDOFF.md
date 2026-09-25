@@ -1,134 +1,167 @@
-# Betano automation -- handoff / status (2026-09-23)
+# Betano automation -- handoff / status (2026-09-25)
 
-Where things stand at the end of today's session, for picking back up
-tomorrow without re-deriving context. See also `betano-automation/README.md`
-(has the same test-run log, kept in sync) and `BETANO_RECON.md` (the
-underlying page-structure reference this was all built against).
+Full rewrite of the earlier 2026-09-23 handoff -- the milestone that doc was
+building toward has now been reached. This is the current state to pick back
+up from.
 
-## The big picture
+## The milestone: first genuinely complete, clean two-bet run
 
-Rebuilding the weekly-accumulator automation, same deterministic-Playwright-
-plus-narrow-AI-fallback architecture as the retired Betfair build, retargeted
-at Betano (Winston's own, ID-verified account -- no VPN, no third-party-
-account-access question, unlike the Betfair attempt that got shelved over a
-real compliance concern). All Betfair-specific code/docs were deleted; the
-site-agnostic queue infrastructure (`betfairExport.js`, `betfairQueue.js`,
-`server.js`'s `/betfair-place-request/*` routes) was kept as-is, naming just
-stale.
+Confirmed end to end, independently verified (not just trusting logs):
+- Bet 1: 6 legs, built correctly, approved by Winston in the app for the
+  first time ever.
+- Bet 2: 9 legs, including the "1-3" Correct Score pick that had hard-stopped
+  every single prior attempt across multiple days -- built correctly on the
+  deterministic click alone, **zero AI fallback needed on either bet**.
+- Both Telegram hand-offs delivered successfully with correct screenshots
+  (no black bars).
+- Exit code 0. Queue empty. Environment clean afterward.
 
-Everything runs the same collaborative loop: OpenClaw (a separate Claude Code
-session on Winston's Mac) drives the real browser via CDP and diagnoses
-failures live against the actual page state; this session (on
-`claude/github-connection-check-3esm0c`, merged to `main` after every fix)
-owns `driver.js`/`betanoPlan.js`/the docs and applies the fixes OpenClaw's
-diagnosis calls for. Winston relays messages between the two by hand.
+This closes out a genuinely long multi-day debugging saga. See "Full bug
+history" below for the complete list of what was actually wrong and fixed
+along the way -- useful context if anything regresses.
 
-## Test-run history so far (5 runs, all real, against the live site)
+## Winston's three notes from this exact run -- next things to address
 
-1. **`networkidle` never resolves on Betano** -- confirmed live (page was
-   fully loaded and usable, but the wait never returned; Betano keeps
-   continuous background traffic running). Fixed: `gotoFixturesList`/
-   `gotoMatchPage` helpers using `domcontentloaded` + an explicit wait for a
-   real element, replacing all four `networkidle` call sites.
-2. **Hard-stop path gap** -- `main()`'s initial fixtures-list navigation ran
-   before the `try` block started, so a failure there skipped the entire
-   hard-stop-screenshot-and-report path, leaving the job stuck "claimed"
-   with zero failure trace. Fixed: moved inside `try`, as its first
-   statement.
-3. **`OPENAI_API_KEY` missing** -- Stagehand's constructor validates it
-   eagerly, once per bet, even on a run where the AI fallback never fires.
-   Wasn't set anywhere in the driver's environment; had no bridge from
-   OpenClaw's own stored credential (`auth.profiles.openai:default` in
-   `openclaw.json`) to a spawned child process's env (confirmed by reading
-   the installed OpenClaw package source directly -- `resolveApiKey`-style
-   calls only exist in the Gateway's own model-calling code, nothing bridges
-   to the exec tool's `env` field). Winston set it directly on the Mac
-   himself, in his own terminal (never typed into this chat -- an earlier
-   attempt to relay the raw key through chat got silently masked by a
-   platform-level redaction before OpenClaw ever saw it, which was actually
-   the right outcome). Now lives in a (git-ignored) `.env` in
-   `betano-automation/`, loaded via `node --env-file=.env driver.js`.
-   **Winston flagged that key as exposed in a chat transcript regardless
-   and said he'd rotate it on OpenAI's dashboard once testing settles --
-   that's still outstanding, not yet done as of this writing.**
-3a. Mid-diagnosis of the next bug, the `betano` profile was found logged
-    out (confirmed live: REGISTER/LOGIN visible instead of DEPOSIT). Not a
-    code bug -- Winston logged back in by hand. Worth knowing for later:
-    the login is saved via Google and is low-friction to restore (just
-    click "Login" top right, pre-filled, then close the bonus/deposit
-    popup with the X) -- flagged as a possible future self-healing-login
-    step, explicitly deferred as a "someday" idea, not built now.
-4. **Fixture-row scoping bug** (the real bug hiding behind the "was it just
-   being logged out?" question in run 3) -- the tr/li/div-ancestor
-   heuristic borrowed from Betfair was wrong on two counts on Betano: wrong
-   depth (Betano's fixtures list has no `<tr>`/`<li>` at all, so the
-   fixture link's immediate parent already matched the filter, one level
-   short of the real row wrapper) and a wrong element-type assumption
-   (Betano's price controls are `<div role="button">`, not native
-   `<button>` -- didn't break the driver's own role-based locators, but
-   threw off manual DOM probing during diagnosis). Confirmed precisely via
-   live reproduction, including reading the real accessibility tree.
-   Fixed: `buildFixtureIndex`'s row-scoping XPath now walks up from the
-   fixture link until it finds an ancestor whose subtree actually contains
-   a `role="button"` descendant -- depth-agnostic, not a fixed guess.
-   **Confirmed working on the very next run**: zero AI fallback calls
-   needed, all 6 legs added via deterministic locators cleanly.
-5. **`fillStake` debounce race** -- the only failure left in that same
-   run. `fillStake` read the BET NOW button's potential-winnings label once,
-   immediately after `.fill()`, to verify the stake registered. Betano
-   debounces that label's recompute by ~300-500ms after the input changes,
-   so a run's very first stake entry (empty -> a real number) reliably
-   caught the stale, pre-debounce "disabled" label -- a false failure on a
-   fill that had actually worked. Confirmed via three separate live
-   reproductions (still stale at +200ms, caught up by +500ms). Fixed:
-   polls the label for up to 2s (every 150ms) instead of checking once.
-   **Not yet re-run against the live site as of this writing** -- this is
-   the next thing to verify.
+1. **Bet 2's screenshot doesn't fully fit all 9 legs.** Bet 2 accumulators
+   run longer than bet 1's, and the current screenshot (cropped to the real
+   content bounds via the `sharp` fix) may cut off legs that don't fit in
+   the visible betslip panel on screen. Needs investigating -- possibly
+   scrolling the betslip panel itself before capturing, or capturing in
+   multiple scrolled segments, or just confirming whether Betano's own
+   betslip UI scrolls internally and whether that's captured correctly.
+2. **Real placement has never been tested.** `driver.js` deliberately
+   hard-stops on approve in real (non-test) mode --
+   `RealPlacementNotImplementedError`. Actually clicking the real BET NOW
+   button is NOT implemented anywhere in this file, on purpose, pending
+   deliberate review -- same standing rule as the retired Betfair driver.
+   This is the next real conversation to have: what does "click BET NOW for
+   real" actually need (confirmation UI, a point of no return, logging),
+   and who reviews/approves adding it.
+3. **Still navigating to the account-overview page after approval.** Same
+   pattern noted a few times now -- this is very likely just OpenClaw's own
+   habit of re-confirming login before/after significant steps (checking
+   login always lands on `/overview`), not something `driver.js` itself
+   does. Worth a final confirmation from OpenClaw that this is indeed
+   routine housekeeping and not an unexplained side effect, just to close
+   the loop on Winston's repeated observation of it.
 
-## Where this leaves things
+## Full bug history (2026-09-23 through 2026-09-25)
 
-Everything found so far has been fixed and is pushed to `main`. The
-row-scoping fix already got a clean confirmation (zero fallback calls, all
-legs added) -- `fillStake`'s debounce fix is the one still unverified. If it
-holds, the very next run should be the first one to reach a genuine
-`awaiting_confirmation` state on Betano -- i.e., the first fully-built,
-screenshotted, real accumulator slip ready for Winston's actual approve/
-reject in the app.
+Roughly chronological. Each of these was a real, live-confirmed bug, not a
+guess -- full detail in `betano-automation/README.md`'s "Fixed, confirmed
+live" section and individual git commit messages on `main`.
+
+1. `networkidle` navigation timeout -- Betano's continuous background
+   traffic means this never resolves; switched to `domcontentloaded` + an
+   explicit element wait.
+2. Hard-stop path gap -- initial navigation ran before the `try` block,
+   skipping the hard-stop screenshot/report path entirely on failure.
+3. `OPENAI_API_KEY` missing -- Stagehand validates it eagerly; resolved via
+   a git-ignored `.env` + `--env-file=.env`.
+4. Fixture-row scoping bug -- depth-agnostic ancestor walk instead of a
+   fixed tr/li/div guess.
+5. `fillStake` debounce race -- polled instead of a single immediate check.
+6. Marketing bonus popup blocking every fresh tab -- `dismissMarketingPopup`
+   added, later found to need calling far more defensively than originally
+   thought (see #16).
+7. Toggle-button race in `clickAndVerifyLeg` -- single click + poll instead
+   of retry-clicking a toggle button.
+8. Session Timer popup (real selector, real logout risk) -- confirmed live,
+   handled via `dismissSessionTimer`, eventually wired into the per-leg
+   loop, `pollForDecision`'s poll loop, and every match-page click site.
+9. `verifyBetslipMatchesPlan` added -- re-verifies the betslip immediately
+   before ever reporting `awaiting_confirmation`, closing a real
+   false-success gap.
+10. Telegram hand-off: local file path blocked by OpenClaw's own directory
+    allowlist, then a base64-buffer workaround got silently truncated by
+    exec's output-capture limit. **Real fix**: the relay itself now serves
+    screenshots over HTTP (`POST`/`GET /betano-screenshot/...`, in-memory,
+    capped at 20 entries), and `driver.js` uploads + hands back a real URL.
+11. `clearBetslip` -- multiple rounds: `.first()` on "Remove selections"
+    confirmed correct (not the bug); the real fix was retrying with popup
+    dismissal, then (the actual root cause) trusting a polled container
+    *count* instead of a racy `betslipSnapshot()` text read for success
+    detection.
+12. Screenshot black bars -- **two-stage fix**. A CSS-viewport `clip` was
+    tried first and confirmed NOT to work (clip bounds the source region,
+    not the output pixel density, which stayed locked at a wrong 2.0x
+    `deviceScaleFactor`). Real fix: post-capture crop via `sharp`, using
+    the live `window.devicePixelRatio` computed dynamically.
+13. Session Timer needed checking *during* the per-leg build loop too, not
+    just at navigation/post-build -- a real occurrence force-logged the
+    session out mid-build, wiping 5 already-built legs.
+14. Fixtures list URL missing matches -- swapped to `?bt=matchresult` for
+    the full date window (the plain URL only showed a few days out, which
+    looked like "bad data" for a real, valid Monday fixture).
+15. Correct Score's "SHOW ALL" toggle for less-common scorelines was never
+    wired in at all -- added, then **fixed again** when the first attempt
+    used an unscoped page-wide search that could expand Over/Under's
+    section instead of Correct Score's. Real fix: `marketCardFor()`, a
+    depth-agnostic ancestor walk scoping to each market's own card.
+16. `clickAndVerifyLeg`'s poll widened 2s -> 4s; `withAiFallback`'s own
+    post-act() verification was a single unpolled read (the last unpolled
+    check in the file) -- now polls too; `notifyHardStopDirect`'s Telegram
+    caption could exceed Telegram's length limit on a large betslip -- now
+    truncated safely.
+17. **The actual root cause of the entire "1-3 sometimes works" saga**,
+    found in two parts:
+    - `executeMatchPagePick` only dismissed popups once at navigation, not
+      before each subsequent click (expand, SHOW ALL, the actual pick) --
+      a real popup blocking a click was directly observed and proven live
+      (10+ second hang against `#iframe-modal`, resolved in 129ms once
+      dismissed).
+    - Even after that fix, failures continued -- the **real** root cause:
+      `selectionAppearsIn` compared the raw scoreline (`"1-3"`) against
+      betslip text that always renders WITH spaces (`"1 - 3"`), so
+      verification could never succeed for Correct Score regardless of
+      whether the click worked. Found directly from the code after Winston
+      watched the driver correctly add "1-3" then go back and add a wrong,
+      second pick for the same match. Fixed by normalizing dash-spacing in
+      the comparison itself.
+18. CDP port drift -- an OpenClaw app-level "Reset" click wiped the
+    `betano` browser profile's live registration (Chrome data/login
+    untouched, verified byte-identical) and separately wiped acca's own
+    agent registration + Telegram binding. Both fully recovered via
+    backup-then-reattach, verified non-destructive at every step. New port:
+    8092 (was 8093) -- **confirm the current port before every run**, it
+    can drift again.
+
+## Operational lessons worth remembering
+
+- **acca's own turn dies periodically from OpenAI rate limits**, especially
+  right after a poll/check call. `driver.js` itself is unaffected and keeps
+  running independently -- always verify against the raw session transcript
+  log, never trust acca's own "Done" summary at face value. Confirmed
+  multiple times this saga that acca's self-reports can be stale or
+  outright fabricated (word-for-word content from an unrelated, much
+  earlier run, despite being labeled "verbatim").
+- **Check for orphaned `driver.js`/diagnostic-script processes** holding a
+  stale CDP connection before trusting any run's results -- confirmed live
+  that two processes sharing one browser tab produces confusing,
+  hard-to-explain behavior.
+- **The relay's screenshot store and job queue are both in-memory only** --
+  a Render redeploy (which happens on every push to `main`) wipes both.
+  Avoid pushing to `main` while a live test run has a pending screenshot
+  that still needs reviewing.
+- **`.env` credentials (`OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`,
+  `TELEGRAM_CHAT_ID`) live in `betano-automation/.env`, git-ignored.** Never
+  route raw secret values through any chat session -- get them set directly
+  on the Mac.
+- **Diagnostic logging is now in place** for the two popup types (every
+  `dismissMarketingPopup`/`dismissSessionTimer` call logs a timestamped,
+  labeled line) -- useful if anything popup-related resurfaces.
 
 ## Next steps, in order
 
-1. `git pull origin main` in `betano-automation/` (picks up the `fillStake`
-   fix).
-2. Confirm the `betano` browser profile is logged in (screenshot check, not
-   just an immediate post-reload read -- that raced falsely at least once
-   already).
-3. Queue a fresh test job for Pepe (`POST /betfair-place-request` with
-   `{"player":"Pepe","test":true}`, or it may already be queued -- check
-   `/betfair-place-request/queue` first, since `getNext()` returns null if
-   *anything* is already claimed, not just for that player).
-4. Re-run via `openclaw agent --agent acca --message "..."` with
-   `--env-file=.env` in the launch command, same as the last two runs.
-5. If it reaches `awaiting_confirmation` cleanly: that's the milestone --
-   first real end-to-end build on Betano. Approve/reject it for real in the
-   app to confirm the decision-poll -> reject/approve -> report loop closes
-   out correctly too (this exact path is written but has never been
-   exercised against Betano yet, only against Betfair).
-6. Once a full test job (both bets) completes cleanly: rotate the OpenAI key
-   Winston flagged as exposed (platform.openai.com), and revisit the
-   remaining UNVERIFIED items in `betano-automation/README.md` (the CDP
-   port guess, "Remove selections" disambiguation, the empty-betslip string)
-   as they come up on further runs -- same iterative pattern as everything
-   above.
-
-## Longer-term, not started
-
-- A Betano equivalent of the retired `DRIVER_MANUAL.md` (the Telegram
-  screenshot hand-off wrapper around `driver.js`'s `SCREENSHOT_READY`/
-  `HARDSTOP_SCREENSHOT_READY` log lines) -- needs writing once this is
-  live-tested end to end.
-- `SOUL.md`'s dangling Path 1/Path 2 references (Betfair-era), and whether
-  to keep or rename the "acca" agent identity for the Betano flow -- both
-  explicitly deferred by OpenClaw as "not something to guess at unasked."
-- Deciding the trigger/integration that replaces manually asking for a test
-  run each time (task #3 in this session's tracked task list) -- not
-  addressed yet, was already pending before today's session.
+1. Investigate bet 2's screenshot not showing all 9 legs (Winston's note
+   #1 above).
+2. Decide what real placement needs before ever implementing it (Winston's
+   note #2) -- this is a real, deliberate conversation, not a quick code
+   change.
+3. Confirm with OpenClaw whether the post-approval overview-page navigation
+   is genuinely just their own routine login check (Winston's note #3) --
+   likely already true, just wants final confirmation.
+4. Otherwise: the core build-and-approve loop for both bets is proven
+   working. Future test runs should be genuinely routine now, barring a new
+   edge case surfacing (a different market type, a different fixture
+   pattern, etc.).

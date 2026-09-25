@@ -43,6 +43,7 @@
 
 import { chromium } from "playwright";
 import { Stagehand } from "@browserbasehq/stagehand";
+import sharp from "sharp";
 import { buildBetPlan } from "../betanoPlan.js";
 
 const RELAY_URL = process.env.RELAY_URL || "https://bet-dashboard-relay.onrender.com";
@@ -538,6 +539,31 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
 // report into a proper hard-stop with an accurate error -- the same
 // value verifyBetslipMatchesPlan's original call already provides for
 // slower drift, just tightened to catch a wipe this fast too.
+
+// Crops a just-captured screenshot (already clipped to the CSS viewport,
+// still oversized because the capture's pixel density is locked at the
+// wrong 2.0x -- see the callers' own comments) down to the real content
+// bounds, in place. window.devicePixelRatio is the browser's own live
+// measurement of the real effective DPR (native retina x Chrome zoom) --
+// used directly rather than a hardcoded ratio, so this self-corrects if
+// the zoom level ever changes. Best-effort: logs and leaves the
+// oversized file untouched on any failure, rather than losing the
+// screenshot entirely over a cosmetic crop step.
+async function cropScreenshotToRealContent(page, path) {
+  try {
+    const { cssW, cssH, dpr } = await page.evaluate(() => ({
+      cssW: document.documentElement.clientWidth,
+      cssH: document.documentElement.clientHeight,
+      dpr: window.devicePixelRatio,
+    }));
+    const realWidth = Math.round(cssW * dpr);
+    const realHeight = Math.round(cssH * dpr);
+    const cropped = await sharp(path).extract({ left: 0, top: 0, width: realWidth, height: realHeight }).toBuffer();
+    await import("node:fs/promises").then((fs) => fs.writeFile(path, cropped));
+  } catch (err) {
+    console.error(`[betano-driver] Screenshot crop failed (non-fatal, oversized file left as-is):`, err.message);
+  }
+}
 async function takeScreenshot(page, player, label, plan) {
   await verifyBetslipMatchesPlan(page, plan);
   const dir = SCREENSHOT_DIR;
@@ -558,22 +584,37 @@ async function takeScreenshot(page, player, label, plan) {
   // unrelated noise (checked well after the fact, on a tab that had since
   // had test-script interference), not a real second bug.
   //
-  // Black bars on the right/bottom, confirmed and precisely quantified
-  // live (2026-09-24), separate bug: these are raw CDP-attached tabs, not
-  // Playwright-launched pages, so page.viewportSize() is null and
-  // page.screenshot() falls back to sizing its capture buffer with a
-  // hardcoded/default deviceScaleFactor of 2 -- but this profile's real
-  // effective DPR is ~1.333 (native 2.0 retina x the 67% Chrome zoom set
-  // by hand). Confirmed via CDP's Page.getLayoutMetrics(): real content
-  // painted into a ~1996x1824 device-pixel area, while the PNG came out
-  // 2994x2736 -- exactly cssLayoutViewport x 2, not x the real 1.333.
-  // Fixed by clipping to the live CSS-pixel viewport size measured right
-  // before capture, instead of depending on (or guessing) the DPR at all.
+  // Black bars on the right/bottom, root-caused and fixed in two stages,
+  // confirmed live (2026-09-24):
+  //
+  // Stage 1 (insufficient on its own): these are raw CDP-attached tabs,
+  // not Playwright-launched pages, so page.viewportSize() is null and
+  // page.screenshot() falls back to a hardcoded/default deviceScaleFactor
+  // of 2 -- but this profile's real effective DPR is ~1.333 (native 2.0
+  // retina x the 67% Chrome zoom set by hand). A clip to the live CSS
+  // viewport size (still applied below, harmless and correctly bounds the
+  // *source* region) was tried first, but confirmed via three independent
+  // live measurements NOT to fix the black bars: clip only controls what
+  // CSS-pixel region gets captured, not the output raster's pixel
+  // density, which stayed locked at the wrong 2.0x regardless -- ruled
+  // out two ways (Playwright's clip, and raw CDP
+  // Page.captureScreenshot's own clip.scale parameter both produced the
+  // identical wrong-density result). The 2.0x factor is baked in at the
+  // browser profile/capture-API level, below what either capture API can
+  // override per call.
+  //
+  // Stage 2 (the actual fix): crop the already-captured PNG's pixels
+  // after the fact, to the real content bounds -- computed dynamically
+  // from window.devicePixelRatio (the browser's own live-measured real
+  // DPR, not a hardcoded ratio) x the CSS viewport size, so this stays
+  // correct if the zoom level ever changes. cropScreenshotToRealContent()
+  // does this via sharp.
   const { width: cssW, height: cssH } = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     height: document.documentElement.clientHeight,
   }));
   await page.screenshot({ path, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
+  await cropScreenshotToRealContent(page, path);
   console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
   const url = await uploadScreenshot(path);
   if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);
@@ -824,6 +865,7 @@ async function main() {
         height: document.documentElement.clientHeight,
       }));
       await page.screenshot({ path: failurePath, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
+      await cropScreenshotToRealContent(page, failurePath);
       console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
       failureUrl = await uploadScreenshot(failurePath);
       if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);

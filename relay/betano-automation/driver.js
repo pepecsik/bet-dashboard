@@ -340,14 +340,24 @@ async function buildFixtureIndex(page, matchesNeeded) {
 async function clickAndVerifyLeg(page, button, matchLabel, selection) {
   await button.click();
   assertNotChallenged(page);
-  const deadline = Date.now() + 2000;
+  // Widened 2s -> 4s, confirmed live (2026-09-25): a real click actually
+  // succeeded, but this poll gave up just before the leg registered on a
+  // heavier, 7-leg betslip -- the false failure then triggered an
+  // unnecessary AI fallback, which added its own, different (wrong)
+  // Correct Score pick for the same match, since it had no way to know
+  // the deterministic click had already worked. Betano correctly refused
+  // to combine two Correct Score picks for one fixture, and the driver
+  // correctly hard-stopped on that mismatch -- but for the wrong reason,
+  // caused entirely by this poll window being too tight for a
+  // larger/more complex betslip re-render. More margin, same pattern.
+  const deadline = Date.now() + 4000;
   let snapshot = "";
   while (Date.now() < deadline) {
     snapshot = await betslipSnapshot(page);
     if (selectionAppearsIn(snapshot, selection)) return;
     await page.waitForTimeout(150);
   }
-  throw new Error(`Click for ${matchLabel} ("${selection}") didn't add a leg to the betslip after 2s -- betslip shows: "${snapshot}"`);
+  throw new Error(`Click for ${matchLabel} ("${selection}") didn't add a leg to the betslip after 4s -- betslip shows: "${snapshot}"`);
 }
 
 async function executeListPick(page, step, fixtureEntry) {
@@ -567,7 +577,19 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
     console.error(`[betano-driver] Direct Telegram notify skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
     return;
   }
-  const caption = `🛑 Hard stop building a bet for ${player} (direct notify -- OpenClaw's own relay may not have gotten to this).\n\n${errorMessage}`;
+  // Confirmed live (2026-09-25): a real hard stop's error message can
+  // embed a full betslip snapshot dump (every leg's text, odds, bonus
+  // banners) once several legs are in -- an 8-leg slip's error pushed
+  // this well past Telegram's sendPhoto caption limit (1024 chars),
+  // making the notify call itself fail with "message caption is too
+  // long." That's exactly the silent-failure blind spot this function
+  // exists to close, so it must never fail this way -- truncate
+  // conservatively rather than trust the error message to always be
+  // Telegram-safe length.
+  const prefix = `🛑 Hard stop building a bet for ${player} (direct notify -- OpenClaw's own relay may not have gotten to this).\n\n`;
+  const maxErrorLen = 900 - prefix.length;
+  const truncatedError = errorMessage.length > maxErrorLen ? `${errorMessage.slice(0, maxErrorLen)}… (truncated)` : errorMessage;
+  const caption = `${prefix}${truncatedError}`;
   try {
     const endpoint = screenshotUrl ? "sendPhoto" : "sendMessage";
     const body = screenshotUrl
@@ -711,11 +733,22 @@ function makeFallbackLog() {
         const result = await stagehand.page.act(description);
         const after = { ...stagehand.metrics };
         entries.push({ description, deterministicError: err.message, at: new Date().toISOString(), metricsBefore: before, metricsAfter: after, metrics: metricsDelta(before, after) });
-        const snapshot = await betslipSnapshot(page);
-        if (!selectionAppearsIn(snapshot, selection)) {
-          throw new Error(`AI fallback for ${matchLabel} ("${selection}") reported success but the leg never appeared in the betslip -- betslip shows: "${snapshot}"`);
+        // Polled, not a single immediate check -- this was the one place
+        // in the file still doing a bare unpolled read right after a UI
+        // action, the exact race pattern already fixed everywhere else
+        // (fillStake, clickAndVerifyLeg, clearBetslip). Confirmed live
+        // (2026-09-25) this specific gap wasn't the primary cause of that
+        // day's incident (clickAndVerifyLeg's own poll was too tight --
+        // see its comment), but there's no reason this check should stay
+        // any less reliable than every other verification in this file.
+        const deadline = Date.now() + 2000;
+        let snapshot = "";
+        while (Date.now() < deadline) {
+          snapshot = await betslipSnapshot(page);
+          if (selectionAppearsIn(snapshot, selection)) return result;
+          await page.waitForTimeout(150);
         }
-        return result;
+        throw new Error(`AI fallback for ${matchLabel} ("${selection}") reported success but the leg never appeared in the betslip after 2s -- betslip shows: "${snapshot}"`);
       }
     },
   };

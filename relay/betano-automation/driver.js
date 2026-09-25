@@ -231,7 +231,23 @@ async function clearBetslip(page) {
     if (!after || /^<error/.test(after)) return; // container genuinely gone -- confirmed clear
     console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing -- "${after}"`);
   }
-  throw new Error(`clearBetslip: betslip still not empty after 3 attempts -- refusing to build bet on top of it`);
+  // Diagnostic added 2026-09-24: live investigation ruled out both the
+  // original suspects (.first() targeting the wrong button, a popup
+  // intercepting the click) via two clean manual reproductions -- the
+  // real failure showed byte-for-byte identical betslip text across all
+  // 3 attempts with zero click errors, which neither theory explains.
+  // Leading unconfirmed hypothesis: the hard-stop screenshot visually
+  // showed what looked like the entire page rendered twice, stacked
+  // vertically -- if the real page ever ends up with two
+  // .bet-slip-container elements (genuine DOM duplication, not a
+  // screenshot artifact), the locator this function uses would silently
+  // scope into an ambiguous/wrong copy, and a click could "succeed" while
+  // the visible one never changes. Logging the real count right before
+  // hard-stopping settles this definitively on the next occurrence,
+  // without needing another live repro session.
+  const containerCount = await page.locator(".bet-slip-container").count();
+  console.error(`[betano-driver] clearBetslip diagnostic: ${containerCount} .bet-slip-container element(s) found in the DOM at hard-stop time.`);
+  throw new Error(`clearBetslip: betslip still not empty after 3 attempts (${containerCount} .bet-slip-container element(s) found) -- refusing to build bet on top of it`);
 }
 
 // Scans the EPL fixtures list once and returns a map keyed by "Home vs Away"

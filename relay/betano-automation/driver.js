@@ -373,6 +373,17 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
   if (step.market === "Correct Score") {
     const scoreline = step.selection.replace("-", " - "); // "2-1" -> "2 - 1", matching the recon file's documented label format
     const button = page.getByRole("button", { name: new RegExp(`^Bet on ${escapeRegex(scoreline)} with odds`, "i") });
+    if ((await button.count()) === 0) {
+      // Less-common scorelines are hidden behind a "SHOW ALL" toggle --
+      // already documented in BETANO_RECON.md section 2 (same button
+      // text as Over/Under's, just below) but never actually wired into
+      // this branch. Real consequence confirmed live (2026-09-25):
+      // Winston caught it watching a run live -- "1-3" wasn't visible
+      // after just expanding the Correct Score accordion, so the AI
+      // fallback guessed a wrong, visible scoreline instead ("1-0")
+      // rather than the real target.
+      await page.getByRole("button", { name: "SHOW ALL" }).first().click().catch(() => {});
+    }
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
   }

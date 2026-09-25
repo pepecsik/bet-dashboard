@@ -144,8 +144,8 @@ async function gotoMatchPage(page, url) {
   // real runs after that fix still saw it reappear, and match-page
   // navigation is the other place a fresh page load could plausibly
   // retrigger it. Defensive, not yet confirmed as the actual explanation.
-  await dismissMarketingPopup(page);
-  await dismissSessionTimer(page);
+  await dismissMarketingPopup(page, "gotoMatchPage");
+  await dismissSessionTimer(page, "gotoMatchPage");
 }
 
 // Confirmed live (2026-09-24): Betano shows a dismissible "Available
@@ -164,9 +164,20 @@ async function gotoMatchPage(page, url) {
 // once the modal was dismissed first. Called once, right after the
 // initial fixtures-list navigation, before building any bets -- doesn't
 // reappear within the same tab/session once dismissed.
-async function dismissMarketingPopup(page) {
+// `context` is a short label identifying which call site this is --
+// added 2026-09-25 as diagnostic instrumentation after an extensive live
+// investigation (6 navigations, a 5-minute idle wait, and 4 targeted
+// fillStake/clearBetslip repros, all with dedicated betslip sizes) failed
+// to reproduce the popup's reappearance in isolation on demand. Winston
+// has watched it happen live in real runs, so the plan now is to log
+// every check (visible or not, with a timestamp and where in the flow it
+// happened) and correlate against his own real-time observation on the
+// next real job, rather than keep chasing an isolated repro.
+async function dismissMarketingPopup(page, context = "unspecified") {
   const modal = page.locator("#iframe-modal");
-  if (!(await modal.isVisible().catch(() => false))) return;
+  const visible = await modal.isVisible().catch(() => false);
+  console.log(`[betano-driver] popup-check (marketing) [${context}] at ${new Date().toISOString()}: ${visible ? "VISIBLE -- dismissing" : "not visible"}`);
+  if (!visible) return;
   const bonusFrame = page.frameLocator("#iframe-modal iframe[src*='marketingbonus']");
   await bonusFrame.locator('img[alt="header header-times"]').click({ timeout: 5000 }).catch(() => {});
   await modal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
@@ -181,9 +192,11 @@ async function dismissMarketingPopup(page) {
 // on detection, no delay -- the countdown can be down to a handful of
 // seconds by the time it's even noticed. Idempotent no-op if not present,
 // same pattern as dismissMarketingPopup.
-async function dismissSessionTimer(page) {
+async function dismissSessionTimer(page, context = "unspecified") {
   const timer = page.locator('[data-test-id="session-timer-v3"]');
-  if (!(await timer.isVisible().catch(() => false))) return;
+  const visible = await timer.isVisible().catch(() => false);
+  console.log(`[betano-driver] popup-check (session-timer) [${context}] at ${new Date().toISOString()}: ${visible ? "VISIBLE -- dismissing" : "not visible"}`);
+  if (!visible) return;
   await timer.getByRole("button", { name: "CONTINUE" }).click({ timeout: 5000 }).catch(() => {});
 }
 
@@ -234,8 +247,8 @@ async function clearBetslip(page) {
   if (!snapshot || /^<error/.test(snapshot)) return; // no betslip container at all yet -- nothing to clear
   for (let attempt = 1; attempt <= 3; attempt++) {
     const beforeCount = await page.locator(".bet-slip-container").count();
-    await dismissMarketingPopup(page);
-    await dismissSessionTimer(page);
+    await dismissMarketingPopup(page, `clearBetslip attempt ${attempt}`);
+    await dismissSessionTimer(page, `clearBetslip attempt ${attempt}`);
     await page.locator(".bet-slip-container").getByRole("button", { name: "Remove selections" }).first().click({ timeout: 5000 }).catch((err) => {
       console.warn(`[betano-driver] clearBetslip attempt ${attempt}: clear-click failed -- ${err.message}`);
     });
@@ -410,8 +423,8 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
   // this same symptom, not the cause. Dismissing before every click in
   // this function now, not just once at the top.
   if (step.needsExpand) {
-    await dismissMarketingPopup(page);
-    await dismissSessionTimer(page);
+    await dismissMarketingPopup(page, "before Correct Score expand");
+    await dismissSessionTimer(page, "before Correct Score expand");
     // Correct Score is a collapsed accordion by default -- expand it first.
     await page.getByText("Correct Score", { exact: true }).click();
   }
@@ -430,12 +443,12 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // of Correct Score's, expanding the wrong section and leaving the
       // target scoreline still hidden -- exactly what Winston watched
       // happen a second time. Scoped to this market's own card now.
-      await dismissMarketingPopup(page);
-      await dismissSessionTimer(page);
+      await dismissMarketingPopup(page, "before Correct Score SHOW ALL");
+      await dismissSessionTimer(page, "before Correct Score SHOW ALL");
       await marketCardFor(page, "Correct Score").getByRole("button", { name: "SHOW ALL" }).click().catch(() => {});
     }
-    await dismissMarketingPopup(page);
-    await dismissSessionTimer(page);
+    await dismissMarketingPopup(page, "before Correct Score pick click");
+    await dismissSessionTimer(page, "before Correct Score pick click");
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
   }
@@ -452,12 +465,12 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // unscoped page-wide search here could equally click Correct
       // Score's SHOW ALL instead of this one, same ambiguity confirmed
       // live for that branch.
-      await dismissMarketingPopup(page);
-      await dismissSessionTimer(page);
+      await dismissMarketingPopup(page, "before Over/Under SHOW ALL");
+      await dismissSessionTimer(page, "before Over/Under SHOW ALL");
       await marketCardFor(page, "Over/Under Total Goals").getByRole("button", { name: "SHOW ALL" }).click();
     }
-    await dismissMarketingPopup(page);
-    await dismissSessionTimer(page);
+    await dismissMarketingPopup(page, "before Over/Under pick click");
+    await dismissSessionTimer(page, "before Over/Under pick click");
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
   }
@@ -794,7 +807,7 @@ async function buildBetOnBetano(page, stagehand, plan, withAiFallback) {
     // of this, force-logging the session out and wiping all 5 already-
     // built legs. Checking proactively before every single leg's click
     // attempt, not just reactively after something already went wrong.
-    await dismissSessionTimer(page);
+    await dismissSessionTimer(page, "before leg click (proactive, main loop)");
     const fixtureEntry = fixtureIndex[step.match];
     const knownUrl = fixtureEntry && fixtureEntry.href ? new URL(fixtureEntry.href, "https://www.betano.pt").toString() : null;
     const description = step.type === "list-pick"
@@ -853,7 +866,7 @@ async function pollForDecision(player, page, { intervalMs = 20000, logEveryMs = 
     const data = await res.json();
     if (data.decision) return data.decision;
     if (Date.now() - lastLog > logEveryMs) { console.log(`[betano-driver] Still waiting on ${player}'s decision...`); lastLog = Date.now(); }
-    if (page) await dismissSessionTimer(page).catch(() => {});
+    if (page) await dismissSessionTimer(page, "pollForDecision poll").catch(() => {});
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
@@ -896,8 +909,8 @@ async function main() {
     // error report entirely, leaving the job stuck "claimed" with zero
     // failure trace -- confirmed live (2026-09-23).
     await gotoFixturesList(page);
-    await dismissMarketingPopup(page);
-    await dismissSessionTimer(page);
+    await dismissMarketingPopup(page, "main: after gotoFixturesList");
+    await dismissSessionTimer(page, "main: after gotoFixturesList");
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;
@@ -931,8 +944,8 @@ async function main() {
       // clean run, all 6 legs intact post-reload. Kept here, right after
       // the build and before anything else, same idempotent
       // no-op-if-absent pattern as everywhere else these get called.
-      await dismissMarketingPopup(page);
-      await dismissSessionTimer(page);
+      await dismissMarketingPopup(page, "main: after build, before verify");
+      await dismissSessionTimer(page, "main: after build, before verify");
       // Verified once here, right after the build (catches slower drift
       // early, before wasting time on a screenshot that's already
       // doomed), and again inside takeScreenshot itself, immediately

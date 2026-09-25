@@ -22,8 +22,12 @@ marked **UNVERIFIED** in the code's own comments -- things `BETANO_RECON.md`
 didn't fully pin down and need confirming on the first real run:
 
 - The exact CDP port for the `betano` browser profile (`BETANO_CDP_URL`,
-  defaults to `8093` -- a guess based on the port mentioned during recon,
-  not independently confirmed).
+  defaults to `8093`) -- **confirmed live to drift, not just unverified.**
+  An OpenClaw app-level "Reset" click on 2026-09-25 wiped the browser
+  profile's live registration (underlying Chrome data was untouched, but
+  re-registering it assigned a new port, 8092). Always confirm the actual
+  current port before a run rather than trusting this default -- see
+  `PLACEMENT_MANUAL.md`'s pre-run checklist.
 - ~~The fixture row's DOM wrapper~~ -- **fixed, confirmed live (2026-09-23)**.
   The tr/li/div-ancestor heuristic borrowed from Betfair was wrong on two
   counts on Betano: it stopped one level too shallow (no `<tr>`/`<li>` at

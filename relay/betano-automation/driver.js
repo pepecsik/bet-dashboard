@@ -395,7 +395,23 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
   const url = new URL(fixtureEntry.href, "https://www.betano.pt").toString();
   await gotoMatchPage(page, url);
 
+  // Root-caused, definitively confirmed live (2026-09-25) -- the real
+  // explanation for the entire multi-run "1-3 sometimes works, sometimes
+  // doesn't" saga, not a timing race: gotoMatchPage() only dismisses the
+  // marketing popup once, right at navigation. Everything after that
+  // (expanding Correct Score, clicking SHOW ALL, clicking the actual
+  // scoreline) ran with zero further dismissal, even though the popup
+  // can reappear mid-interaction -- already handled for list-picks
+  // (which dismiss before every leg click) but never applied here. Live
+  // proof: found #iframe-modal genuinely visible, watched a real click
+  // hang 10+ seconds against it (Playwright's own call log named it as
+  // the blocker), dismissed it, and the identical click then succeeded
+  // in 129ms. Every earlier fix that widened poll windows was treating
+  // this same symptom, not the cause. Dismissing before every click in
+  // this function now, not just once at the top.
   if (step.needsExpand) {
+    await dismissMarketingPopup(page);
+    await dismissSessionTimer(page);
     // Correct Score is a collapsed accordion by default -- expand it first.
     await page.getByText("Correct Score", { exact: true }).click();
   }
@@ -414,8 +430,12 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // of Correct Score's, expanding the wrong section and leaving the
       // target scoreline still hidden -- exactly what Winston watched
       // happen a second time. Scoped to this market's own card now.
+      await dismissMarketingPopup(page);
+      await dismissSessionTimer(page);
       await marketCardFor(page, "Correct Score").getByRole("button", { name: "SHOW ALL" }).click().catch(() => {});
     }
+    await dismissMarketingPopup(page);
+    await dismissSessionTimer(page);
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
   }
@@ -432,8 +452,12 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // unscoped page-wide search here could equally click Correct
       // Score's SHOW ALL instead of this one, same ambiguity confirmed
       // live for that branch.
+      await dismissMarketingPopup(page);
+      await dismissSessionTimer(page);
       await marketCardFor(page, "Over/Under Total Goals").getByRole("button", { name: "SHOW ALL" }).click();
     }
+    await dismissMarketingPopup(page);
+    await dismissSessionTimer(page);
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
   }

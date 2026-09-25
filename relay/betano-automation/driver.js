@@ -360,6 +360,26 @@ async function executeListPick(page, step, fixtureEntry) {
   await clickAndVerifyLeg(page, button, step.match, step.selection);
 }
 
+// Scopes to the specific market card containing this heading, per the
+// depth-agnostic pattern confirmed live (2026-09-25): walks up from the
+// heading text match to the nearest ancestor containing a "SHOW ALL"
+// descendant. Betano can render a "SHOW ALL" button per market card
+// (Over/Under, Correct Score each have their own) -- an unscoped,
+// page-wide search is ambiguous the moment more than one section has one
+// rendered, confirmed as the real cause behind "SHOW ALL" expanding the
+// wrong section and leaving the target scoreline still hidden. Confirmed
+// live and symmetric for both Over/Under and Correct Score (same
+// ancestor depth/classes for both) -- always lands on the immediately
+// correct card, well before the shared page-wide "markets" container
+// (where the count jumps from 1 to several), since XPath's ancestor axis
+// in reverse-document-order picks the NEAREST ancestor satisfying the
+// predicate, same reasoning as the fixture-row-scoping fix elsewhere in
+// this file. Text-based, not role-based -- avoids the native-tag-vs-
+// role-attribute mismatch a role-based XPath predicate would hit here.
+function marketCardFor(page, headingText) {
+  return page.getByText(headingText, { exact: true }).locator(`xpath=ancestor::*[.//*[normalize-space(text())="SHOW ALL"]][1]`);
+}
+
 async function executeMatchPagePick(page, step, fixtureEntry) {
   if (!fixtureEntry || !fixtureEntry.href) throw new Error(`No captured href for "${step.match}" -- can't navigate without guessing the URL`);
   const url = new URL(fixtureEntry.href, "https://www.betano.pt").toString();
@@ -377,12 +397,14 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // Less-common scorelines are hidden behind a "SHOW ALL" toggle --
       // already documented in BETANO_RECON.md section 2 (same button
       // text as Over/Under's, just below) but never actually wired into
-      // this branch. Real consequence confirmed live (2026-09-25):
-      // Winston caught it watching a run live -- "1-3" wasn't visible
-      // after just expanding the Correct Score accordion, so the AI
-      // fallback guessed a wrong, visible scoreline instead ("1-0")
-      // rather than the real target.
-      await page.getByRole("button", { name: "SHOW ALL" }).first().click().catch(() => {});
+      // this branch. First attempt at this fix used an unscoped,
+      // page-wide "SHOW ALL" search -- confirmed live (2026-09-25) to be
+      // the wrong fix: with Over/Under's own SHOW ALL also present on
+      // the page, an unscoped .first() could click Over/Under's instead
+      // of Correct Score's, expanding the wrong section and leaving the
+      // target scoreline still hidden -- exactly what Winston watched
+      // happen a second time. Scoped to this market's own card now.
+      await marketCardFor(page, "Correct Score").getByRole("button", { name: "SHOW ALL" }).click().catch(() => {});
     }
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;
@@ -395,8 +417,12 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     const button = page.getByRole("button", { name: new RegExp(`^Bet on ${direction} ${escapeRegex(line)} with odds`, "i") });
     if ((await button.count()) === 0) {
       // Higher goal lines are hidden behind "SHOW ALL" by default, per
-      // BETANO_RECON.md (same pattern as Betfair's "Show More").
-      await page.getByRole("button", { name: "SHOW ALL" }).first().click();
+      // BETANO_RECON.md (same pattern as Betfair's "Show More"). Scoped
+      // to this market's own card -- see marketCardFor()'s comment; an
+      // unscoped page-wide search here could equally click Correct
+      // Score's SHOW ALL instead of this one, same ambiguity confirmed
+      // live for that branch.
+      await marketCardFor(page, "Over/Under Total Goals").getByRole("button", { name: "SHOW ALL" }).click();
     }
     await clickAndVerifyLeg(page, button, step.match, step.selection);
     return;

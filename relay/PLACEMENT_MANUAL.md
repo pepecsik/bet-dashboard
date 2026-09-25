@@ -31,13 +31,25 @@ stuck (bet 1 worked, bet 2 never got fully unstuck).
    two processes on one tab is exactly the kind of thing that can produce
    confusing, hard-to-explain DOM behavior. Kill anything stale before
    trusting a run's results.
+5. **Confirm the actual CDP port the `betano` profile is currently
+   registered on.** Confirmed live (2026-09-25): this can drift -- an
+   OpenClaw app-level "Reset" click wiped the browser profile's live
+   registration entirely (the underlying Chrome data was untouched, but
+   re-registering it via `create-profile` assigned a new port, 8092, not
+   the original 8093 `driver.js` defaults to). Check
+   `openclaw browser list` (or equivalent) before assuming the default is
+   still correct, and pass `BETANO_CDP_URL` explicitly if it's changed.
 
 ## Running
 
 ```
 cd relay/betano-automation
-STOP_AFTER_FIRST_BET=1 SCREENSHOT_DIR=/Users/winston/.openclaw/workspace-betfair/screenshots node --env-file=.env driver.js
+STOP_AFTER_FIRST_BET=1 BETANO_CDP_URL=http://127.0.0.1:8092 SCREENSHOT_DIR=/Users/winston/.openclaw/workspace-betfair/screenshots node --env-file=.env driver.js
 ```
+
+`BETANO_CDP_URL` above reflects the port confirmed live on 2026-09-25
+(8092, after a profile re-registration) -- confirm this is still current
+per step 5 above before relying on it; it can drift again.
 
 Add `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` to that same `.env` (not the
 inline command -- they're already loaded via `--env-file=.env`) for the

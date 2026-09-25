@@ -223,31 +223,36 @@ async function clearBetslip(page) {
   const snapshot = await betslipSnapshot(page);
   if (!snapshot || /^<error/.test(snapshot)) return; // no betslip container at all yet -- nothing to clear
   for (let attempt = 1; attempt <= 3; attempt++) {
+    // Diagnostic widened 2026-09-25: the first version of this diagnostic
+    // (a single .count() taken once, only at the very end, after all 3
+    // attempts) gave a genuinely ambiguous result on its first real
+    // occurrence -- 1 element found once, then 0 the next time, which
+    // can't be told apart from "always 0" vs. "became 0 only right at
+    // that final check" without per-attempt data. Counting before AND
+    // after each click, every attempt, so a flickering/reloading DOM
+    // shows up as changing counts across the sequence, not just one
+    // end-of-loop snapshot that might not reflect what was true during
+    // the actual failed attempts.
+    const beforeCount = await page.locator(".bet-slip-container").count();
     await dismissMarketingPopup(page);
     await dismissSessionTimer(page);
     await page.locator(".bet-slip-container").getByRole("button", { name: "Remove selections" }).first().click({ timeout: 5000 }).catch((err) => {
       console.warn(`[betano-driver] clearBetslip attempt ${attempt}: clear-click failed -- ${err.message}`);
     });
     const after = await betslipSnapshot(page);
+    const afterCount = await page.locator(".bet-slip-container").count();
     if (!after || /^<error/.test(after)) return; // container genuinely gone -- confirmed clear
-    console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing -- "${after}"`);
+    console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing (container count before=${beforeCount}, after=${afterCount}) -- "${after}"`);
   }
-  // Diagnostic added 2026-09-24: live investigation ruled out both the
-  // original suspects (.first() targeting the wrong button, a popup
-  // intercepting the click) via two clean manual reproductions -- the
-  // real failure showed byte-for-byte identical betslip text across all
-  // 3 attempts with zero click errors, which neither theory explains.
-  // Leading unconfirmed hypothesis: the hard-stop screenshot visually
-  // showed what looked like the entire page rendered twice, stacked
-  // vertically -- if the real page ever ends up with two
-  // .bet-slip-container elements (genuine DOM duplication, not a
-  // screenshot artifact), the locator this function uses would silently
-  // scope into an ambiguous/wrong copy, and a click could "succeed" while
-  // the visible one never changes. Logging the real count right before
-  // hard-stopping settles this definitively on the next occurrence,
-  // without needing another live repro session.
+  // Diagnostic added 2026-09-24: live investigation ruled out .first()
+  // targeting the wrong button, popup interception, AND (on the first
+  // real occurrence of this exact diagnostic) DOM duplication (1
+  // element found, not 2) -- all three original theories exhausted.
+  // Logging the real count (now with the per-attempt history above too)
+  // and the page URL right before hard-stopping, for whatever theory
+  // comes next.
   const containerCount = await page.locator(".bet-slip-container").count();
-  console.error(`[betano-driver] clearBetslip diagnostic: ${containerCount} .bet-slip-container element(s) found in the DOM at hard-stop time.`);
+  console.error(`[betano-driver] clearBetslip diagnostic: ${containerCount} .bet-slip-container element(s) found in the DOM at hard-stop time (page URL: ${page.url()}).`);
   throw new Error(`clearBetslip: betslip still not empty after 3 attempts (${containerCount} .bet-slip-container element(s) found) -- refusing to build bet on top of it`);
 }
 

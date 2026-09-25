@@ -33,18 +33,29 @@ didn't fully pin down and need confirming on the first real run:
   ancestor whose subtree actually contains a `role="button"` descendant,
   depth-agnostic rather than a fixed tag/depth guess.
 - ~~The "Remove selections" button's top-level-vs-per-leg disambiguation~~
-  -- **confirmed correct, fixed, live (2026-09-24)**. `.first()` genuinely
-  does target the top-level clear-all button (verified against a real
-  2-leg betslip: 3 elements match, element #0 sits above the leg rows
-  with no per-leg DOM scoping, clicking it removes `.bet-slip-container`
-  from the DOM entirely). The real bug was elsewhere: no popup dismissal
-  before the click (right after `pollForDecision`'s idle wait, the exact
-  window a popup can intercept it) and a silent `.catch(() => {})`
-  swallowing any failure without a trace -- explains bet 1's legs
-  surviving into bet 2's build. `clearBetslip` now dismisses both popups
-  and retries (verifying via the confirmed "container's gone" signal)
-  up to 3 times, hard-stopping if it's still not empty rather than
-  building on top of it.
+  -- **confirmed correct, fixed, live (2026-09-24/25)**. `.first()`
+  genuinely does target the top-level clear-all button (verified against
+  a real 2-leg betslip: 3 elements match, element #0 sits above the leg
+  rows with no per-leg DOM scoping, clicking it removes
+  `.bet-slip-container` from the DOM entirely). Two real bugs found on
+  the way to a clean fix, not one:
+  1. No popup dismissal before the click, and a silent `.catch(() => {})`
+     swallowing any click failure without a trace -- fixed first, but
+     didn't fully resolve the underlying failure.
+  2. **The actual root cause**: the success *detection* itself was racing
+     against the click's own DOM removal. `clearBetslip` used to check
+     `betslipSnapshot()` (a `.innerText()` text read) to decide whether a
+     clear worked -- confirmed live via two fully-instrumented isolated
+     repros (ruling out a reload/new-tab entirely -- zero navigation
+     signal either time) plus real per-attempt data from a failing run:
+     the click mechanism itself works fine, but the container count could
+     already be genuinely 0 (a real success) while the slower text read
+     still caught a stale pre-removal moment and reported "still
+     present." Fixed by trusting a *polled container count* instead
+     (`page.locator('.bet-slip-container').count() === 0`, polled for up
+     to 2s), the same debounce-style pattern already used in
+     `fillStake`/`clickAndVerifyLeg`, not a single racy read right after
+     a UI action.
 - The stake textbox's exact selector in Multiple mode (`fillStake`) --
   scoped to "the only textbox in the betslip container," not a specific
   confirmed `aria-label` the way Betfair's was. The selector itself has

@@ -74,6 +74,22 @@ didn't fully pin down and need confirming on the first real run:
   cleanly (debounce settled ~1000ms, well within the 2s poll window) once
   dismissed first. New `dismissMarketingPopup(page)` called once, right
   after the initial fixtures-list navigation, before building any bets.
+- **Screenshot black bars, root-caused and fixed in two stages
+  (2026-09-24/25).** These are raw CDP-attached tabs, not
+  Playwright-launched pages, so screenshots capture at a hardcoded
+  `deviceScaleFactor` of 2 regardless of this profile's real effective
+  DPR (~1.333 -- native 2.0 retina x the 67% Chrome zoom). A `clip` to
+  the live CSS viewport was tried first but confirmed live, three
+  independent ways, NOT to fix it -- `clip` only bounds the *source*
+  region in CSS pixels, not the output raster's pixel density, which
+  stayed locked at 2.0x regardless (ruled out via both Playwright's
+  `clip` and raw CDP's `clip.scale` parameter). The actual fix: a
+  post-capture crop of the saved PNG's real pixels via `sharp`, to
+  bounds computed dynamically from the live `window.devicePixelRatio` x
+  the CSS viewport size (not a hardcoded ratio, so it self-corrects if
+  the zoom level ever changes) -- `cropScreenshotToRealContent()`,
+  called right after every screenshot capture, both the success path and
+  hard-stops.
 
 Expect further runs to surface more of the remaining unverified items
 above -- that's what the AI fallback + this file's own logging are for,

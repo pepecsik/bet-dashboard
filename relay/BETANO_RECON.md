@@ -18,9 +18,9 @@ This file is the source of truth for page structure and URLs — read it directl
 
 **Navigate directly to:**
 ```
-https://www.betano.pt/en/sport/soccer/england/premier-league/1/
+https://www.betano.pt/en/sport/soccer/england/premier-league/1/?bt=matchresult
 ```
-Confirmed clean both via UI click-through (Soccer sidebar link → England → Premier League link) and via direct URL load — no challenge/redirect either way. Default landing tab is "Popular", which shows the fixtures list with Match Result odds already visible — no extra tab click needed.
+Confirmed clean both via UI click-through (Soccer sidebar link → England → Premier League link) and via direct URL load — no challenge/redirect either way. Default landing tab (no query param) is "Popular", which shows the fixtures list with Match Result odds already visible, no extra tab click needed -- **but confirmed live (2026-09-25) to only cover a short date window**, causing a real hard-stop for a perfectly valid Monday fixture that just wasn't listed yet. `?bt=matchresult` lands on the "Matches → Match result" tab instead, covering a much longer date range (confirmed through 18/10 during that check) -- structurally identical otherwise (same fixture-link text pattern, same row-scoping ancestor depth, same button naming), confirmed side-by-side against a known-working fixture. Use this URL, not the plain one.
 
 Each fixture row (from the accessibility snapshot):
 ```

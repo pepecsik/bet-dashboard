@@ -77,7 +77,17 @@ const SCREENSHOT_DIR = process.env.SCREENSHOT_DIR || "./screenshots";
 // a replacement for it.
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
-const EPL_FIXTURES_URL = "https://www.betano.pt/en/sport/soccer/england/premier-league/1/";
+// Confirmed live (2026-09-25): the plain URL (no query param) lands on
+// the "Popular" tab, which shows a shorter date window -- a real Monday
+// fixture (Coventry City vs Newcastle United) was missing from it
+// entirely, causing a false "bad data" hard-stop for a perfectly valid
+// pick. ?bt=matchresult lands on the "Matches -> Match result" tab
+// instead, showing a much longer date range (confirmed through 18/10).
+// Structurally identical to the plain URL otherwise -- checked
+// side-by-side against a known-working fixture (Arsenal vs Leeds): same
+// fixture-link text pattern, same row-scoping ancestor depth, same
+// "Bet on X with odds Y." button naming. Safe swap, not a workaround.
+const EPL_FIXTURES_URL = "https://www.betano.pt/en/sport/soccer/england/premier-league/1/?bt=matchresult";
 const POSITION_LABEL = { home: "1", draw: "X", away: "2" };
 // Testing lever, opt-in, test-mode only: lets bet 1's full
 // build -> screenshot -> approve -> report loop be validated end to end

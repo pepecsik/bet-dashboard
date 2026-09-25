@@ -213,9 +213,27 @@ async function betslipSnapshot(page) {
   return await page.locator(".bet-slip-container").innerText({ timeout: 5000 }).catch((e) => `<error: ${e.message}>`);
 }
 
+// Confirmed live (2026-09-25), found directly from the code rather than
+// another live repro -- Winston watched "1-3" get correctly added, then
+// watched the driver go back and add a second, wrong pick for the same
+// match, which is exactly the fingerprint of this bug: for Correct
+// Score, executeMatchPagePick builds the button locator from a
+// space-formatted scoreline ("2-1" -> "2 - 1", matching how it's
+// actually displayed) but passes the raw, unformatted step.selection
+// ("2-1") to clickAndVerifyLeg/withAiFallback for verification. Every
+// real betslip snapshot throughout this whole investigation shows
+// scorelines WITH spaces ("1 - 0", "1 - 3") -- so `snapshot.includes("1-3")`
+// could never match, no matter what actually happened on screen. This
+// guaranteed a false failure on every Correct Score leg's verification,
+// regardless of whether the click genuinely worked -- explaining why
+// this specific market kept failing even after the popup, timing, and
+// scoping bugs were each fixed in turn. Normalizing dash-spacing here,
+// at the comparison itself, rather than hunting down every call site
+// that might pass either format.
 function selectionAppearsIn(snapshot, selection) {
   if (selection === "The Draw") return snapshot.includes("Draw") || / X /.test(snapshot);
-  return snapshot.includes(selection);
+  const normalize = (s) => s.replace(/(\d)\s*-\s*(\d)/g, "$1-$2");
+  return normalize(snapshot).includes(normalize(selection));
 }
 
 // Confirmed live (2026-09-24): .first() correctly targets the top-level

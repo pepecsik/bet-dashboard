@@ -105,6 +105,26 @@ didn't fully pin down and need confirming on the first real run:
   the zoom level ever changes) -- `cropScreenshotToRealContent()`,
   called right after every screenshot capture, both the success path and
   hard-stops.
+- **Correct Score verification format mismatch, root-caused (2026-09-25)
+  after an extensive multi-day investigation that fixed several real but
+  separate bugs (popup blocking, poll timing, SHOW ALL scoping) without
+  ever fully resolving it.** `executeMatchPagePick`'s Correct Score branch
+  builds the button locator from a space-formatted scoreline (`"2-1"` ->
+  `"2 - 1"`, matching how it's actually displayed) but was passing the
+  raw, unformatted `step.selection` (`"2-1"`) to `clickAndVerifyLeg`/
+  `withAiFallback` for verification. Every real betslip snapshot
+  throughout this whole investigation shows scorelines *with* spaces
+  (`"1 - 0"`, `"1 - 3"`) -- so `snapshot.includes("1-3")` could never
+  match, no matter what actually happened on screen. This guaranteed a
+  false verification failure on every Correct Score leg regardless of
+  whether the click genuinely worked, which is why this specific market
+  kept failing even after each of the other real bugs got fixed in turn
+  -- found directly from the code after Winston watched the driver
+  correctly add "1-3," then watched it go back and add a second, wrong
+  pick for the same match (the exact fingerprint of a false-negative
+  triggering an unnecessary extra attempt). Fixed by normalizing
+  dash-spacing inside `selectionAppearsIn` itself, rather than hunting
+  down every call site that might pass either format.
 
 Expect further runs to surface more of the remaining unverified items
 above -- that's what the AI fallback + this file's own logging are for,

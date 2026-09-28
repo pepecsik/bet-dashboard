@@ -95,6 +95,20 @@ path or a buffer.
 
 ## Step 1 -- the screenshot hand-off
 
+**As of 2026-09-28, `driver.js` also sends this hand-off directly to
+Telegram itself** (via `notifyAwaitingConfirmationDirect`, same
+TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID env vars as the existing hard-stop
+notify) -- root-caused, confirmed live: a real run's bet 2 built and
+reported itself hours into an unattended overnight wait, after acca's own
+agent turn had already ended (having relayed bet 1's hand-off and then
+stopped watching). Winston never got a Telegram message for bet 2 at all --
+he had to approve it in the app blind. This still doesn't replace your own
+relaying below -- keep doing it, a duplicate message is a far smaller
+problem than a missing one, and driver.js's direct send has no way to add
+context you might have (nor does it replace Step 3's report-back) -- but it
+does mean Winston should now get SOME Telegram message for every bet
+regardless of whether your own turn is still alive to catch it.
+
 Watch the driver's own log output for one or more `SCREENSHOT_URL` lines
 -- a long accumulator can produce more than one, confirmed live
 (2026-09-25): Betano's betslip legs list scrolls internally once it has

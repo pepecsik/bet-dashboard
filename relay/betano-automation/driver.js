@@ -704,61 +704,98 @@ async function cropScreenshotToRealContent(page, path) {
     console.error(`[betano-driver] Screenshot crop failed (non-fatal, oversized file left as-is):`, err.message);
   }
 }
-async function takeScreenshot(page, player, label, plan) {
-  await verifyBetslipMatchesPlan(page, plan);
-  const dir = SCREENSHOT_DIR;
-  await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
-  const path = `${dir}/${player}-${label}-${Date.now()}.png`;
-  // Confirmed live (2026-09-24), after an extensive misdirected hunt
-  // (toggle races, Stagehand DOM instrumentation, zoom, CDP scale
-  // overrides -- all ruled out): element-scoped .screenshot() on this
-  // specific position:fixed widget is fundamentally broken in Playwright
-  // and reliably produces a blank capture, full stop -- independent of
-  // leg count, timing, or actual on-page state (verifyBetslipMatchesPlan,
-  // a completely different code path checking .innerText(), was correct
-  // every single time; only the pixel capture was broken). A plain
-  // viewport screenshot (fullPage: false, NOT fullPage: true -- that one
-  // still has the documented position:fixed stitching problem below)
-  // captures the identical fixed-position content correctly, confirmed
-  // directly. Every earlier "the betslip vanished" observation was
-  // unrelated noise (checked well after the fact, on a tab that had since
-  // had test-script interference), not a real second bug.
-  //
-  // Black bars on the right/bottom, root-caused and fixed in two stages,
-  // confirmed live (2026-09-24):
-  //
-  // Stage 1 (insufficient on its own): these are raw CDP-attached tabs,
-  // not Playwright-launched pages, so page.viewportSize() is null and
-  // page.screenshot() falls back to a hardcoded/default deviceScaleFactor
-  // of 2 -- but this profile's real effective DPR is ~1.333 (native 2.0
-  // retina x the 67% Chrome zoom set by hand). A clip to the live CSS
-  // viewport size (still applied below, harmless and correctly bounds the
-  // *source* region) was tried first, but confirmed via three independent
-  // live measurements NOT to fix the black bars: clip only controls what
-  // CSS-pixel region gets captured, not the output raster's pixel
-  // density, which stayed locked at the wrong 2.0x regardless -- ruled
-  // out two ways (Playwright's clip, and raw CDP
-  // Page.captureScreenshot's own clip.scale parameter both produced the
-  // identical wrong-density result). The 2.0x factor is baked in at the
-  // browser profile/capture-API level, below what either capture API can
-  // override per call.
-  //
-  // Stage 2 (the actual fix): crop the already-captured PNG's pixels
-  // after the fact, to the real content bounds -- computed dynamically
-  // from window.devicePixelRatio (the browser's own live-measured real
-  // DPR, not a hardcoded ratio) x the CSS viewport size, so this stays
-  // correct if the zoom level ever changes. cropScreenshotToRealContent()
-  // does this via sharp.
+// Confirmed live (2026-09-24), after an extensive misdirected hunt
+// (toggle races, Stagehand DOM instrumentation, zoom, CDP scale
+// overrides -- all ruled out): element-scoped .screenshot() on this
+// specific position:fixed widget is fundamentally broken in Playwright
+// and reliably produces a blank capture, full stop -- independent of leg
+// count, timing, or actual on-page state (verifyBetslipMatchesPlan, a
+// completely different code path checking .innerText(), was correct
+// every single time; only the pixel capture was broken). A plain
+// viewport screenshot (fullPage: false, NOT fullPage: true -- that one
+// has the documented position:fixed stitching problem) captures the
+// identical fixed-position content correctly, confirmed directly.
+//
+// Black bars on the right/bottom, root-caused and fixed in two stages,
+// confirmed live (2026-09-24): a `clip` to the live CSS viewport bounds
+// the *source* region correctly but doesn't fix the output raster's
+// pixel density (locked at a wrong 2.0x deviceScaleFactor regardless,
+// confirmed via both Playwright's clip and raw CDP's clip.scale
+// parameter -- ruled out both). Real fix: cropScreenshotToRealContent()
+// crops the already-captured PNG's pixels after the fact, to bounds
+// computed from the live window.devicePixelRatio.
+async function captureViewportCropped(page, path) {
   const { width: cssW, height: cssH } = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     height: document.documentElement.clientHeight,
   }));
   await page.screenshot({ path, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
   await cropScreenshotToRealContent(page, path);
-  console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
-  const url = await uploadScreenshot(path);
-  if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);
-  return { path, url };
+}
+
+// Confirmed live (2026-09-25): Betano's betslip legs list
+// (`.betslip-bets-wrapper`) scrolls *internally* once it has enough legs
+// (confirmed on a real 9-leg bet: scrollHeight 1178px vs. clientHeight
+// 834px, overflow-y: auto) -- and since the betslip panel is
+// position:fixed, it's bounded by the real viewport no matter what, so a
+// single screenshot only ever shows whatever's currently scrolled into
+// view (confirmed: a real capture showed only 7 of 9 legs, cut off right
+// after the header, missing the ones scrolled below the fold).
+//
+// Rather than attempt pixel-perfect stitching of the wrapper's scrolled
+// content into one seamless image (real risk of getting the compositing
+// math subtly wrong with no live browser here to verify it against),
+// this takes the lower-risk path: capture one full screenshot per scroll
+// position and return all of them, so every leg is visible somewhere
+// across the set, at the cost of possibly more than one image for a
+// long accumulator. Returns an array of local file paths, always at
+// least one.
+async function captureBetslipScreenshots(page, pathPrefix) {
+  const wrapper = page.locator(".betslip-bets-wrapper");
+  const scrollInfo = (await wrapper.count()) > 0
+    ? await wrapper.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight })).catch(() => null)
+    : null;
+
+  if (!scrollInfo || scrollInfo.scrollHeight <= scrollInfo.clientHeight + 4) {
+    // Not scrollable (or wrapper not found/not applicable, e.g. Single
+    // mode with no shared legs list) -- normal single capture.
+    const path = `${pathPrefix}.png`;
+    await captureViewportCropped(page, path);
+    return [path];
+  }
+
+  const paths = [];
+  let scrollTop = 0;
+  let index = 0;
+  await wrapper.evaluate((el) => { el.scrollTop = 0; });
+  for (;;) {
+    const path = `${pathPrefix}-part${index + 1}.png`;
+    await captureViewportCropped(page, path);
+    paths.push(path);
+    scrollTop += scrollInfo.clientHeight;
+    if (scrollTop >= scrollInfo.scrollHeight) break;
+    index += 1;
+    await wrapper.evaluate((el, top) => { el.scrollTop = top; }, scrollTop);
+    await page.waitForTimeout(150); // let the scrolled content actually render before capturing
+  }
+  await wrapper.evaluate((el) => { el.scrollTop = 0; }).catch(() => {}); // reset for whatever runs next
+  return paths;
+}
+
+async function takeScreenshot(page, player, label, plan) {
+  await verifyBetslipMatchesPlan(page, plan);
+  const dir = SCREENSHOT_DIR;
+  await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
+  const pathPrefix = `${dir}/${player}-${label}-${Date.now()}`;
+  const paths = await captureBetslipScreenshots(page, pathPrefix);
+  const results = [];
+  for (const path of paths) {
+    console.log(`[betano-driver] SCREENSHOT_READY: ${path}`);
+    const url = await uploadScreenshot(path);
+    if (url) console.log(`[betano-driver] SCREENSHOT_URL: ${url}`);
+    results.push({ path, url });
+  }
+  return results;
 }
 
 function metricsDelta(before, after) {
@@ -971,8 +1008,20 @@ async function main() {
       // roughly when a wipe happened, useful diagnostic signal until the
       // actual root cause (see takeScreenshot's own comment) is found.
       await verifyBetslipMatchesPlan(page, plan);
-      const { path: screenshotPath, url: screenshotUrl } = await takeScreenshot(page, player, label, plan);
-      await postAwaitingConfirmation(player, { stake: plan.stake, legs: plan.steps, skipped: plan.skipped, screenshotPath, screenshotUrl, betNumber: i + 1, potentialReturn });
+      const screenshots = await takeScreenshot(page, player, label, plan);
+      // Plural now -- a long accumulator's betslip can scroll internally
+      // (confirmed live 2026-09-25, a real 9-leg bet only showed 7 legs
+      // in a single screenshot), so takeScreenshot can return more than
+      // one image. screenshotPath/screenshotUrl (singular) kept alongside
+      // for anything still reading the old shape -- always the first
+      // screenshot, same as before when there was only ever one.
+      const screenshotPaths = screenshots.map((s) => s.path);
+      const screenshotUrls = screenshots.map((s) => s.url).filter(Boolean);
+      await postAwaitingConfirmation(player, {
+        stake: plan.stake, legs: plan.steps, skipped: plan.skipped, betNumber: i + 1, potentialReturn,
+        screenshotPath: screenshots[0].path, screenshotUrl: screenshots[0].url,
+        screenshotPaths, screenshotUrls,
+      });
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
       const decision = await pollForDecision(player, page);

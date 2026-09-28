@@ -95,26 +95,38 @@ path or a buffer.
 
 ## Step 1 -- the screenshot hand-off
 
-Watch the driver's own log output for:
+Watch the driver's own log output for one or more `SCREENSHOT_URL` lines
+-- a long accumulator can produce more than one, confirmed live
+(2026-09-25): Betano's betslip legs list scrolls internally once it has
+enough legs, and since the betslip panel is position:fixed (bounded by
+the real viewport no matter what), a single screenshot can only show
+whatever's currently scrolled into view. `driver.js` now captures one
+screenshot per scroll position and reports all of them:
 
 ```
 [betano-driver] SCREENSHOT_READY: <path>
 [betano-driver] SCREENSHOT_URL: <url>
+[betano-driver] SCREENSHOT_READY: <path2>
+[betano-driver] SCREENSHOT_URL: <url2>
+... (one pair per screenshot -- could be just one, could be several)
 ```
 
-The moment `SCREENSHOT_URL` appears, **send that URL to Winston via
-Telegram** (the local path is upload-best-effort -- if `SCREENSHOT_URL`
-didn't appear, the upload itself failed; check the driver's own error log
-for why before falling back to anything else), with a short caption:
-player name, bet number, stake, and the potential return (same figure
-that's also going into the app -- read it back from the relay's
-`/betfair-place-request/queue` response, `pendingBet.potentialReturn`, so
-the Telegram message and the app agree). This is the actual point of
-`STOP_AFTER_FIRST_BET` and the `potentialReturn`/`screenshotUrl` fixes --
-Winston should be able to look at the Telegram message and the app's
-Approve/Reject screen (which now shows the same screenshot inline, per
-`admin.html`'s `renderPendingBet`) and see the same real bet in both
-places, not just a bare "check the app" prompt.
+**Send every `SCREENSHOT_URL` from this bet to Winston via Telegram** --
+as separate photos, or however your message tool handles multiple images
+in one send, but don't drop any of them; each one may show legs the
+others don't. (The local path is upload-best-effort -- if a
+`SCREENSHOT_URL` line is missing for a given `SCREENSHOT_READY`, that
+specific upload failed; check the driver's own error log for why before
+falling back to anything else.) Include a short caption: player name, bet
+number, stake, and the potential return (same figure that's also going
+into the app -- read it back from the relay's `/betfair-place-request/queue`
+response, `pendingBet.potentialReturn`, so the Telegram message and the
+app agree; the app itself also now shows every screenshot inline via
+`pendingBet.screenshotUrls`, per `admin.html`'s `renderPendingBet`).
+Winston should be able to look at the Telegram messages and the app's
+Approve/Reject screen and see the same real bet, every leg included, in
+both places -- not just a bare "check the app" prompt, and not a
+partial view that's missing legs scrolled out of frame.
 
 If a hard stop happens instead (`HARDSTOP_SCREENSHOT_READY:`/
 `HARDSTOP_SCREENSHOT_URL:` in the log), send that URL too, with the actual

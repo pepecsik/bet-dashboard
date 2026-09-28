@@ -705,6 +705,55 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
   }
 }
 
+// Same direct-send reasoning as notifyHardStopDirect above, applied to the
+// NORMAL awaiting-confirmation hand-off. Confirmed live (2026-09-28): a
+// real overnight run exposed a gap OpenClaw's relay didn't cover --
+// acca's own agent turn only relays Telegram messages while it's actively
+// watching; it ended right after launching the job (having relayed bet 1's
+// hand-off), and when bet 2 built and reported itself hours later, during
+// the long unattended pollForDecision wait bet 1's own approval unblocked,
+// nothing was left running to catch it. Winston approved bet 2 in the app
+// having never seen a Telegram message for it at all. Sends directly via
+// the Bot API here too, so every bet's hand-off reaches Telegram
+// regardless of whether any particular OpenClaw session turn happens to
+// still be alive at that exact moment. Runs ALONGSIDE OpenClaw's own
+// relay, not instead of it (PLACEMENT_MANUAL.md's Step 1 is unchanged) --
+// redundant when acca IS watching, but a duplicate message is a far
+// smaller problem than a missing one. Same never-throw discipline as
+// notifyHardStopDirect: a failure here must never break the actual build
+// flow.
+async function notifyAwaitingConfirmationDirect(player, betNumber, stake, combinedOdds, potentialReturn, screenshotUrls) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log(`[betano-driver] Direct Telegram notify (awaiting confirmation) skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
+    return;
+  }
+  const caption = `✅ Bet ${betNumber} ready for ${player} -- stake €${stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}. Approve/reject in the app.`;
+  try {
+    const urls = screenshotUrls && screenshotUrls.length ? screenshotUrls : [null];
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      // Multiple legs-scrolled screenshots (see captureBetslipScreenshots)
+      // sent as separate messages, same as PLACEMENT_MANUAL.md instructs
+      // acca to do manually -- the full caption only on the first, a short
+      // part marker on the rest, so Winston isn't shown the same summary
+      // repeated once per screenshot.
+      const partSuffix = urls.length > 1 ? ` (screenshot ${i + 1}/${urls.length})` : "";
+      const endpoint = url ? "sendPhoto" : "sendMessage";
+      const body = url
+        ? { chat_id: TELEGRAM_CHAT_ID, photo: url, caption: i === 0 ? `${caption}${partSuffix}` : partSuffix.trim() || `Bet ${betNumber} screenshot ${i + 1}/${urls.length}` }
+        : { chat_id: TELEGRAM_CHAT_ID, text: caption };
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(JSON.stringify(data));
+    }
+    console.log(`[betano-driver] Direct Telegram notify (awaiting confirmation) sent for ${player} bet ${betNumber}.`);
+  } catch (err) {
+    console.error(`[betano-driver] Direct Telegram notify (awaiting confirmation) failed:`, err.message);
+  }
+}
+
 // Confirmed live (2026-09-24): a run reached awaiting_confirmation with a
 // fully correct pendingBet payload (all 6 legs, right stake/return --
 // verifyBetslipMatchesPlan had genuinely passed, immediately beforehand,
@@ -1103,6 +1152,9 @@ async function main() {
       // proved a plain stdout line is what reliably reaches the Telegram
       // hand-off -- same pattern here, not a guess.
       console.log(`[betano-driver] ${label} summary: stake €${plan.stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}`);
+      // Safe to await directly -- never throws (see the function's own
+      // comment), same discipline as notifyHardStopDirect.
+      await notifyAwaitingConfirmationDirect(player, i + 1, plan.stake, combinedOdds, potentialReturn, screenshotUrls);
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
       const decision = await pollForDecision(player, page);

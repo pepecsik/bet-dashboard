@@ -199,11 +199,14 @@ const server = http.createServer((req, res) => {
     readJsonBody(req, async (body) => {
       const player = body && body.player;
       const test = FORCE_BETFAIR_TEST_MODE || !!(body && body.test);
+      // See betfairQueue.js's addRequest() comment -- explicit opt-in only,
+      // meaningless (ignored downstream) unless test is also true.
+      const writeSheetOnTest = !!(body && body.writeSheetOnTest);
       if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
       try { await fetchBetsSnapshot(); } catch (e) { /* stale cache is still better than failing the request -- fetchBetsSnapshot already logs its own failure */ }
-      betfairQueue = addRequest(betfairQueue, player, Date.now(), test);
+      betfairQueue = addRequest(betfairQueue, player, Date.now(), test, writeSheetOnTest);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "queued", player, test }));
+      res.end(JSON.stringify({ status: "queued", player, test, writeSheetOnTest }));
     });
     return;
   }
@@ -218,7 +221,7 @@ const server = http.createServer((req, res) => {
     const exportData = buildBetfairExport(betsCache);
     const bets = exportData.bets.filter((b) => b.player === job.player);
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test }, bets }, null, 2));
+    res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test, writeSheetOnTest: !!job.writeSheetOnTest }, bets }, null, 2));
     return;
   }
   // acca calls this once it's sent Winston the per-bet confirmation
@@ -342,24 +345,31 @@ const server = http.createServer((req, res) => {
   // player's request to be picked up.
   //
   // test:true (a dry-run job -- see PLACEMENT_MANUAL.md's test branch)
-  // skips every adminSetWinValue POST entirely: a test job never actually
-  // placed real bets, so there's no real Potential Return to write into the
-  // Sheet, and doing so would corrupt real WIN data with a fake number.
-  // Still clears the queue claim exactly the same as a real result would,
-  // so the mechanical build/screenshot/recap/queue-clear flow can be proven
-  // end to end without risking real money or real Sheet data.
+  // skips every adminSetWinValue POST by default: a test job never actually
+  // placed real bets, so writing its numbers into the Sheet as if they were
+  // real would corrupt real WIN data with a fake number. `writeSheetOnTest`
+  // (set on the original /betfair-place-request, see addRequest()'s own
+  // comment) is the one deliberate exception -- a test job explicitly
+  // opted in to prove the write mechanism itself actually works end to
+  // end, still with no real bet ever placed. Every ordinary test job
+  // leaves this false and behaves exactly as before. Still clears the
+  // queue claim exactly the same as a real result would either way, so the
+  // mechanical build/screenshot/recap/queue-clear flow can be proven end
+  // to end regardless.
   if (req.method === "POST" && req.url === "/betfair-place-result") {
     readJsonBody(req, async (body) => {
       const player = body && body.player;
       const test = !!(body && body.test);
+      const writeSheetOnTest = !!(body && body.writeSheetOnTest);
       const results = (body && body.results) || [];
-      if (!player || (!test && (!Array.isArray(results) || results.length === 0))) {
+      const shouldWrite = !test || writeSheetOnTest;
+      if (!player || (shouldWrite && (!Array.isArray(results) || results.length === 0))) {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Missing player or results" }));
         return;
       }
       const outcomes = [];
-      if (!test) {
+      if (shouldWrite) {
         for (const r of results) {
           try {
             const resp = await fetch(APPS_SCRIPT_URL, {

@@ -31,6 +31,18 @@ test("addRequest defaults test to false, and stores true when passed -- carried 
   assert.equal(job.test, false);
 });
 
+test("addRequest defaults writeSheetOnTest to false, and stores true when passed -- carried through by getNext", () => {
+  let queue = [];
+  queue = addRequest(queue, "Snackbar", NOW, true); // test job, no explicit writeSheetOnTest
+  assert.equal(queue[0].writeSheetOnTest, false);
+
+  queue = addRequest(queue, "Timbo", NOW + 1000, true, true); // test job, explicitly opted in
+  assert.equal(queue[1].writeSheetOnTest, true);
+
+  const job = getNext(queue, NOW + 2000); // claims Snackbar's (oldest first)
+  assert.equal(job.writeSheetOnTest, false);
+});
+
 test("getNext returns null on an empty queue", () => {
   assert.equal(getNext([], NOW), null);
 });

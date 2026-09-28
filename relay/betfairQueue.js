@@ -20,10 +20,17 @@ const DEFAULT_CLAIM_TTL_MS = 15 * 60 * 1000; // 15 minutes
 // Adds a new pending request for `player`, unless one is already
 // pending/claimed for them (avoids piling up duplicate requests if the
 // button gets pressed more than once before the first is picked up).
-function addRequest(queue, player, now = Date.now(), test = false) {
+// writeSheetOnTest (default false): a test job never places a real bet, so
+// its "results" are normally never written to the Sheet either -- see
+// server.js's /betfair-place-result comment. This is the deliberate,
+// explicit opt-in for proving that write path actually works (real column,
+// real Apps Script call) without needing a real placement first. Only ever
+// set true by a caller doing exactly that test on purpose; every ordinary
+// test job leaves it false and behaves exactly as before.
+function addRequest(queue, player, now = Date.now(), test = false, writeSheetOnTest = false) {
   const alreadyQueued = queue.some((r) => r.player === player && r.status !== "done");
   if (alreadyQueued) return queue;
-  queue.push({ player, status: "pending", requestedAt: now, claimedAt: null, test: !!test });
+  queue.push({ player, status: "pending", requestedAt: now, claimedAt: null, test: !!test, writeSheetOnTest: !!writeSheetOnTest });
   return queue;
 }
 

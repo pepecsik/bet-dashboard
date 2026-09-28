@@ -322,7 +322,14 @@
   .queue-refresh-btn { margin-top: 12px; }
   .queue-bet-card { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
   .queue-bet-title { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
-  .queue-bet-screenshot { display: block; width: 100%; max-width: 320px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); }
+  .queue-bet-screenshot { display: block; width: 100%; max-width: 320px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; }
+  .screenshot-lightbox-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    align-items: center; justify-content: center; z-index: 1100; padding: 20px;
+    cursor: zoom-out;
+  }
+  .screenshot-lightbox-overlay.active { display: flex; }
+  .screenshot-lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
   .queue-leg { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); line-height: 1.4; }
   .queue-leg:last-of-type { border-bottom: none; }
   .queue-leg b { white-space: nowrap; }
@@ -357,6 +364,10 @@
       <div id="autoSteps"></div>
       <button class="action" id="autoCloseBtn" style="display:none;" onclick="closeAutoModal()">Close</button>
     </div>
+  </div>
+
+  <div class="screenshot-lightbox-overlay" id="screenshotLightbox" onclick="closeScreenshotLightbox()">
+    <img id="screenshotLightboxImg" src="" alt="Betslip screenshot, enlarged">
   </div>
 
   <div class="email-preview-overlay" id="emailPreviewModal">
@@ -1097,7 +1108,7 @@ function renderPendingBet(q) {
   // singular screenshotUrl for any older/test entry that predates this.
   const screenshotUrls = Array.isArray(bet.screenshotUrls) && bet.screenshotUrls.length ? bet.screenshotUrls : (bet.screenshotUrl ? [bet.screenshotUrl] : []);
   const screenshotHtml = screenshotUrls.map((url, i) =>
-    `<img class="queue-bet-screenshot" src="${url}" alt="Bet ${bet.betNumber || ''} betslip screenshot${screenshotUrls.length > 1 ? ` (${i + 1}/${screenshotUrls.length})` : ''}" loading="lazy">`
+    `<img class="queue-bet-screenshot" src="${url}" alt="Bet ${bet.betNumber || ''} betslip screenshot${screenshotUrls.length > 1 ? ` (${i + 1}/${screenshotUrls.length})` : ''}" loading="lazy" onclick="openScreenshotLightbox('${url}')">`
   ).join('');
   const legsHtml = (bet.legs || []).map(l => `
     <div class="queue-leg">
@@ -1160,6 +1171,19 @@ function renderQueuePanel(queue) {
 // existing: acca stops waiting on a Telegram reply and instead polls
 // GET .../decision for whatever gets recorded here. Doesn't place anything
 // itself; it only sets the flag acca's own poll picks up and acts on.
+// Click-to-enlarge for betslip screenshots -- the inline queue-bet-screenshot
+// images are capped at 320px wide to keep the queue panel usable, too small
+// to actually read a long accumulator's legs. Same overlay pattern as the
+// existing auto-modal-overlay elsewhere on this page.
+function openScreenshotLightbox(url) {
+  document.getElementById('screenshotLightboxImg').src = url;
+  document.getElementById('screenshotLightbox').classList.add('active');
+}
+function closeScreenshotLightbox() {
+  document.getElementById('screenshotLightbox').classList.remove('active');
+  document.getElementById('screenshotLightboxImg').src = '';
+}
+
 function decideQueueEntry(player, decision, btn) {
   const row = btn.closest('.queue-row');
   row.querySelectorAll('.queue-approve-btn, .queue-reject-btn').forEach(b => { b.disabled = true; });

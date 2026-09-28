@@ -1063,11 +1063,6 @@ async function main() {
   const { player, test, writeSheetOnTest, bets } = claimed;
   console.log(`[betano-driver] Claimed job for ${player}${test ? " (test mode)" : ""}${writeSheetOnTest ? " (writeSheetOnTest)" : ""} -- ${bets.length} bet(s) to build.`);
 
-  const browser = await chromium.connectOverCDP(CDP_URL);
-  const context = browser.contexts()[0];
-  if (!context) throw new Error(`No browser context found at ${CDP_URL} -- is the betano profile actually running and logged in?`);
-  const page = await context.newPage();
-
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
   // Accumulates one {sheetColIdx, winAmount} entry per bet actually
   // approved in this job -- exactly what reportPlaced() sends on to
@@ -1076,8 +1071,31 @@ async function main() {
   // slot, e.g. D18/E18 for Snackbar's bet 1/2), not guessed or hardcoded
   // here.
   const results = [];
+  // Declared here, assigned inside the try block below -- referenced in
+  // both catch (page.url()/screenshot) and finally (page.close()), which
+  // both need to handle it still being undefined if the browser connection
+  // itself is what failed.
+  let page;
 
   try {
+    // Confirmed live (2026-09-28): connectOverCDP() used to run BEFORE
+    // this try block even started. A real live failure here
+    // (browserType.connectOverCDP: Timeout 30000ms exceeded) meant the
+    // whole hard-stop path -- screenshot, notifyHardStopDirect, clearJob
+    // for a test job -- was skipped entirely: the rejection only reached
+    // the global unhandledRejection handler (added earlier the same week
+    // to stop a DIFFERENT silent-crash mode), which just logs and returns.
+    // The claimed job was then left stuck until the queue's own 15-minute
+    // claim TTL happened to revert it -- no Telegram notification, no
+    // trace anyone would see without going looking. Moved inside the try
+    // block, same reasoning as the fixtures-list navigation just below,
+    // which got the identical fix on 2026-09-23 for the identical failure
+    // shape.
+    const browser = await chromium.connectOverCDP(CDP_URL);
+    const context = browser.contexts()[0];
+    if (!context) throw new Error(`No browser context found at ${CDP_URL} -- is the betano profile actually running and logged in?`);
+    page = await context.newPage();
+
     // Navigate once, up front -- same lesson as Betfair's build: a brand-new
     // page.newPage() tab starts on about:blank, and clearBetslip() (called
     // at the top of the loop below, for every bet including Bet 1) needs a
@@ -1180,31 +1198,41 @@ async function main() {
     }
   } catch (err) {
     console.error(`[betano-driver] Hard stop for ${player}:`, err.message);
-    console.error(`[betano-driver] Page URL at hard stop: ${page.url()}`);
     let failureUrl = null;
-    try {
-      const dir = SCREENSHOT_DIR;
-      await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
-      const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
-      // Confirmed live (2026-09-24): this path still used fullPage: true,
-      // the same mode already documented (BETANO_RECON.md section 3) as
-      // not compositing the position:fixed betslip widget correctly --
-      // it never got the fullPage:false-plus-CSS-viewport-clip fix
-      // takeScreenshot() got, so a hard-stop screenshot could show the
-      // rest of the page fine while the betslip itself (often the most
-      // relevant part) came out missing or malformed. Same fix, same
-      // reasoning, applied here too.
-      const { width: cssW, height: cssH } = await page.evaluate(() => ({
-        width: document.documentElement.clientWidth,
-        height: document.documentElement.clientHeight,
-      }));
-      await page.screenshot({ path: failurePath, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
-      await cropScreenshotToRealContent(page, failurePath);
-      console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
-      failureUrl = await uploadScreenshot(failurePath);
-      if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);
-    } catch (screenshotErr) {
-      console.error(`[betano-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
+    // page can be undefined here -- confirmed live (2026-09-28): the
+    // browser connection itself (chromium.connectOverCDP, right at the top
+    // of this try block) is exactly the kind of thing that can fail before
+    // `page` is ever assigned. No screenshot is possible without a page,
+    // but the notify-and-release-the-claim path below still needs to run
+    // regardless -- that's the actual gap this guard closes.
+    if (!page) {
+      console.error(`[betano-driver] No page was ever created (failed before/during browser connection) -- skipping screenshot.`);
+    } else {
+      console.error(`[betano-driver] Page URL at hard stop: ${page.url()}`);
+      try {
+        const dir = SCREENSHOT_DIR;
+        await import("node:fs/promises").then((fs) => fs.mkdir(dir, { recursive: true }));
+        const failurePath = `${dir}/HARDSTOP-${player}-${Date.now()}.png`;
+        // Confirmed live (2026-09-24): this path still used fullPage: true,
+        // the same mode already documented (BETANO_RECON.md section 3) as
+        // not compositing the position:fixed betslip widget correctly --
+        // it never got the fullPage:false-plus-CSS-viewport-clip fix
+        // takeScreenshot() got, so a hard-stop screenshot could show the
+        // rest of the page fine while the betslip itself (often the most
+        // relevant part) came out missing or malformed. Same fix, same
+        // reasoning, applied here too.
+        const { width: cssW, height: cssH } = await page.evaluate(() => ({
+          width: document.documentElement.clientWidth,
+          height: document.documentElement.clientHeight,
+        }));
+        await page.screenshot({ path: failurePath, fullPage: false, clip: { x: 0, y: 0, width: cssW, height: cssH } });
+        await cropScreenshotToRealContent(page, failurePath);
+        console.error(`[betano-driver] HARDSTOP_SCREENSHOT_READY: ${failurePath}`);
+        failureUrl = await uploadScreenshot(failurePath);
+        if (failureUrl) console.error(`[betano-driver] HARDSTOP_SCREENSHOT_URL: ${failureUrl}`);
+      } catch (screenshotErr) {
+        console.error(`[betano-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
+      }
     }
     // Fires regardless of whether the screenshot itself succeeded above --
     // even a text-only notification beats the silent-failure blind spot
@@ -1226,7 +1254,7 @@ async function main() {
   } finally {
     console.log(`[betano-driver] AI fallback used ${fallbackLog.length} time(s) across this job:`, fallbackLog);
     console.log(`[betano-driver] Real summed usage/cost this run:`, sumMetrics(fallbackLog.map((e) => e.metrics)));
-    await page.close().catch(() => {});
+    if (page) await page.close().catch(() => {});
   }
 
   process.exit(process.exitCode || 0);

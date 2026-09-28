@@ -118,11 +118,31 @@ others don't. (The local path is upload-best-effort -- if a
 `SCREENSHOT_URL` line is missing for a given `SCREENSHOT_READY`, that
 specific upload failed; check the driver's own error log for why before
 falling back to anything else.) Include a short caption: player name, bet
-number, stake, and the potential return (same figure that's also going
-into the app -- read it back from the relay's `/betfair-place-request/queue`
-response, `pendingBet.potentialReturn`, so the Telegram message and the
-app agree; the app itself also now shows every screenshot inline via
-`pendingBet.screenshotUrls`, per `admin.html`'s `renderPendingBet`).
+number, stake, and the potential return.
+
+**Root-caused, confirmed live (2026-09-28): every prior Telegram caption
+reported the potential return as 0**, because that figure was never
+actually logged anywhere before now -- it only ever lived inside the JSON
+body posted to `/betfair-place-request/awaiting-confirmation`, which
+nothing was reading. `driver.js` now logs it directly, right after
+`SCREENSHOT_URL`, in the same plain-stdout-line pattern that's already
+proven to reach the Telegram hand-off reliably (unlike the JSON body):
+
+```
+[betano-driver] bet1 summary: stake €2 @ 3.68 -- potential return €7.36
+```
+
+Use these numbers for the caption -- don't reconstruct them from the JSON
+response. `@ <odds>` is standard betting shorthand for "at these combined
+odds," not a placeholder -- if it ever reads `@ ?` instead of a real
+number, that means `extractCombinedOdds()` failed to parse the betslip's
+own combo label (a real parse miss, not expected in normal operation) --
+flag it back to Winston rather than treating it as routine. The app now
+shows this same combined-odds figure too (`pendingBet.combinedOdds`, per
+`admin.html`'s `renderPendingBet`), so the Telegram message and the app
+should always agree; the app itself also shows every screenshot inline via
+`pendingBet.screenshotUrls`, and clicking any screenshot in the app now
+enlarges it (previously view-only at a small fixed size).
 Winston should be able to look at the Telegram messages and the app's
 Approve/Reject screen and see the same real bet, every leg included, in
 both places -- not just a bare "check the app" prompt, and not a
@@ -153,3 +173,37 @@ what's actually on screen before it ever reports `awaiting_confirmation`
 -- but if anything about the outcome doesn't fully add up, check the real
 page yourself before calling it clean, the same way that verification step
 itself was born from someone doing exactly that.
+
+## Testing the Google Sheet write-back (`writeSheetOnTest`)
+
+A test job (`test: true`) normally never writes anything to the Sheet --
+there's no real Potential Return to report, and writing a fake number into
+a real cell would corrupt real WIN data (see server.js's own comment on
+`/betfair-place-result`). This is the ONE deliberate exception: an explicit
+opt-in to prove the write mechanism itself actually works end to end
+(the real Apps Script `adminSetWinValue` call, into a real DASHBOARD cell),
+without ever placing a real bet.
+
+**Only use this when Winston has explicitly asked for this exact test.**
+Queue the job with `writeSheetOnTest: true` alongside `test: true`:
+
+```
+POST /betfair-place-request
+{"player": "<name>", "test": true, "writeSheetOnTest": true}
+```
+
+`driver.js` picks this up automatically from the claimed job (logged as
+`(writeSheetOnTest)` right after `(test mode)` in its first log line) --
+nothing else changes about how you run it. When each bet is approved, its
+real `sheetColIdx` (from Code.gs's own DASHBOARD headers -- D18/E18 =
+Snackbar bet 1/2, F18/G18 = Timbo bet 1/2, H18/I18 = Pepe bet 1/2) and its
+real `potentialReturn` get written for real via `adminSetWinValue`, same
+as the admin panel's manual WIN entry already does.
+
+After the run, confirm the write actually landed: check the app's Bets tab
+(the WIN £ figure for that player/bet column should now show the real
+potential return) or the DASHBOARD sheet cell directly, and report back
+plainly whether it matches what the driver logged. Since this deliberately
+writes into a real, live cell (not a sandboxed test one), only run it when
+Winston has confirmed it's safe to do right now (e.g. a cell that's
+currently empty/resettable, not mid-matchweek real data).

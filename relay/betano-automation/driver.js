@@ -524,6 +524,20 @@ function parseEuNumber(s) {
   return Number(String(s).replace(/\./g, "").replace(",", "."));
 }
 
+// The shared stake box's own label in Multiple mode reads
+// "<Combo name> = <leg count> <combined odds>" (e.g. "Double = 1 3.68",
+// per BETANO_RECON.md section 3) -- combined odds themselves are NOT
+// EU-formatted like the money figures elsewhere on this page (no comma
+// decimal), so this deliberately does NOT go through parseEuNumber.
+// Never live-verified before now (admin.html has always shown "@ ?" for
+// combinedOdds, since nothing captured it) -- returns null rather than
+// guessing if the label doesn't match, so a parse miss is visible as a
+// missing number rather than a wrong one.
+function extractCombinedOdds(snapshot) {
+  const match = String(snapshot || "").match(/=\s*\d+\s+([\d.]+)(?:\s*€)?/);
+  return match ? Number(match[1]) : null;
+}
+
 // Returns the actual potential-return figure, parsed from BET NOW's own
 // label ("BET NOW <stake> € Potential winnings <total> €" in Multiple
 // mode, per BETANO_RECON.md section 5) -- null if the label doesn't
@@ -883,7 +897,12 @@ async function buildBetOnBetano(page, stagehand, plan, withAiFallback) {
   }
 
   await verifyMultiple(page);
-  return fillStake(page, plan.stake);
+  // Captured here, not inside fillStake -- the combo label ("Double = 1
+  // 3.68") is present once legs are in Multiple mode, independent of
+  // whether a stake has been entered yet.
+  const combinedOdds = extractCombinedOdds(await betslipSnapshot(page));
+  const potentialReturn = await fillStake(page, plan.stake);
+  return { potentialReturn, combinedOdds };
 }
 
 async function claimNextJob() {
@@ -893,7 +912,7 @@ async function claimNextJob() {
   if (!data.job) return null;
   const bets = (data.bets || []).filter((b) => b.player === data.job.player).sort((a, b) => a.sheetColIdx - b.sheetColIdx);
   if (!bets.length) throw new Error(`Claimed a job for "${data.job.player}" but /next returned no matching bets for them`);
-  return { player: data.job.player, test: data.job.test, bets };
+  return { player: data.job.player, test: data.job.test, writeSheetOnTest: !!data.job.writeSheetOnTest, bets };
 }
 
 async function postAwaitingConfirmation(player, pendingBet) {
@@ -926,10 +945,18 @@ async function pollForDecision(player, page, { intervalMs = 20000, logEveryMs = 
   }
 }
 
-async function reportPlaced(player, test) {
+// results: [{sheetColIdx, winAmount}] -- the real per-bet Potential Return
+// figures accumulated in main() as each bet gets approved, one entry per
+// approved bet in this job (could be just bet 1, if bet 2 was rejected or
+// STOP_AFTER_FIRST_BET cut the job short). writeSheetOnTest is only ever
+// true when the job itself was explicitly queued with it set (see
+// betfairQueue.js's addRequest()) -- passing it through here is what lets
+// server.js write these into the real Sheet even though test is also true,
+// for that one deliberate test rather than every test run.
+async function reportPlaced(player, test, results, writeSheetOnTest) {
   const res = await fetch(`${RELAY_URL}/betfair-place-result`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player, test, results: [] }),
+    body: JSON.stringify({ player, test, writeSheetOnTest, results }),
   });
   if (!res.ok) throw new Error(`betfair-place-result ${res.status}`);
 }
@@ -945,8 +972,8 @@ async function clearJob(player) {
 async function main() {
   const claimed = await claimNextJob();
   if (!claimed) { console.log("[betano-driver] No pending job in the queue -- nothing to do."); process.exit(0); }
-  const { player, test, bets } = claimed;
-  console.log(`[betano-driver] Claimed job for ${player}${test ? " (test mode)" : ""} -- ${bets.length} bet(s) to build.`);
+  const { player, test, writeSheetOnTest, bets } = claimed;
+  console.log(`[betano-driver] Claimed job for ${player}${test ? " (test mode)" : ""}${writeSheetOnTest ? " (writeSheetOnTest)" : ""} -- ${bets.length} bet(s) to build.`);
 
   const browser = await chromium.connectOverCDP(CDP_URL);
   const context = browser.contexts()[0];
@@ -954,6 +981,13 @@ async function main() {
   const page = await context.newPage();
 
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
+  // Accumulates one {sheetColIdx, winAmount} entry per bet actually
+  // approved in this job -- exactly what reportPlaced() sends on to
+  // server.js's /betfair-place-result. sheetColIdx comes straight from
+  // exportedBet (Code.gs's own real DASHBOARD column for this player/bet
+  // slot, e.g. D18/E18 for Snackbar's bet 1/2), not guessed or hardcoded
+  // here.
+  const results = [];
 
   try {
     // Navigate once, up front -- same lesson as Betfair's build: a brand-new
@@ -983,7 +1017,7 @@ async function main() {
       await stagehand.init();
       await stagehand.stagehandContext.getStagehandPage(page);
 
-      const potentialReturn = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
+      const { potentialReturn, combinedOdds } = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
       // Root-caused, confirmed live (2026-09-24) via an independent
       // CDP-level navigation watcher outside driver.js's own process, not
       // just observed: a genuine top-level page reload occurs around when
@@ -1018,10 +1052,18 @@ async function main() {
       const screenshotPaths = screenshots.map((s) => s.path);
       const screenshotUrls = screenshots.map((s) => s.url).filter(Boolean);
       await postAwaitingConfirmation(player, {
-        stake: plan.stake, legs: plan.steps, skipped: plan.skipped, betNumber: i + 1, potentialReturn,
+        stake: plan.stake, legs: plan.steps, skipped: plan.skipped, betNumber: i + 1, potentialReturn, combinedOdds,
         screenshotPath: screenshots[0].path, screenshotUrl: screenshots[0].url,
         screenshotPaths, screenshotUrls,
       });
+      // Explicit stdout line for stake/combined odds/potential return --
+      // confirmed live (2026-09-28): Telegram hand-offs were always
+      // reporting a potential return of 0, root-caused to this figure
+      // never actually being logged anywhere before now (it only ever
+      // lived inside the JSON body posted above). SCREENSHOT_URL already
+      // proved a plain stdout line is what reliably reaches the Telegram
+      // hand-off -- same pattern here, not a guess.
+      console.log(`[betano-driver] ${label} summary: stake €${plan.stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}`);
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
       const decision = await pollForDecision(player, page);
@@ -1035,12 +1077,13 @@ async function main() {
 
       if (!test) throw new RealPlacementNotImplementedError(player);
       console.log(`[betano-driver] ${label} approved (test mode) -- simulating placement, not clicking BET NOW.`);
+      results.push({ sheetColIdx: exportedBet.sheetColIdx, winAmount: potentialReturn });
 
       const isLastBet = i === bets.length - 1;
       const stopEarly = test && STOP_AFTER_FIRST_BET && i === 0 && !isLastBet;
       if (isLastBet || stopEarly) {
         if (stopEarly) console.log(`[betano-driver] STOP_AFTER_FIRST_BET set -- reporting ${player} done after bet 1 only, not building bet 2 this run.`);
-        await reportPlaced(player, test);
+        await reportPlaced(player, test, results, writeSheetOnTest);
         break;
       }
     }

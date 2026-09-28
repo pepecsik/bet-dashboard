@@ -1088,9 +1088,17 @@ function renderPendingBet(q) {
   // (added the same day) is a real URL served by this same relay. Omitted
   // entirely, not a broken-image placeholder, on an older/test entry that
   // predates this field or hit the best-effort upload failing.
-  const screenshotHtml = bet.screenshotUrl
-    ? `<img class="queue-bet-screenshot" src="${bet.screenshotUrl}" alt="Bet ${bet.betNumber || ''} betslip screenshot" loading="lazy">`
-    : '';
+  //
+  // screenshotUrls (plural, added 2026-09-25): a long accumulator's
+  // betslip can scroll internally (confirmed live -- a real 9-leg bet
+  // only showed 7 legs in a single screenshot, since the betslip panel
+  // is position:fixed and bounded by the real viewport), so driver.js can
+  // now report more than one screenshot per bet. Falls back to the
+  // singular screenshotUrl for any older/test entry that predates this.
+  const screenshotUrls = Array.isArray(bet.screenshotUrls) && bet.screenshotUrls.length ? bet.screenshotUrls : (bet.screenshotUrl ? [bet.screenshotUrl] : []);
+  const screenshotHtml = screenshotUrls.map((url, i) =>
+    `<img class="queue-bet-screenshot" src="${url}" alt="Bet ${bet.betNumber || ''} betslip screenshot${screenshotUrls.length > 1 ? ` (${i + 1}/${screenshotUrls.length})` : ''}" loading="lazy">`
+  ).join('');
   const legsHtml = (bet.legs || []).map(l => `
     <div class="queue-leg">
       ${l.selection || ''} <span style="opacity:0.6;">&mdash; ${l.market || ''}${l.match ? ' (' + l.match + ')' : ''}</span>

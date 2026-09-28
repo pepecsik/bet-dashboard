@@ -105,6 +105,36 @@ class CloudflareChallengeError extends Error {
 class SameMatchConflictError extends Error {
   constructor(matches) { super(`Same match appears in multiple legs: ${matches.join(", ")} -- refusing to build a same-match combo`); this.name = "SameMatchConflictError"; }
 }
+// Confirmed live (2026-09-28): a real overnight long-delay test's process
+// vanished entirely sometime during pollForDecision's idle wait -- gone
+// from `ps`, no macOS crash report, nothing in the unified system log, no
+// uncaught exception ever reached main()'s own try/catch (which would have
+// hit the hard-stop path and left a trace). The Mac itself never slept
+// (caffeinate confirmed). The leading suspect: Node's default behavior
+// since v15 is to terminate the whole process on ANY unhandled promise
+// rejection -- and Stagehand/Playwright's own CDP connection maintains
+// listeners outside driver.js's own promise chain (reconnect logic,
+// websocket events) that could reject asynchronously during a multi-hour
+// idle sit, with nothing in this file ever able to catch it since it's not
+// awaited anywhere here. Logging and continuing, rather than letting Node's
+// default behavior silently kill an otherwise-healthy run, is the right
+// tradeoff specifically for the idle-wait window this targets -- driver.js
+// holds no fragile in-progress state at that point (the betslip is already
+// built and reported; all that's left is polling for a decision), so
+// surviving an unrelated background rejection is strictly better than
+// losing the whole run with zero trace. Also makes any future silent-crash
+// class of bug at least leave a line in whatever captures this process's
+// stdout -- confirm OpenClaw is redirecting driver.js's output to a
+// durable file (not just its own ephemeral process-tool session buffer,
+// confirmed 2026-09-28 to not survive past that crash) for this to
+// actually help.
+process.on("unhandledRejection", (reason) => {
+  console.error(`[betano-driver] UNHANDLED REJECTION -- would have silently killed the process under Node's default behavior. Logging and continuing:`, reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error(`[betano-driver] UNCAUGHT EXCEPTION outside the main try/catch -- logging and continuing:`, err);
+});
+
 class RealPlacementNotImplementedError extends Error {
   constructor(player) { super(`${player}'s bet was approved for REAL placement, but driver.js doesn't implement clicking BET NOW yet -- refusing to proceed automatically. Needs deliberate review before this path exists.`); this.name = "RealPlacementNotImplementedError"; }
 }
@@ -959,6 +989,15 @@ async function reportPlaced(player, test, results, writeSheetOnTest) {
     body: JSON.stringify({ player, test, writeSheetOnTest, results }),
   });
   if (!res.ok) throw new Error(`betfair-place-result ${res.status}`);
+  // Confirmed live (2026-09-28): this response body -- server.js's own
+  // per-bet {sheetColIdx, status} outcomes array, the actual real/failed
+  // result of each adminSetWinValue call -- was never read or logged
+  // anywhere, only res.ok was checked. That left NO log-based way to
+  // confirm whether a Sheet write actually succeeded; verifying it required
+  // falling back to reading the live Sheet directly instead. Logged now so
+  // the driver's own stdout is a complete record on its own.
+  const data = await res.json().catch(() => null);
+  if (data) console.log(`[betano-driver] betfair-place-result outcomes for ${player}:`, JSON.stringify(data.outcomes || []));
 }
 
 async function clearJob(player) {

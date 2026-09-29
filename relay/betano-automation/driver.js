@@ -535,10 +535,26 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
 async function verifyMultiple(page) {
   const multipleRadio = page.getByRole("radio", { name: "Multiple" });
   const checked = await multipleRadio.isChecked().catch(() => false);
-  if (!checked) {
-    const snapshot = await betslipSnapshot(page);
-    throw new SameMatchConflictError([`betslip not in Multiple mode -- current state: "${snapshot}"`]);
+  if (checked) return;
+
+  // Confirmed live (2026-09-29): a real hard stop here reported
+  // SameMatchConflictError with a betslipSnapshot() that was itself just
+  // a locator.innerText timeout ("waiting for locator('.bet-slip-container')")
+  // -- .bet-slip-container only exists once a selection has actually been
+  // made (BETANO_RECON.md section 3), so that timeout means the betslip
+  // was genuinely EMPTY (no leg ever landed), not that a real conflict
+  // forced Single/System mode. Those are two completely different failure
+  // shapes -- an empty slip points at something wrong earlier in the leg
+  // loop or a fresh-profile/session issue, not a same-match pairing -- and
+  // mislabeling one as the other sends whoever's debugging it down the
+  // wrong path. Checking container presence directly (not just relying on
+  // betslipSnapshot's own error text) to tell them apart explicitly.
+  const hasContainer = await page.locator(".bet-slip-container").count().catch(() => 0);
+  if (!hasContainer) {
+    throw new Error(`Betslip is empty -- .bet-slip-container never appeared, meaning no leg was ever successfully added. Not a same-match conflict (that requires at least one real selection).`);
   }
+  const snapshot = await betslipSnapshot(page);
+  throw new SameMatchConflictError([`betslip not in Multiple mode -- current state: "${snapshot}"`]);
 }
 
 // UNVERIFIED exact selector -- confirm live. BETANO_RECON.md documents

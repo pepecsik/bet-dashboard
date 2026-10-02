@@ -223,10 +223,19 @@ For each of the (up to 2) bets in the claimed job, in order:
 5. On approve, test mode: logs "simulating," does not click anything, moves
    to the next bet (or reports fully placed if that was the last one) --
    unless `STOP_AFTER_FIRST_BET=1` is set (see below).
-6. On approve, real mode: hard-stops on purpose --
-   `RealPlacementNotImplementedError`. Clicking the real BET NOW button is
-   not implemented in this file at all, stays that way pending deliberate
-   review, same standing rule as the retired Betfair driver.
+6. On approve, real mode: re-verifies the betslip one final time (state
+   can drift during a long, timeout-free approval wait), then actually
+   clicks the real BET NOW button and verifies the outcome via the account
+   balance (before vs after, against `stake` -- no reliance on any assumed
+   on-page success message). A verified success sends Winston a simple
+   direct Telegram text confirmation and continues to the next bet. An
+   unverifiable outcome throws `RealPlacementUnverifiedError` -- NEVER
+   retried, falls through to the normal hard-stop path (screenshot + direct
+   Telegram notify + no auto-clear of the queue claim), since a second
+   click risks a genuine double placement. See `PLACEMENT_MANUAL.md`'s
+   "Real placement" section for the full detail, including the
+   `BALANCE_SELECTOR` live-confirmation requirement before this is ever run
+   for real.
 
 Set `STOP_AFTER_FIRST_BET=1` to report the job as fully done right after
 bet 1 is approved, instead of auto-continuing to build bet 2 in the same

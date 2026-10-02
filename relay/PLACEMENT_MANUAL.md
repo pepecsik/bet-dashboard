@@ -188,6 +188,46 @@ what's actually on screen before it ever reports `awaiting_confirmation`
 page yourself before calling it clean, the same way that verification step
 itself was born from someone doing exactly that.
 
+## Real placement (non-test jobs)
+
+`driver.js` now actually clicks the real BET NOW button on an approved,
+non-test job -- see `placeRealBet()`. **One thing MUST be confirmed live
+before this is ever run for real**: `BALANCE_SELECTOR` (currently a
+placeholder, `[data-test-id='balance']`, UNVERIFIED) must point at the
+real account-balance element in the top nav (shown next to DEPOSIT once
+logged in, e.g. "28,00 €"). Confirm the actual selector live, then set it
+via `BETANO_BALANCE_SELECTOR` in `.env` (or pass it inline) before the
+first real run -- do NOT let this run for real against the placeholder.
+If the selector is wrong, the balance read right before the click fails
+and hard-stops safely (before BET NOW is ever clicked) -- but confirm it
+properly rather than relying on that as the plan.
+
+**Verification method is balance-only, per Winston's explicit choice**:
+balance before the click, compared against (balance before − stake) after
+the click, polled for up to 15s. No reliance on any assumed Betano
+"success" message -- nobody has ever seen what that looks like for real,
+since every run before this was test mode.
+
+**If a real placement comes back unverified (`RealPlacementUnverifiedError`,
+falls through to the normal hard-stop path -- screenshot + direct Telegram
+notify), do NOT click BET NOW again yourself, and do NOT tell driver.js to
+retry.** A second click risks a genuine double placement -- strictly worse
+than an unresolved one. Check the real account balance and open-bets list
+manually, report exactly what you find to Winston, and let a human decide
+what happens next. This is the one place in the whole system where
+"investigate and retry" is the wrong instinct.
+
+**On a verified success**, Winston gets a simple, separate Telegram text
+message (no screenshot) straight from `driver.js` itself --
+"✅ `<player>` bet `<N>` is successfully placed on Betano." That's
+deliberately all he asked for; no further confirmation needed from you on
+top of it.
+
+The admin app's Approve/Reject card now also shows an explicit real-money
+warning banner for any non-test entry, right above the buttons -- same
+point-of-no-return reasoning as the "check twice" modal the "Place bets"
+button already had before a job is even queued.
+
 ## Testing the Google Sheet write-back (`writeSheetOnTest`)
 
 A test job (`test: true`) normally never writes anything to the Sheet --

@@ -334,6 +334,11 @@
   .queue-leg:last-of-type { border-bottom: none; }
   .queue-leg b { white-space: nowrap; }
   .queue-bet-summary { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .queue-real-money-warning {
+    background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px;
+    padding: 8px 10px; margin-top: 10px; font-size: 11px; font-weight: 800; color: #ff6b6b;
+    text-transform: uppercase; letter-spacing: 0.3px; text-align: center;
+  }
   .queue-decision-row { display: flex; gap: 8px; margin-top: 10px; }
   .queue-approve-btn, .queue-reject-btn {
     flex: 1; padding: 9px; border-radius: 8px; border: none; font-weight: 800; font-size: 11px;
@@ -1122,6 +1127,15 @@ function renderPendingBet(q) {
       <span>Returns &pound;${returnAmt}</span>
     </div>`;
 
+  // Real-money warning right at the actual point of no return -- added
+  // once driver.js started actually clicking BET NOW on a real approval
+  // (not just test mode). The initial "Place bets" confirm modal already
+  // warns before a job is even queued, but by the time Winston is looking
+  // at THIS card, that warning is long gone from view -- this is the last
+  // thing he sees before pressing Approve on a real bet, so it needs its
+  // own unmistakable warning right here, not just upstream.
+  const realMoneyWarningHtml = q.test ? '' : `<div class="queue-real-money-warning">⚠️ Real money — approving places this bet for real</div>`;
+
   // A decision's already been sent but acca hasn't consumed/acted on it yet
   // (takeDecision() only clears it once acca's own poll reads it) -- show
   // that plainly instead of the buttons again, so a slow poll cycle doesn't
@@ -1144,6 +1158,7 @@ function renderPendingBet(q) {
       ${screenshotHtml}
       ${legsHtml}
       ${summaryHtml}
+      ${realMoneyWarningHtml}
       <div class="queue-decision-row">
         <button class="queue-approve-btn" onclick="decideQueueEntry('${q.player}', 'approve', this)">Approve</button>
         <button class="queue-reject-btn" onclick="decideQueueEntry('${q.player}', 'reject', this)">Reject</button>

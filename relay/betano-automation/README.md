@@ -237,6 +237,45 @@ For each of the (up to 2) bets in the claimed job, in order:
    `BALANCE_SELECTOR` live-confirmation requirement before this is ever run
    for real.
 
+## Running it continuously -- `poll.js`, not an LLM cron job
+
+`driver.js` is single-shot by design -- it claims one job, runs it to
+completion, exits. Something needs to notice a NEW job and invoke it again
+every week, indefinitely, without a human manually running the command
+above each time.
+
+**Use `poll.js` for this, not an LLM-based cron/agent job.** Confirmed
+live (2026-10-02): an OpenClaw cron job that read `PLACEMENT_MANUAL.md`
+via a model every ~30s to decide "is there a job, if so run driver.js" was
+the actual root cause of an entire week-plus of real, separate bugs (a
+caching fetch tool hiding the live queue state for 13 minutes straight, a
+stale local doc claiming the manual didn't exist, confusing the
+claim-on-read `/next` endpoint for a safe peek and silently eating a real
+job before `driver.js` ever got to it, inventing a fake test job on an
+empty queue, even a hallucinated attempt to reject a decision on Winston's
+behalf). None of that is a coincidence -- that decision is a plain
+if/else, and every one of those bugs came from putting a model in the loop
+for something that never needed judgment. It also cost real tokens every
+single tick, forever, including every tick where there was nothing to do.
+
+`poll.js` replaces it: a deterministic loop, `GET /betfair-place-request/
+queue` every `POLL_INTERVAL_MS` (default 30s), and if anything's
+`"pending"`, spawns `node driver.js`. Zero API cost beyond the relay's own
+trivial GET. Run it persistently in the background:
+
+```
+cd relay/betano-automation
+nohup node --env-file=.env poll.js >> poll.log 2>&1 &
+```
+
+(Same `caffeinate`-style "just always running" model as the Mac itself --
+not a one-off command to remember to re-run each week. Consider a proper
+`launchd` plist if restart-on-reboot matters; a plain `nohup` is enough to
+start.) **Remove the old `betfair-placement-poll` OpenClaw cron job once
+this is running** -- it's now fully redundant, and leaving both running
+risks two things racing to notice the same job (harmless given the
+relay's own queue exclusivity, but pure waste).
+
 Set `STOP_AFTER_FIRST_BET=1` to report the job as fully done right after
 bet 1 is approved, instead of auto-continuing to build bet 2 in the same
 run -- for validating bet 1's full loop end to end on its own before

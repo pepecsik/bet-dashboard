@@ -24,21 +24,56 @@ don't guess, this is the real one.
 
 **Every GET/POST against this relay MUST go through a method that never
 caches** -- `exec` + `curl -s`, not a generic "fetch a URL" tool. Confirmed
-live (2026-10-02), the actual root cause of a real failed placement
-attempt, found by directly inspecting the session transcript, not
-inferred: the `betfair-placement-poll` cron picked OpenClaw's own
-`web_fetch` tool to check the queue, and `web_fetch` cached the very first
-response (`{"job": null}`, `"cached": true`, a single `fetchedAt`
-timestamp). Every one of the next 26 ticks across that session's entire
-13-minute life -- spanning the exact window Winston's real bet sat
-claimable in the queue -- returned that identical stale response. The
-cron never looked at the live queue again after its first glance; a real,
-valid, fully-formed job sat there the whole time, invisible. Confirmed
-directly via a raw `curl` call to `/betfair-place-request/next`, made
-independently of the stuck session, which instantly found and claimed it
--- the relay itself was never the problem. **This endpoint's whole reason
-to exist is that it changes by the second; any caching layer between an
+live (2026-10-02), a real failed placement attempt, found by directly
+inspecting the session transcript, not inferred: the
+`betfair-placement-poll` cron picked OpenClaw's own `web_fetch` tool to
+check the queue, and `web_fetch` cached the very first response
+(`{"job": null}`, `"cached": true`, a single `fetchedAt` timestamp).
+Every one of the next 26 ticks across that session's entire 13-minute life
+-- spanning the exact window Winston's real bet sat claimable in the
+queue -- returned that identical stale response. The cron never looked at
+the live queue again after its first glance; a real, valid, fully-formed
+job sat there the whole time, invisible. **This endpoint's whole reason to
+exist is that it changes by the second; any caching layer between an
 agent and it is fatal, silently, with no error anywhere to notice.**
+
+## NEVER call GET /betfair-place-request/next for inspection -- it claims on read
+
+**This is the single most dangerous mistake to make with this relay, and
+it already caused a real failed placement.** `/next` is NOT a read-only
+peek -- every successful call to it atomically CLAIMS whatever job it
+returns (see `getNext()` in `betfairQueue.js`: it flips the entry's status
+to `"claimed"` as a side effect of being read). Only `driver.js`'s own
+internal `claimNextJob()` is ever authorized to call it. **For any
+inspection, pre-flight check, or "let me see what's queued" look -- by a
+human or an agent -- always use `GET /betfair-place-request/queue`
+instead**, which is genuinely read-only and never changes anything.
+
+Confirmed live (2026-10-02): a cron tick's own pre-flight step called
+`/next` directly to "see what's there," which silently consumed the job's
+one-time claim right then. By the time `driver.js` ran moments later and
+called `/next` itself (correctly, via its own internal logic), there was
+nothing left to claim -- it logged "No pending job in the queue" and
+exited cleanly, even though a real job had been sitting there seconds
+earlier. Nothing crashed, nothing errored -- the job was just silently
+gone. This single mistake, not any of the other fixes in this doc, was
+the actual reason a real, fully-formed, pre-existing job produced zero
+visible activity. The one historical mention of calling `/next` directly
+elsewhere in this file (the caching investigation above) was a one-off,
+out-of-band diagnostic action taken deliberately to isolate a bug --
+**never a step to repeat or pattern-match onto during normal operation.**
+
+## NEVER post a decision on Winston's behalf
+
+`POST /betfair-place-request/decision` (approve/reject) is exclusively
+Winston's own action, taken through the app. Confirmed live (2026-10-02):
+an agent, confused mid-tick after the `/next` mistake above, attempted to
+POST a `"reject"` decision on a job directly, apparently trying to "clean
+up" what it thought was a stuck state. The relay's own validation happened
+to block it (the job wasn't actually `awaiting_confirmation` at that
+moment), so nothing was actually rejected this time -- but that's luck,
+not a safeguard to rely on. Never call this endpoint for any reason other
+than relaying a decision Winston has already made.
 
 ## Before running
 

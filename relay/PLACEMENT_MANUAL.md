@@ -20,6 +20,26 @@ written as a bare relative path, same as the code itself (`driver.js`'s own
 context to fall back on, guessed `http://localhost:3001` here and failed --
 don't guess, this is the real one.
 
+## NEVER use a caching fetch tool against these endpoints
+
+**Every GET/POST against this relay MUST go through a method that never
+caches** -- `exec` + `curl -s`, not a generic "fetch a URL" tool. Confirmed
+live (2026-10-02), the actual root cause of a real failed placement
+attempt, found by directly inspecting the session transcript, not
+inferred: the `betfair-placement-poll` cron picked OpenClaw's own
+`web_fetch` tool to check the queue, and `web_fetch` cached the very first
+response (`{"job": null}`, `"cached": true`, a single `fetchedAt`
+timestamp). Every one of the next 26 ticks across that session's entire
+13-minute life -- spanning the exact window Winston's real bet sat
+claimable in the queue -- returned that identical stale response. The
+cron never looked at the live queue again after its first glance; a real,
+valid, fully-formed job sat there the whole time, invisible. Confirmed
+directly via a raw `curl` call to `/betfair-place-request/next`, made
+independently of the stuck session, which instantly found and claimed it
+-- the relay itself was never the problem. **This endpoint's whole reason
+to exist is that it changes by the second; any caching layer between an
+agent and it is fatal, silently, with no error anywhere to notice.**
+
 ## Before running
 
 **This whole section is for a human (you or Winston) deliberately walking

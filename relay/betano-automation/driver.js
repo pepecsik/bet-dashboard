@@ -135,8 +135,17 @@ process.on("uncaughtException", (err) => {
   console.error(`[betano-driver] UNCAUGHT EXCEPTION outside the main try/catch -- logging and continuing:`, err);
 });
 
-class RealPlacementNotImplementedError extends Error {
-  constructor(player) { super(`${player}'s bet was approved for REAL placement, but driver.js doesn't implement clicking BET NOW yet -- refusing to proceed automatically. Needs deliberate review before this path exists.`); this.name = "RealPlacementNotImplementedError"; }
+// Thrown when a real BET NOW click can't be verified one way or the other
+// -- see placeRealBet()'s own comment for why this must never be guessed
+// at or retried. Falls through to main()'s existing hard-stop path (a
+// screenshot + direct Telegram notify + NO auto-clear of the queue claim
+// for a non-test job, exactly as already designed), not a separate
+// handler -- that path already does the right thing here.
+class RealPlacementUnverifiedError extends Error {
+  constructor(player, label, detail) {
+    super(`${player}'s ${label} was approved for REAL placement -- BET NOW was clicked, but the balance change could not be verified afterward (${detail}). DO NOT RETRY. Treat this as unknown/possibly-placed and check the real Betano account manually before doing anything else with this job.`);
+    this.name = "RealPlacementUnverifiedError";
+  }
 }
 
 function assertNotChallenged(page) {
@@ -620,6 +629,88 @@ async function fillStake(page, stake) {
     await page.waitForTimeout(150);
   }
   throw new Error(`Stake fill for ${stakeAmount} didn't appear to register on BET NOW's label after 2s: "${label}"`);
+}
+
+// UNVERIFIED exact selector -- MUST be confirmed live before this is ever
+// relied on for a real placement. Account balance shows in the top nav
+// next to the DEPOSIT button once logged in (e.g. "28,00 €", EU-formatted
+// same as every other monetary figure on this site -- BETANO_RECON.md
+// section 9 mentions DEPOSIT/REGISTER-LOGIN as the logged-in/out signal,
+// but never pinned down the balance element's own selector, since nobody
+// needed to read it until real placement existed. Overridable via env var
+// so a live-confirmed selector can be set without another code change.
+const BALANCE_SELECTOR = process.env.BETANO_BALANCE_SELECTOR || "[data-test-id='balance']";
+
+// Reads the real account balance -- the ONLY verification method for a
+// real placement (Winston's own explicit choice): compare balance before
+// vs after a real BET NOW click against (before - stake), rather than
+// trusting any on-page "success" confirmation. Nobody has ever seen what
+// Betano's real post-placement UI looks like (every prior run was test
+// mode, which never reaches this code at all) -- trusting an assumed
+// success message would be guessing blind with real money on the line.
+async function getAccountBalance(page) {
+  const text = await page.locator(BALANCE_SELECTOR).first().innerText({ timeout: 10000 });
+  const match = text.match(/([\d.]*\d,\d{2})/);
+  if (!match) throw new Error(`Could not parse account balance from "${text}" (selector: ${BALANCE_SELECTOR})`);
+  return parseEuNumber(match[1]);
+}
+
+// Clicks the real BET NOW button and verifies the outcome purely via the
+// account balance, per Winston's own explicit spec -- no reliance on any
+// assumed on-page success/failure message. balanceBefore is read FIRST,
+// before the click -- if BALANCE_SELECTOR is wrong or the balance can't be
+// parsed, this throws here and the click never happens at all, same
+// never-guess discipline as everywhere else real money is involved.
+//
+// NEVER retries on an unverified result after the click -- a second click
+// risks a genuine double placement, strictly worse than stopping and
+// asking Winston to check the account manually. An unverified result
+// throws RealPlacementUnverifiedError, which falls through to main()'s
+// existing hard-stop path: screenshot, direct Telegram notify, and
+// (because this is a real, non-test job) NO auto-clear of the queue claim
+// -- a human must look at this before anything else touches it.
+async function placeRealBet(page, player, label, stake) {
+  const balanceBefore = await getAccountBalance(page);
+  await dismissMarketingPopup(page, "placeRealBet: before BET NOW click");
+  await dismissSessionTimer(page, "placeRealBet: before BET NOW click");
+  const betNow = page.getByRole("button", { name: /BET NOW/i });
+  await betNow.click();
+  console.log(`[betano-driver] ${label}: clicked REAL BET NOW for ${player} (balance before: €${balanceBefore}, stake €${stake}).`);
+
+  const expectedAfter = balanceBefore - Number(stake);
+  let lastSeen = balanceBefore;
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(1000);
+    lastSeen = await getAccountBalance(page).catch(() => lastSeen);
+    if (Math.abs(lastSeen - expectedAfter) < 0.01) {
+      console.log(`[betano-driver] ${label}: REAL PLACEMENT VERIFIED for ${player} -- balance went €${balanceBefore} -> €${lastSeen}, matches stake €${stake}.`);
+      return;
+    }
+  }
+  throw new RealPlacementUnverifiedError(player, label, `balance before €${balanceBefore}, expected €${expectedAfter.toFixed(2)} after, last seen €${lastSeen}`);
+}
+
+// Winston's own explicit spec: a simple text-only message on a verified
+// real placement -- no screenshot needed (unlike the awaiting-confirmation
+// hand-off), just plain confirmation it went through. Same never-throw
+// discipline as every other direct-notify function in this file.
+async function notifyRealPlacementDirect(player, betNumber) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log(`[betano-driver] Direct Telegram notify (real placement) skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
+    return;
+  }
+  const text = `✅ ${player} bet ${betNumber} is successfully placed on Betano.`;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(JSON.stringify(data));
+    console.log(`[betano-driver] Direct Telegram notify (real placement) sent for ${player} bet ${betNumber}.`);
+  } catch (err) {
+    console.error(`[betano-driver] Direct Telegram notify (real placement) failed:`, err.message);
+  }
 }
 
 // Final live re-verification, right before ever reporting a build as
@@ -1200,8 +1291,22 @@ async function main() {
         break;
       }
 
-      if (!test) throw new RealPlacementNotImplementedError(player);
-      console.log(`[betano-driver] ${label} approved (test mode) -- simulating placement, not clicking BET NOW.`);
+      if (test) {
+        console.log(`[betano-driver] ${label} approved (test mode) -- simulating placement, not clicking BET NOW.`);
+      } else {
+        // Re-verify immediately before the irreversible click -- time has
+        // passed since the original build/verify (pollForDecision has no
+        // timeout, a real decision can take hours), and the whole point of
+        // this check elsewhere in the file is that betslip state can't be
+        // assumed stable just because it was correct once already.
+        await dismissMarketingPopup(page, "main: before REAL BET NOW click");
+        await dismissSessionTimer(page, "main: before REAL BET NOW click");
+        await verifyMultiple(page);
+        await verifyBetslipMatchesPlan(page, plan);
+        await placeRealBet(page, player, label, plan.stake);
+        await notifyRealPlacementDirect(player, i + 1);
+        console.log(`[betano-driver] ${label} approved and REALLY PLACED for ${player}.`);
+      }
       results.push({ sheetColIdx: exportedBet.sheetColIdx, winAmount: potentialReturn });
 
       const isLastBet = i === bets.length - 1;

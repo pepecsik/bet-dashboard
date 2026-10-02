@@ -103,6 +103,66 @@ let lastRawStats = {};
 // comment on the /betfair-place-request/status route below).
 let betfairQueue = [];
 
+// Same TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID pattern as driver.js's own
+// direct-notify functions, but set as env vars HERE on Render, separately
+// from the Mac's .env -- the whole point of this one is that the relay is
+// always running, unlike driver.js, which only exists for the duration of
+// a single invocation and can't notice anything while nothing is claiming
+// a job in the first place.
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
+
+// Confirmed live (2026-10-02): acca's own documented ~30s automatic cron
+// poll against GET /betfair-place-request/next has never actually picked
+// up a queued job unprompted, this whole testing cycle -- every single
+// run needed an explicit manual nudge. A real queued bet then sat
+// unclaimed for 3-4+ minutes with zero signal to Winston that anything
+// was wrong, which is exactly the kind of silent gap that matters most
+// right as real placement goes live. Can't fix the cron itself (that's
+// OpenClaw's own scheduling, outside this repo entirely) -- but the relay
+// CAN notice and say something, since it's the one thing that's always
+// running, on its own setInterval (wired up at the bottom of this file)
+// rather than depending on some other request to trigger a check --
+// Winston queuing a job and then nobody touching the relay again is
+// exactly the silent scenario this needs to catch, so it can't wait for a
+// request that might never come.
+const PENDING_ALERT_MS = parseInt(process.env.PENDING_ALERT_MS || "120000", 10); // 2 minutes
+const alertedStalePending = new Set(); // player names already alerted for their CURRENT pending wait
+
+async function notifyStalePendingDirect(player, waitedMs) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return; // not configured on Render -- silently skip, same as driver.js's own direct-notify functions do when unset
+  const minutes = Math.round(waitedMs / 60000);
+  const text = `⚠️ ${player}'s bet has been queued for ~${minutes} min with nobody picking it up. The automatic pickup may not be running -- you may need to manually ask OpenClaw to run driver.js.`;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(JSON.stringify(data));
+  } catch (err) {
+    console.error("[relay] Stale-pending Telegram notify failed:", err.message);
+  }
+}
+
+// Called on every queue-touching request (see server handler below) --
+// looks for any entry that's been sitting in "pending" past
+// PENDING_ALERT_MS and alerts once per player per stale wait (cleared the
+// moment that player's entry moves off "pending", so a LATER wait can
+// alert again rather than being silenced forever by the Set).
+function checkStalePending() {
+  const now = Date.now();
+  for (const r of betfairQueue) {
+    if (r.status === "pending" && now - r.requestedAt > PENDING_ALERT_MS) {
+      if (!alertedStalePending.has(r.player)) {
+        alertedStalePending.add(r.player);
+        notifyStalePendingDirect(r.player, now - r.requestedAt).catch(() => {});
+      }
+    } else {
+      alertedStalePending.delete(r.player);
+    }
+  }
+}
+
 // Screenshot hand-off store for the Betano driver -- confirmed live
 // (2026-09-24): a bet-build screenshot handed to OpenClaw's Telegram
 // message tool as either a local file path (blocked by its own
@@ -817,6 +877,10 @@ async function fetchBetsSnapshot() {
 
 setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
+// Checked well under PENDING_ALERT_MS's own 2-minute default, so a stale
+// job is actually caught close to the threshold rather than up to a whole
+// extra interval late.
+setInterval(checkStalePending, 30000);
 fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
   console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms, FORCE_BETFAIR_TEST_MODE=${FORCE_BETFAIR_TEST_MODE}`);

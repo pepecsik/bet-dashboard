@@ -1,5 +1,24 @@
 # Placement manual (Betano)
 
+**As of 2026-10-02, routine weekly operation no longer depends on anyone
+(human or agent) reading this doc on a schedule.** `poll.js` now handles
+noticing a new job and invoking `driver.js` deterministically, with no
+model in that loop at all (see `betano-automation/README.md`'s own
+section on why that changed -- the previous LLM-based cron job reading
+this manual every ~30s was the actual root cause of a whole week-plus of
+real bugs). `driver.js` itself now also sends its own Telegram hand-offs
+directly (`notifyAwaitingConfirmationDirect`/`notifyHardStopDirect`/
+`notifyRealPlacementDirect`), so most of what this doc originally existed
+to tell an agent to do by hand is now just... what the code already does
+on its own.
+
+This doc's remaining job: a reference for a **human** doing a deliberate
+manual test, or for OpenClaw helping debug a hard-stop Winston's flagged --
+not a script for a scheduled tick to follow. If you're an agent reading
+this because a cron job told you to, stop and re-read
+`betano-automation/README.md`'s "Running it continuously" section first --
+you're very likely the exact problem this update was written to prevent.
+
 For OpenClaw's `acca` agent: what to actually do around a `driver.js` run,
 beyond just executing it -- the Telegram hand-off and decision wait that
 `driver.js` itself has no capability to do. Revives the pattern of the

@@ -10,6 +10,16 @@ right now per Winston's own ask: **prove bet 1's full loop end to end
 before bringing bet 2 back in** -- exactly where the Betfair build got
 stuck (bet 1 worked, bet 2 never got fully unstuck).
 
+## Relay base URL
+
+**`https://bet-dashboard-relay.onrender.com`** -- every endpoint below
+(`/betfair-place-request/queue`, `/betfair-place-request/next`, etc.) is
+written as a bare relative path, same as the code itself (`driver.js`'s own
+`RELAY_URL` constant defaults to this exact host). Confirmed live
+(2026-10-02): a genuinely cold cron tick, with no accumulated conversation
+context to fall back on, guessed `http://localhost:3001` here and failed --
+don't guess, this is the real one.
+
 ## Before running
 
 1. Confirm the `betano` browser profile is logged in -- **screenshot

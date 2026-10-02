@@ -22,6 +22,19 @@ don't guess, this is the real one.
 
 ## Before running
 
+**This whole section is for a human (you or Winston) deliberately walking
+through a manual test, NOT for an automated/scheduled poll tick.**
+Confirmed live (2026-10-02): the `betfair-placement-poll` cron job follows
+this manual verbatim, and on an empty queue, Step 3 below reads as an
+instruction to invent and queue its OWN fake test job, then actually run
+`driver.js` against it -- a real, confirmed bug (a self-manufactured
+`TestPlayer` job was found and traced directly to this). **An automated
+poll tick must NEVER queue a job itself.** If `GET /betfair-place-request/
+next` returns `{"job": null}`, that means there's nothing to do --
+silently complete, exactly like any other empty-queue tick, and do not
+proceed to Step 3. Step 3 only applies when a human has explicitly asked
+for a test run to be set up.
+
 1. Confirm the `betano` browser profile is logged in -- **screenshot
    check, not an immediate post-reload state read** (that's raced false
    more than once). See `BETANO_RECON.md` section 9 for the recovery
@@ -29,8 +42,9 @@ don't guess, this is the real one.
 2. Check `/betfair-place-request/queue` -- `getNext()` returns nothing if
    *anything* is already claimed/awaiting-confirmation, not just for the
    player you're testing. Clear a stale entry first if there is one.
-3. Queue a fresh job if the queue's empty: `POST /betfair-place-request`
-   with `{"player": "<name>", "test": true}`.
+3. **(Human-initiated manual test only -- never for an automated poll
+   tick, see above.)** Queue a fresh job if the queue's empty:
+   `POST /betfair-place-request` with `{"player": "<name>", "test": true}`.
 4. Check for orphaned `driver.js`/diagnostic-script processes still
    holding a CDP connection into the same browser profile --
    `ps aux | grep "[n]ode.*driver.js"` (and similarly for any leftover

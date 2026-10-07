@@ -156,29 +156,66 @@ function assertNotChallenged(page) {
   if (/captcha|challenge|cf-|turnstile/i.test(url)) throw new CloudflareChallengeError(url);
 }
 
-class NotLoggedInError extends Error {
-  constructor() { super(`The betano profile is NOT logged in -- the LOGIN button is showing instead of DEPOSIT/balance. No bet was built or placed. Someone needs to log back in (standard autofill recovery, see BETANO_RECON.md section 9) before this job can run.`); this.name = "NotLoggedInError"; }
-}
-
 // Confirmed live (2026-10-07): with poll.js now running fully unattended
 // (see betano-automation/README.md), "logged out" is the single most
 // likely failure mode on any given week -- login has never reliably
 // survived more than a day, let alone the week between normal weekly
-// runs, and nothing was ever checking for it explicitly. Without this,
-// a logged-out run just fails somewhere downstream with whatever
-// confusing error that produces (an empty betslip, a missing element),
-// leaving Winston to guess. Checked once, right after navigating to the
-// fixtures list, before anything else -- same DEPOSIT-vs-LOGIN signal
-// already used throughout this whole project's own manual recovery
-// procedure (BETANO_RECON.md section 9), just automated into an explicit,
-// unambiguous hard stop instead of a confusing downstream failure.
-// Deliberately does NOT attempt to log in automatically -- that's a
-// separate, bigger decision (typing/clicking through a real login flow
-// unattended) that hasn't been made yet.
-async function assertLoggedIn(page) {
-  const loginButton = page.getByRole("button", { name: "LOGIN" });
-  const visible = await loginButton.isVisible().catch(() => false);
-  if (visible) throw new NotLoggedInError();
+// runs. Thrown only when automatic recovery itself isn't possible or
+// doesn't work -- see ensureLoggedIn()/attemptAutoLogin() below for why.
+class LoginRequiresManualHelpError extends Error {
+  constructor(detail) { super(`Login recovery needs Winston directly -- ${detail}. Never typing or guessing at credentials automatically, same hard line as a Cloudflare challenge (see BETANO_RECON.md section 9's own "hard line" note).`); this.name = "LoginRequiresManualHelpError"; }
+}
+
+// Automated login recovery -- confirmed safe and fully documented live
+// (BETANO_RECON.md section 9): Chrome's own saved-credential autofill
+// does the actual work here. This only ever clicks pre-filled buttons --
+// it never types a credential, and it never reads what either field's
+// value actually IS, only whether one exists (a boolean length check
+// evaluated inside the browser context, never returned to or logged by
+// this process). Confirmed live: an accessibility-tree snapshot of the
+// password field exposes its real plaintext value regardless of visual
+// masking -- that's exactly how a real password once ended up in a
+// session transcript -- so this deliberately never snapshots that field,
+// only ever addresses it by role+name directly.
+//
+// If the form doesn't arrive fully pre-filled (no saved credentials, a
+// 2FA prompt, a "confirm it's you" challenge, anything unusual), this
+// hard-stops immediately rather than guessing or waiting to see what
+// happens -- same hard line as a Cloudflare challenge, needs Winston
+// directly.
+async function attemptAutoLogin(page) {
+  await dismissMarketingPopup(page, "attemptAutoLogin: before clicking LOGIN");
+  await dismissSessionTimer(page, "attemptAutoLogin: before clicking LOGIN");
+  await page.getByRole("button", { name: "LOGIN" }).click();
+  const frame = page.frameLocator("#iframe-modal iframe[src*='myaccount/login']");
+  const usernameBox = frame.getByRole("textbox", { name: "username" });
+  const passwordBox = frame.getByRole("textbox", { name: "Password" });
+  await usernameBox.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+  const usernameFilled = await usernameBox.evaluate((el) => el.value.length > 0).catch(() => false);
+  const passwordFilled = await passwordBox.evaluate((el) => el.value.length > 0).catch(() => false);
+  if (!usernameFilled || !passwordFilled) {
+    throw new LoginRequiresManualHelpError("the login form appeared without both fields pre-filled by saved credentials");
+  }
+  await frame.getByRole("button", { name: "submit" }).click();
+  // Confirmed live (BETANO_RECON.md section 9): an immediate post-click
+  // state read races false, catching the page mid-hydration before auth
+  // has actually resolved -- a short wait first, then re-navigate and
+  // re-check, not a bespoke race-prone check.
+  await page.waitForTimeout(2000);
+  await gotoFixturesList(page);
+  const stillLoggedOut = await page.getByRole("button", { name: "LOGIN" }).isVisible().catch(() => false);
+  if (stillLoggedOut) throw new LoginRequiresManualHelpError("submitted the pre-filled form, but the profile still shows logged out afterward");
+}
+
+// Checked once, right after navigating to the fixtures list, before
+// anything else. A no-op (returns immediately) if already logged in --
+// only attempts recovery when the LOGIN button is actually showing.
+async function ensureLoggedIn(page) {
+  const loggedOut = await page.getByRole("button", { name: "LOGIN" }).isVisible().catch(() => false);
+  if (!loggedOut) return;
+  console.log(`[betano-driver] Not logged in -- attempting automatic recovery via saved-credential autofill.`);
+  await attemptAutoLogin(page);
+  console.log(`[betano-driver] Automatic login recovery succeeded.`);
 }
 
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -1239,11 +1276,13 @@ async function main() {
     await dismissMarketingPopup(page, "main: after gotoFixturesList");
     await dismissSessionTimer(page, "main: after gotoFixturesList");
     // Checked once, right here, before anything else -- see
-    // assertLoggedIn's own comment for why this matters most now that
+    // ensureLoggedIn's own comment for why this matters most now that
     // poll.js runs this fully unattended, every week, with nobody around
     // to notice a stale login before it's already failed confusingly
-    // downstream.
-    await assertLoggedIn(page);
+    // downstream. Attempts automatic recovery itself first (saved-
+    // credential autofill only, never typing/guessing) -- only reaches
+    // Winston as a hard stop if that doesn't work.
+    await ensureLoggedIn(page);
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;

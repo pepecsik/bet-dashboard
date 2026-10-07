@@ -156,6 +156,31 @@ function assertNotChallenged(page) {
   if (/captcha|challenge|cf-|turnstile/i.test(url)) throw new CloudflareChallengeError(url);
 }
 
+class NotLoggedInError extends Error {
+  constructor() { super(`The betano profile is NOT logged in -- the LOGIN button is showing instead of DEPOSIT/balance. No bet was built or placed. Someone needs to log back in (standard autofill recovery, see BETANO_RECON.md section 9) before this job can run.`); this.name = "NotLoggedInError"; }
+}
+
+// Confirmed live (2026-10-07): with poll.js now running fully unattended
+// (see betano-automation/README.md), "logged out" is the single most
+// likely failure mode on any given week -- login has never reliably
+// survived more than a day, let alone the week between normal weekly
+// runs, and nothing was ever checking for it explicitly. Without this,
+// a logged-out run just fails somewhere downstream with whatever
+// confusing error that produces (an empty betslip, a missing element),
+// leaving Winston to guess. Checked once, right after navigating to the
+// fixtures list, before anything else -- same DEPOSIT-vs-LOGIN signal
+// already used throughout this whole project's own manual recovery
+// procedure (BETANO_RECON.md section 9), just automated into an explicit,
+// unambiguous hard stop instead of a confusing downstream failure.
+// Deliberately does NOT attempt to log in automatically -- that's a
+// separate, bigger decision (typing/clicking through a real login flow
+// unattended) that hasn't been made yet.
+async function assertLoggedIn(page) {
+  const loginButton = page.getByRole("button", { name: "LOGIN" });
+  const visible = await loginButton.isVisible().catch(() => false);
+  if (visible) throw new NotLoggedInError();
+}
+
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
 // Confirmed live (2026-09-23): waitUntil: "networkidle" never resolves on
@@ -1213,6 +1238,12 @@ async function main() {
     await gotoFixturesList(page);
     await dismissMarketingPopup(page, "main: after gotoFixturesList");
     await dismissSessionTimer(page, "main: after gotoFixturesList");
+    // Checked once, right here, before anything else -- see
+    // assertLoggedIn's own comment for why this matters most now that
+    // poll.js runs this fully unattended, every week, with nobody around
+    // to notice a stale login before it's already failed confusingly
+    // downstream.
+    await assertLoggedIn(page);
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;

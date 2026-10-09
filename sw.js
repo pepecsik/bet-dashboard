@@ -1,9 +1,9 @@
 // sw.js — Juice Bets service worker
-// Bumped to v7 for the Sjaak-as-4th-player changes (index.html/admin.html)
-// -- a stale v6 cache would otherwise keep serving the old 3-player logic
-// (broken podiums, the old "who are you" modal, etc.) to anyone who already
-// installed the app.
-const CACHE_NAME = 'juicebets-v7';
+// Bumped to v8 now that sjaak.png actually exists on disk -- v7 deliberately
+// left it out of SHELL (cache.addAll() below fails ENTIRELY if even one URL
+// 404s), so anyone who installed v7 never cached it. Bumping again forces
+// everyone onto a fresh cache that includes it.
+const CACHE_NAME = 'juicebets-v8';
 
 // App shell — same-origin assets we always want available offline
 const SHELL = [
@@ -13,12 +13,7 @@ const SHELL = [
   '/bet-dashboard/snackbar.png',
   '/bet-dashboard/timbo.png',
   '/bet-dashboard/pepe.png',
-  // sjaak.png deliberately NOT added yet -- the file doesn't exist on disk
-  // yet (Winston's own call: avatar comes next week), and cache.addAll()
-  // below fails ENTIRELY if even one URL in this list 404s, which would
-  // break offline caching for everyone, not just leave Sjaak avatar-less.
-  // Add '/bet-dashboard/sjaak.png' here (and bump CACHE_NAME again) once
-  // the real image file actually exists.
+  '/bet-dashboard/sjaak.png',
   '/bet-dashboard/apple-touch-icon.png',
   '/bet-dashboard/header-logo.png',
   '/bet-dashboard/favicon.ico',

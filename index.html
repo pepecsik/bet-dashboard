@@ -2328,10 +2328,7 @@ img[alt="AVI"] {
       </div>
       <div class="player-col" id="col-Sjaak">
         <div class="player-card" id="card-Sjaak" onclick="selectPlayer('Sjaak')">
-          <!-- No avatar image yet (Winston's own call, 2026-10) -- plain
-               text for now. Swap to <img src="./sjaak.png" class="player-avatar">
-               once the real avatar exists, same as the other three. -->
-          <div class="player-name-text">Sjaak</div>
+          <img src="./sjaak.png" class="player-avatar">
         </div>
         <div class="betfair-lock-btn" id="betfair-btn-Sjaak" onclick="event.stopPropagation(); lockBetfairBets('Sjaak')">Place bets<br>on Betfair</div>
       </div>
@@ -2475,13 +2472,8 @@ const API_URL="https://script.google.com/macros/s/AKfycbwyH6V8PAyglEdBCOyGgVRhrV
 // silently broke on anyone not in their own local copy (one fell back to
 // showing Pepe's avatar for an unrecognized name; podiums only ever drew
 // the top 3). Every one of those call sites now reads from here instead.
-// PLAYER_AVATARS deliberately has no Sjaak entry yet -- Winston's own
-// call: show his name as plain text for now, add a real avatar image next
-// week. Every PLAYER_AVATARS[name] lookup below already falls back to
-// rendering the name as text when no entry exists; adding sjaak.png here
-// later is the only change needed to give him an avatar.
 const PLAYERS = ['Snackbar', 'Timbo', 'Pepe', 'Sjaak'];
-const PLAYER_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+const PLAYER_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png', Sjaak: './sjaak.png' };
 const PLAYER_COLORS = { Snackbar: '#4ade80', Timbo: '#4DA3FF', Pepe: '#FF5BC4', Sjaak: '#FFB020' };
 
 // Renders a player's avatar <img>, or a plain-text fallback (same box,
@@ -6562,9 +6554,7 @@ function openCombosModal() {
         for (let i = 0; i <= idx; i++) {
             if (headers[i] && headers[i].name.trim() === rawName) count++;
         }
-        let imgUrl = './pepe.png';
-        if (rawName.toLowerCase() === 'snackbar') imgUrl = './snackbar.png';
-        if (rawName.toLowerCase() === 'timbo')    imgUrl = './timbo.png';
+        const imgUrl = PLAYER_AVATARS[rawName] || './pepe.png';
         return { img: imgUrl, num: count };
     };
 

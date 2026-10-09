@@ -765,12 +765,7 @@ function saveWeeklyPaid(btn) {
 /* ===== SCOREBOARD TAB ===== */
 
 const SB_PLAYERS = ['Snackbar', 'Timbo', 'Pepe', 'Sjaak'];
-// No Sjaak entry yet, same as index.html's PLAYER_AVATARS -- Winston's
-// own call: plain text for now, a real avatar image comes later.
-const SB_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
-// <img> for a player with an avatar, or nothing (just the name text
-// alongside it, already shown everywhere this is used) for one without --
-// avoids a broken-image icon for Sjaak until sjaak.png exists.
+const SB_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png', Sjaak: './sjaak.png' };
 function sbAvatarImg(p, cls) { return SB_AVATARS[p] ? `<img src="${SB_AVATARS[p]}" class="${cls || ''}">` : ''; }
 // Same green/red hex lists the main page uses to read the sheet's own
 // conditional-formatting colors, so a bet counts as "correct" here exactly

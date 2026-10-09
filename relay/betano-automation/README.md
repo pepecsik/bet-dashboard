@@ -276,6 +276,22 @@ this is running** -- it's now fully redundant, and leaving both running
 risks two things racing to notice the same job (harmless given the
 relay's own queue exclusivity, but pure waste).
 
+**Also auto-restarts the betano browser profile if it's down.** Confirmed
+live (2026-10-09): the browser process itself can just stop running
+during the week between normal runs (a genuine `ECONNREFUSED`, not a
+login issue) -- same "nobody's watching to notice" risk as login, which
+got the same treatment. Right before any build attempt, `poll.js` runs
+`openclaw browser start --browser-profile betano --json` (confirmed
+idempotent -- a safe no-op if already running) and reads the real
+`cdpPort` back from its JSON output rather than trusting a hardcoded
+default, passing it to `driver.js` as `BETANO_CDP_URL`. If that command
+can't confirm `running`/`cdpReady`, `poll.js` skips the build attempt for
+that tick (retries next poll) and sends one direct Telegram alert, capped
+at once every 5 minutes so a genuinely stuck browser doesn't spam every
+30s tick. Set `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` in `poll.js`'s own
+environment for this (same vars `driver.js` already uses for its own
+direct notifies) -- silently skipped if unset.
+
 Set `STOP_AFTER_FIRST_BET=1` to report the job as fully done right after
 bet 1 is approved, instead of auto-continuing to build bet 2 in the same
 run -- for validating bet 1's full loop end to end on its own before

@@ -348,7 +348,8 @@ POST /betfair-place-request
 `(writeSheetOnTest)` right after `(test mode)` in its first log line) --
 nothing else changes about how you run it. When each bet is approved, its
 real `sheetColIdx` (from Code.gs's own DASHBOARD headers -- D18/E18 =
-Snackbar bet 1/2, F18/G18 = Timbo bet 1/2, H18/I18 = Pepe bet 1/2) and its
+Snackbar bet 1/2, F18/G18 = Timbo bet 1/2, H18/I18 = Pepe bet 1/2, J18/K18
+= Sjaak bet 1/2, added 2026-10) and its
 real `potentialReturn` get written for real via `adminSetWinValue`, same
 as the admin panel's manual WIN entry already does.
 

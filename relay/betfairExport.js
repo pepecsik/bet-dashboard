@@ -1,4 +1,5 @@
-// Translates this week's 6 accumulator bets (one per header/column, each
+// Translates this week's accumulator bets (one per header/column, however
+// many that is -- 2 per player, dynamic headers, no fixed count -- each
 // covering every tracked match as a leg -- see the user's own description:
 // one £2 stake per column, all matches in it need to be right) into
 // Betfair's own market/selection wording. This is the structured task

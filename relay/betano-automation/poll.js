@@ -28,13 +28,19 @@
 // caffeinate/TeamViewer already keep the Mac itself awake -- see this
 // file's own README "Setup" section for how to launch it persistently.
 
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import path from "node:path";
+
+const execFileAsync = promisify(execFile);
 
 const RELAY_URL = process.env.RELAY_URL || "https://bet-dashboard-relay.onrender.com";
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || "30000", 10);
 const DRIVER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "driver.js");
+const BROWSER_PROFILE = process.env.BETANO_BROWSER_PROFILE || "betano";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
 
 // Tracks only what THIS process itself spawned -- a cheap optimization to
 // avoid a wasted spawn attempt while a build is already running, not a
@@ -45,6 +51,68 @@ const DRIVER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "dri
 // would just find nothing left to claim and exit harmlessly, exactly like
 // a manually-invoked one would.
 let driverRunning = false;
+
+// Confirmed live (2026-10-09): the betano Chrome profile itself can just
+// stop running during the week between normal runs (not a login issue --
+// a genuine ECONNREFUSED on the CDP port), same "nobody's watching to
+// notice" risk class as the login problem this file already fixed once.
+// `openclaw browser start --browser-profile <name> --json` is confirmed
+// idempotent (a no-op if already running) and reports real status --
+// always called right before a build attempt, not just when something's
+// already detected as down, per OpenClaw's own live-verified guidance.
+// Returns the confirmed real CDP URL to use (reading cdpPort back rather
+// than trusting a hardcoded default, since it's drifted before on a full
+// profile re-registration), or null if the browser genuinely couldn't be
+// confirmed running/ready -- callers must not proceed to spawn driver.js
+// against a URL this didn't actually confirm.
+async function ensureBrowserRunning() {
+  let stdout;
+  try {
+    const result = await execFileAsync("openclaw", ["browser", "start", "--browser-profile", BROWSER_PROFILE, "--json"], { timeout: 20000 });
+    stdout = result.stdout;
+  } catch (err) {
+    console.error(`[poll] "openclaw browser start" failed:`, err.message);
+    return null;
+  }
+  let status;
+  try {
+    status = JSON.parse(stdout);
+  } catch (err) {
+    console.error(`[poll] "openclaw browser start" returned unparseable output:`, stdout.slice(0, 500));
+    return null;
+  }
+  // Checking the real JSON fields, not trusting the command's own exit
+  // code alone -- same "verify substantively" discipline as everywhere
+  // else in this project.
+  if (!status.running || !status.cdpReady || !status.cdpPort) {
+    console.error(`[poll] Browser start reported not ready:`, JSON.stringify(status));
+    return null;
+  }
+  return `http://127.0.0.1:${status.cdpPort}`;
+}
+
+// Capped to avoid spamming Telegram every single 30s tick while the
+// browser genuinely can't be started -- one alert is useful, sixty
+// identical ones in half an hour are not.
+const BROWSER_FAILURE_NOTIFY_COOLDOWN_MS = 5 * 60 * 1000;
+let lastBrowserFailureNotifyAt = 0;
+
+async function notifyBrowserStartFailureDirect() {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const now = Date.now();
+  if (now - lastBrowserFailureNotifyAt < BROWSER_FAILURE_NOTIFY_COOLDOWN_MS) return;
+  lastBrowserFailureNotifyAt = now;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: `⚠️ A bet is queued, but the betano browser couldn't be started automatically. Needs someone to check it manually.` }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(JSON.stringify(data));
+  } catch (err) {
+    console.error(`[poll] Browser-start-failure Telegram notify failed:`, err.message);
+  }
+}
 
 async function pollOnce() {
   if (driverRunning) return;
@@ -60,9 +128,16 @@ async function pollOnce() {
   const hasPending = (data.queue || []).some((r) => r.status === "pending");
   if (!hasPending) return;
 
-  console.log(`[poll] Pending job found -- launching driver.js.`);
+  const cdpUrl = await ensureBrowserRunning();
+  if (!cdpUrl) {
+    console.error(`[poll] Browser could not be confirmed running -- skipping this tick, will retry next poll.`);
+    await notifyBrowserStartFailureDirect();
+    return;
+  }
+
+  console.log(`[poll] Pending job found -- launching driver.js (CDP: ${cdpUrl}).`);
   driverRunning = true;
-  const child = spawn("node", [DRIVER_PATH], { stdio: "inherit", env: process.env });
+  const child = spawn("node", [DRIVER_PATH], { stdio: "inherit", env: { ...process.env, BETANO_CDP_URL: cdpUrl } });
   child.on("exit", (code) => {
     console.log(`[poll] driver.js exited with code ${code}.`);
     driverRunning = false;

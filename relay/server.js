@@ -226,7 +226,9 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(computeFullState(), null, 2));
     return;
   }
-  // This week's 6 bets translated into Betfair market/selection wording --
+  // This week's bets (2 per player, dynamic headers -- whatever the Sheet
+  // currently has, no fixed count) translated into Betfair market/selection
+  // wording --
   // the task input an external automation agent (or a human) needs to
   // build the accumulator on Betfair's Sportsbook. Same openness reasoning
   // as /bets-debug and /snapshot: it's just a differently-shaped view of

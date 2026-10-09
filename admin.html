@@ -230,7 +230,7 @@
 
   /* Balance tab -- one card per BALANCE sheet row: group columns (Paid/
      Earned/Balance, each with its PP figure) as a 3-stat row, and the
-     individual Snackbar/Timbo/Pepe WIN columns as an avatar strip below. */
+     individual per-player WIN columns as an avatar strip below. */
   .bal-subhead { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
   .season-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 14px 12px; margin-bottom: 12px; }
   .season-name { font-size: 13px; font-weight: 800; margin-bottom: 12px; }
@@ -418,7 +418,7 @@
            own anymore. -->
       <div class="bf-paid-row">
         <span class="bf-paid-label">Paid this week &pound;</span>
-        <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="weeklyPaidInput" placeholder="12">
+        <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="weeklyPaidInput" placeholder="16">
         <button class="bf-paid-save" id="weeklyPaidSave" onclick="saveWeeklyPaid(this)">Add</button>
       </div>
 
@@ -434,7 +434,7 @@
 
         <div class="step-card">
           <div class="step-title">2. Clear Bets</div>
-          <div class="step-desc">Clears everyone's picks: cells B3:E22 on the Snackbar, Timbo and Pepe sheets.</div>
+          <div class="step-desc">Clears everyone's picks: cells B3:E22 on the Snackbar, Timbo, Pepe and Sjaak sheets.</div>
           <button class="action" id="btnClearBets" onclick="runClearBets()">Clear Bets</button>
           <div class="status-msg" id="msgClearBets" style="display:none;"></div>
         </div>
@@ -591,7 +591,7 @@ function runClearAndSetDate() {
 }
 
 function runClearBets() {
-  if (!confirm('Are you sure? This clears B3:E22 on the Snackbar, Timbo and Pepe sheets — every current pick.')) return;
+  if (!confirm('Are you sure? This clears B3:E22 on the Snackbar, Timbo, Pepe and Sjaak sheets — every current pick.')) return;
 
   const btn = document.getElementById('btnClearBets');
   btn.disabled = true; btn.textContent = 'Working...';
@@ -641,7 +641,7 @@ function runUpdateAllData() {
 // activity), and while that's exactly right for the live app, it made this
 // entry grid's columns jump around while filling in bets. Instead this
 // re-sorts a local copy by `idx` (the actual, never-changing DASHBOARD
-// sheet column: D=Snackbar, E=Snackbar, F=Timbo, G=Timbo, H=Pepe, I=Pepe),
+// sheet column: D/E=Snackbar, F/G=Timbo, H/I=Pepe, J/K=Sjaak),
 // so left-to-right here always matches the Sheet's own static layout. Only
 // affects this admin grid -- index.html's own rendering is untouched.
 function renderBetsGrid(data) {
@@ -764,8 +764,14 @@ function saveWeeklyPaid(btn) {
 
 /* ===== SCOREBOARD TAB ===== */
 
-const SB_PLAYERS = ['Snackbar', 'Timbo', 'Pepe'];
+const SB_PLAYERS = ['Snackbar', 'Timbo', 'Pepe', 'Sjaak'];
+// No Sjaak entry yet, same as index.html's PLAYER_AVATARS -- Winston's
+// own call: plain text for now, a real avatar image comes later.
 const SB_AVATARS = { Snackbar: './snackbar.png', Timbo: './timbo.png', Pepe: './pepe.png' };
+// <img> for a player with an avatar, or nothing (just the name text
+// alongside it, already shown everywhere this is used) for one without --
+// avoids a broken-image icon for Sjaak until sjaak.png exists.
+function sbAvatarImg(p, cls) { return SB_AVATARS[p] ? `<img src="${SB_AVATARS[p]}" class="${cls || ''}">` : ''; }
 // Same green/red hex lists the main page uses to read the sheet's own
 // conditional-formatting colors, so a bet counts as "correct" here exactly
 // when it would show green on the main dashboard.
@@ -833,7 +839,7 @@ function renderSummaryStrip(summary) {
     const moneyCls = r.money > 0 ? 'mw-summary-money won' : 'mw-summary-money';
     return `
       <div class="mw-summary-col">
-        <img src="${SB_AVATARS[p]}" class="mw-summary-avatar">
+        ${sbAvatarImg(p, 'mw-summary-avatar')}
         <div class="mw-summary-name">${p}</div>
         <div class="mw-summary-pts">${r.points} pts</div>
         <div class="${moneyCls}">£${r.money.toFixed(2)}</div>
@@ -849,7 +855,7 @@ function renderMatchGrid(matches) {
   const header = `
     <div class="mw-grid-header">
       <div class="mw-col-match"></div>
-      ${SB_PLAYERS.map(p => `<div class="mw-col-player"><img src="${SB_AVATARS[p]}">${p}</div>`).join('')}
+      ${SB_PLAYERS.map(p => `<div class="mw-col-player">${sbAvatarImg(p)}${p}</div>`).join('')}
     </div>`;
 
   if (!matches.length) return header + '<div class="placeholder">No matches yet.</div>';
@@ -1017,7 +1023,7 @@ function runSaveMatchweek() {
 /* ===== BALANCE TAB ===== */
 // Mirrors the BALANCE sheet: group columns A:G (Paid/Earned/Balance, each
 // with a per-person figure) as a 3-stat row per season, and the individual
-// Snackbar/Timbo/Pepe WIN columns (I:K) as an avatar strip underneath. The
+// per-player WIN columns (I:K, now also L for Sjaak) as an avatar strip underneath. The
 // Total row becomes its own card pinned at the top; the season rows below
 // it are shown newest first (reverse of the sheet's chronological order).
 function balStatClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
@@ -1053,7 +1059,7 @@ function renderBalanceCard(entry, extraClass) {
       <div class="win-strip">
         ${SB_PLAYERS.map(p => `
           <div class="win-item">
-            <img src="${SB_AVATARS[p]}" class="win-avatar">
+            ${sbAvatarImg(p, 'win-avatar')}
             <div class="win-name">${p}</div>
             <div class="win-amt ${balWinClass(entry.win[p])}">${balFmt(entry.win[p])}</div>
           </div>`).join('')}

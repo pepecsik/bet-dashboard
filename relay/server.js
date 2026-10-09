@@ -443,7 +443,18 @@ const server = http.createServer((req, res) => {
           }
         }
       }
-      betfairQueue = completeRequest(betfairQueue, player);
+      // Confirmed live (2026-10-10): a real job's bet 1 placed for real
+      // and reported here, but bet 2 then hard-stopped before the job
+      // ever called this route a second (final) time -- since this used
+      // to ALWAYS clear the queue claim, and driver.js only ever called
+      // this once at the very end of a job, bet 1's real placement never
+      // actually got reported at all (results was empty until the whole
+      // job finished). driver.js now calls this once per bet, immediately
+      // after each placement -- completeJob (default true, so any older
+      // caller keeps today's behavior) lets it clear the claim only on
+      // the bet that's actually last, not on every intermediate report.
+      const completeJob = body.completeJob !== false;
+      if (completeJob) betfairQueue = completeRequest(betfairQueue, player);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "success", test, outcomes }));
     });

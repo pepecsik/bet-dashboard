@@ -747,6 +747,22 @@ async function placeRealBet(page, player, label, stake) {
     lastSeen = await getAccountBalance(page).catch(() => lastSeen);
     if (Math.abs(lastSeen - expectedAfter) < 0.01) {
       console.log(`[betano-driver] ${label}: REAL PLACEMENT VERIFIED for ${player} -- balance went €${balanceBefore} -> €${lastSeen}, matches stake €${stake}.`);
+      // Confirmed live (2026-10-10), the first real placement anyone's
+      // ever watched succeed: Betano replaces the betslip panel with a
+      // "Your bet has been placed successfully" confirmation (bet
+      // summary, potential winnings, KEEP/CLOSE buttons) instead of just
+      // clearing itself. Nothing here ever accounted for it before now --
+      // left sitting open, it's the likely cause of a real bet 2 hard
+      // stop ("betslip still not empty after 3 attempts"), since
+      // clearBetslip() has no idea this panel exists or how to dismiss
+      // it. Best-effort, not a hard requirement: clearBetslip()'s own
+      // retry-then-hard-stop is still the real safety net if this click
+      // doesn't land for any reason (a changed label, timing, etc.) --
+      // never want a failure here to mask a genuinely successful real
+      // placement behind a confusing secondary error.
+      await page.getByRole("button", { name: "CLOSE" }).click({ timeout: 5000 }).catch((err) => {
+        console.error(`[betano-driver] ${label}: couldn't dismiss the post-placement confirmation panel (non-fatal, clearBetslip's own retry/hard-stop is the real safety net):`, err.message);
+      });
       return;
     }
   }
@@ -1193,18 +1209,28 @@ async function pollForDecision(player, page, { intervalMs = 20000, logEveryMs = 
   }
 }
 
-// results: [{sheetColIdx, winAmount}] -- the real per-bet Potential Return
-// figures accumulated in main() as each bet gets approved, one entry per
-// approved bet in this job (could be just bet 1, if bet 2 was rejected or
-// STOP_AFTER_FIRST_BET cut the job short). writeSheetOnTest is only ever
-// true when the job itself was explicitly queued with it set (see
-// betfairQueue.js's addRequest()) -- passing it through here is what lets
-// server.js write these into the real Sheet even though test is also true,
-// for that one deliberate test rather than every test run.
-async function reportPlaced(player, test, results, writeSheetOnTest) {
+// Confirmed live (2026-10-10): this used to be called ONCE, batched, only
+// after the whole job's last bet -- a real job's bet 1 placed for real,
+// then bet 2 hard-stopped before that single end-of-job call ever
+// happened, so bet 1's real result never got reported to the Sheet at
+// all, even though real money had genuinely been placed. Now called once
+// per bet, immediately after each one's own placement, so an early bet's
+// result is never held hostage by a later bet's failure.
+//
+// results: a single-bet [{sheetColIdx, winAmount}] array (always length
+// 1 now -- the per-bet call site below builds it fresh each time, not
+// accumulated across bets). writeSheetOnTest is only ever true when the
+// job itself was explicitly queued with it set (see betfairQueue.js's
+// addRequest()) -- passing it through here is what lets server.js write
+// this into the real Sheet even though test is also true, for that one
+// deliberate test rather than every test run. completeJob (default true)
+// must be false for every bet except the genuinely last one in the job --
+// true clears the queue claim, which would wrongly end the job early if
+// called after bet 1 while bet 2 still needs building.
+async function reportPlaced(player, test, results, writeSheetOnTest, completeJob = true) {
   const res = await fetch(`${RELAY_URL}/betfair-place-result`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player, test, writeSheetOnTest, results }),
+    body: JSON.stringify({ player, test, writeSheetOnTest, results, completeJob }),
   });
   if (!res.ok) throw new Error(`betfair-place-result ${res.status}`);
   // Confirmed live (2026-09-28): this response body -- server.js's own
@@ -1233,13 +1259,6 @@ async function main() {
   console.log(`[betano-driver] Claimed job for ${player}${test ? " (test mode)" : ""}${writeSheetOnTest ? " (writeSheetOnTest)" : ""} -- ${bets.length} bet(s) to build.`);
 
   const { withAiFallback, entries: fallbackLog } = makeFallbackLog();
-  // Accumulates one {sheetColIdx, winAmount} entry per bet actually
-  // approved in this job -- exactly what reportPlaced() sends on to
-  // server.js's /betfair-place-result. sheetColIdx comes straight from
-  // exportedBet (Code.gs's own real DASHBOARD column for this player/bet
-  // slot, e.g. D18/E18 for Snackbar's bet 1/2), not guessed or hardcoded
-  // here.
-  const results = [];
   // Declared here, assigned inside the try block below -- referenced in
   // both catch (page.url()/screenshot) and finally (page.close()), which
   // both need to handle it still being undefined if the browser connection
@@ -1377,15 +1396,16 @@ async function main() {
         await notifyRealPlacementDirect(player, i + 1);
         console.log(`[betano-driver] ${label} approved and REALLY PLACED for ${player}.`);
       }
-      results.push({ sheetColIdx: exportedBet.sheetColIdx, winAmount: potentialReturn });
-
       const isLastBet = i === bets.length - 1;
       const stopEarly = test && STOP_AFTER_FIRST_BET && i === 0 && !isLastBet;
-      if (isLastBet || stopEarly) {
-        if (stopEarly) console.log(`[betano-driver] STOP_AFTER_FIRST_BET set -- reporting ${player} done after bet 1 only, not building bet 2 this run.`);
-        await reportPlaced(player, test, results, writeSheetOnTest);
-        break;
-      }
+      if (stopEarly) console.log(`[betano-driver] STOP_AFTER_FIRST_BET set -- reporting ${player} done after bet 1 only, not building bet 2 this run.`);
+      // Reported immediately, per bet -- not batched until the job's
+      // last bet (see reportPlaced()'s own comment for why that used to
+      // lose an earlier bet's real result if a later bet hard-stopped).
+      // completeJob only true on the bet that's genuinely ending the job
+      // here -- false would wrongly clear the queue claim mid-job.
+      await reportPlaced(player, test, [{ sheetColIdx: exportedBet.sheetColIdx, winAmount: potentialReturn }], writeSheetOnTest, isLastBet || stopEarly);
+      if (isLastBet || stopEarly) break;
     }
   } catch (err) {
     console.error(`[betano-driver] Hard stop for ${player}:`, err.message);

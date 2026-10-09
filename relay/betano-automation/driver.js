@@ -361,7 +361,20 @@ function selectionAppearsIn(snapshot, selection) {
 // signal each time instead of a single silent click. Hard stops if it
 // still isn't empty after that -- building bet 2 on top of bet 1's
 // leftover legs is worse than stopping and asking for help.
-async function clearBetslip(page) {
+// stagehand/fallbackLog are optional -- when omitted, behaves exactly as
+// before (3 deterministic attempts, then hard-stop). When provided, adds
+// ONE narrow AI-assisted attempt after the deterministic retries exhaust,
+// before ever hard-stopping -- same "logged, verified, last resort" shape
+// as withAiFallback's own leg-picking fallback, not a general safety net.
+// Added 2026-10-10: a real bet 2 was lost specifically because a NEW,
+// never-before-seen confirmation panel (see placeRealBet's own comment)
+// blocked clearBetslip's deterministic click, and nothing could dismiss
+// something it had no selector for. An AI fallback, scoped to exactly
+// "find and dismiss whatever's blocking this," is a reasonable answer to
+// that specific class of problem -- an unknown, one-off UI element --
+// without turning this into open-ended AI-driven exploration anywhere
+// else in the file.
+async function clearBetslip(page, stagehand, fallbackLog) {
   const snapshot = await betslipSnapshot(page);
   if (!snapshot || /^<error/.test(snapshot)) return; // no betslip container at all yet -- nothing to clear
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -397,6 +410,33 @@ async function clearBetslip(page) {
     }
     console.warn(`[betano-driver] clearBetslip attempt ${attempt}: betslip still present after clearing (container count before=${beforeCount}, after=${afterCount})`);
   }
+
+  // Last resort before hard-stopping -- narrow, logged, verified, exactly
+  // the withAiFallback pattern used for leg-picking. Never trusts the AI's
+  // own claim of success: re-checks the container count deterministically
+  // (polled, not a single read) before deciding whether this actually
+  // worked.
+  if (stagehand) {
+    console.warn(`[betano-driver] clearBetslip: 3 deterministic attempts exhausted -- trying one AI-assisted dismiss before giving up.`);
+    try {
+      const before = { ...stagehand.metrics };
+      await stagehand.page.act("Close or dismiss any confirmation panel, popup, or overlay that might be blocking the betslip's 'Remove selections' button -- for example a 'bet placed successfully' panel with a CLOSE button. Then click 'Remove selections' to clear the betslip if it's not already empty.");
+      const after = { ...stagehand.metrics };
+      if (fallbackLog) fallbackLog.push({ description: "clearBetslip AI-assisted dismiss", at: new Date().toISOString(), metricsBefore: before, metricsAfter: after, metrics: metricsDelta(before, after) });
+    } catch (err) {
+      console.warn(`[betano-driver] clearBetslip: AI-assisted dismiss attempt itself failed -- ${err.message}`);
+    }
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      if ((await page.locator(".bet-slip-container").count()) === 0) {
+        console.log(`[betano-driver] clearBetslip: AI-assisted dismiss resolved it -- betslip genuinely clear now.`);
+        return;
+      }
+      await page.waitForTimeout(150);
+    }
+    console.warn(`[betano-driver] clearBetslip: AI-assisted dismiss did not resolve it either.`);
+  }
+
   // Diagnostic added 2026-09-24: live investigation ruled out .first()
   // targeting the wrong button, popup interception, AND (on the first
   // real occurrence of this exact diagnostic) DOM duplication (1
@@ -406,7 +446,7 @@ async function clearBetslip(page) {
   // comes next.
   const containerCount = await page.locator(".bet-slip-container").count();
   console.error(`[betano-driver] clearBetslip diagnostic: ${containerCount} .bet-slip-container element(s) found in the DOM at hard-stop time (page URL: ${page.url()}).`);
-  throw new Error(`clearBetslip: betslip still not empty after 3 attempts (${containerCount} .bet-slip-container element(s) found) -- refusing to build bet on top of it`);
+  throw new Error(`clearBetslip: betslip still not empty after 3 attempts${stagehand ? " plus an AI-assisted dismiss" : ""} (${containerCount} .bet-slip-container element(s) found) -- refusing to build bet on top of it`);
 }
 
 // Scans the EPL fixtures list once and returns a map keyed by "Home vs Away"
@@ -1310,14 +1350,19 @@ async function main() {
         console.log(`[betano-driver] ${label}: ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
       }
 
-      await clearBetslip(page);
-
       // Stagehand rebuilt fresh per bet, not once for the whole job --
       // confirmed live on Betfair's build: its CDP session didn't survive
       // sitting idle through pollForDecision's real multi-minute wait.
+      // Created before clearBetslip now (used to come after) so
+      // clearBetslip can use the same narrow AI-fallback pattern as leg
+      // building, for exactly the kind of thing that stranded bet 2 once
+      // already -- an unexpected panel/popup blocking the clear button
+      // that deterministic retries alone can't dismiss.
       const stagehand = new Stagehand({ env: "LOCAL", modelName: "openai/gpt-5-mini", localBrowserLaunchOptions: { cdpUrl: CDP_URL } });
       await stagehand.init();
       await stagehand.stagehandContext.getStagehandPage(page);
+
+      await clearBetslip(page, stagehand, fallbackLog);
 
       const { potentialReturn, combinedOdds } = await buildBetOnBetano(page, stagehand, plan, withAiFallback);
       // Root-caused, confirmed live (2026-09-24) via an independent

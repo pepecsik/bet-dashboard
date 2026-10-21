@@ -46,7 +46,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
 // avoid a wasted spawn attempt while a build is already running, not a
 // safety mechanism. The real safety against a double-claim is already the
 // relay's own queue exclusivity (getNext() refuses a second claim while
-// anything is claimed/awaiting-confirmation, regardless of who's asking) --
+// anything is already claimed, regardless of who's asking) --
 // even if this check were somehow wrong, a second driver.js invocation
 // would just find nothing left to claim and exit harmlessly, exactly like
 // a manually-invoked one would.

@@ -1,7 +1,10 @@
 // Drives a real Betano bet build for whichever player is next in the
 // relay's placement queue -- BOTH of their bets (Bet 1 then Bet 2, this
-// product's actual two-bet-per-player structure), waiting for Winston's
-// approval in the app between each one. Uses the ordered plan from
+// product's actual two-bet-per-player structure). Builds each bet, sends
+// Winston a Telegram screenshot for his records, then places it for real
+// immediately -- no approval step (removed 2026-10-21, Winston's own
+// explicit decision, after two clean matchweeks running the manual
+// Approve/Reject flow). Uses the ordered plan from
 // ../betanoPlan.js and the page structure documented in
 // ../BETANO_RECON.md. Runs on the Mac, invoked as `node driver.js` -- no
 // player arg, it claims /betfair-place-request/next the same way the
@@ -105,29 +108,36 @@ class CloudflareChallengeError extends Error {
 class SameMatchConflictError extends Error {
   constructor(matches) { super(`Same match appears in multiple legs: ${matches.join(", ")} -- refusing to build a same-match combo`); this.name = "SameMatchConflictError"; }
 }
+// Added 2026-10-21 alongside removing the Approve/Reject step: before, an
+// unparseable pick (plan.skipped) just got quietly left out of the
+// accumulator and logged, since Winston's approval tap was the (imperfect,
+// never actually showing `skipped` on the card) backstop. With nothing
+// reviewing the bet before it's placed for real, silently placing a
+// same-stake bet missing a leg nobody asked for is worse than refusing to
+// build it at all -- hard-stop instead, same as any other build failure.
+class UnparseableLegError extends Error {
+  constructor(label, skipped) {
+    super(`${label}: ${skipped.length} leg(s) could not be translated to a Betano market and would have been silently dropped -- refusing to place a partial bet: ${JSON.stringify(skipped)}`);
+    this.name = "UnparseableLegError";
+  }
+}
 // Confirmed live (2026-09-28): a real overnight long-delay test's process
-// vanished entirely sometime during pollForDecision's idle wait -- gone
-// from `ps`, no macOS crash report, nothing in the unified system log, no
-// uncaught exception ever reached main()'s own try/catch (which would have
-// hit the hard-stop path and left a trace). The Mac itself never slept
-// (caffeinate confirmed). The leading suspect: Node's default behavior
-// since v15 is to terminate the whole process on ANY unhandled promise
-// rejection -- and Stagehand/Playwright's own CDP connection maintains
-// listeners outside driver.js's own promise chain (reconnect logic,
-// websocket events) that could reject asynchronously during a multi-hour
-// idle sit, with nothing in this file ever able to catch it since it's not
-// awaited anywhere here. Logging and continuing, rather than letting Node's
-// default behavior silently kill an otherwise-healthy run, is the right
-// tradeoff specifically for the idle-wait window this targets -- driver.js
-// holds no fragile in-progress state at that point (the betslip is already
-// built and reported; all that's left is polling for a decision), so
-// surviving an unrelated background rejection is strictly better than
-// losing the whole run with zero trace. Also makes any future silent-crash
-// class of bug at least leave a line in whatever captures this process's
-// stdout -- confirm OpenClaw is redirecting driver.js's output to a
-// durable file (not just its own ephemeral process-tool session buffer,
-// confirmed 2026-09-28 to not survive past that crash) for this to
-// actually help.
+// vanished entirely sometime during what was then pollForDecision's
+// multi-hour idle wait -- gone from `ps`, no macOS crash report, nothing in
+// the unified system log, no uncaught exception ever reached main()'s own
+// try/catch (which would have hit the hard-stop path and left a trace). The
+// Mac itself never slept (caffeinate confirmed). The leading suspect: Node's
+// default behavior since v15 is to terminate the whole process on ANY
+// unhandled promise rejection -- and Stagehand/Playwright's own CDP
+// connection maintains listeners outside driver.js's own promise chain
+// (reconnect logic, websocket events) that could reject asynchronously
+// during a long idle sit, with nothing in this file ever able to catch it
+// since it's not awaited anywhere here. The specific multi-hour wait this
+// was found during no longer exists (approval polling was removed
+// 2026-10-21 -- a run now goes straight from build to real placement, no
+// idle period at all), but the handler stays: any future silent-crash class
+// of bug still benefits from at least leaving a line in whatever captures
+// this process's stdout, and there's no cost to keeping it.
 process.on("unhandledRejection", (reason) => {
   console.error(`[betano-driver] UNHANDLED REJECTION -- would have silently killed the process under Node's default behavior. Logging and continuing:`, reason);
 });
@@ -930,38 +940,27 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
   }
 }
 
-// Same direct-send reasoning as notifyHardStopDirect above, applied to the
-// NORMAL awaiting-confirmation hand-off. Confirmed live (2026-09-28): a
-// real overnight run exposed a gap OpenClaw's relay didn't cover --
-// acca's own agent turn only relays Telegram messages while it's actively
-// watching; it ended right after launching the job (having relayed bet 1's
-// hand-off), and when bet 2 built and reported itself hours later, during
-// the long unattended pollForDecision wait bet 1's own approval unblocked,
-// nothing was left running to catch it. Winston approved bet 2 in the app
-// having never seen a Telegram message for it at all. Sends directly via
-// the Bot API here too, so every bet's hand-off reaches Telegram
-// regardless of whether any particular OpenClaw session turn happens to
-// still be alive at that exact moment. Runs ALONGSIDE OpenClaw's own
-// relay, not instead of it (PLACEMENT_MANUAL.md's Step 1 is unchanged) --
-// redundant when acca IS watching, but a duplicate message is a far
-// smaller problem than a missing one. Same never-throw discipline as
+// Same direct-send reasoning as notifyHardStopDirect above. Sent for every
+// bet right after it's built on Betano, FYI only -- as of 2026-10-21 there
+// is no approval step to wait for, this is purely Winston's own record of
+// what's about to be placed (and still arrives before the real BET NOW
+// click happens, same ordering as before). Same never-throw discipline as
 // notifyHardStopDirect: a failure here must never break the actual build
 // flow.
-async function notifyAwaitingConfirmationDirect(player, betNumber, stake, combinedOdds, potentialReturn, screenshotUrls) {
+async function notifyBetBuiltDirect(player, betNumber, stake, combinedOdds, potentialReturn, screenshotUrls) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.log(`[betano-driver] Direct Telegram notify (awaiting confirmation) skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
+    console.log(`[betano-driver] Direct Telegram notify (bet built) skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
     return;
   }
-  const caption = `✅ Bet ${betNumber} ready for ${player} -- stake €${stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}. Approve/reject in the app.`;
+  const caption = `🎯 Bet ${betNumber} built for ${player} -- stake €${stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}. Placing now.`;
   try {
     const urls = screenshotUrls && screenshotUrls.length ? screenshotUrls : [null];
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
       // Multiple legs-scrolled screenshots (see captureBetslipScreenshots)
-      // sent as separate messages, same as PLACEMENT_MANUAL.md instructs
-      // acca to do manually -- the full caption only on the first, a short
-      // part marker on the rest, so Winston isn't shown the same summary
-      // repeated once per screenshot.
+      // sent as separate messages -- the full caption only on the first, a
+      // short part marker on the rest, so Winston isn't shown the same
+      // summary repeated once per screenshot.
       const partSuffix = urls.length > 1 ? ` (screenshot ${i + 1}/${urls.length})` : "";
       const endpoint = url ? "sendPhoto" : "sendMessage";
       const body = url
@@ -973,9 +972,9 @@ async function notifyAwaitingConfirmationDirect(player, betNumber, stake, combin
       const data = await res.json();
       if (!data.ok) throw new Error(JSON.stringify(data));
     }
-    console.log(`[betano-driver] Direct Telegram notify (awaiting confirmation) sent for ${player} bet ${betNumber}.`);
+    console.log(`[betano-driver] Direct Telegram notify (bet built) sent for ${player} bet ${betNumber}.`);
   } catch (err) {
-    console.error(`[betano-driver] Direct Telegram notify (awaiting confirmation) failed:`, err.message);
+    console.error(`[betano-driver] Direct Telegram notify (bet built) failed:`, err.message);
   }
 }
 
@@ -1219,36 +1218,6 @@ async function claimNextJob() {
   return { player: data.job.player, test: data.job.test, writeSheetOnTest: !!data.job.writeSheetOnTest, bets };
 }
 
-async function postAwaitingConfirmation(player, pendingBet) {
-  const res = await fetch(`${RELAY_URL}/betfair-place-request/awaiting-confirmation`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player, bet: pendingBet }),
-  });
-  if (!res.ok) throw new Error(`awaiting-confirmation ${res.status}`);
-}
-
-// Checks/dismisses the session-timer popup on every poll cycle (every
-// intervalMs, 20s by default), not just on navigation -- confirmed live
-// (2026-09-24) this popup can appear with the browser tab otherwise
-// completely idle (nothing else touches `page` during this wait), which
-// is exactly this function's whole purpose, and a real countdown expiry
-// during exactly this kind of idle wait already caused a real logout
-// once. `page` is optional so this stays testable/usable without a
-// browser where it isn't needed.
-async function pollForDecision(player, page, { intervalMs = 20000, logEveryMs = 300000 } = {}) {
-  let lastLog = Date.now();
-  console.log(`[betano-driver] SCREENSHOT_READY handoff above -- now waiting for ${player}'s approval in the app.`);
-  for (;;) {
-    const res = await fetch(`${RELAY_URL}/betfair-place-request/decision?player=${encodeURIComponent(player)}`);
-    if (!res.ok) throw new Error(`betfair-place-request/decision ${res.status}`);
-    const data = await res.json();
-    if (data.decision) return data.decision;
-    if (Date.now() - lastLog > logEveryMs) { console.log(`[betano-driver] Still waiting on ${player}'s decision...`); lastLog = Date.now(); }
-    if (page) await dismissSessionTimer(page, "pollForDecision poll").catch(() => {});
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-}
-
 // Confirmed live (2026-10-10): this used to be called ONCE, batched, only
 // after the whole job's last bet -- a real job's bet 1 placed for real,
 // then bet 2 hard-stopped before that single end-of-job call ever
@@ -1346,13 +1315,13 @@ async function main() {
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;
       const plan = buildBetPlan(exportedBet);
-      if (plan.skipped.length) {
-        console.log(`[betano-driver] ${label}: ${plan.skipped.length} leg(s) skipped (needs manual check):`, plan.skipped);
-      }
+      if (plan.skipped.length) throw new UnparseableLegError(label, plan.skipped);
 
       // Stagehand rebuilt fresh per bet, not once for the whole job --
       // confirmed live on Betfair's build: its CDP session didn't survive
-      // sitting idle through pollForDecision's real multi-minute wait.
+      // sitting idle through a multi-minute wait (originally
+      // pollForDecision's approval wait; kept as the safer default even
+      // now that nothing waits that long between bets).
       // Created before clearBetslip now (used to come after) so
       // clearBetslip can use the same narrow AI-fallback pattern as leg
       // building, for exactly the kind of thing that stranded bet 2 once
@@ -1398,48 +1367,34 @@ async function main() {
       // screenshot, same as before when there was only ever one.
       const screenshotPaths = screenshots.map((s) => s.path);
       const screenshotUrls = screenshots.map((s) => s.url).filter(Boolean);
-      await postAwaitingConfirmation(player, {
-        stake: plan.stake, legs: plan.steps, skipped: plan.skipped, betNumber: i + 1, potentialReturn, combinedOdds,
-        screenshotPath: screenshots[0].path, screenshotUrl: screenshots[0].url,
-        screenshotPaths, screenshotUrls,
-      });
       // Explicit stdout line for stake/combined odds/potential return --
       // confirmed live (2026-09-28): Telegram hand-offs were always
       // reporting a potential return of 0, root-caused to this figure
-      // never actually being logged anywhere before now (it only ever
-      // lived inside the JSON body posted above). SCREENSHOT_URL already
-      // proved a plain stdout line is what reliably reaches the Telegram
-      // hand-off -- same pattern here, not a guess.
+      // never actually being logged anywhere before now. SCREENSHOT_URL
+      // already proved a plain stdout line is what reliably reaches the
+      // Telegram hand-off -- same pattern here, not a guess.
       console.log(`[betano-driver] ${label} summary: stake €${plan.stake} @ ${combinedOdds ?? "?"} -- potential return €${potentialReturn ?? "?"}`);
       // Safe to await directly -- never throws (see the function's own
-      // comment), same discipline as notifyHardStopDirect.
-      await notifyAwaitingConfirmationDirect(player, i + 1, plan.stake, combinedOdds, potentialReturn, screenshotUrls);
+      // comment), same discipline as notifyHardStopDirect. FYI only as of
+      // 2026-10-21 -- nothing waits on a reply to this anymore, see below.
+      await notifyBetBuiltDirect(player, i + 1, plan.stake, combinedOdds, potentialReturn, screenshotUrls);
       console.log(`[betano-driver] ${label} built and reported for ${player}.`);
 
-      const decision = await pollForDecision(player, page);
-      console.log(`[betano-driver] ${label} decision: ${decision}`);
-
-      if (decision === "reject") {
-        await clearJob(player);
-        console.log(`[betano-driver] ${player} rejected ${label} -- stopping here, not building any further bets for this job.`);
-        break;
-      }
-
       if (test) {
-        console.log(`[betano-driver] ${label} approved (test mode) -- simulating placement, not clicking BET NOW.`);
+        console.log(`[betano-driver] ${label} (test mode) -- simulating placement, not clicking BET NOW.`);
       } else {
-        // Re-verify immediately before the irreversible click -- time has
-        // passed since the original build/verify (pollForDecision has no
-        // timeout, a real decision can take hours), and the whole point of
-        // this check elsewhere in the file is that betslip state can't be
-        // assumed stable just because it was correct once already.
+        // Re-verify immediately before the irreversible click -- same
+        // discipline as always (betslip state can't be assumed stable just
+        // because it was correct a moment ago), now covering the time spent
+        // sending the Telegram notify above rather than a human's decision
+        // wait, but the check matters for exactly the same reason.
         await dismissMarketingPopup(page, "main: before REAL BET NOW click");
         await dismissSessionTimer(page, "main: before REAL BET NOW click");
         await verifyMultiple(page);
         await verifyBetslipMatchesPlan(page, plan);
         await placeRealBet(page, player, label, plan.stake);
         await notifyRealPlacementDirect(player, i + 1);
-        console.log(`[betano-driver] ${label} approved and REALLY PLACED for ${player}.`);
+        console.log(`[betano-driver] ${label} REALLY PLACED for ${player}.`);
       }
       const isLastBet = i === bets.length - 1;
       const stopEarly = test && STOP_AFTER_FIRST_BET && i === 0 && !isLastBet;

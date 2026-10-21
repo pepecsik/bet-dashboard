@@ -25,7 +25,7 @@ import { normalizeStatus } from "./normalizeStatus.js";
 import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
-import { addRequest, getNext, completeRequest, activePlayers, markAwaitingConfirmation, recordDecision, takeDecision, expireStaleClaims } from "./betfairQueue.js";
+import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -286,71 +286,6 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test, writeSheetOnTest: !!job.writeSheetOnTest }, bets }, null, 2));
     return;
   }
-  // acca calls this once it's sent Winston the per-bet confirmation
-  // question and is about to end its turn to wait for a decision (see
-  // PLACEMENT_MANUAL.md Step 5) -- moves that player's claim to
-  // "awaiting_confirmation" so it keeps blocking the queue (still "busy" in
-  // getNext()) but stops counting against the normal 15-minute stale-claim
-  // timer, since a real decision can reasonably take Winston minutes or
-  // hours. See markAwaitingConfirmation()'s comment for why this state has
-  // no expiry of its own.
-  //
-  // Optional `bet` in the body -- {betNumber, legs, stake, combinedOdds,
-  // potentialReturn} -- is what the admin panel's Approve/Reject buttons
-  // actually show; without it the queue panel still works, just with less
-  // detail (bare "awaiting reply" status, same as before this existed).
-  if (req.method === "POST" && req.url === "/betfair-place-request/awaiting-confirmation") {
-    readJsonBody(req, (body) => {
-      const player = body && body.player;
-      const bet = (body && body.bet) || null;
-      if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing player" })); return; }
-      // Matches markAwaitingConfirmation()'s own lookup -- also accepts an
-      // entry already at "awaiting_confirmation" so a correction (e.g. a
-      // leg found on a second search attempt) can be re-signaled without
-      // needing to abandon and re-queue the whole job. This 404 used to
-      // fire for exactly that real, live case.
-      const before = betfairQueue.find((r) => r.player === player && (r.status === "claimed" || r.status === "awaiting_confirmation"));
-      betfairQueue = markAwaitingConfirmation(betfairQueue, player, bet);
-      if (!before) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "No claimed or awaiting-confirmation request found for that player" })); return; }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "awaiting_confirmation", player }));
-    });
-    return;
-  }
-  // The admin panel's Approve/Reject buttons call this -- records Winston's
-  // decision on whichever bet is currently awaiting confirmation for that
-  // player. Doesn't place anything itself or touch the Sheet; it only sets
-  // a flag acca's poll picks up and acts on (see GET .../decision below).
-  if (req.method === "POST" && req.url === "/betfair-place-request/decision") {
-    readJsonBody(req, (body) => {
-      const player = body && body.player;
-      const decision = body && body.decision;
-      if (!player || (decision !== "approve" && decision !== "reject")) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Missing player or decision must be 'approve'/'reject'" }));
-        return;
-      }
-      const before = betfairQueue.find((r) => r.player === player && r.status === "awaiting_confirmation");
-      betfairQueue = recordDecision(betfairQueue, player, decision, Date.now());
-      if (!before) { res.writeHead(404, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "That player isn't currently awaiting confirmation" })); return; }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "recorded", player, decision }));
-    });
-    return;
-  }
-  // acca's poll checks this for whoever it's currently waiting on -- reads
-  // AND clears the decision atomically (same claim-on-read pattern as
-  // GET .../next), so it can never act on the same decision twice even if
-  // it happens to poll again before finishing whatever the first read
-  // triggered. `decision: null` means nobody's decided yet -- keep waiting.
-  if (req.method === "GET" && req.url.startsWith("/betfair-place-request/decision")) {
-    const player = new URL(req.url, "http://x").searchParams.get("player");
-    if (!player) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Missing ?player=" })); return; }
-    const decision = takeDecision(betfairQueue, player);
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ player, decision }));
-    return;
-  }
   // Which players currently have an active (pending or claimed) request --
   // what the app polls to hide an avatar that's mid-flow, ahead of the
   // Sheet's own WIN value eventually taking that job over permanently once
@@ -377,16 +312,16 @@ const server = http.createServer((req, res) => {
       queue: betfairQueue.map((r) => ({
         player: r.player, status: r.status, test: !!r.test,
         requestedAt: r.requestedAt, claimedAt: r.claimedAt,
-        pendingBet: r.pendingBet || null, decision: r.decision || null,
       })),
     }));
     return;
   }
   // Manual "unstick this" for the admin page -- same completeRequest() used
-  // by the normal Step 6 report-back, just callable directly instead of
-  // requiring a curl relayed through chat every time a job needs clearing
+  // by the normal report-back once a job finishes, just callable directly
+  // instead of requiring a curl relayed through chat every time a job needs
+  // clearing
   // (see the real incidents this was built in response to). Clears
-  // regardless of status (pending/claimed/awaiting_confirmation) -- there's
+  // regardless of status (pending/claimed) -- there's
   // nothing to "undo" here, it only ever removes the relay's own queue
   // entry, never anything already placed or written to the Sheet.
   if (req.method === "POST" && req.url === "/betfair-place-request/clear") {

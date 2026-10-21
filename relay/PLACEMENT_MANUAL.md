@@ -7,10 +7,20 @@ model in that loop at all (see `betano-automation/README.md`'s own
 section on why that changed -- the previous LLM-based cron job reading
 this manual every ~30s was the actual root cause of a whole week-plus of
 real bugs). `driver.js` itself now also sends its own Telegram hand-offs
-directly (`notifyAwaitingConfirmationDirect`/`notifyHardStopDirect`/
+directly (`notifyBetBuiltDirect`/`notifyHardStopDirect`/
 `notifyRealPlacementDirect`), so most of what this doc originally existed
 to tell an agent to do by hand is now just... what the code already does
 on its own.
+
+**As of 2026-10-21, there is no approval step at all.** Winston's own
+explicit decision, after two clean matchweeks running the manual
+Approve/Reject flow: `driver.js` now builds a bet, sends the screenshot to
+Telegram for the record, and places it for real immediately -- nobody
+taps anything in the app first. The `/betfair-place-request/
+awaiting-confirmation` and `/betfair-place-request/decision` endpoints, the
+`awaiting_confirmation` queue state, and the admin app's Approve/Reject
+buttons are all gone; don't reference them, they no longer exist anywhere
+in the code.
 
 This doc's remaining job: a reference for a **human** doing a deliberate
 manual test, or for OpenClaw helping debug a hard-stop Winston's flagged --
@@ -20,14 +30,15 @@ this because a cron job told you to, stop and re-read
 you're very likely the exact problem this update was written to prevent.
 
 For OpenClaw's `acca` agent: what to actually do around a `driver.js` run,
-beyond just executing it -- the Telegram hand-off and decision wait that
-`driver.js` itself has no capability to do. Revives the pattern of the
-retired Betfair-era `PLACEMENT_MANUAL.md`/`DRIVER_MANUAL.md` (both
-referenced by name in `betfairQueue.js`/`server.js`'s own comments, deleted
-during the Betfair cleanup, rewritten here for Betano), scoped down for
-right now per Winston's own ask: **prove bet 1's full loop end to end
-before bringing bet 2 back in** -- exactly where the Betfair build got
-stuck (bet 1 worked, bet 2 never got fully unstuck).
+beyond just executing it -- mainly relaying the Telegram screenshot hand-off
+and (per Step 2 below) verifying the outcome. There is no decision to wait
+on anymore. Revives the pattern of the retired Betfair-era
+`PLACEMENT_MANUAL.md`/`DRIVER_MANUAL.md` (both referenced by name in
+`betfairQueue.js`/`server.js`'s own comments, deleted during the Betfair
+cleanup, rewritten here for Betano), scoped down for right now per
+Winston's own ask: **prove bet 1's full loop end to end before bringing
+bet 2 back in** -- exactly where the Betfair build got stuck (bet 1
+worked, bet 2 never got fully unstuck).
 
 ## Relay base URL
 
@@ -82,17 +93,16 @@ elsewhere in this file (the caching investigation above) was a one-off,
 out-of-band diagnostic action taken deliberately to isolate a bug --
 **never a step to repeat or pattern-match onto during normal operation.**
 
-## NEVER post a decision on Winston's behalf
+## There is no decision endpoint anymore
 
-`POST /betfair-place-request/decision` (approve/reject) is exclusively
-Winston's own action, taken through the app. Confirmed live (2026-10-02):
-an agent, confused mid-tick after the `/next` mistake above, attempted to
-POST a `"reject"` decision on a job directly, apparently trying to "clean
-up" what it thought was a stuck state. The relay's own validation happened
-to block it (the job wasn't actually `awaiting_confirmation` at that
-moment), so nothing was actually rejected this time -- but that's luck,
-not a safeguard to rely on. Never call this endpoint for any reason other
-than relaying a decision Winston has already made.
+Historical note, not current operation: `POST /betfair-place-request/
+decision` and `GET /betfair-place-request/decision` used to exist for
+Winston's own Approve/Reject in the app. Both were deleted 2026-10-21 along
+with `awaiting-confirmation` and the `awaiting_confirmation` queue state --
+`driver.js` now places every bet immediately after building it, no decision
+to wait on or relay. If you're reading an old transcript or an outdated
+cached copy of this doc that still references these, it's stale; the
+endpoints return 404 now.
 
 ## Before running
 
@@ -114,8 +124,8 @@ for a test run to be set up.
    more than once). See `BETANO_RECON.md` section 9 for the recovery
    procedure if it's logged out.
 2. Check `/betfair-place-request/queue` -- `getNext()` returns nothing if
-   *anything* is already claimed/awaiting-confirmation, not just for the
-   player you're testing. Clear a stale entry first if there is one.
+   *anything* is already claimed, not just for the player you're testing.
+   Clear a stale entry first if there is one.
 3. **(Human-initiated manual test only -- never for an automated poll
    tick, see above.)** Queue a fresh job if the queue's empty:
    `POST /betfair-place-request` with `{"player": "<name>", "test": true}`.
@@ -157,7 +167,7 @@ agent turn dies at the wrong moment, this is the only thing that still
 notifies Winston at all.
 
 `STOP_AFTER_FIRST_BET=1` is deliberate, for right now: the driver reports
-the job fully done after bet 1 is approved instead of auto-continuing to
+the job fully done after bet 1 is placed instead of auto-continuing to
 build bet 2 in the same run. Drop it once bet 1's full loop (below) has
 been proven clean and we're ready to bring bet 2 back in -- see
 `betano-automation/README.md` for what it does exactly.
@@ -191,21 +201,19 @@ the exec truncation ceiling at once. Give the message tool this URL
 directly (whatever its own remote-URL delivery mechanism is), not a local
 path or a buffer.
 
-## Step 1 -- the screenshot hand-off
+## Step 1 -- the screenshot hand-off (FYI only, nothing to wait on)
 
-**As of 2026-09-28, `driver.js` also sends this hand-off directly to
-Telegram itself** (via `notifyAwaitingConfirmationDirect`, same
-TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID env vars as the existing hard-stop
-notify) -- root-caused, confirmed live: a real run's bet 2 built and
-reported itself hours into an unattended overnight wait, after acca's own
-agent turn had already ended (having relayed bet 1's hand-off and then
-stopped watching). Winston never got a Telegram message for bet 2 at all --
-he had to approve it in the app blind. This still doesn't replace your own
-relaying below -- keep doing it, a duplicate message is a far smaller
-problem than a missing one, and driver.js's direct send has no way to add
-context you might have (nor does it replace Step 3's report-back) -- but it
-does mean Winston should now get SOME Telegram message for every bet
-regardless of whether your own turn is still alive to catch it.
+**`driver.js` sends this hand-off directly to Telegram itself** (via
+`notifyBetBuiltDirect`, same TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID env vars as
+the existing hard-stop notify) -- added so Winston gets a real record of
+every bet regardless of whether any particular OpenClaw session turn
+happens to still be alive at that exact moment. As of 2026-10-21 this is
+purely informational: `driver.js` does not wait for anything after sending
+it, it goes straight into building the next step (real placement, or the
+test-mode equivalent). This still doesn't replace your own relaying below
+if you're actively watching -- keep doing it, a duplicate message is a far
+smaller problem than a missing one -- but there's no approval it's gating
+anymore.
 
 Watch the driver's own log output for one or more `SCREENSHOT_URL` lines
 -- a long accumulator can produce more than one, confirmed live
@@ -234,45 +242,31 @@ number, stake, and the potential return.
 
 **Root-caused, confirmed live (2026-09-28): every prior Telegram caption
 reported the potential return as 0**, because that figure was never
-actually logged anywhere before now -- it only ever lived inside the JSON
-body posted to `/betfair-place-request/awaiting-confirmation`, which
-nothing was reading. `driver.js` now logs it directly, right after
-`SCREENSHOT_URL`, in the same plain-stdout-line pattern that's already
-proven to reach the Telegram hand-off reliably (unlike the JSON body):
+actually logged anywhere before now. `driver.js` now logs it directly,
+right after `SCREENSHOT_URL`, in the same plain-stdout-line pattern that's
+already proven to reach the Telegram hand-off reliably:
 
 ```
 [betano-driver] bet1 summary: stake €2 @ 3.68 -- potential return €7.36
 ```
 
-Use these numbers for the caption -- don't reconstruct them from the JSON
-response. `@ <odds>` is standard betting shorthand for "at these combined
-odds," not a placeholder -- if it ever reads `@ ?` instead of a real
-number, that means `extractCombinedOdds()` failed to parse the betslip's
-own combo label (a real parse miss, not expected in normal operation) --
-flag it back to Winston rather than treating it as routine. The app now
-shows this same combined-odds figure too (`pendingBet.combinedOdds`, per
-`admin.html`'s `renderPendingBet`), so the Telegram message and the app
-should always agree; the app itself also shows every screenshot inline via
-`pendingBet.screenshotUrls`, and clicking any screenshot in the app now
-enlarges it (previously view-only at a small fixed size).
-Winston should be able to look at the Telegram messages and the app's
-Approve/Reject screen and see the same real bet, every leg included, in
-both places -- not just a bare "check the app" prompt, and not a
-partial view that's missing legs scrolled out of frame.
+Use these numbers for the caption -- don't guess at them. `@ <odds>` is
+standard betting shorthand for "at these combined odds," not a placeholder
+-- if it ever reads `@ ?` instead of a real number, that means
+`extractCombinedOdds()` failed to parse the betslip's own combo label (a
+real parse miss, not expected in normal operation) -- flag it back to
+Winston rather than treating it as routine.
 
 If a hard stop happens instead (`HARDSTOP_SCREENSHOT_READY:`/
 `HARDSTOP_SCREENSHOT_URL:` in the log), send that URL too, with the actual
 error message from the log -- don't let Winston find out some other way
-that a run failed.
+that a run failed. (This includes `UnparseableLegError`, added 2026-10-21:
+`driver.js` now hard-stops instead of placing a bet if any leg couldn't be
+translated to a Betano market, rather than silently dropping it from the
+accumulator -- with no approval step left to catch that kind of thing,
+refusing to place a partial bet is the safer default.)
 
-## Step 2 -- wait for the decision
-
-`driver.js` polls `/betfair-place-request/decision` on its own (every
-20s, heartbeat logged every 5 minutes) -- nothing for you to do here but
-wait for Winston to press Approve or Reject in the app. No timeout on this
-wait by design; a real decision can reasonably take minutes or hours.
-
-## Step 3 -- report back
+## Step 2 -- report back
 
 Once the driver exits (0 = success, 1 = hard stop), report the outcome
 plainly: what happened, matching the driver's own log, not a summary that
@@ -281,15 +275,17 @@ project -- verify against the real state (the app's queue, the actual
 screenshot file, the live page if anything looks off), don't just relay
 the log as ground truth. `verifyBetslipMatchesPlan` (added 2026-09-24)
 already catches a mismatch between what the driver thinks it built and
-what's actually on screen before it ever reports `awaiting_confirmation`
--- but if anything about the outcome doesn't fully add up, check the real
-page yourself before calling it clean, the same way that verification step
-itself was born from someone doing exactly that.
+what's actually on screen, checked twice: right after building, and again
+immediately before the real BET NOW click -- but if anything about the
+outcome doesn't fully add up, check the real page yourself before calling
+it clean, the same way that verification step itself was born from
+someone doing exactly that.
 
 ## Real placement (non-test jobs)
 
-`driver.js` now actually clicks the real BET NOW button on an approved,
-non-test job -- see `placeRealBet()`. **One thing MUST be confirmed live
+`driver.js` clicks the real BET NOW button immediately after building and
+verifying each bet on a non-test job -- see `placeRealBet()`. **One thing
+MUST be confirmed live
 before this is ever run for real**: `BALANCE_SELECTOR` (currently a
 placeholder, `[data-test-id='balance']`, UNVERIFIED) must point at the
 real account-balance element in the top nav (shown next to DEPOSIT once
@@ -321,10 +317,9 @@ message (no screenshot) straight from `driver.js` itself --
 deliberately all he asked for; no further confirmation needed from you on
 top of it.
 
-The admin app's Approve/Reject card now also shows an explicit real-money
-warning banner for any non-test entry, right above the buttons -- same
-point-of-no-return reasoning as the "check twice" modal the "Place bets"
-button already had before a job is even queued.
+The one remaining human checkpoint in the whole flow is the "check twice"
+modal the app's "Place bets" button shows *before* a job is even queued --
+nothing after that point waits on anyone.
 
 ## Testing the Google Sheet write-back (`writeSheetOnTest`)
 
@@ -346,7 +341,7 @@ POST /betfair-place-request
 
 `driver.js` picks this up automatically from the claimed job (logged as
 `(writeSheetOnTest)` right after `(test mode)` in its first log line) --
-nothing else changes about how you run it. When each bet is approved, its
+nothing else changes about how you run it. As each bet is simulated, its
 real `sheetColIdx` (from Code.gs's own DASHBOARD headers -- D18/E18 =
 Snackbar bet 1/2, F18/G18 = Timbo bet 1/2, H18/I18 = Pepe bet 1/2, J18/K18
 = Sjaak bet 1/2, added 2026-10) and its

@@ -311,7 +311,6 @@
   .queue-status-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
   .queue-status-pending { background: rgba(255,255,255,0.1); color: #b79ecf; }
   .queue-status-claimed { background: rgba(255,209,102,0.18); color: #ffd166; }
-  .queue-status-awaiting_confirmation { background: rgba(255,40,130,0.18); color: #ff7ac6; }
   .queue-row-right { display: flex; align-items: center; gap: 8px; }
   .queue-clear-btn {
     padding: 7px 12px; border-radius: 8px; border: none; background: rgba(239,68,68,0.18);
@@ -320,36 +319,6 @@
   }
   .queue-clear-btn:disabled { opacity: 0.35; cursor: default; }
   .queue-refresh-btn { margin-top: 12px; }
-  .queue-bet-card { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
-  .queue-bet-title { font-size: 10px; font-weight: 800; color: #b79ecf; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
-  .queue-bet-screenshot { display: block; width: 100%; max-width: 320px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in; }
-  .screenshot-lightbox-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    align-items: center; justify-content: center; z-index: 1100; padding: 20px;
-    cursor: zoom-out;
-  }
-  .screenshot-lightbox-overlay.active { display: flex; }
-  .screenshot-lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-  .queue-leg { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); line-height: 1.4; }
-  .queue-leg:last-of-type { border-bottom: none; }
-  .queue-leg b { white-space: nowrap; }
-  .queue-bet-summary { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
-  .queue-real-money-warning {
-    background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px;
-    padding: 8px 10px; margin-top: 10px; font-size: 11px; font-weight: 800; color: #ff6b6b;
-    text-transform: uppercase; letter-spacing: 0.3px; text-align: center;
-  }
-  .queue-decision-row { display: flex; gap: 8px; margin-top: 10px; }
-  .queue-approve-btn, .queue-reject-btn {
-    flex: 1; padding: 9px; border-radius: 8px; border: none; font-weight: 800; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer;
-  }
-  .queue-approve-btn { background: linear-gradient(135deg, #00e676, #00b359); color: #06210f; }
-  .queue-reject-btn { background: rgba(239,68,68,0.18); color: #ff6b6b; }
-  .queue-approve-btn:disabled, .queue-reject-btn:disabled { opacity: 0.5; cursor: default; }
-  .queue-decided-msg { margin-top: 10px; font-size: 11px; font-weight: 800; text-align: center; padding: 8px; border-radius: 8px; }
-  .queue-decided-msg.approve { background: rgba(0,255,133,0.12); color: #00ff85; }
-  .queue-decided-msg.reject { background: rgba(255,77,77,0.12); color: #ff4d4d; }
 </style>
 </head>
 <body>
@@ -369,10 +338,6 @@
       <div id="autoSteps"></div>
       <button class="action" id="autoCloseBtn" style="display:none;" onclick="closeAutoModal()">Close</button>
     </div>
-  </div>
-
-  <div class="screenshot-lightbox-overlay" id="screenshotLightbox" onclick="closeScreenshotLightbox()">
-    <img id="screenshotLightboxImg" src="" alt="Betslip screenshot, enlarged">
   </div>
 
   <div class="email-preview-overlay" id="emailPreviewModal">
@@ -1092,80 +1057,7 @@ function fmtAgo(ms) {
   return Math.floor(hrs / 24) + 'd ago';
 }
 
-const QUEUE_STATUS_LABEL = { pending: 'Pending', claimed: 'Building', awaiting_confirmation: 'Awaiting reply' };
-
-// A leg's own text is trusted data from acca (via the relay), not user
-// input -- same trust boundary as everything else this admin page already
-// renders straight from the Sheet/relay (bet picks, ledger rows, etc).
-function renderPendingBet(q) {
-  const bet = q.pendingBet;
-  // Confirmed live (2026-09-24): the driver's screenshot never had a real
-  // way to reach the app before this -- screenshotPath is a local file
-  // path on the Mac driver.js runs on, useless to a browser. screenshotUrl
-  // (added the same day) is a real URL served by this same relay. Omitted
-  // entirely, not a broken-image placeholder, on an older/test entry that
-  // predates this field or hit the best-effort upload failing.
-  //
-  // screenshotUrls (plural, added 2026-09-25): a long accumulator's
-  // betslip can scroll internally (confirmed live -- a real 9-leg bet
-  // only showed 7 legs in a single screenshot, since the betslip panel
-  // is position:fixed and bounded by the real viewport), so driver.js can
-  // now report more than one screenshot per bet. Falls back to the
-  // singular screenshotUrl for any older/test entry that predates this.
-  const screenshotUrls = Array.isArray(bet.screenshotUrls) && bet.screenshotUrls.length ? bet.screenshotUrls : (bet.screenshotUrl ? [bet.screenshotUrl] : []);
-  const screenshotHtml = screenshotUrls.map((url, i) =>
-    `<img class="queue-bet-screenshot" src="${url}" alt="Bet ${bet.betNumber || ''} betslip screenshot${screenshotUrls.length > 1 ? ` (${i + 1}/${screenshotUrls.length})` : ''}" loading="lazy" onclick="openScreenshotLightbox('${url}')">`
-  ).join('');
-  const legsHtml = (bet.legs || []).map(l => `
-    <div class="queue-leg">
-      ${l.selection || ''} <span style="opacity:0.6;">&mdash; ${l.market || ''}${l.match ? ' (' + l.match + ')' : ''}</span>
-      ${l.odds ? ' <b>' + l.odds + '</b>' : ''}
-    </div>`).join('');
-  const returnAmt = Number(bet.potentialReturn || 0).toFixed(2);
-  const summaryHtml = `
-    <div class="queue-bet-summary">
-      <span>Stake &pound;${bet.stake ?? '?'} @ ${bet.combinedOdds || '?'}</span>
-      <span>Returns &pound;${returnAmt}</span>
-    </div>`;
-
-  // Real-money warning right at the actual point of no return -- added
-  // once driver.js started actually clicking BET NOW on a real approval
-  // (not just test mode). The initial "Place bets" confirm modal already
-  // warns before a job is even queued, but by the time Winston is looking
-  // at THIS card, that warning is long gone from view -- this is the last
-  // thing he sees before pressing Approve on a real bet, so it needs its
-  // own unmistakable warning right here, not just upstream.
-  const realMoneyWarningHtml = q.test ? '' : `<div class="queue-real-money-warning">⚠️ Real money — approving places this bet for real</div>`;
-
-  // A decision's already been sent but acca hasn't consumed/acted on it yet
-  // (takeDecision() only clears it once acca's own poll reads it) -- show
-  // that plainly instead of the buttons again, so a slow poll cycle doesn't
-  // look like the click did nothing and invite a confusing double-press.
-  if (q.decision) {
-    const label = q.decision === 'approve' ? 'Approved — waiting for acca to act on it' : 'Rejected — waiting for acca to act on it';
-    return `
-      <div class="queue-bet-card">
-        <div class="queue-bet-title">Bet ${bet.betNumber || ''}</div>
-        ${screenshotHtml}
-        ${legsHtml}
-        ${summaryHtml}
-        <div class="queue-decided-msg ${q.decision}">${label}</div>
-      </div>`;
-  }
-
-  return `
-    <div class="queue-bet-card">
-      <div class="queue-bet-title">Bet ${bet.betNumber || ''} &mdash; awaiting your decision</div>
-      ${screenshotHtml}
-      ${legsHtml}
-      ${summaryHtml}
-      ${realMoneyWarningHtml}
-      <div class="queue-decision-row">
-        <button class="queue-approve-btn" onclick="decideQueueEntry('${q.player}', 'approve', this)">Approve</button>
-        <button class="queue-reject-btn" onclick="decideQueueEntry('${q.player}', 'reject', this)">Reject</button>
-      </div>
-    </div>`;
-}
+const QUEUE_STATUS_LABEL = { pending: 'Pending', claimed: 'Building & placing' };
 
 function renderQueuePanel(queue) {
   if (!queue.length) return '<div class="placeholder">Queue is empty — nothing pending.</div>';
@@ -1174,50 +1066,12 @@ function renderQueuePanel(queue) {
       <div style="flex:1;">
         <div class="queue-player">${q.player}${q.test ? ' <span class="queue-test-tag">Test</span>' : ''}</div>
         <div class="queue-meta">Requested ${fmtAgo(q.requestedAt)}${q.claimedAt ? ' &middot; Claimed ' + fmtAgo(q.claimedAt) : ''}</div>
-        ${q.pendingBet ? renderPendingBet(q) : ''}
       </div>
       <div class="queue-row-right">
         <span class="queue-status-badge queue-status-${q.status}">${QUEUE_STATUS_LABEL[q.status] || q.status}</span>
         <button class="queue-clear-btn" onclick="clearQueueEntry('${q.player}', this)">Clear</button>
       </div>
     </div>`).join('');
-}
-
-// Approve/Reject from the app -- this is the whole point of the queue panel
-// existing: acca stops waiting on a Telegram reply and instead polls
-// GET .../decision for whatever gets recorded here. Doesn't place anything
-// itself; it only sets the flag acca's own poll picks up and acts on.
-// Click-to-enlarge for betslip screenshots -- the inline queue-bet-screenshot
-// images are capped at 320px wide to keep the queue panel usable, too small
-// to actually read a long accumulator's legs. Same overlay pattern as the
-// existing auto-modal-overlay elsewhere on this page.
-function openScreenshotLightbox(url) {
-  document.getElementById('screenshotLightboxImg').src = url;
-  document.getElementById('screenshotLightbox').classList.add('active');
-}
-function closeScreenshotLightbox() {
-  document.getElementById('screenshotLightbox').classList.remove('active');
-  document.getElementById('screenshotLightboxImg').src = '';
-}
-
-function decideQueueEntry(player, decision, btn) {
-  const row = btn.closest('.queue-row');
-  row.querySelectorAll('.queue-approve-btn, .queue-reject-btn').forEach(b => { b.disabled = true; });
-  btn.textContent = '...';
-  fetch(RELAY_URL + '/betfair-place-request/decision', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ player: player, decision: decision }),
-  }).then(r => r.json())
-    .then(res => {
-      if (res.status !== 'recorded') throw new Error(res.error || 'Failed to record decision');
-      loadQueuePanel();
-    })
-    .catch(err => {
-      row.querySelectorAll('.queue-approve-btn, .queue-reject-btn').forEach(b => { b.disabled = false; });
-      alert('Request failed -- try again: ' + err.message);
-      loadQueuePanel();
-    });
 }
 
 // The gray-until-connected button: starts disabled in the HTML itself, and

@@ -988,13 +988,13 @@ function runSaveMatchweek() {
 // it are shown newest first (reverse of the sheet's chronological order).
 function balStatClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
 function balWinClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero'); }
-// Still £ by default -- the Betano deposit ledger (renderBetfair below)
-// calls this with no symbol and keeps showing £, untouched. The Balance
-// season cards below pass € explicitly: every row in BALANCE is
-// euro-denominated now, including past seasons, since Winston converted
-// their pound figures to euro-equivalent directly in the Sheet (2026-10).
+// Defaults to € -- every caller is euro-denominated now. The Betano
+// deposit ledger (renderBetfair below) relies on this default; the
+// Balance season cards pass € explicitly. Both BALANCE and BETFAIR had
+// their old pound figures converted to euro-equivalent directly in the
+// Sheet (2026-10), same as HALL_OF_FAME/SEASON_HISTORY.
 function balFmt(n, symbol) {
-  const sym = symbol || '£';
+  const sym = symbol || '€';
   const v = Number(n) || 0;
   const formatted = Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (v < 0 ? '-' : '') + sym + formatted;

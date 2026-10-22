@@ -247,7 +247,7 @@ right after `SCREENSHOT_URL`, in the same plain-stdout-line pattern that's
 already proven to reach the Telegram hand-off reliably:
 
 ```
-[betano-driver] bet1 summary: stake €2 @ 3.68 -- potential return €7.36
+[betano-driver] bet1 summary: stake €3 @ 3.68 -- potential return €11.04
 ```
 
 Use these numbers for the caption -- don't guess at them. `@ <odds>` is

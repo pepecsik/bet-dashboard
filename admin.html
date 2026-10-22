@@ -355,7 +355,7 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="tabBtnBetfair" onclick="switchTab('betfair')">Betfair</button>
+    <button class="tab-btn active" id="tabBtnBetfair" onclick="switchTab('betfair')">Betano</button>
     <button class="tab-btn" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
     <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
     <button class="tab-btn" id="tabBtnBalance" onclick="switchTab('balance')">Balance</button>
@@ -363,11 +363,11 @@
 
   <main>
     <div class="tab-pane active" id="paneBetfair">
-      <div class="mw-section-title">Betfair Placement Queue</div>
+      <div class="mw-section-title">Betano Placement Queue</div>
       <div id="queuePanelContent"><div class="placeholder">Connecting…</div></div>
       <button class="action queue-refresh-btn" id="queueRefreshBtn" onclick="loadQueuePanel()" disabled>Checking connection…</button>
 
-      <div class="mw-section-title" style="margin-top:24px;">Betfair Ledger</div>
+      <div class="mw-section-title" style="margin-top:24px;">Betano Ledger</div>
       <div id="betfairContent"><div class="placeholder">Loading…</div></div>
     </div>
 
@@ -598,7 +598,7 @@ function runUpdateAllData() {
 // not the fixed 2-per-player SCOREBOARD_COLS the Scoreboard tab uses, since
 // a matchweek can carry extra/special bet columns beyond the regular 2).
 // Each card lists that column's picks the same way the Scoreboard grid
-// does, then a WIN (£) figure the admin can type in and save -- writes
+// does, then a WIN (€) figure the admin can type in and save -- writes
 // straight into DASHBOARD row 18 at that column via adminSetWinValue.
 //
 // Deliberately does NOT use data.headers' own order here -- that's the
@@ -644,7 +644,7 @@ function renderBetsGrid(data) {
     return `<div class="bets-g-cell bets-g-label" title="${m.match}">${m.match}</div>${cells}`;
   }).join('');
 
-  const winInputRow = `<div class="bets-g-cell bets-g-label">WIN £</div>` +
+  const winInputRow = `<div class="bets-g-cell bets-g-label">WIN €</div>` +
     sortedEntries.map(({ h, i }) => {
       const currentWin = (winCells[i] && winCells[i].value) || 0;
       return `<div class="bets-g-cell bets-g-win"><input type="number" inputmode="decimal" step="0.01" class="bets-win-input" id="winInput_${h.idx}" value="${currentWin}"></div>`;
@@ -802,7 +802,7 @@ function renderSummaryStrip(summary) {
         ${sbAvatarImg(p, 'mw-summary-avatar')}
         <div class="mw-summary-name">${p}</div>
         <div class="mw-summary-pts">${r.points} pts</div>
-        <div class="${moneyCls}">£${r.money.toFixed(2)}</div>
+        <div class="${moneyCls}">€${r.money.toFixed(2)}</div>
       </div>`;
   }).join('');
   return `<div class="mw-summary">${cols}</div>`;
@@ -911,7 +911,7 @@ function renderMatchweekDetail(row, editing) {
   }
 
   const rows = SB_PLAYERS.map(p => `
-    <div class="mw-row"><span class="mw-player">${p}</span><span>${h[p].points} pts</span><span>£${h[p].money.toFixed(2)}</span></div>
+    <div class="mw-row"><span class="mw-player">${p}</span><span>${h[p].points} pts</span><span>€${h[p].money.toFixed(2)}</span></div>
   `).join('');
   return `
     <div class="mw-date">${h.date}</div>
@@ -962,7 +962,7 @@ function runSaveMatchweek() {
   const winners = SB_PLAYERS.filter(p => sbLastResults[p].money > 0);
   let msg = 'Are you sure? This locks the current matchweek in HISTORY and starts a fresh one for next week.';
   if (winners.length) {
-    msg = winners.map(p => `${p} won £${sbLastResults[p].money.toFixed(2)}`).join(', ') + '. ' + msg;
+    msg = winners.map(p => `${p} won €${sbLastResults[p].money.toFixed(2)}`).join(', ') + '. ' + msg;
   }
   if (!confirm(msg)) return;
 
@@ -988,31 +988,37 @@ function runSaveMatchweek() {
 // it are shown newest first (reverse of the sheet's chronological order).
 function balStatClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
 function balWinClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero'); }
-function balFmt(n) {
+// `symbol` defaults to £ -- every existing caller (the Betano deposit
+// ledger, still a single running list that predates the euro switch) keeps
+// behaving exactly as before. Only the Balance season cards below pass €
+// explicitly, for the one row that's genuinely euro-denominated.
+function balFmt(n, symbol) {
+  const sym = symbol || '£';
   const v = Number(n) || 0;
   const formatted = Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return (v < 0 ? '-£' : '£') + formatted;
+  return (v < 0 ? '-' : '') + sym + formatted;
 }
 
-function renderBalanceCard(entry, extraClass) {
+function renderBalanceCard(entry, extraClass, symbol) {
+  const f = n => balFmt(n, symbol);
   return `
     <div class="season-card ${extraClass || ''}">
       <div class="season-name">${entry.season}</div>
       <div class="stat-trio">
         <div class="stat">
           <div class="stat-label">Paid</div>
-          <div class="stat-value">${balFmt(entry.paid)}</div>
-          <div class="stat-pp">${balFmt(entry.paidPP)} pp</div>
+          <div class="stat-value">${f(entry.paid)}</div>
+          <div class="stat-pp">${f(entry.paidPP)} pp</div>
         </div>
         <div class="stat">
           <div class="stat-label">Earned</div>
-          <div class="stat-value ${balStatClass(entry.earned)}">${balFmt(entry.earned)}</div>
-          <div class="stat-pp ${balStatClass(entry.earned)}">${balFmt(entry.earnedPP)} pp</div>
+          <div class="stat-value ${balStatClass(entry.earned)}">${f(entry.earned)}</div>
+          <div class="stat-pp ${balStatClass(entry.earned)}">${f(entry.earnedPP)} pp</div>
         </div>
         <div class="stat">
           <div class="stat-label">Balance</div>
-          <div class="stat-value ${balStatClass(entry.balance)}">${balFmt(entry.balance)}</div>
-          <div class="stat-pp ${balStatClass(entry.balance)}">${balFmt(entry.balancePP)} pp</div>
+          <div class="stat-value ${balStatClass(entry.balance)}">${f(entry.balance)}</div>
+          <div class="stat-pp ${balStatClass(entry.balance)}">${f(entry.balancePP)} pp</div>
         </div>
       </div>
       <div class="win-strip-label">Earned</div>
@@ -1021,20 +1027,53 @@ function renderBalanceCard(entry, extraClass) {
           <div class="win-item">
             ${sbAvatarImg(p, 'win-avatar')}
             <div class="win-name">${p}</div>
-            <div class="win-amt ${balWinClass(entry.win[p])}">${balFmt(entry.win[p])}</div>
+            <div class="win-amt ${balWinClass(entry.win[p])}">${f(entry.win[p])}</div>
           </div>`).join('')}
       </div>
     </div>`;
 }
 
+// Sums every stat across several season rows -- used to build the "All
+// seasons through ..." card below. The per-person (PP) figures are already
+// per-person amounts, so summing them across seasons is valid as long as
+// the player count didn't change mid-way (Sjaak joining partway through a
+// season is a pre-existing wrinkle in those figures, not something this
+// introduces).
+function sumBalanceEntries(entries, label) {
+  const keys = ['paid', 'paidPP', 'earned', 'earnedPP', 'balance', 'balancePP'];
+  const out = { season: label };
+  keys.forEach(k => { out[k] = entries.reduce((s, e) => s + (Number(e[k]) || 0), 0); });
+  out.win = {};
+  SB_PLAYERS.forEach(p => { out.win[p] = entries.reduce((s, e) => s + (Number(e.win && e.win[p]) || 0), 0); });
+  return out;
+}
+
+// Replaced the single blended "Total" card (2026-10) -- once the current
+// season's figures are genuinely euros (Betano) while every earlier season
+// stays genuinely pounds (Betfair, a real historical record, never
+// retroactively converted), one combined sum stops meaning anything no
+// matter which symbol it's shown with. Two honest cards instead: all past
+// (£) seasons summed together, and the current (€) season on its own.
 function renderBalance(balance) {
   if (!balance || (!balance.total && !balance.seasons.length)) {
     return '<div class="placeholder">No balance data yet.</div>';
   }
-  const totalHtml = balance.total ? renderBalanceCard(balance.total, 'total-card') : '';
-  const seasonsHtml = (balance.seasons || []).slice().reverse().map(s => renderBalanceCard(s)).join('');
+  const seasons = balance.seasons || [];
+  // Current season = the newest row, same oldest-to-newest sheet ordering
+  // every other sheet in this project already follows.
+  const current = seasons.length ? seasons[seasons.length - 1] : null;
+  const past = seasons.slice(0, -1);
+
+  const currentHtml = current
+    ? renderBalanceCard(Object.assign({}, current, { season: 'This Season — ' + current.season }), 'total-card', '€')
+    : '';
+  const pastTotalHtml = past.length
+    ? renderBalanceCard(sumBalanceEntries(past, 'All Seasons Through ' + past[past.length - 1].season), 'total-card', '£')
+    : '';
+  const seasonsHtml = seasons.slice().reverse().map(s => renderBalanceCard(s, '', s === current ? '€' : '£')).join('');
   return `
-    ${totalHtml}
+    ${currentHtml}
+    ${pastTotalHtml}
     <div class="bal-subhead">By Season</div>
     ${seasonsHtml}
   `;
@@ -1103,7 +1142,7 @@ function loadQueuePanel() {
 }
 
 function clearQueueEntry(player, btn) {
-  if (!confirm('Clear ' + player + '\'s queued/pending Betfair placement?\n\nThis only releases the relay\'s queue slot -- it does not touch anything already placed on Betfair or written to the Sheet.')) return;
+  if (!confirm('Clear ' + player + '\'s queued/pending Betano placement?\n\nThis only releases the relay\'s queue slot -- it does not touch anything already placed on Betano or written to the Sheet.')) return;
   btn.disabled = true; btn.textContent = '...';
   fetch(RELAY_URL + '/betfair-place-request/clear', {
     method: 'POST',
@@ -1126,14 +1165,14 @@ function toggleBetfairLedger() {
 // matchweek instead, since that's the one you'd be depositing ahead of.
 function renderBetfair(betfair) {
   const rows = (betfair && betfair.rows) || [];
-  if (!rows.length) return '<div class="placeholder">No Betfair data yet.</div>';
+  if (!rows.length) return '<div class="placeholder">No Betano data yet.</div>';
 
   const played = rows.filter(r => r.played);
   const lastPlayed = played.length ? played[played.length - 1] : rows[0];
   const upcoming = rows.find(r => !r.played) || rows[rows.length - 1];
 
   const warningHtml = upcoming.current <= 0
-    ? `<div class="bf-warning"><span class="bf-warning-icon">⚠️</span>Betfair balance is empty -- time to deposit!</div>`
+    ? `<div class="bf-warning"><span class="bf-warning-icon">⚠️</span>Betano balance is empty -- time to deposit!</div>`
     : '';
 
   const rowsHtml = rows.map(r => {
@@ -1151,7 +1190,7 @@ function renderBetfair(betfair) {
     ${warningHtml}
     <div class="season-card total-card bf-hero">
       <div class="stat">
-        <div class="stat-label">Betfair Balance &mdash; ${upcoming.mw}</div>
+        <div class="stat-label">Betano Balance &mdash; ${upcoming.mw}</div>
         <div class="stat-value ${balStatClass(upcoming.current)}">${balFmt(upcoming.current)}</div>
         <div class="stat-pp">as of ${upcoming.date}</div>
       </div>

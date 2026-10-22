@@ -2448,8 +2448,7 @@ img[alt="AVI"] {
             <div class="modal-sub" id="hofSubtitle" style="color:var(--accent-gold)">Winning Bets</div>
       <div id="hofTotalWin" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);text-align:right;">
         <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Won</div>
-        <div id="hofTotalWinGBP" style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">£0.00</div>
-        <div id="hofTotalWinEUR" style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;display:none;">€0.00</div>
+        <div id="hofTotalWinAmt" style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">€0.00</div>
       </div>
     </div>
     <div id="hofTabs" class="modal-tabs">
@@ -2556,8 +2555,8 @@ function renderSeasonHistory(seasons) {
     // rather than needing a bespoke 4th/5th-place design -- nobody
     // silently drops off the podium just because a 4th player joined.
     const [p1, p2, ...rest] = players;
-    const primary = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matches} pts`;
-    const secondary = p => moneyIsPrimary ? `${p.matches} pts` : formatGBP(p.money);
+    const primary = p => moneyIsPrimary ? formatEUR(p.money) : `${p.matches} pts`;
+    const secondary = p => moneyIsPrimary ? `${p.matches} pts` : formatEUR(p.money);
     const hasChart = (season.matches && season.matches.length > 0) || (season.money && season.money.length > 0);
 
     return `
@@ -2663,7 +2662,7 @@ function drawSeasonChart(idx, type) {
         tooltip: {
           enabled: true, mode: 'index', intersect: false,
           backgroundColor: 'rgba(20, 22, 25, 0.95)', titleFont: { size: 11, weight: '800' }, bodyFont: { size: 10, weight: '600' },
-          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatGBP(c.parsed.y) : c.parsed.y}` }
+          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatEUR(c.parsed.y) : c.parsed.y}` }
         }
       }
     }
@@ -2764,7 +2763,7 @@ function drawSeasonChartModal(type) {
         y: {
           display: true, position: 'right',
           grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
-          ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, callback: (val) => type === 'money' ? '£' + val : val }
+          ticks: { color: 'rgba(154, 160, 166, 0.6)', font: { size: 9, weight: '600' }, callback: (val) => type === 'money' ? '€' + val : val }
         }
       },
       plugins: {
@@ -2773,7 +2772,7 @@ function drawSeasonChartModal(type) {
         tooltip: {
           enabled: true, mode: 'index', intersect: false,
           backgroundColor: 'rgba(20, 22, 25, 0.95)', titleFont: { size: 11, weight: '800' }, bodyFont: { size: 10, weight: '600' },
-          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatGBP(c.parsed.y) : c.parsed.y}` }
+          callbacks: { label: (c) => `${c.dataset.label}: ${type === 'money' ? formatEUR(c.parsed.y) : c.parsed.y}` }
         }
       }
     }
@@ -2826,18 +2825,13 @@ function renderHallOfFame(slips) {
   };
 
   const reversed = [...slips].reverse();
-  // Split by the same 20 Aug 2026 cutoff as each slip's own display (see
-  // hofFormat) -- summing both currencies into one "Total Won" would be
-  // the exact same meaningless-blend mistake as the old Balance Total
-  // card. The € line only shows once it's actually nonzero -- Winston's
-  // own rule: no point showing "€0.00" before anyone's actually won
-  // anything in euros.
-  const totalWonGBP = slips.filter(s => !isNaN(Date.parse(s.date)) && Date.parse(s.date) < HOF_EUR_CUTOFF).reduce((sum, s) => sum + Number(s.win || 0), 0);
-  const totalWonEUR = slips.filter(s => !isNaN(Date.parse(s.date)) && Date.parse(s.date) >= HOF_EUR_CUTOFF).reduce((sum, s) => sum + Number(s.win || 0), 0);
-  const gbpEl = document.getElementById('hofTotalWinGBP');
-  const eurEl = document.getElementById('hofTotalWinEUR');
-  if (gbpEl) gbpEl.textContent = formatGBP(totalWonGBP);
-  if (eurEl) { eurEl.textContent = formatEUR(totalWonEUR); eurEl.style.display = totalWonEUR > 0 ? '' : 'none'; }
+  // All slips are euro-denominated now -- Winston converted every past
+  // pound figure (HALL_OF_FAME, SEASON_HISTORY, BALANCE) to its
+  // euro-equivalent in the Sheet directly (2026-10), so the app no longer
+  // needs to track which currency a historical record was originally in.
+  const totalWon = slips.reduce((sum, s) => sum + Number(s.win || 0), 0);
+  const totalEl = document.getElementById('hofTotalWinAmt');
+  if (totalEl) totalEl.textContent = formatEUR(totalWon);
   wrap.innerHTML = reversed.map((slip, idx) => {
     const avatar     = AVATAR[slip.person] || '';
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
@@ -2886,15 +2880,15 @@ function renderHallOfFame(slips) {
         <div style="background:rgba(0,176,79,0.08);border-top:1px solid rgba(0,176,79,0.2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:11px;color:var(--text-muted);">
             <div>Stake</div>
-            <div style="color:var(--text-main);font-weight:700;">${hofFormat(slip.date)(slip.bet)}</div>
+            <div style="color:var(--text-main);font-weight:700;">${formatEUR(slip.bet)}</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:10px;color:var(--text-muted);">WIN</div>
-            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">${hofFormat(slip.date)(slip.win)}</div>
+            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">${formatEUR(slip.win)}</div>
           </div>
           <div style="font-size:11px;color:var(--text-muted);text-align:right;">
             <div>Win PP</div>
-            <div style="color:var(--text-main);font-weight:700;">${hofFormat(slip.date)(slip.winPP)}</div>
+            <div style="color:var(--text-main);font-weight:700;">${formatEUR(slip.winPP)}</div>
           </div>
         </div>
       </div>`;
@@ -2980,19 +2974,12 @@ setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 
+// formatGBP is only used by the live weekly summary's secondary (converted)
+// column now -- every other figure in the app is euro-native, since
+// Winston converted all past pound figures (HALL_OF_FAME, SEASON_HISTORY,
+// BALANCE) to their euro-equivalent directly in the Sheet (2026-10).
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
-
-// Betting moved from Betfair (£) to Betano (€) on this date -- Hall of Fame
-// entries are real historical records, never retroactively converted, so
-// each slip keeps whichever currency it actually happened in. slip.date
-// comes from Code.gs as "D Mon YYYY" (e.g. "20 Aug 2026"), which Date.parse
-// handles fine for this day-level comparison.
-const HOF_EUR_CUTOFF = Date.parse('20 Aug 2026');
-const hofFormat = dateStr => {
-  const t = Date.parse(dateStr);
-  return (!isNaN(t) && t >= HOF_EUR_CUTOFF) ? formatEUR : formatGBP;
-};
 
 // Which scope each ranking display is currently showing -- keyed by the
 // container's element id, so the small card and the full-chart podium can
@@ -3000,57 +2987,34 @@ const hofFormat = dateStr => {
 window.rankingScopes = { rankingBody: 'season', historyScoreboard: 'season' };
 
 // "All Time" = every past season's final total (seasonHistory's last
-// progression entry per season, always £ -- real history, never
-// retroactively converted) plus the current, still-live season (always €,
-// since Betano bets are placed in euros). Kept as two separate totals,
-// moneyGBP/moneyEUR, instead of one blended "money" figure -- summing them
-// together would be the same meaningless-currency-blend mistake the old
-// Balance Total card made. See formatSplitMoney() for how this displays
-// (and why it hides the € side entirely until it's actually nonzero).
+// progression entry per season) plus the current, still-live season.
+// Every figure involved is euro-denominated now -- Winston converted all
+// past pound totals to their euro-equivalent directly in the Sheet
+// (2026-10) -- so this is a plain sum, same as it was before the Betano
+// switch ever introduced a second currency to worry about.
 function computeAllTimeRanking(data) {
-  const totals = Object.fromEntries(PLAYERS.map(p => [p, { moneyGBP: 0, moneyEUR: 0, matchesRight: 0 }]));
+  const totals = Object.fromEntries(PLAYERS.map(p => [p, { money: 0, matchesRight: 0 }]));
   (data.seasonHistory || []).forEach(season => {
     const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : {};
     const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : {};
     Object.keys(totals).forEach(p => {
-      totals[p].moneyGBP += finalMoney[p] || 0;
+      totals[p].money += finalMoney[p] || 0;
       totals[p].matchesRight += finalMatches[p] || 0;
     });
   });
   (data.ranking || []).forEach(r => {
     if (totals[r.name]) {
-      totals[r.name].moneyEUR += r.money || 0;
+      totals[r.name].money += r.money || 0;
       totals[r.name].matchesRight += r.matchesRight || 0;
     }
   });
-  // `money` = moneyGBP+moneyEUR, kept alongside the split figures purely
-  // for sorting/tie-checks (ranking position has always been money-first --
-  // see the sort below -- a rough combined total is fine for THAT, it's
-  // only ever shown to a human via formatSplitMoney, never displayed as
-  // its own blended currency value).
-  return Object.keys(totals).map(name => ({ name, moneyGBP: totals[name].moneyGBP, moneyEUR: totals[name].moneyEUR, money: totals[name].moneyGBP + totals[name].moneyEUR, matchesRight: totals[name].matchesRight }));
+  return Object.keys(totals).map(name => ({ name, money: totals[name].money, matchesRight: totals[name].matchesRight }));
 }
 
-// Season scope's own money is always euros (the live/current season only),
-// so it's normalized into the same {moneyGBP, moneyEUR, money} shape All
-// Time uses -- moneyGBP always 0 here -- so both podium renderers can
-// share one display/sort path regardless of which scope is showing.
 function getRankingPlayers(scope) {
   const data = window.__lastDashboard;
   if (!data) return null;
-  if (scope === 'alltime') return computeAllTimeRanking(data);
-  return (data.ranking || []).map(r => ({ name: r.name, moneyGBP: 0, moneyEUR: r.money || 0, money: r.money || 0, matchesRight: r.matchesRight }));
-}
-
-// Primary money figure for a ranking podium slot -- € first (and alone,
-// per Winston's rule, while nobody's actually won anything in euros yet),
-// with a smaller "+ £X" alongside only once there's a real GBP figure to
-// show too. Falls back to plain £ when there's no euro figure at all yet
-// (today's All Time podium, before any euro win exists).
-function formatSplitMoney(moneyGBP, moneyEUR) {
-  if (moneyEUR > 0 && moneyGBP > 0) return `${formatEUR(moneyEUR)} <span style="opacity:.6;font-size:.75em;">+ ${formatGBP(moneyGBP)}</span>`;
-  if (moneyEUR > 0) return formatEUR(moneyEUR);
-  return formatGBP(moneyGBP);
+  return scope === 'alltime' ? computeAllTimeRanking(data) : data.ranking;
 }
 
 // Shared by both ranking displays (this container id -> which renderer).
@@ -3154,8 +3118,8 @@ function renderRankingPodium(container, players) {
   // number, so they lead; the moment real money shows up, money takes back
   // the spotlight.
   const moneyIsPrimary = sorted.reduce((sum, p) => sum + (p.money || 0), 0) > 0;
-  const primaryStat = p => moneyIsPrimary ? formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0) : `${p.matchesRight} Points`;
-  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0);
+  const primaryStat = p => moneyIsPrimary ? formatEUR(p.money) : `${p.matchesRight} Points`;
+  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatEUR(p.money);
   const ptsClass = moneyIsPrimary ? '' : ' pts';
   const podiumSlot = (p, cls, icon) => `
           <div class="podium-place ${cls}">
@@ -3199,7 +3163,7 @@ function renderCompactPodium(container, players) {
   });
   const [p1, p2, ...rest] = sorted;
   const moneyIsPrimary = sorted.reduce((sum, p) => sum + (p.money || 0), 0) > 0;
-  const primaryStat = p => moneyIsPrimary ? formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0) : `${p.matchesRight} Points`;
+  const primaryStat = p => moneyIsPrimary ? formatEUR(p.money) : `${p.matchesRight} Points`;
   const ptsClass = moneyIsPrimary ? '' : ' pts';
   const order = [p2, p1, ...rest];
   container.innerHTML = `
@@ -5062,7 +5026,7 @@ function drawHistoryChart(t) {
                     ticks: {
                         color: 'rgba(154, 160, 166, 0.5)',
                         font: { size: 9, weight: '600' },
-                        callback: (val) => t === 'money' ? '£' + val : val
+                        callback: (val) => t === 'money' ? '€' + val : val
                     }
                 }
             },

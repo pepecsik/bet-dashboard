@@ -988,19 +988,20 @@ function runSaveMatchweek() {
 // it are shown newest first (reverse of the sheet's chronological order).
 function balStatClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
 function balWinClass(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero'); }
-// `symbol` defaults to £ -- every existing caller (the Betano deposit
-// ledger, still a single running list that predates the euro switch) keeps
-// behaving exactly as before. Only the Balance season cards below pass €
-// explicitly, for the one row that's genuinely euro-denominated.
+// Defaults to € -- every caller is euro-denominated now. The Betano
+// deposit ledger (renderBetfair below) relies on this default; the
+// Balance season cards pass € explicitly. Both BALANCE and BETFAIR had
+// their old pound figures converted to euro-equivalent directly in the
+// Sheet (2026-10), same as HALL_OF_FAME/SEASON_HISTORY.
 function balFmt(n, symbol) {
-  const sym = symbol || '£';
+  const sym = symbol || '€';
   const v = Number(n) || 0;
   const formatted = Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (v < 0 ? '-' : '') + sym + formatted;
 }
 
-function renderBalanceCard(entry, extraClass, symbol) {
-  const f = n => balFmt(n, symbol);
+function renderBalanceCard(entry, extraClass) {
+  const f = n => balFmt(n, '€');
   return `
     <div class="season-card ${extraClass || ''}">
       <div class="season-name">${entry.season}</div>
@@ -1033,47 +1034,14 @@ function renderBalanceCard(entry, extraClass, symbol) {
     </div>`;
 }
 
-// Sums every stat across several season rows -- used to build the "All
-// seasons through ..." card below. The per-person (PP) figures are already
-// per-person amounts, so summing them across seasons is valid as long as
-// the player count didn't change mid-way (Sjaak joining partway through a
-// season is a pre-existing wrinkle in those figures, not something this
-// introduces).
-function sumBalanceEntries(entries, label) {
-  const keys = ['paid', 'paidPP', 'earned', 'earnedPP', 'balance', 'balancePP'];
-  const out = { season: label };
-  keys.forEach(k => { out[k] = entries.reduce((s, e) => s + (Number(e[k]) || 0), 0); });
-  out.win = {};
-  SB_PLAYERS.forEach(p => { out.win[p] = entries.reduce((s, e) => s + (Number(e.win && e.win[p]) || 0), 0); });
-  return out;
-}
-
-// Replaced the single blended "Total" card (2026-10) -- once the current
-// season's figures are genuinely euros (Betano) while every earlier season
-// stays genuinely pounds (Betfair, a real historical record, never
-// retroactively converted), one combined sum stops meaning anything no
-// matter which symbol it's shown with. Two honest cards instead: all past
-// (£) seasons summed together, and the current (€) season on its own.
 function renderBalance(balance) {
   if (!balance || (!balance.total && !balance.seasons.length)) {
     return '<div class="placeholder">No balance data yet.</div>';
   }
-  const seasons = balance.seasons || [];
-  // Current season = the newest row, same oldest-to-newest sheet ordering
-  // every other sheet in this project already follows.
-  const current = seasons.length ? seasons[seasons.length - 1] : null;
-  const past = seasons.slice(0, -1);
-
-  const currentHtml = current
-    ? renderBalanceCard(Object.assign({}, current, { season: 'This Season — ' + current.season }), 'total-card', '€')
-    : '';
-  const pastTotalHtml = past.length
-    ? renderBalanceCard(sumBalanceEntries(past, 'All Seasons Through ' + past[past.length - 1].season), 'total-card', '£')
-    : '';
-  const seasonsHtml = seasons.slice().reverse().map(s => renderBalanceCard(s, '', s === current ? '€' : '£')).join('');
+  const totalHtml = balance.total ? renderBalanceCard(balance.total, 'total-card') : '';
+  const seasonsHtml = (balance.seasons || []).slice().reverse().map(s => renderBalanceCard(s)).join('');
   return `
-    ${currentHtml}
-    ${pastTotalHtml}
+    ${totalHtml}
     <div class="bal-subhead">By Season</div>
     ${seasonsHtml}
   `;

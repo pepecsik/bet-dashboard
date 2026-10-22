@@ -2312,25 +2312,25 @@ img[alt="AVI"] {
         <div class="player-card" id="card-Snackbar" onclick="selectPlayer('Snackbar')">
           <img src="./snackbar.png" class="player-avatar">
         </div>
-        <div class="betfair-lock-btn" id="betfair-btn-Snackbar" onclick="event.stopPropagation(); lockBetfairBets('Snackbar')">Place bets<br>on Betfair</div>
+        <div class="betfair-lock-btn" id="betfair-btn-Snackbar" onclick="event.stopPropagation(); lockBetfairBets('Snackbar')">Place bets<br>on Betano</div>
       </div>
       <div class="player-col" id="col-Timbo">
         <div class="player-card" id="card-Timbo" onclick="selectPlayer('Timbo')">
           <img src="./timbo.png" class="player-avatar">
         </div>
-        <div class="betfair-lock-btn" id="betfair-btn-Timbo" onclick="event.stopPropagation(); lockBetfairBets('Timbo')">Place bets<br>on Betfair</div>
+        <div class="betfair-lock-btn" id="betfair-btn-Timbo" onclick="event.stopPropagation(); lockBetfairBets('Timbo')">Place bets<br>on Betano</div>
       </div>
       <div class="player-col" id="col-Pepe">
         <div class="player-card" id="card-Pepe" onclick="selectPlayer('Pepe')">
           <img src="./pepe.png" class="player-avatar">
         </div>
-        <div class="betfair-lock-btn" id="betfair-btn-Pepe" onclick="event.stopPropagation(); lockBetfairBets('Pepe')">Place bets<br>on Betfair</div>
+        <div class="betfair-lock-btn" id="betfair-btn-Pepe" onclick="event.stopPropagation(); lockBetfairBets('Pepe')">Place bets<br>on Betano</div>
       </div>
       <div class="player-col" id="col-Sjaak">
         <div class="player-card" id="card-Sjaak" onclick="selectPlayer('Sjaak')">
           <img src="./sjaak.png" class="player-avatar">
         </div>
-        <div class="betfair-lock-btn" id="betfair-btn-Sjaak" onclick="event.stopPropagation(); lockBetfairBets('Sjaak')">Place bets<br>on Betfair</div>
+        <div class="betfair-lock-btn" id="betfair-btn-Sjaak" onclick="event.stopPropagation(); lockBetfairBets('Sjaak')">Place bets<br>on Betano</div>
       </div>
     </div>
   </div>
@@ -2339,9 +2339,9 @@ img[alt="AVI"] {
 <div class="modal-overlay" id="modalBetfairConfirm" style="align-items:center; z-index: 2400;">
   <div class="modal-sheet betfair-confirm-sheet">
     <div class="betfair-confirm-badge">Real money &mdash; check twice</div>
-    <div class="betfair-confirm-title">Place <span id="betfairConfirmPlayerName">this player's</span> bets on Betfair?</div>
+    <div class="betfair-confirm-title">Place <span id="betfairConfirmPlayerName">this player's</span> bets on Betano?</div>
     <div class="betfair-confirm-body">
-      This sends both of <b id="betfairConfirmPlayerName2">their</b> bets to be placed for real on Betfair.
+      This sends both of <b id="betfairConfirmPlayerName2">their</b> bets to be placed for real on Betano.
       Double-check their picks are correct before confirming &mdash; this can't be undone once it's placed.
     </div>
     <div class="betfair-confirm-actions">
@@ -2876,15 +2876,15 @@ function renderHallOfFame(slips) {
         <div style="background:rgba(0,176,79,0.08);border-top:1px solid rgba(0,176,79,0.2);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:11px;color:var(--text-muted);">
             <div>Stake</div>
-            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.bet).toFixed(2)}</div>
+            <div style="color:var(--text-main);font-weight:700;">${hofFormat(slip.date)(slip.bet)}</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:10px;color:var(--text-muted);">WIN</div>
-            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">£${Number(slip.win).toFixed(2)}</div>
+            <div style="font-size:22px;font-weight:900;color:var(--accent-green);line-height:1;">${hofFormat(slip.date)(slip.win)}</div>
           </div>
           <div style="font-size:11px;color:var(--text-muted);text-align:right;">
             <div>Win PP</div>
-            <div style="color:var(--text-main);font-weight:700;">£${Number(slip.winPP).toFixed(2)}</div>
+            <div style="color:var(--text-main);font-weight:700;">${hofFormat(slip.date)(slip.winPP)}</div>
           </div>
         </div>
       </div>`;
@@ -2972,6 +2972,17 @@ function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
 
 const formatGBP=v=>"£ "+Number(v||0).toFixed(2);
 const formatEUR=v=>"€ "+Number(v||0).toFixed(2);
+
+// Betting moved from Betfair (£) to Betano (€) on this date -- Hall of Fame
+// entries are real historical records, never retroactively converted, so
+// each slip keeps whichever currency it actually happened in. slip.date
+// comes from Code.gs as "D Mon YYYY" (e.g. "20 Aug 2026"), which Date.parse
+// handles fine for this day-level comparison.
+const HOF_EUR_CUTOFF = Date.parse('20 Aug 2026');
+const hofFormat = dateStr => {
+  const t = Date.parse(dateStr);
+  return (!isNaN(t) && t >= HOF_EUR_CUTOFF) ? formatEUR : formatGBP;
+};
 
 // Which scope each ranking display is currently showing -- keyed by the
 // container's element id, so the small card and the full-chart podium can
@@ -3719,7 +3730,7 @@ function patchFastScores(data) {
           // what happens here -- a confetti-library hiccup (CDN blip, ad
           // blocker, etc.) must never cascade into treating this whole
           // update as failed and falling back to a slower path.
-          try { fireScreenBlaster(pill); showBigWin(formatGBP(s.tot), PLAYER_AVATARS[h.name] || null); }
+          try { fireScreenBlaster(pill); showBigWin(formatEUR(s.tot), PLAYER_AVATARS[h.name] || null); }
           catch (e) { console.error('celebration failed (non-fatal)', e); }
         }
       } else if (s.hasB && s.allGreen) {
@@ -4103,7 +4114,7 @@ function renderDashboard(data, opts){
                // A confetti-library hiccup here must not abort the rest of
                // this render (ranking podium, hall of fame, ticker, etc.
                // all still need to run after this loop finishes).
-               const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(s.tot), AVATARS[h.name]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
+               const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatEUR(s.tot), AVATARS[h.name]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
                if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
              }
            }
@@ -4135,7 +4146,7 @@ function renderDashboard(data, opts){
                     const celebrationKey = 'special:' + bet.id;
                     if (!suppressCelebration && !window.__celebratedColumns.has(celebrationKey)) {
                         window.__celebratedColumns.add(celebrationKey);
-                        const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatGBP(bet.potentialWin || 0), AVATARS[bet.player]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
+                        const celebrate = () => { try { fireScreenBlaster(p); showBigWin(formatEUR(bet.potentialWin || 0), AVATARS[bet.player]); } catch (e) { console.error('celebration failed (non-fatal)', e); } };
                         if (isFirstLoad) { setTimeout(celebrate, 1500); } else { celebrate(); }
                     }
                 } else if (status === 'HIT') {
@@ -4354,7 +4365,7 @@ function renderDashboard(data, opts){
         ["BET","WIN","WIN PP"].forEach((l,i)=>{
           const rr=document.createElement("div"); rr.className="row short-row";
           if(isFirstLoad) { addEnterAnimation(rr, (matchCount + i) * 0.05); }
-          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatGBP(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
+          data.betSummary[i].cells.forEach((c, cellIndex)=>{ const el=document.createElement("div"); el.className="bet"; el.setAttribute('data-col-idx', cellIndex); el.textContent=formatEUR(c.value); el.style.setProperty('--bet-bg', c.color || '#2f343a'); el.style.backgroundColor = c.color; rr.appendChild(el); });
 
           // Same stake/win/potential figures for each special bet, one cell per
           // bet matching the avatar/pill columns appended above.
@@ -4366,14 +4377,14 @@ function renderDashboard(data, opts){
                   if (l === "BET") { value = bet.stake || 0; color = '#ff4d4d'; }
                   else if (l === "WIN") { value = bet.potentialWin || 0; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // potential win, shown even when dead
                   else { value = (bet.potentialWin || 0) / PLAYERS.length; color = status !== 'MISSED' ? 'var(--accent-green)' : '#ff4d4d'; } // WIN PP = WIN ÷ player count, shown even when dead
-                  el.textContent = formatGBP(value);
+                  el.textContent = formatEUR(value);
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color;
                   rr.appendChild(el);
               });
           }
 
-          // "What if?" money cell -- fixed £2 stake, and a running fold
+          // "What if?" money cell -- fixed €2 stake, and a running fold
           // total that fills in grey/blank until the first shared game
           // finishes, then multiplies in each game's odds as they land.
           // WIN PP is just WIN ÷ 3, same convention as the special bets.
@@ -4381,7 +4392,7 @@ function renderDashboard(data, opts){
               const wi = computeWhatIf();
               const el = document.createElement("div"); el.className = "bet whatif-pill";
               if (l === "BET") {
-                  el.textContent = formatGBP(2);
+                  el.textContent = formatEUR(2);
                   // Same red as every other stake pill in this row -- read it
                   // straight off a real BET cell instead of guessing the exact
                   // shade, so it's always pixel-identical to the sheet's own.
@@ -4390,7 +4401,7 @@ function renderDashboard(data, opts){
                   el.style.backgroundColor = betColor;
               } else {
                   const value = l === "WIN" ? wi.total : wi.total / PLAYERS.length;
-                  el.textContent = formatGBP(value);
+                  el.textContent = formatEUR(value);
                   const color = wi.finishedCount > 0 ? 'var(--accent-orange)' : '#2f343a';
                   el.style.setProperty('--bet-bg', color);
                   el.style.backgroundColor = color;
@@ -4421,19 +4432,30 @@ function renderDashboard(data, opts){
         applyFilterLogic();
         data.totals.forEach(t=>{
           const green=["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label);
-          let gbp=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
-          let eur=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
+          // Column D (cells[1]) is the raw figure entered/computed in the
+          // sheet -- euros now that bets are placed on Betano (was pounds
+          // in the Betfair era). Column E (cells[0]) is a sheet formula
+          // converting D into the other currency -- flipped from /eurRate
+          // to *eurRate once D stopped being pounds (DASHBOARD!E20:E24,
+          // fixed 2026-10). The CSS classes below keep their old
+          // "week-gbp"/"week-eur" names (so the existing per-theme styling
+          // doesn't need touching) even though week-gbp now holds the euro
+          // figure -- it's the one with the bold/primary/green-red styling,
+          // week-eur is the dimmed secondary one, same roles as before,
+          // just swapped currencies.
+          let native=(t.cells[1]&&t.cells[1].value!==undefined)?t.cells[1].value:0;
+          let converted=(t.cells[0]&&t.cells[0].value!==undefined)?t.cells[0].value:0;
           if (window.specialBetsEnabled && ["TOTAL WIN", "HIGH. POS. WIN", "TOTAL WIN PP", "AVG. WIN"].includes(t.label)) {
               const combo = bestSpecialCombo();
-              if (t.label === "TOTAL WIN" || t.label === "HIGH. POS. WIN") gbp = combo.total;
-              else if (t.label === "TOTAL WIN PP") gbp = combo.total / PLAYERS.length;
+              if (t.label === "TOTAL WIN" || t.label === "HIGH. POS. WIN") native = combo.total;
+              else if (t.label === "TOTAL WIN PP") native = combo.total / PLAYERS.length;
               else { // AVG. WIN — average potentialWin across still-alive special bets
                   const alive = (window.specialBets || []).filter(b => evaluateBetOverallStatus(b) !== 'MISSED');
-                  gbp = alive.length ? alive.reduce((sum, b) => sum + (b.potentialWin || 0), 0) / alive.length : 0;
+                  native = alive.length ? alive.reduce((sum, b) => sum + (b.potentialWin || 0), 0) / alive.length : 0;
               }
-              eur = window.eurRate ? gbp / window.eurRate : gbp; // eurRate is GBP-per-1-EUR (ECB convention)
+              converted = window.eurRate ? native * window.eurRate : native; // eurRate is GBP-per-1-EUR (ECB convention) -- EUR -> GBP is *, not /
           }
-          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatGBP(gbp)}</div><div class="week-eur">${formatEUR(eur)}</div></div>`;
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatEUR(native)}</div><div class="week-eur">${formatGBP(converted)}</div></div>`;
         });
 
         // Ranking card podium -- respects whichever scope (Season / All Time)
@@ -4692,7 +4714,7 @@ function buildTickerItems() {
       if (gap > 0) {
         items.push({
           cls: 'rivalry',
-          html: `⚡ Only ${formatGBP(gap)} separates ${ranked[0].name} & ${ranked[1].name}`
+          html: `⚡ Only ${formatEUR(gap)} separates ${ranked[0].name} & ${ranked[1].name}`
         });
       }
     }
@@ -4810,11 +4832,11 @@ function buildTickerItems() {
     }
   }
 
-  // 8. Pot size — total £ in play across every bet column this matchweek
+  // 8. Pot size — total € in play across every bet column this matchweek
   const winCells = (dashboard.betSummary && dashboard.betSummary[1] && dashboard.betSummary[1].cells) || [];
   const pot = winCells.reduce((sum, c) => sum + (Number(c && c.value) || 0), 0);
   if (pot > 0) {
-    items.push({ cls: 'pot', html: `💰 ${formatGBP(pot)} in play this matchweek` });
+    items.push({ cls: 'pot', html: `💰 ${formatEUR(pot)} in play this matchweek` });
   }
 
   // 9. Light trash talk — whoever's currently last, only once there's an
@@ -5336,7 +5358,7 @@ function whatIfResultOdds(m) {
 }
 
 // Multiplies in each finished game's actual-result odds as it completes --
-// a real fold at a fixed £2 stake, not a sum of singles.
+// a real fold at a fixed €2 stake, not a sum of singles.
 function computeWhatIf() {
   const games = getFirstBetGames();
   const finished = games.filter(m => m.status === 'FT');
@@ -5370,7 +5392,7 @@ function openSpecialCombosModal() {
   const AVATARS = PLAYER_AVATARS;
   const header = document.createElement('div');
   header.style.cssText = 'text-align:center;padding:10px 0 4px;';
-  header.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Highest Possible Win</div><div style="font-size:22px;font-weight:900;color:var(--accent-green);">${formatGBP(total)}</div>`;
+  header.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Highest Possible Win</div><div style="font-size:22px;font-weight:900;color:var(--accent-green);">${formatEUR(total)}</div>`;
   container.appendChild(header);
 
   bets.forEach(bet => {
@@ -5383,7 +5405,7 @@ function openSpecialCombosModal() {
         <div style="font-size:13px;font-weight:700;color:var(--text-main);">${bet.id}</div>
         <div style="font-size:11px;color:var(--text-muted);">${bet.player}</div>
       </div>
-      <div style="font-weight:800;color:var(--accent-green);">${formatGBP(bet.potentialWin || 0)}</div>
+      <div style="font-weight:800;color:var(--accent-green);">${formatEUR(bet.potentialWin || 0)}</div>
     `;
     container.appendChild(row);
   });
@@ -6638,7 +6660,7 @@ function openCombosModal() {
                             <img src="${p1.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c1}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
                             <div style="position: absolute; top: -6px; right: -6px; background: ${c1}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p1.num}</div>
                         </div>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-top: 6px;">${formatGBP(combo.win1)}</div>
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-top: 6px;">${formatEUR(combo.win1)}</div>
                     </div>
 
                     <div style="font-size: 20px; font-weight: 900; color: var(--text-muted);">&</div>
@@ -6648,7 +6670,7 @@ function openCombosModal() {
                             <img src="${p2.img}" style="width: 56px; height: 56px; border-radius: 8px; border: 2px solid ${c2}; object-fit: cover; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
                             <div style="position: absolute; top: -6px; right: -6px; background: ${c2}; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2);">${p2.num}</div>
                         </div>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-top: 6px;">${formatGBP(combo.win2)}</div>
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-top: 6px;">${formatEUR(combo.win2)}</div>
                     </div>
                 </div>
             </div>
@@ -6656,13 +6678,13 @@ function openCombosModal() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-row); border-radius: 8px; padding: 12px; margin-top: 2px;">
                 <div style="display: flex; flex-direction: column; align-items: center; border-right: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined Win</span>
-                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatGBP(combo.totalWin)}</span>
-                    <span style="font-size: 9px; opacity: 0.5; margin-top: 2px;">${formatEUR(combo.totalWin / (window.eurRate || 1))}</span>
+                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatEUR(combo.totalWin)}</span>
+                    <span style="font-size: 9px; opacity: 0.5; margin-top: 2px;">${formatGBP(combo.totalWin * (window.eurRate || 1))}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: center;">
                     <span style="font-size: 9px; opacity: 0.6; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Combined P.P.</span>
-                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatGBP(combo.totalPP)}</span>
-                    <span style="font-size: 9px; opacity: 0.5; margin-top: 2px;">${formatEUR(combo.totalPP / (window.eurRate || 1))}</span>
+                    <span style="color: var(--accent-green); font-weight: 900; font-size: 16px;">${formatEUR(combo.totalPP)}</span>
+                    <span style="font-size: 9px; opacity: 0.5; margin-top: 2px;">${formatGBP(combo.totalPP * (window.eurRate || 1))}</span>
                 </div>
             </div>
         `;
@@ -6776,7 +6798,7 @@ async function confirmBetfairLock() {
     sheet.classList.add('is-queued');
     document.querySelector('#modalBetfairConfirm .betfair-confirm-badge').textContent = 'Queued';
     document.querySelector('#modalBetfairConfirm .betfair-confirm-title').textContent = name + "'s bets are on their way";
-    document.querySelector('#modalBetfairConfirm .betfair-confirm-body').textContent = "You'll get a Telegram message to confirm each one before it's actually placed. Winnings will show up in the app automatically once they're both in.";
+    document.querySelector('#modalBetfairConfirm .betfair-confirm-body').textContent = "You'll get a Telegram message as each one is placed. Winnings will show up in the app automatically once they're both in.";
     goBtn.textContent = 'Done';
     goBtn.disabled = false;
     goBtn.onclick = () => closeModal('modalBetfairConfirm');
@@ -6787,7 +6809,7 @@ async function confirmBetfairLock() {
   } catch (e) {
     closeModal('modalBetfairConfirm');
     alert(`Couldn't queue ${name}'s bets (relay unreachable or busy) -- try again in a moment.`);
-    if (btn) { btn.classList.add('ready'); btn.innerHTML = 'Place bets<br>on Betfair'; }
+    if (btn) { btn.classList.add('ready'); btn.innerHTML = 'Place bets<br>on Betano'; }
     goBtn.disabled = false; goBtn.textContent = 'Yes, place them'; goBtn.onclick = confirmBetfairLock;
   }
 }

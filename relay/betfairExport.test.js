@@ -58,7 +58,7 @@ test("buildBetfairExport groups legs by column, skipping matches with no pick ye
   const snackbarBet1 = result.bets[0];
   assert.equal(snackbarBet1.player, "Snackbar");
   assert.equal(snackbarBet1.sheetColIdx, 3); // the real sheet column, not the array position
-  assert.equal(snackbarBet1.stake, 2);
+  assert.equal(snackbarBet1.stake, 3);
   assert.equal(snackbarBet1.legCount, 2);
   assert.equal(snackbarBet1.legs[0].match, "Arsenal vs Chelsea");
   assert.equal(snackbarBet1.legs[0].market, "Match Odds");
@@ -80,7 +80,7 @@ test("buildBetfairExport groups legs by column, skipping matches with no pick ye
 
 test("formatBetfairExportText renders a readable recap with unrecognized legs flagged", () => {
   const text = formatBetfairExportText(buildBetfairExport(betsCache));
-  assert.match(text, /Bet 1 -- Snackbar -- stake £2\.00 -- 2-leg accumulator/);
+  assert.match(text, /Bet 1 -- Snackbar -- stake €3\.00 -- 2-leg accumulator/);
   assert.match(text, /Match Odds: back "Arsenal"/);
   assert.match(text, /Correct Score: back "2-1"/);
   assert.match(text, /Over\/Under 2\.5 Goals: back "Over 2\.5"/);

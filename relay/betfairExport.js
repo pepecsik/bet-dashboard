@@ -1,7 +1,7 @@
 // Translates this week's accumulator bets (one per header/column, however
 // many that is -- 2 per player, dynamic headers, no fixed count -- each
 // covering every tracked match as a leg -- see the user's own description:
-// one £2 stake per column, all matches in it need to be right) into
+// one €3 stake per column, all matches in it need to be right) into
 // Betfair's own market/selection wording. This is the structured task
 // input an external automation agent (or a human) needs to actually build
 // the multiple bet on Betfair's Sportsbook -- Betfair's Exchange API can't
@@ -112,7 +112,7 @@ function buildBetfairExport(betsCache) {
         needsManualCheck: !translated,
       });
     });
-    return { player: h.name, sheetColIdx: h.idx, stake: 2, legCount: legs.length, legs };
+    return { player: h.name, sheetColIdx: h.idx, stake: 3, legCount: legs.length, legs };
   });
 
   return { generatedAt: new Date().toISOString(), bets };
@@ -124,7 +124,7 @@ function buildBetfairExport(betsCache) {
 function formatBetfairExportText(exportData) {
   const lines = [];
   (exportData.bets || []).forEach((bet, i) => {
-    lines.push(`Bet ${i + 1} -- ${bet.player} -- stake £${bet.stake.toFixed(2)} -- ${bet.legCount}-leg accumulator`);
+    lines.push(`Bet ${i + 1} -- ${bet.player} -- stake €${bet.stake.toFixed(2)} -- ${bet.legCount}-leg accumulator`);
     bet.legs.forEach((leg, li) => {
       if (leg.needsManualCheck) {
         lines.push(`  Leg ${li + 1}: ${leg.match} -- pick "${leg.raw}" -- COULD NOT TRANSLATE, check manually`);

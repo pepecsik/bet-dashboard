@@ -4385,7 +4385,7 @@ function renderDashboard(data, opts){
               });
           }
 
-          // "What if?" money cell -- fixed €2 stake, and a running fold
+          // "What if?" money cell -- fixed €3 stake, and a running fold
           // total that fills in grey/blank until the first shared game
           // finishes, then multiplies in each game's odds as they land.
           // WIN PP is just WIN ÷ 3, same convention as the special bets.
@@ -4393,7 +4393,7 @@ function renderDashboard(data, opts){
               const wi = computeWhatIf();
               const el = document.createElement("div"); el.className = "bet whatif-pill";
               if (l === "BET") {
-                  el.textContent = formatEUR(2);
+                  el.textContent = formatEUR(3);
                   // Same red as every other stake pill in this row -- read it
                   // straight off a real BET cell instead of guessing the exact
                   // shade, so it's always pixel-identical to the sheet's own.
@@ -5359,11 +5359,11 @@ function whatIfResultOdds(m) {
 }
 
 // Multiplies in each finished game's actual-result odds as it completes --
-// a real fold at a fixed €2 stake, not a sum of singles.
+// a real fold at a fixed €3 stake, not a sum of singles.
 function computeWhatIf() {
   const games = getFirstBetGames();
   const finished = games.filter(m => m.status === 'FT');
-  const stake = 2;
+  const stake = 3;
   let total = stake;
   finished.forEach(m => {
     const odds = whatIfResultOdds(m);

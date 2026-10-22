@@ -596,14 +596,31 @@ body {
 }
 
 .main {
-  display: flex; 
-  gap: 10px; 
+  display: flex;
+  gap: 10px;
   padding: 10px;
-  overflow: visible; 
-  position: relative; 
+  overflow: visible;
+  position: relative;
   z-index: 5;
   align-items: flex-start;
 }
+/* Bounded to exactly .left-card's own x-range (--left-w wide, starting
+   at .main's own 10px padding) -- see the HTML comment above this element
+   for why it's a sibling, not a child, of #left. top:18px lines up with
+   the first day label's row (.main's 10px padding + .left-card's own 8px
+   padding puts "FRIDAY" right about here). */
+.kickoff-tz-toggle-wrap {
+  position: absolute;
+  top: 18px;
+  left: 10px;
+  width: var(--left-w);
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 8px;
+  z-index: 70;
+  pointer-events: none;
+}
+.kickoff-tz-toggle { pointer-events: auto; }
 
 /* === LEFT CARD (MATCHES) === */
 .left-card {
@@ -1861,10 +1878,6 @@ img[alt="AVI"] {
 .day-spacer {
     height: 22px;
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 10px;
 }
 [data-theme="retro"] .day-header {
     color: var(--accent-green);
@@ -2133,6 +2146,21 @@ img[alt="AVI"] {
  
 <div class="app">
   <div class="main">
+    <!-- Sibling of #left, not a child of it -- #left's own contents get
+         fully wiped and rebuilt on every render (see renderDashboard),
+         so anything placed inside it would need re-injecting every time.
+         Positioned (see CSS) to span exactly .left-card's own x-range,
+         never .right-card's -- .right-card scrolls horizontally to show
+         every bet column, and anything placed inside it (tried first, see
+         git history) ends up visually lost among the bet pills depending
+         on scroll position. This way it's always visible, lined up with
+         the very first day label ("FRIDAY") at the top of the match list. -->
+    <div class="kickoff-tz-toggle-wrap">
+      <div class="kickoff-tz-toggle toggle-group mini" onclick="event.stopPropagation()">
+        <button class="toggle-btn active" id="kickoffTzBtnLondon" onclick="setKickoffTz('Europe/London', this)">LON</button>
+        <button class="toggle-btn" id="kickoffTzBtnAmsterdam" onclick="setKickoffTz('Europe/Amsterdam', this)">AMS</button>
+      </div>
+    </div>
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
@@ -2990,6 +3018,18 @@ const KICKOFF_TZ_KEY = 'jb_kickoff_tz';
 window.kickoffTz = (function(){
   try { return localStorage.getItem(KICKOFF_TZ_KEY) || 'Europe/London'; } catch (e) { return 'Europe/London'; }
 })();
+// The toggle's HTML (above, static, near the top of .app) always
+// marks London active by default -- sync it to whatever was actually
+// restored from localStorage, since a returning Amsterdam-preference
+// visitor shouldn't see the wrong button lit up for a moment.
+(function(){
+  const londonBtn = document.getElementById('kickoffTzBtnLondon');
+  const amsBtn = document.getElementById('kickoffTzBtnAmsterdam');
+  if (londonBtn && amsBtn && window.kickoffTz === 'Europe/Amsterdam') {
+    londonBtn.classList.remove('active');
+    amsBtn.classList.add('active');
+  }
+})();
 function kickoffDayLabel(ts) {
   if (!ts) return null;
   try { return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: window.kickoffTz }).format(new Date(ts)); }
@@ -3000,17 +3040,25 @@ function kickoffTimeLabel(ts) {
   try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: window.kickoffTz }).format(new Date(ts)); }
   catch (e) { return null; }
 }
-// Swaps the active city and re-renders everything that shows a kickoff
-// day/time off the last data already in memory -- suppressCelebration:true
-// since nothing actually changed except the display timezone, a re-render
-// triggered by this must never replay a "big win" celebration.
+// Swaps the active city, then forces an immediate fresh render. Goes
+// through loadData() -- a real fetch + renderDashboard(), the exact same
+// path the normal poll cycle already runs every REFRESH_MS without issue
+// -- rather than replaying renderDashboard() directly against
+// window.__lastDashboard. That second option looked simpler but renders
+// on a `data` object renderDashboard has already mutated once (headers
+// merged, live-state overlaid, etc.) -- re-running the same
+// not-quite-idempotent mutations on top of themselves is exactly the kind
+// of thing that can silently produce a no-op or a wrong result, which
+// is what actually happened the first time this shipped: the toggle
+// visually did nothing. loadData() sidesteps that by always starting
+// from a clean fetch, same as every normal refresh.
 function setKickoffTz(tz, btnEl) {
   window.kickoffTz = tz;
   try { localStorage.setItem(KICKOFF_TZ_KEY, tz); } catch (e) {}
   const group = btnEl.parentElement;
   [...group.children].forEach(b => b.classList.remove('active'));
   btnEl.classList.add('active');
-  if (window.__lastDashboard) renderDashboard(window.__lastDashboard, { suppressCelebration: true });
+  loadData();
 }
 
 // formatGBP is only used by the live weekly summary's secondary (converted)
@@ -4226,7 +4274,6 @@ function renderDashboard(data, opts){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
-        let kickoffTzSwitchPlaced = false;
         data.matches.forEach((m, idx)=>{
           // Day label driven by kickoffTs (real UTC) + the selected city, not
           // the server's own pre-formatted startDay -- falls back to
@@ -4245,16 +4292,6 @@ function renderDashboard(data, opts){
               ds.className = "day-spacer";
               ds.setAttribute("data-day", dayLabel);
               if (isFirstLoad) { addEnterAnimation(ds, idx * 0.05); }
-              // London/Amsterdam switch -- only on the very first day
-              // divider, right-aligned in its spacer (same row height as
-              // the day label opposite it on the left).
-              if (!kickoffTzSwitchPlaced) {
-                  kickoffTzSwitchPlaced = true;
-                  ds.innerHTML = `<div class="toggle-group mini kickoff-tz-toggle" onclick="event.stopPropagation()">
-                    <button class="toggle-btn ${window.kickoffTz === 'Europe/London' ? 'active' : ''}" onclick="setKickoffTz('Europe/London', this)">LON</button>
-                    <button class="toggle-btn ${window.kickoffTz === 'Europe/Amsterdam' ? 'active' : ''}" onclick="setKickoffTz('Europe/Amsterdam', this)">AMS</button>
-                  </div>`;
-              }
               right.appendChild(ds);
           }
           const matchStatusType = getMatchStatusType(m);

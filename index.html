@@ -604,25 +604,16 @@ body {
   z-index: 5;
   align-items: flex-start;
 }
-/* Bounded to exactly .left-card's own x-range (--left-w wide, starting
-   at .main's own 10px padding) -- see the HTML comment above this element
-   for why it's a sibling, not a child, of #left. top is set for real by
-   alignKickoffToggle() (measures the actual rendered day-header position,
-   since the "MATCH WEEK" banner above it doesn't have a fixed height) --
-   this is just a reasonable fallback for the instant before that first
-   runs. */
-.kickoff-tz-toggle-wrap {
-  position: absolute;
-  top: 76px;
-  left: 10px;
-  width: var(--left-w);
-  display: flex;
-  justify-content: flex-end;
-  padding-right: 8px;
-  z-index: 70;
-  pointer-events: none;
-}
-.kickoff-tz-toggle { pointer-events: auto; }
+/* Lives INSIDE the first .day-header row itself (see renderDashboard's
+   day-header loop), not as a floating overlay -- that's deliberate: a
+   floating absolutely-positioned sibling sat in .main's own stacking
+   context, one level above #left's internal sticky MATCH WEEK banner, so
+   it always rendered on top of that banner even once scrolled past it
+   instead of correctly disappearing underneath it like the day-header/
+   matches do. Being a normal child of the day-header means it scrolls
+   and stacks exactly the same way those already do. */
+.day-header-with-toggle { justify-content: space-between; padding-right: 6px; }
+.kickoff-tz-toggle { flex-shrink: 0; }
 
 /* === LEFT CARD (MATCHES) === */
 .left-card {
@@ -2148,21 +2139,11 @@ img[alt="AVI"] {
  
 <div class="app">
   <div class="main">
-    <!-- Sibling of #left, not a child of it -- #left's own contents get
-         fully wiped and rebuilt on every render (see renderDashboard),
-         so anything placed inside it would need re-injecting every time.
-         Positioned (see CSS) to span exactly .left-card's own x-range,
-         never .right-card's -- .right-card scrolls horizontally to show
-         every bet column, and anything placed inside it (tried first, see
-         git history) ends up visually lost among the bet pills depending
-         on scroll position. This way it's always visible, lined up with
-         the very first day label ("FRIDAY") at the top of the match list. -->
-    <div class="kickoff-tz-toggle-wrap">
-      <div class="kickoff-tz-toggle toggle-group mini" onclick="event.stopPropagation()">
-        <button class="toggle-btn active" id="kickoffTzBtnLondon" onclick="setKickoffTz('Europe/London', this)">LON</button>
-        <button class="toggle-btn" id="kickoffTzBtnAmsterdam" onclick="setKickoffTz('Europe/Amsterdam', this)">HIL</button>
-      </div>
-    </div>
+    <!-- The kickoff timezone toggle itself is injected by renderDashboard
+         into the very first .day-header row inside #left (not placed
+         here) -- see the CSS comment on .day-header-with-toggle for why:
+         it needs to be a normal child of #left to scroll/stack the same
+         way the day-headers and matches already do. -->
     <div class="left-card" id="left"></div>
     <div class="right-card"><div class="rows" id="right"></div></div>
   </div>
@@ -3020,18 +3001,11 @@ const KICKOFF_TZ_KEY = 'jb_kickoff_tz';
 window.kickoffTz = (function(){
   try { return localStorage.getItem(KICKOFF_TZ_KEY) || 'Europe/London'; } catch (e) { return 'Europe/London'; }
 })();
-// The toggle's HTML (above, static, near the top of .app) always
-// marks London active by default -- sync it to whatever was actually
-// restored from localStorage, since a returning Amsterdam-preference
-// visitor shouldn't see the wrong button lit up for a moment.
-(function(){
-  const londonBtn = document.getElementById('kickoffTzBtnLondon');
-  const amsBtn = document.getElementById('kickoffTzBtnAmsterdam');
-  if (londonBtn && amsBtn && window.kickoffTz === 'Europe/Amsterdam') {
-    londonBtn.classList.remove('active');
-    amsBtn.classList.add('active');
-  }
-})();
+// The toggle itself is injected fresh into the first day-header on every
+// render (see renderDashboard) with the correct button already marked
+// active straight from window.kickoffTz -- so unlike the old static-HTML
+// version, there's no separate DOM-sync step needed here for a restored
+// Amsterdam preference to show correctly from the very first paint.
 function kickoffDayLabel(ts) {
   if (!ts) return null;
   try { return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: window.kickoffTz }).format(new Date(ts)); }
@@ -3063,32 +3037,18 @@ function refreshKickoffDisplays() {
   // doesn't happen in practice (no kickoff anywhere near 23:00/00:00), but
   // this stays correct instead of silently assuming that forever. Reads
   // the label from whichever match-row immediately follows each header in
-  // the DOM, since the row grouping itself isn't being rebuilt here.
+  // the DOM, since the row grouping itself isn't being rebuilt here. Only
+  // the .day-header-label span's text is touched -- the day-header itself
+  // may also hold the toggle markup (see renderDashboard), which a plain
+  // dh.textContent= would silently wipe out.
   document.querySelectorAll('#left .day-header').forEach(dh => {
     let sib = dh.nextElementSibling;
     while (sib && !sib.classList.contains('left-row')) sib = sib.nextElementSibling;
     const m = sib && (window.allMatches || []).find(mm => mm.match === sib.getAttribute('data-match'));
     const label = m && (kickoffDayLabel(m.kickoffTs) || m.startDay);
-    if (label) { dh.textContent = label; dh.setAttribute('data-day', label); }
+    const labelEl = dh.querySelector('.day-header-label');
+    if (label && labelEl) { labelEl.textContent = label; dh.setAttribute('data-day', label); }
   });
-}
-// Positions the toggle (a fixed sibling of #left/.right-card, see the HTML
-// comment near it) so it lines up with the first day-header's own
-// rendered row, measured for real instead of guessed -- a hardcoded
-// pixel offset broke the moment the "MATCH WEEK" banner above it changed
-// height (it did, first time this shipped). Re-run after every render,
-// not just once, since that banner's own height can change (e.g. its
-// sub-label text length).
-function alignKickoffToggle() {
-  const wrap = document.querySelector('.kickoff-tz-toggle-wrap');
-  const main = document.querySelector('.main');
-  const dayHeader = document.querySelector('#left .day-header');
-  if (!wrap || !main || !dayHeader) return;
-  const mainRect = main.getBoundingClientRect();
-  const dhRect = dayHeader.getBoundingClientRect();
-  const btnGroup = wrap.firstElementChild;
-  const toggleH = btnGroup ? btnGroup.getBoundingClientRect().height : dhRect.height;
-  wrap.style.top = ((dhRect.top - mainRect.top) + (dhRect.height - toggleH) / 2) + 'px';
 }
 // Swaps the active city, patches what's already on screen instantly (see
 // refreshKickoffDisplays() above for why that extra step is needed), then
@@ -4325,11 +4285,22 @@ function renderDashboard(data, opts){
           const dayLabel = kickoffDayLabel(m.kickoffTs) || m.startDay;
           // Insert day label when the kickoff day changes (e.g. Saturday → Sunday)
           if (dayLabel && dayLabel !== currentDay) {
+              const isFirstDayHeader = currentDay === null;
               currentDay = dayLabel;
               const dh = document.createElement("div");
               dh.className = "day-header";
               dh.setAttribute("data-day", dayLabel);
-              dh.textContent = dayLabel;
+              dh.innerHTML = `<span class="day-header-label">${dayLabel}</span>`;
+              // Only the very first (topmost) day-header gets the kickoff
+              // timezone toggle -- it switches every match's displayed day/
+              // time at once, so it only needs to exist in one place.
+              if (isFirstDayHeader) {
+                dh.classList.add('day-header-with-toggle');
+                dh.insertAdjacentHTML('beforeend', `<div class="kickoff-tz-toggle toggle-group mini" onclick="event.stopPropagation()">
+                  <button class="toggle-btn${window.kickoffTz === 'Europe/London' ? ' active' : ''}" id="kickoffTzBtnLondon" onclick="setKickoffTz('Europe/London', this)">LON</button>
+                  <button class="toggle-btn${window.kickoffTz === 'Europe/Amsterdam' ? ' active' : ''}" id="kickoffTzBtnAmsterdam" onclick="setKickoffTz('Europe/Amsterdam', this)">HIL</button>
+                </div>`);
+              }
               if (isFirstLoad) { addEnterAnimation(dh, idx * 0.05); }
               left.appendChild(dh);
               const ds = document.createElement("div");
@@ -4603,7 +4574,6 @@ function renderDashboard(data, opts){
        updateTicker();
         // isFirstLoad already turned off earlier, right after the rows
         // that actually need it were built -- see that comment.
-        alignKickoffToggle();
     } catch(e){ console.error(e); }
 }
 

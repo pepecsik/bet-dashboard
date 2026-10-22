@@ -4297,7 +4297,7 @@ function renderDashboard(data, opts){
               if (isFirstDayHeader) {
                 dh.classList.add('day-header-with-toggle');
                 dh.insertAdjacentHTML('beforeend', `<div class="kickoff-tz-toggle toggle-group mini" onclick="event.stopPropagation()">
-                  <button class="toggle-btn${window.kickoffTz === 'Europe/London' ? ' active' : ''}" id="kickoffTzBtnLondon" onclick="setKickoffTz('Europe/London', this)">LON</button>
+                  <button class="toggle-btn${window.kickoffTz === 'Europe/London' ? ' active' : ''}" id="kickoffTzBtnLondon" onclick="setKickoffTz('Europe/London', this)">LDN</button>
                   <button class="toggle-btn${window.kickoffTz === 'Europe/Amsterdam' ? ' active' : ''}" id="kickoffTzBtnAmsterdam" onclick="setKickoffTz('Europe/Amsterdam', this)">HIL</button>
                 </div>`);
               }

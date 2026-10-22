@@ -2448,7 +2448,8 @@ img[alt="AVI"] {
             <div class="modal-sub" id="hofSubtitle" style="color:var(--accent-gold)">Winning Bets</div>
       <div id="hofTotalWin" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);text-align:right;">
         <div style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Won</div>
-        <div style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">£0.00</div>
+        <div id="hofTotalWinGBP" style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;">£0.00</div>
+        <div id="hofTotalWinEUR" style="font-size:15px;font-weight:900;color:var(--accent-green);line-height:1.2;display:none;">€0.00</div>
       </div>
     </div>
     <div id="hofTabs" class="modal-tabs">
@@ -2825,9 +2826,18 @@ function renderHallOfFame(slips) {
   };
 
   const reversed = [...slips].reverse();
-  const totalWon = slips.reduce((sum, s) => sum + Number(s.win || 0), 0);
-  const totalEl = document.getElementById('hofTotalWin');
-  if (totalEl) totalEl.querySelector('div:last-child').textContent = '£' + totalWon.toFixed(2);
+  // Split by the same 20 Aug 2026 cutoff as each slip's own display (see
+  // hofFormat) -- summing both currencies into one "Total Won" would be
+  // the exact same meaningless-blend mistake as the old Balance Total
+  // card. The € line only shows once it's actually nonzero -- Winston's
+  // own rule: no point showing "€0.00" before anyone's actually won
+  // anything in euros.
+  const totalWonGBP = slips.filter(s => !isNaN(Date.parse(s.date)) && Date.parse(s.date) < HOF_EUR_CUTOFF).reduce((sum, s) => sum + Number(s.win || 0), 0);
+  const totalWonEUR = slips.filter(s => !isNaN(Date.parse(s.date)) && Date.parse(s.date) >= HOF_EUR_CUTOFF).reduce((sum, s) => sum + Number(s.win || 0), 0);
+  const gbpEl = document.getElementById('hofTotalWinGBP');
+  const eurEl = document.getElementById('hofTotalWinEUR');
+  if (gbpEl) gbpEl.textContent = formatGBP(totalWonGBP);
+  if (eurEl) { eurEl.textContent = formatEUR(totalWonEUR); eurEl.style.display = totalWonEUR > 0 ? '' : 'none'; }
   wrap.innerHTML = reversed.map((slip, idx) => {
     const avatar     = AVATAR[slip.person] || '';
     const personName = PERSON_NAME[slip.person] || slip.person || 'Unknown';
@@ -2990,30 +3000,57 @@ const hofFormat = dateStr => {
 window.rankingScopes = { rankingBody: 'season', historyScoreboard: 'season' };
 
 // "All Time" = every past season's final total (seasonHistory's last
-// progression entry per season) plus the current, still-live season.
+// progression entry per season, always £ -- real history, never
+// retroactively converted) plus the current, still-live season (always €,
+// since Betano bets are placed in euros). Kept as two separate totals,
+// moneyGBP/moneyEUR, instead of one blended "money" figure -- summing them
+// together would be the same meaningless-currency-blend mistake the old
+// Balance Total card made. See formatSplitMoney() for how this displays
+// (and why it hides the € side entirely until it's actually nonzero).
 function computeAllTimeRanking(data) {
-  const totals = Object.fromEntries(PLAYERS.map(p => [p, { money: 0, matchesRight: 0 }]));
+  const totals = Object.fromEntries(PLAYERS.map(p => [p, { moneyGBP: 0, moneyEUR: 0, matchesRight: 0 }]));
   (data.seasonHistory || []).forEach(season => {
     const finalMoney = (season.money && season.money.length) ? season.money[season.money.length - 1] : {};
     const finalMatches = (season.matches && season.matches.length) ? season.matches[season.matches.length - 1] : {};
     Object.keys(totals).forEach(p => {
-      totals[p].money += finalMoney[p] || 0;
+      totals[p].moneyGBP += finalMoney[p] || 0;
       totals[p].matchesRight += finalMatches[p] || 0;
     });
   });
   (data.ranking || []).forEach(r => {
     if (totals[r.name]) {
-      totals[r.name].money += r.money || 0;
+      totals[r.name].moneyEUR += r.money || 0;
       totals[r.name].matchesRight += r.matchesRight || 0;
     }
   });
-  return Object.keys(totals).map(name => ({ name, money: totals[name].money, matchesRight: totals[name].matchesRight }));
+  // `money` = moneyGBP+moneyEUR, kept alongside the split figures purely
+  // for sorting/tie-checks (ranking position has always been money-first --
+  // see the sort below -- a rough combined total is fine for THAT, it's
+  // only ever shown to a human via formatSplitMoney, never displayed as
+  // its own blended currency value).
+  return Object.keys(totals).map(name => ({ name, moneyGBP: totals[name].moneyGBP, moneyEUR: totals[name].moneyEUR, money: totals[name].moneyGBP + totals[name].moneyEUR, matchesRight: totals[name].matchesRight }));
 }
 
+// Season scope's own money is always euros (the live/current season only),
+// so it's normalized into the same {moneyGBP, moneyEUR, money} shape All
+// Time uses -- moneyGBP always 0 here -- so both podium renderers can
+// share one display/sort path regardless of which scope is showing.
 function getRankingPlayers(scope) {
   const data = window.__lastDashboard;
   if (!data) return null;
-  return scope === 'alltime' ? computeAllTimeRanking(data) : data.ranking;
+  if (scope === 'alltime') return computeAllTimeRanking(data);
+  return (data.ranking || []).map(r => ({ name: r.name, moneyGBP: 0, moneyEUR: r.money || 0, money: r.money || 0, matchesRight: r.matchesRight }));
+}
+
+// Primary money figure for a ranking podium slot -- € first (and alone,
+// per Winston's rule, while nobody's actually won anything in euros yet),
+// with a smaller "+ £X" alongside only once there's a real GBP figure to
+// show too. Falls back to plain £ when there's no euro figure at all yet
+// (today's All Time podium, before any euro win exists).
+function formatSplitMoney(moneyGBP, moneyEUR) {
+  if (moneyEUR > 0 && moneyGBP > 0) return `${formatEUR(moneyEUR)} <span style="opacity:.6;font-size:.75em;">+ ${formatGBP(moneyGBP)}</span>`;
+  if (moneyEUR > 0) return formatEUR(moneyEUR);
+  return formatGBP(moneyGBP);
 }
 
 // Shared by both ranking displays (this container id -> which renderer).
@@ -3117,8 +3154,8 @@ function renderRankingPodium(container, players) {
   // number, so they lead; the moment real money shows up, money takes back
   // the spotlight.
   const moneyIsPrimary = sorted.reduce((sum, p) => sum + (p.money || 0), 0) > 0;
-  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
-  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatGBP(p.money);
+  const primaryStat = p => moneyIsPrimary ? formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0) : `${p.matchesRight} Points`;
+  const secondaryStat = p => moneyIsPrimary ? `${p.matchesRight} Points` : formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0);
   const ptsClass = moneyIsPrimary ? '' : ' pts';
   const podiumSlot = (p, cls, icon) => `
           <div class="podium-place ${cls}">
@@ -3162,7 +3199,7 @@ function renderCompactPodium(container, players) {
   });
   const [p1, p2, ...rest] = sorted;
   const moneyIsPrimary = sorted.reduce((sum, p) => sum + (p.money || 0), 0) > 0;
-  const primaryStat = p => moneyIsPrimary ? formatGBP(p.money) : `${p.matchesRight} Points`;
+  const primaryStat = p => moneyIsPrimary ? formatSplitMoney(p.moneyGBP || 0, p.moneyEUR || 0) : `${p.matchesRight} Points`;
   const ptsClass = moneyIsPrimary ? '' : ' pts';
   const order = [p2, p1, ...rest];
   container.innerHTML = `

@@ -1861,6 +1861,10 @@ img[alt="AVI"] {
 .day-spacer {
     height: 22px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
 }
 [data-theme="retro"] .day-header {
     color: var(--accent-green);
@@ -2973,6 +2977,41 @@ setTheme(savedTheme === 'worldcup' ? 'premierleague' : savedTheme);
 
 // HELPERS
 function vibe(){ if(navigator.vibrate) navigator.vibrate(15); }
+
+// Kickoff timezone switch (London/Amsterdam) -- day labels and kickoff
+// times come from the server already formatted as text (Code.gs's own
+// Sheet timezone), but every match also carries kickoffTs, a real UTC
+// timestamp -- so instead of relying on the server's pre-formatted
+// strings, this recomputes the day/time labels client-side in whichever
+// city is selected. Using Intl's real IANA timezone data (not a fixed
+// +1h offset) means this stays correct automatically across the UK/NL
+// DST mismatch weeks each spring and autumn, not just most of the year.
+const KICKOFF_TZ_KEY = 'jb_kickoff_tz';
+window.kickoffTz = (function(){
+  try { return localStorage.getItem(KICKOFF_TZ_KEY) || 'Europe/London'; } catch (e) { return 'Europe/London'; }
+})();
+function kickoffDayLabel(ts) {
+  if (!ts) return null;
+  try { return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: window.kickoffTz }).format(new Date(ts)); }
+  catch (e) { return null; }
+}
+function kickoffTimeLabel(ts) {
+  if (!ts) return null;
+  try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: window.kickoffTz }).format(new Date(ts)); }
+  catch (e) { return null; }
+}
+// Swaps the active city and re-renders everything that shows a kickoff
+// day/time off the last data already in memory -- suppressCelebration:true
+// since nothing actually changed except the display timezone, a re-render
+// triggered by this must never replay a "big win" celebration.
+function setKickoffTz(tz, btnEl) {
+  window.kickoffTz = tz;
+  try { localStorage.setItem(KICKOFF_TZ_KEY, tz); } catch (e) {}
+  const group = btnEl.parentElement;
+  [...group.children].forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  if (window.__lastDashboard) renderDashboard(window.__lastDashboard, { suppressCelebration: true });
+}
 
 // formatGBP is only used by the live weekly summary's secondary (converted)
 // column now -- every other figure in the app is euro-native, since
@@ -4187,20 +4226,35 @@ function renderDashboard(data, opts){
         right.appendChild(headerRow); right.appendChild(document.createElement("div")).className="right-divider";
         const matchCount = data.matches.length;
         let currentDay = null;
+        let kickoffTzSwitchPlaced = false;
         data.matches.forEach((m, idx)=>{
+          // Day label driven by kickoffTs (real UTC) + the selected city, not
+          // the server's own pre-formatted startDay -- falls back to
+          // startDay on the rare match missing a kickoffTs.
+          const dayLabel = kickoffDayLabel(m.kickoffTs) || m.startDay;
           // Insert day label when the kickoff day changes (e.g. Saturday → Sunday)
-          if (m.startDay && m.startDay !== currentDay) {
-              currentDay = m.startDay;
+          if (dayLabel && dayLabel !== currentDay) {
+              currentDay = dayLabel;
               const dh = document.createElement("div");
               dh.className = "day-header";
-              dh.setAttribute("data-day", m.startDay);
-              dh.textContent = m.startDay;
+              dh.setAttribute("data-day", dayLabel);
+              dh.textContent = dayLabel;
               if (isFirstLoad) { addEnterAnimation(dh, idx * 0.05); }
               left.appendChild(dh);
               const ds = document.createElement("div");
               ds.className = "day-spacer";
-              ds.setAttribute("data-day", m.startDay);
+              ds.setAttribute("data-day", dayLabel);
               if (isFirstLoad) { addEnterAnimation(ds, idx * 0.05); }
+              // London/Amsterdam switch -- only on the very first day
+              // divider, right-aligned in its spacer (same row height as
+              // the day label opposite it on the left).
+              if (!kickoffTzSwitchPlaced) {
+                  kickoffTzSwitchPlaced = true;
+                  ds.innerHTML = `<div class="toggle-group mini kickoff-tz-toggle" onclick="event.stopPropagation()">
+                    <button class="toggle-btn ${window.kickoffTz === 'Europe/London' ? 'active' : ''}" onclick="setKickoffTz('Europe/London', this)">LON</button>
+                    <button class="toggle-btn ${window.kickoffTz === 'Europe/Amsterdam' ? 'active' : ''}" onclick="setKickoffTz('Europe/Amsterdam', this)">AMS</button>
+                  </div>`;
+              }
               right.appendChild(ds);
           }
           const matchStatusType = getMatchStatusType(m);
@@ -4260,7 +4314,7 @@ function renderDashboard(data, opts){
           const matchMinute = parseInt(m.status.replace("'", ""));
           const isClinchTime = live && !isNaN(matchMinute) && matchMinute >= 85;
           const bc=live?"var(--accent-green)":"var(--text-muted)", bg=live?"rgba(74, 222, 128, 0.15)":"transparent", bb=live?"1px solid var(--accent-green)":"1px solid transparent";
-          let displayStatus = m.status === "NS" ? (m.startTime || "NS") : formatMatchMinute(m);
+          let displayStatus = m.status === "NS" ? (kickoffTimeLabel(m.kickoffTs) || m.startTime || "NS") : formatMatchMinute(m);
 
           const [hScore, aScore] = (m.score || "0-0").split("-").map(x => parseInt(x)||0);
 
@@ -5859,7 +5913,7 @@ function renderLiveMatchVisuals(m) {
   if (!document.getElementById("matchModal").classList.contains("active")) return;
   const s = m.stats || {};
 
-  const modalStatus = m.status === "NS" ? (m.startTime || "Upcoming") : m.status;
+  const modalStatus = m.status === "NS" ? (kickoffTimeLabel(m.kickoffTs) || m.startTime || "Upcoming") : m.status;
   document.getElementById("mStatus").textContent = modalStatus + " • " + (m.score || "0-0");
 
   // PITCH PRESSURE GRADIENT
@@ -6866,11 +6920,12 @@ function selectPlayer(name) {
     const [h, a] = m.match.split("-").map(s => s.trim());
     if(!pendingBets[m.match]) pendingBets[m.match] = {};
 
-    if (m.startDay && m.startDay !== currentModalDay) {
-      currentModalDay = m.startDay;
+    const modalDayLabel = kickoffDayLabel(m.kickoffTs) || m.startDay;
+    if (modalDayLabel && modalDayLabel !== currentModalDay) {
+      currentModalDay = modalDayLabel;
       const dh = document.createElement('div');
       dh.className = 'day-header';
-      dh.textContent = m.startDay;
+      dh.textContent = modalDayLabel;
       namesContainer.appendChild(dh);
       const ds = document.createElement('div');
       ds.className = 'day-spacer';

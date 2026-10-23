@@ -26,6 +26,8 @@ import { parseLiveStats, parseScorers } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
 import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
+import { getMatchweekReadiness } from "./matchweekAuto.js";
+import { computeWeeklySummary, SB_PLAYERS } from "./matchweekSummary.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -129,10 +131,12 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
 const PENDING_ALERT_MS = parseInt(process.env.PENDING_ALERT_MS || "120000", 10); // 2 minutes
 const alertedStalePending = new Set(); // player names already alerted for their CURRENT pending wait
 
-async function notifyStalePendingDirect(player, waitedMs) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return; // not configured on Render -- silently skip, same as driver.js's own direct-notify functions do when unset
-  const minutes = Math.round(waitedMs / 60000);
-  const text = `⚠️ ${player}'s bet has been queued for ~${minutes} min with nobody picking it up. The automatic pickup may not be running -- you may need to manually ask OpenClaw to run driver.js.`;
+// Shared by every direct-notify function below (stale pending bet, stuck
+// matchweek, auto-matchweek result) -- one place that actually talks to
+// Telegram, same silent-skip-when-unset behavior driver.js's own
+// direct-notify functions already have.
+async function sendTelegram(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
@@ -140,8 +144,13 @@ async function notifyStalePendingDirect(player, waitedMs) {
     const data = await res.json();
     if (!data.ok) throw new Error(JSON.stringify(data));
   } catch (err) {
-    console.error("[relay] Stale-pending Telegram notify failed:", err.message);
+    console.error("[relay] Telegram notify failed:", err.message);
   }
+}
+
+async function notifyStalePendingDirect(player, waitedMs) {
+  const minutes = Math.round(waitedMs / 60000);
+  return sendTelegram(`⚠️ ${player}'s bet has been queued for ~${minutes} min with nobody picking it up. The automatic pickup may not be running -- you may need to manually ask OpenClaw to run driver.js.`);
 }
 
 // Called on every queue-touching request (see server handler below) --
@@ -823,12 +832,146 @@ async function fetchBetsSnapshot() {
   }
 }
 
+/* ===================== Auto "Start New Matchweek" ===================== */
+// Runs the exact same server-side sequence as admin.html's manual "Start
+// New Matchweek" button (Save Matchweek -> Clear & Set Date -> Clear Bets
+// -> Get Fixture IDs -> Update All Data) the moment it's actually safe to,
+// instead of waiting for Winston to notice and click it by hand.
+//
+//  - Never fires unless EVERY match in the current matchweek is FT (see
+//    getMatchweekReadiness() in matchweekAuto.js). A manually-started new
+//    matchweek (fresh NS fixtures) makes this false again on its own, so
+//    an early manual start can never get run over by this -- there's
+//    nothing left to structurally conflict with.
+//  - Once all FT, fires 2 London calendar-days after the latest match's own
+//    kickoff date (not the scheduled date, not clock time).
+//  - A match sitting in a weird state (postponed/abandoned/etc, or still NS
+//    well past its own kickoff) for more than 12h gets a one-off Telegram
+//    alert instead of being guessed at -- the automation just keeps
+//    waiting either way.
+//  - Deliberately does NOT send the matchweek preview email -- that stays
+//    a manual, confirmed, no-undo step, same as it already is today.
+//  - AUTO_MATCHWEEK_ENABLED is an explicit opt-IN (env var, no redeploy
+//    needed either way) -- stays off, same as if this code didn't exist,
+//    until Winston sets it to "1" on Render once he's ready to trust it
+//    with a real matchweek. Also hard-off under MOCK_MODE so a local/dev
+//    run can never fire a real Apps Script write.
+const AUTO_MATCHWEEK_ENABLED = process.env.AUTO_MATCHWEEK_ENABLED === "1" && !MOCK_MODE;
+const MATCHWEEK_CHECK_MS = parseInt(process.env.MATCHWEEK_CHECK_MS || "3600000", 10); // hourly
+const STUCK_ALERT_MS = 12 * 60 * 60 * 1000; // 12h, per Winston
+const stuckMatchSince = new Map(); // match -> ms it was FIRST seen stuck
+const alertedStuckMatch = new Set(); // matches already alerted for their CURRENT stuck spell
+// The lastMatchDate this automation has already successfully handled --
+// guards against firing twice for the same matchweek (e.g. two checks
+// landing close together right at the boundary), with no persisted state
+// needed across a restart: worst case after a restart is one extra,
+// harmless re-check whose own "all FT" precondition is already gone the
+// moment the sequence it ran actually worked.
+let autoHandledLastMatchDate = null;
+
+async function fetchDashboard() {
+  const res = await fetch(APPS_SCRIPT_URL);
+  return res.json();
+}
+
+async function postAdminAction(action, extra) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(Object.assign({ action }, extra || {})),
+  });
+  return res.json();
+}
+
+// Mirrors admin.html's autoStepSaveMatchweek() -- computes each player's
+// final points/money for the week fresh from the just-fetched data, same
+// as the manual button does, rather than trusting anything cached.
+async function autoSaveMatchweek(data) {
+  const summary = computeWeeklySummary(data);
+  const players = {};
+  SB_PLAYERS.forEach((p) => { players[p] = summary[p]; });
+  return postAdminAction("adminSaveMatchweek", { players });
+}
+
+// Same 5 steps as admin.html's runAutomation(), same order, same
+// stop-at-first-failure -- just invoked here instead of from a browser
+// button click.
+async function runAutoMatchweekSequence(data) {
+  let res = await autoSaveMatchweek(data);
+  if (res.status === "error") return { ok: false, step: "Save Matchweek", message: res.message };
+
+  const dateRes = await postAdminAction("adminSuggestNextDate", {});
+  if (dateRes.status !== "success" || !dateRes.date) return { ok: false, step: "Suggest Next Date", message: dateRes.message || "no date returned" };
+  const nextDate = dateRes.date;
+
+  res = await postAdminAction("adminClearAndSetDate", { date: nextDate });
+  if (res.status === "error") return { ok: false, step: "Clear & Set Date", message: res.message };
+
+  res = await postAdminAction("adminClearBets", {});
+  if (res.status === "error") return { ok: false, step: "Clear Bets", message: res.message };
+
+  res = await postAdminAction("adminGetFixtureIds", {});
+  if (res.status === "error") return { ok: false, step: "Get Fixture IDs", message: res.message };
+
+  res = await postAdminAction("adminUpdateAllData", {});
+  if (res.status === "error") return { ok: false, step: "Update All Data", message: res.message };
+
+  return { ok: true, nextDate };
+}
+
+// The hourly check. Fetches fresh (never trusts a cache for this -- it's
+// the one thing in this file that both reads money/score state AND
+// triggers an irreversible write), flags/alerts any stuck match, and only
+// ever calls runAutoMatchweekSequence() once readiness and the
+// not-already-handled guard both agree.
+async function checkAutoMatchweek() {
+  if (!AUTO_MATCHWEEK_ENABLED) return;
+  let data;
+  try {
+    data = await fetchDashboard();
+  } catch (err) {
+    console.error("[relay] matchweek auto-check: could not fetch dashboard:", err.message);
+    return;
+  }
+  if (!data || !Array.isArray(data.matches)) return;
+
+  const now = Date.now();
+  const readiness = getMatchweekReadiness(data.matches, now);
+
+  // Stuck-match alerting -- independent of whether we're otherwise ready,
+  // since a stuck match is exactly what would be holding readiness back.
+  const stuckSet = new Set(readiness.stuckMatches);
+  for (const key of stuckMatchSince.keys()) {
+    if (!stuckSet.has(key)) { stuckMatchSince.delete(key); alertedStuckMatch.delete(key); }
+  }
+  for (const match of readiness.stuckMatches) {
+    if (!stuckMatchSince.has(match)) stuckMatchSince.set(match, now);
+    const stuckForMs = now - stuckMatchSince.get(match);
+    if (stuckForMs > STUCK_ALERT_MS && !alertedStuckMatch.has(match)) {
+      alertedStuckMatch.add(match);
+      sendTelegram(`⚠️ ${match} has been in an unusual state for 12h+ and is blocking the new matchweek from starting automatically. Needs a manual look.`).catch(() => {});
+    }
+  }
+
+  if (!readiness.readyToStart) return;
+  if (readiness.lastMatchDate === autoHandledLastMatchDate) return; // already handled this matchweek
+
+  console.log(`[relay] matchweek auto-check: ready to start (last match ${readiness.lastMatchDate}) -- running the sequence`);
+  const result = await runAutoMatchweekSequence(data);
+  if (result.ok) {
+    autoHandledLastMatchDate = readiness.lastMatchDate;
+    sendTelegram(`✅ New matchweek started automatically (fixtures set for ${result.nextDate}). Check the bets grid and send the preview email when ready.`).catch(() => {});
+  } else {
+    sendTelegram(`🛑 Auto-starting the new matchweek failed at step "${result.step}": ${result.message}. Nothing further was run -- you'll need to pick this up manually in Admin.`).catch(() => {});
+  }
+}
+
 setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 // Checked well under PENDING_ALERT_MS's own 2-minute default, so a stale
 // job is actually caught close to the threshold rather than up to a whole
 // extra interval late.
 setInterval(checkStalePending, 30000);
+setInterval(checkAutoMatchweek, MATCHWEEK_CHECK_MS);
 fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
   console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms, FORCE_BETFAIR_TEST_MODE=${FORCE_BETFAIR_TEST_MODE}`);

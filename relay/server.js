@@ -28,7 +28,6 @@ import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js"
 import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
 import { getMatchweekReadiness } from "./matchweekAuto.js";
 import { computeWeeklySummary, SB_PLAYERS } from "./matchweekSummary.js";
-import { isWhatIfVisible } from "./previewEmailAuto.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -966,61 +965,6 @@ async function checkAutoMatchweek() {
   }
 }
 
-/* ===================== Auto-send matchweek preview email ===================== */
-// Sends the matchweek preview email on its own, 5 minutes after the "What
-// if?" column first becomes visible in the app (see isWhatIfVisible() in
-// previewEmailAuto.js) -- the same moment every regular bet is in and
-// locked, which is exactly when the preview is normally useful to send.
-// Checked every minute off the cheap ?mode=fast endpoint (DASHBOARD-only,
-// no DATA-sheet reads), not the full dashboard -- this needs much tighter
-// timing than the once-an-hour matchweek-start check above, and ?mode=fast
-// already carries everything isWhatIfVisible() needs (header status, the
-// WIN row, isFirstBetGame per match).
-//
-// Conflict-safety: this only ever schedules once per matchweek (keyed by
-// data.date) from the relay's side, AND Code.gs's adminSendMatchweekEmail
-// itself now refuses a second send for the same date (see the Code.gs
-// patch) -- so a manual Send from Admin moments before this timer fires
-// just makes this one a harmless no-op "skipped" instead of a duplicate
-// email, regardless of which side got there first.
-const PREVIEW_EMAIL_AUTO_ENABLED = process.env.PREVIEW_EMAIL_AUTO_ENABLED === "1" && !MOCK_MODE;
-const PREVIEW_EMAIL_CHECK_MS = parseInt(process.env.PREVIEW_EMAIL_CHECK_MS || "60000", 10); // 1 minute
-const PREVIEW_EMAIL_DELAY_MS = parseInt(process.env.PREVIEW_EMAIL_DELAY_MS || "300000", 10); // 5 minutes
-let previewEmailScheduledForDate = null;
-
-async function fetchFastDashboard() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?mode=fast`);
-  return res.json();
-}
-
-async function sendPreviewEmailNow(forDate) {
-  const res = await postAdminAction("adminSendMatchweekEmail", {});
-  if (res.status === "success") {
-    sendTelegram(`📧 Matchweek preview email sent automatically (5 min after bets locked in for ${forDate}).`).catch(() => {});
-  } else if (res.status === "skipped") {
-    console.log(`[relay] preview email auto-send: ${res.message}`);
-  } else {
-    sendTelegram(`🛑 Auto-sending the matchweek preview email failed: ${res.message || "unknown error"}. Send it manually from Admin.`).catch(() => {});
-  }
-}
-
-async function checkPreviewEmailAuto() {
-  if (!PREVIEW_EMAIL_AUTO_ENABLED) return;
-  let data;
-  try {
-    data = await fetchFastDashboard();
-  } catch (err) {
-    console.error("[relay] preview-email auto-check: could not fetch dashboard:", err.message);
-    return;
-  }
-  if (!data || data.date === previewEmailScheduledForDate) return;
-  if (!isWhatIfVisible(data)) return;
-
-  previewEmailScheduledForDate = data.date;
-  console.log(`[relay] preview-email auto-check: What if? now visible for ${data.date} -- sending in ${PREVIEW_EMAIL_DELAY_MS / 60000} min`);
-  setTimeout(() => { sendPreviewEmailNow(data.date).catch(() => {}); }, PREVIEW_EMAIL_DELAY_MS);
-}
-
 setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 // Checked well under PENDING_ALERT_MS's own 2-minute default, so a stale
@@ -1028,7 +972,6 @@ setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 // extra interval late.
 setInterval(checkStalePending, 30000);
 setInterval(checkAutoMatchweek, MATCHWEEK_CHECK_MS);
-setInterval(checkPreviewEmailAuto, PREVIEW_EMAIL_CHECK_MS);
 fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
   console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms, FORCE_BETFAIR_TEST_MODE=${FORCE_BETFAIR_TEST_MODE}`);

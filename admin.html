@@ -382,7 +382,7 @@
            BALANCE's current-season Paid cell. Nothing else happens on its
            own anymore. -->
       <div class="bf-paid-row">
-        <span class="bf-paid-label">Paid this week &pound;</span>
+        <span class="bf-paid-label">Paid this week &euro;</span>
         <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="weeklyPaidInput" placeholder="16">
         <button class="bf-paid-save" id="weeklyPaidSave" onclick="saveWeeklyPaid(this)">Add</button>
       </div>
@@ -1178,7 +1178,7 @@ function renderBetfair(betfair) {
         <div class="bf-current-date">${upcoming.date}</div>
       </div>
       <div class="bf-paid-row">
-        <span class="bf-paid-label">Paid &pound;</span>
+        <span class="bf-paid-label">Paid &euro;</span>
         <input type="number" inputmode="decimal" step="0.01" class="bf-paid-input" id="bfPaidInput" placeholder="48" value="${upcoming.paid !== null ? upcoming.paid : ''}">
         <button class="bf-paid-save" id="bfPaidSave" onclick="saveBetfairPaid(${upcoming.row}, this)">Save</button>
       </div>

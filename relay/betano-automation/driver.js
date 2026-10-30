@@ -909,8 +909,18 @@ async function recoverBetslipMismatch(page, stagehand, plan, mismatchErr, fallba
     console.warn(`[betano-driver] ${label}: knowledge-log read failed (non-fatal, continuing without it):`, err.message);
   }
 
+  // Confirmed live (2026-10-30) via OpenClaw's own isolated test, before
+  // this was ever trusted on a real run: given an unsatisfiable mismatch
+  // (a leg that genuinely can't be found), an earlier, looser version of
+  // this prompt ("remove anything wrong") led the AI to clear the WHOLE
+  // betslip instead of leaving already-correct legs alone -- the mandatory
+  // re-verify below still caught it (threw, hard-stopped normally, no
+  // placement risk), but turned a clean "1 leg missing" diagnosis into a
+  // confusing "betslip is completely empty" one. Explicitly forbidding
+  // removal of anything already correct, so a failed recovery degrades to
+  // the same original, legible mismatch instead of a worse one.
   const legList = plan.steps.map((s) => `${s.match}: ${s.selection}`).join("; ");
-  const description = `The bet slip should contain exactly these legs: ${legList}. ${mismatchErr.message} Fix the betslip so it matches the full list exactly -- add any missing leg(s), remove anything wrong.${knowledgeHint}`;
+  const description = `The bet slip should contain exactly these legs: ${legList}. ${mismatchErr.message} Add the missing leg(s) only. Do NOT remove, clear, or touch any leg that is already correctly in the betslip -- if you can't find a specific missing leg, leave everything else exactly as it is and stop rather than clearing anything.${knowledgeHint}`;
 
   const before = { ...stagehand.metrics };
   await stagehand.page.act(description);

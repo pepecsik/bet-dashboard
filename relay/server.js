@@ -290,7 +290,25 @@ const server = http.createServer((req, res) => {
     const job = getNext(betfairQueue, Date.now());
     if (!job) { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ job: null })); return; }
     const exportData = buildBetfairExport(betsCache);
-    const bets = exportData.bets.filter((b) => b.player === job.player);
+    // Confirmed live (2026-10-30): a claim that hard-stops mid-job without
+    // ever calling /betfair-place-result with completeJob:true never clears
+    // -- expireStaleClaims() kicks it back to pending after 15 min, and the
+    // next pickup used to hand back ALL of this player's bets again,
+    // including ones that had already been placed for real (bet 1 placed
+    // twice in one real run). Filtering out anything already reflected in
+    // winCells (see buildBetfairExport's alreadyPlaced) means a retry only
+    // ever rebuilds what's actually still missing.
+    const bets = exportData.bets.filter((b) => b.player === job.player && !b.alreadyPlaced);
+    if (bets.length === 0) {
+      // Every one of this player's bets already has a recorded WIN value --
+      // nothing left to place (most likely this exact retry-after-hard-stop
+      // scenario, where the earlier bet(s) had actually gone through fine).
+      // Clear the claim now instead of handing driver.js an empty job.
+      betfairQueue = completeRequest(betfairQueue, job.player);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ job: null, note: `${job.player}'s bets were already placed -- nothing left to do.` }));
+      return;
+    }
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ job: { player: job.player, requestedAt: job.requestedAt, test: !!job.test, writeSheetOnTest: !!job.writeSheetOnTest }, bets }, null, 2));
     return;

@@ -92,6 +92,17 @@ function translatePick(rawValue, homeCode, awayCode) {
 function buildBetfairExport(betsCache) {
   const headers = (betsCache && betsCache.headers) || [];
   const matches = (betsCache && betsCache.matches) || [];
+  // Paired by array position, not by sheetColIdx -- same convention
+  // admin.html's own winCells lookup already uses (see its comment on
+  // winInputRow). A bet already has a recorded WIN value the moment it's
+  // actually placed (adminSetWinValue writes the real Potential Return from
+  // the Betano slip), so this is the one trustworthy "was this specific bet
+  // already placed" signal -- unlike the queue, which only tracks "is a job
+  // currently claimed," not "which of this player's bets already went
+  // through" (see server.js's /betfair-place-request/next for why that gap
+  // mattered: a re-queued job used to rebuild from bet 1 every time,
+  // including bets that had already succeeded).
+  const winCells = (betsCache && betsCache.winCells) || [];
 
   // arrIdx (position in this response's headers/cells arrays) is only used
   // for aligning a header with its own cell in each match -- it is NOT the
@@ -112,7 +123,9 @@ function buildBetfairExport(betsCache) {
         needsManualCheck: !translated,
       });
     });
-    return { player: h.name, sheetColIdx: h.idx, stake: 3, legCount: legs.length, legs };
+    const winCell = winCells[arrIdx];
+    const alreadyPlaced = !!(winCell && Number(winCell.value) > 0);
+    return { player: h.name, sheetColIdx: h.idx, stake: 3, legCount: legs.length, legs, alreadyPlaced };
   });
 
   return { generatedAt: new Date().toISOString(), bets };

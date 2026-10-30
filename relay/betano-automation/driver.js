@@ -595,7 +595,18 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     await dismissMarketingPopup(page, "before Correct Score expand");
     await dismissSessionTimer(page, "before Correct Score expand");
     // Correct Score is a collapsed accordion by default -- expand it first.
-    await page.getByText("Correct Score", { exact: true }).click();
+    // Confirmed live (2026-10-30), root-caused by OpenClaw during a real
+    // run: an unscoped getByText("Correct Score", { exact: true }) matches
+    // TWO elements whenever the shared Betano account's "My Bets" sidebar
+    // (#my-bets-section) is showing another already-open bet that also has
+    // a Correct Score leg -- the ambiguous locator throws on .click(),
+    // falls through to the AI fallback, which then falsely reports success
+    // while the leg never actually lands on the betslip. This is the exact
+    // root cause behind the Timbo bet-2 hard-stop/empty-betslip incident.
+    // Excluding #my-bets-section's own descendants, same ancestor-based
+    // exclusion technique marketCardFor() already uses above, keeps this
+    // scoped to the match page's own accordion heading only.
+    await page.locator(`xpath=//*[normalize-space(text())="Correct Score" and not(ancestor::*[@id="my-bets-section"])]`).click();
   }
 
   if (step.market === "Correct Score") {

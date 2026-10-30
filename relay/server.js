@@ -462,6 +462,59 @@ const server = http.createServer((req, res) => {
     res.end(entry.buffer);
     return;
   }
+  // OpenClaw's standing knowledge log -- durable (Sheet-backed, not relay
+  // memory, which would lose it on every restart/redeploy), so a self-fix
+  // learned this week is still there next matchweek. Proxies to Code.gs the
+  // same way /betfair-place-result already does for adminSetWinValue --
+  // same APPS_SCRIPT_URL, same "fire a named action" shape, so there's one
+  // consistent pattern for every write this relay forwards to the Sheet.
+  if (req.method === "POST" && req.url === "/openclaw-knowledge") {
+    readJsonBody(req, async (body) => {
+      const { category, problem, fix, context } = body || {};
+      if (!problem || !fix) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing problem or fix" }));
+        return;
+      }
+      try {
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "adminLogOpenClawKnowledge", category: category || "general", problem, fix, context: context || "" }),
+        });
+        const data = await resp.json();
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(data));
+      } catch (e) {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+  // Read-before-build -- OpenClaw checks this before starting a placement
+  // run, so a fix learned on, say, week 3 is actually available on week 9
+  // instead of only living in that one session's own transcript.
+  if (req.method === "GET" && req.url.startsWith("/openclaw-knowledge")) {
+    const limit = parseInt(new URL(req.url, "http://x").searchParams.get("limit") || "20", 10);
+    // The outer handler isn't async (see http.createServer above) -- an
+    // IIFE here keeps this route's await local instead of needing every
+    // route in the file converted.
+    (async () => {
+      try {
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "adminGetOpenClawKnowledge", limit }),
+        });
+        const data = await resp.json();
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(data));
+      } catch (e) {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    })();
+    return;
+  }
   // Manual test trigger -- MOCK_MODE only, so this never becomes a stray
   // public control surface once real matches are actually being tracked.
   // Open /trigger on any browser (e.g. a computer) and click a button to

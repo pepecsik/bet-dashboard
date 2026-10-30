@@ -876,6 +876,72 @@ async function verifyBetslipMatchesPlan(page, plan) {
   }
 }
 
+// Confirmed live (2026-10-30), the Timbo bet-2 incident: a mismatch here
+// used to go straight to a hard stop with zero attempt at recovery -- the
+// exact failure mode that's actually bitten a real run twice now (the
+// original Snackbar hard-stop, and Timbo's Correct Score leg). This is the
+// one place Winston asked for self-recovery to actually apply to an
+// unattended run, not just when a live OpenClaw session happens to be
+// watching. Deliberately scoped to ONLY this check -- never touches
+// placeRealBet or anything after it, same "nothing placed yet, safe to
+// retry" boundary the self-recovery policy spells out. Never trusts the
+// AI's own claim of success: re-runs the exact same verifyBetslipMatchesPlan
+// check afterward, the same real source of truth every other check in this
+// file already uses -- if it still throws, that error propagates straight
+// to main()'s existing hard-stop path, completely unchanged.
+async function recoverBetslipMismatch(page, stagehand, plan, mismatchErr, fallbackLog, player, label) {
+  console.warn(`[betano-driver] ${label}: betslip mismatch detected -- attempting one AI-assisted recovery before hard-stopping: ${mismatchErr.message}`);
+
+  // Best-effort: recent fixes for similar problems, folded straight into
+  // the AI's own instructions rather than building separate relevance-
+  // matching logic -- if nothing here is relevant, gpt-5-mini just ignores
+  // it. A slow/failed knowledge-log read must never block the recovery
+  // attempt itself.
+  let knowledgeHint = "";
+  try {
+    const res = await fetch(`${RELAY_URL}/openclaw-knowledge?limit=5`, { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    if (data && data.entries && data.entries.length) {
+      knowledgeHint = "\n\nRecent similar problems and the fixes that worked:\n" +
+        data.entries.map((e) => `- ${e.problem} -> ${e.fix}`).join("\n");
+    }
+  } catch (err) {
+    console.warn(`[betano-driver] ${label}: knowledge-log read failed (non-fatal, continuing without it):`, err.message);
+  }
+
+  const legList = plan.steps.map((s) => `${s.match}: ${s.selection}`).join("; ");
+  const description = `The bet slip should contain exactly these legs: ${legList}. ${mismatchErr.message} Fix the betslip so it matches the full list exactly -- add any missing leg(s), remove anything wrong.${knowledgeHint}`;
+
+  const before = { ...stagehand.metrics };
+  await stagehand.page.act(description);
+  const after = { ...stagehand.metrics };
+  fallbackLog.push({ description, deterministicError: mismatchErr.message, at: new Date().toISOString(), metricsBefore: before, metricsAfter: after, metrics: metricsDelta(before, after) });
+
+  // The ONE real check -- same function, same trust level as everywhere
+  // else in this file. A failure here is not swallowed: it propagates
+  // straight up to main()'s existing hard-stop path, unchanged.
+  await verifyBetslipMatchesPlan(page, plan);
+
+  // Only reached on a verified success -- logged so the same problem is
+  // faster to recognize and fix next time, on this run or a future one.
+  try {
+    await fetch(`${RELAY_URL}/openclaw-knowledge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category: "betslip-mismatch",
+        problem: mismatchErr.message,
+        fix: `AI-assisted fix via Stagehand: ${description}`,
+        context: `${player} ${label}`,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    console.warn(`[betano-driver] ${label}: knowledge-log write failed (non-fatal):`, err.message);
+  }
+  console.log(`[betano-driver] ${label}: betslip mismatch recovered -- continuing without Winston.`);
+}
+
 // Confirmed live (2026-09-24): a local file path is useless to the relay
 // (a Render service, not on this machine) and to the admin app, and both
 // ways tried of handing a screenshot to OpenClaw's Telegram message tool
@@ -1368,7 +1434,13 @@ async function main() {
       // before capturing -- which check ends up throwing narrows down
       // roughly when a wipe happened, useful diagnostic signal until the
       // actual root cause (see takeScreenshot's own comment) is found.
-      await verifyBetslipMatchesPlan(page, plan);
+      // One AI-assisted recovery attempt on a mismatch here -- nothing's
+      // been placed yet, see recoverBetslipMismatch's own comment.
+      try {
+        await verifyBetslipMatchesPlan(page, plan);
+      } catch (mismatchErr) {
+        await recoverBetslipMismatch(page, stagehand, plan, mismatchErr, fallbackLog, player, label);
+      }
       const screenshots = await takeScreenshot(page, player, label, plan);
       // Plural now -- a long accumulator's betslip can scroll internally
       // (confirmed live 2026-09-25, a real 9-leg bet only showed 7 legs
@@ -1402,7 +1474,13 @@ async function main() {
         await dismissMarketingPopup(page, "main: before REAL BET NOW click");
         await dismissSessionTimer(page, "main: before REAL BET NOW click");
         await verifyMultiple(page);
-        await verifyBetslipMatchesPlan(page, plan);
+        // Same one-attempt recovery as above -- still nothing placed yet,
+        // this is the last check before the irreversible click.
+        try {
+          await verifyBetslipMatchesPlan(page, plan);
+        } catch (mismatchErr) {
+          await recoverBetslipMismatch(page, stagehand, plan, mismatchErr, fallbackLog, player, label);
+        }
         await placeRealBet(page, player, label, plan.stake);
         await notifyRealPlacementDirect(player, i + 1);
         console.log(`[betano-driver] ${label} REALLY PLACED for ${player}.`);

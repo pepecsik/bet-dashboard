@@ -91,3 +91,24 @@ test("buildBetfairExport handles an empty/missing betsCache without throwing", (
   assert.deepEqual(buildBetfairExport({}).bets, []);
   assert.deepEqual(buildBetfairExport({ headers: [], matches: [] }).bets, []);
 });
+
+test("buildBetfairExport flags alreadyPlaced from winCells, paired by position not sheetColIdx", () => {
+  const withWinCells = {
+    ...betsCache,
+    // Position 0 (Snackbar bet 1, sheetColIdx 3) already has a recorded WIN
+    // -- already placed. Position 1 (Snackbar bet 2, sheetColIdx 4) is still
+    // empty -- not placed yet. Position 2 (Timbo) explicitly 0 -- not placed.
+    winCells: [{ value: 580.17 }, { value: 0 }, { value: 0 }],
+  };
+  const result = buildBetfairExport(withWinCells);
+  assert.equal(result.bets[0].alreadyPlaced, true);
+  assert.equal(result.bets[1].alreadyPlaced, false);
+  assert.equal(result.bets[2].alreadyPlaced, false);
+});
+
+test("buildBetfairExport treats missing/short winCells as not-yet-placed", () => {
+  const result = buildBetfairExport(betsCache); // betsCache has no winCells at all
+  assert.equal(result.bets[0].alreadyPlaced, false);
+  assert.equal(result.bets[1].alreadyPlaced, false);
+  assert.equal(result.bets[2].alreadyPlaced, false);
+});

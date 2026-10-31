@@ -28,6 +28,12 @@ import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js"
 import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
 import { getMatchweekReadiness } from "./matchweekAuto.js";
 import { computeWeeklySummary, SB_PLAYERS } from "./matchweekSummary.js";
+import { detectBetEvents, emptyNotifiedState } from "./betNotificationEvents.js";
+import {
+  formatGoalMessage, formatBigWinMessage, formatOneMatchAwayMessage, formatOneGoalAwayMessage,
+  formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage, formatKickoff30MinMessage, formatDayBeforeMessage,
+} from "./telegramMessages.js";
+import { getEarliestKickoffGroup, shouldFireKickoff30Min, shouldFireDayBefore, everyoneHasPlaced } from "./kickoffReminders.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -70,6 +76,15 @@ if (!MOCK_MODE && !API_KEY) {
 const lastKnown = new Map();
 const clients = new Set();
 
+// What's already been notified for rules #4 (big win), #5A (one match
+// away), #5B (one goal away), #6 (bet died) -- see betNotificationEvents.js
+// for the full shape/semantics. In-memory, same accepted low-stakes
+// restart risk as betfairQueue/alertedStuckMatch -- a relay restart mid-
+// matchweek could in principle re-fire an already-sent notification once,
+// which is just a repeated Telegram message, not a real-money risk like
+// the betfair queue's own equivalent gap.
+let betNotifiedState = emptyNotifiedState();
+
 // Reads a request body, JSON.parse()s it, and calls onBody(parsedOrEmptyObject)
 // -- malformed/missing JSON becomes {} rather than throwing, so a route
 // using this can just check for the specific field(s) it needs.
@@ -89,7 +104,13 @@ function readJsonBody(req, onBody) {
 // from Code.gs's buildBetsSnapshot(). Empty until the first successful
 // sync; nothing reads this yet (that's Phase 3), it's just being proven to
 // refresh correctly first.
-let betsCache = { headers: [], matches: [], winCells: [], fetchedAt: 0 };
+// betSummary added for rules #4/#5A/#5B (Max Win per column, same row-1
+// shape JB_CONFIG.maxWinRowIndex and index.html's own computeColumnStats
+// already read off the full dashboard JSON) -- falls back to [] if
+// Code.gs's ?mode=bets response doesn't carry it, same defensive pattern
+// winCells already uses; a missing betSummary just means amounts show as
+// €0.00 in those messages rather than crashing anything.
+let betsCache = { headers: [], matches: [], winCells: [], betSummary: [], fetchedAt: 0 };
 
 // Raw API-Football stat types/values per tracked fixture, refreshed on
 // every poll (not just once, unlike the [stats-check] log lines) -- added
@@ -462,6 +483,25 @@ const server = http.createServer((req, res) => {
     res.end(entry.buffer);
     return;
   }
+  // Lets Code.gs (rules #1/#2, which fire from inside buildDashboard()/
+  // saveWhatIfResultAuto(), not from anything in this relay) send through
+  // the SAME bot/chat every other notification already uses, without
+  // needing its own copy of TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID as a
+  // separate Script Property -- one real secret, one place it's read from.
+  if (req.method === "POST" && req.url === "/telegram-notify") {
+    readJsonBody(req, async (body) => {
+      const text = body && body.text;
+      if (!text) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing text" }));
+        return;
+      }
+      await sendTelegram(String(text));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "success" }));
+    });
+    return;
+  }
   // OpenClaw's standing knowledge log -- durable (Sheet-backed, not relay
   // memory, which would lose it on every restart/redeploy), so a self-fix
   // learned this week is still there next matchweek. Proxies to Code.gs the
@@ -779,6 +819,26 @@ function computeFullState() {
 // readable rather than flooding the log for however long nothing's live.
 let gateBlockLogCounter = 0;
 
+// Dispatch from a detectBetEvents() event to its rendered Telegram text --
+// kept here as thin glue; the actual wording lives in telegramMessages.js
+// (tested), this just routes each event type to the right formatter.
+function renderBetEvent(event) {
+  switch (event.type) {
+    case "bigWin":
+      return formatBigWinMessage(event.player, event.amount);
+    case "oneMatchAway":
+      return formatOneMatchAwayMessage(event.player, event.amount, event.match);
+    case "oneGoalAway":
+      return formatOneGoalAwayMessage(event.player, event.match, event.homeCode, event.awayCode, event.pick, event.score, event.minute);
+    case "oneGoalAwayAndLastLeg":
+      return formatOneGoalAwayAndLastLegMessage(event.player, event.amount, event.match, event.homeCode, event.awayCode, event.pick, event.score, event.minute);
+    case "deaths":
+      return formatBetDiedMessage(event.entries);
+    default:
+      return null;
+  }
+}
+
 async function pollOnce() {
   // Gated -- see pollGate.js. MOCK_MODE always polls regardless (there's no
   // real quota to protect, and the manual /trigger page expects every tick
@@ -819,6 +879,15 @@ async function pollOnce() {
     const statsChanged = JSON.stringify((prev && prev.stats) || null) !== JSON.stringify(f.stats);
     const scorersChanged = ((prev && prev.scorers) || "") !== (f.scorers || "");
     const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged;
+    // Rule #7 -- plain live score ticker, no bet context. Only a genuine
+    // score change (not every status/stat tick that also counts as
+    // "changed" above), and only once `prev` actually exists -- otherwise
+    // the very first sighting of a fixture (prev undefined, score "0-0")
+    // would misfire a false "GOAL" the moment it's first tracked.
+    if (prev && prev.score !== f.score) {
+      const goalMsg = formatGoalMessage(f.match, prev.score, f.score);
+      if (goalMsg) sendTelegram(goalMsg).catch(() => {});
+    }
     if (changed) {
       anyChanged = true;
       lastKnown.set(f.id, {
@@ -836,7 +905,20 @@ async function pollOnce() {
       justFinished.push({ id: f.id, score: f.score, status, stats: f.stats, scorers: f.scorers });
     }
   }
-  if (anyChanged) broadcast({ type: "state", ...computeFullState() });
+  if (anyChanged) {
+    const state = computeFullState();
+    broadcast({ type: "state", ...state });
+    // Rules #4/#5A/#5B/#6 -- detection only runs when something actually
+    // changed this tick (computeFullState's own color state only ever
+    // moves when a tracked match did), same gating broadcast() already
+    // uses, so this never does redundant work on a quiet tick.
+    const { events, notifiedState } = detectBetEvents(state.headers, state.matches, betsCache.betSummary, betNotifiedState);
+    betNotifiedState = notifiedState;
+    events.forEach((event) => {
+      const msg = renderBetEvent(event);
+      if (msg) sendTelegram(msg).catch(() => {});
+    });
+  }
   justFinished.forEach((fx) => {
     postFinalResult(fx).catch((err) => console.error("final-result POST failed for fixture", fx.id, ":", err.message));
   });
@@ -895,7 +977,7 @@ async function fetchBetsSnapshot() {
       console.error("bets sync: unexpected response shape", JSON.stringify(data).slice(0, 200));
       return;
     }
-    betsCache = { headers: data.headers || [], matches: data.matches, winCells: data.winCells || [], fetchedAt: Date.now() };
+    betsCache = { headers: data.headers || [], matches: data.matches, winCells: data.winCells || [], betSummary: data.betSummary || [], fetchedAt: Date.now() };
     console.log(`bets snapshot refreshed: ${data.matches.length} match(es), ${(data.headers || []).length} column(s)`);
     broadcast({ type: "state", ...computeFullState() });
   } catch (err) {
@@ -1036,6 +1118,38 @@ async function checkAutoMatchweek() {
   }
 }
 
+// Rules #3A/#3B -- guarded by the kickoff timestamp itself rather than a
+// date string: naturally resets every matchweek since the timestamp
+// changes, no separate "new week" detection needed, same spirit as
+// autoHandledLastMatchDate's own guard just above.
+let kickoff30MinFiredForTs = null;
+let dayBeforeFiredForTs = null;
+
+function checkKickoffReminders() {
+  const { ts, matches } = getEarliestKickoffGroup(betsCache.matches);
+  if (ts === null) return;
+  const now = Date.now();
+
+  if (shouldFireKickoff30Min(ts, now) && kickoff30MinFiredForTs !== ts) {
+    kickoff30MinFiredForTs = ts;
+    const msg = formatKickoff30MinMessage(matches);
+    if (msg) sendTelegram(msg).catch(() => {});
+  }
+
+  if (shouldFireDayBefore(ts, now) && dayBeforeFiredForTs !== ts) {
+    if (everyoneHasPlaced(betsCache.headers, betsCache.winCells)) {
+      // Skip condition met -- still mark as handled for this kickoff so it
+      // doesn't re-check (and potentially fire late) every tick for the
+      // rest of the day.
+      dayBeforeFiredForTs = ts;
+    } else {
+      dayBeforeFiredForTs = ts;
+      const msg = formatDayBeforeMessage();
+      if (msg) sendTelegram(msg).catch(() => {});
+    }
+  }
+}
+
 setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 // Checked well under PENDING_ALERT_MS's own 2-minute default, so a stale
@@ -1043,6 +1157,10 @@ setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
 // extra interval late.
 setInterval(checkStalePending, 30000);
 setInterval(checkAutoMatchweek, MATCHWEEK_CHECK_MS);
+// ~60s, same spirit as checkStalePending -- close enough to the true
+// 30-min/24h marks without needing second-level precision (see
+// kickoffReminders.js's own comment on the resulting firing window).
+setInterval(checkKickoffReminders, 60000);
 fetchBetsSnapshot(); // don't wait BETS_SYNC_MS for the first one
 server.listen(PORT, () => {
   console.log(`relay listening on :${PORT} -- polling every ${POLL_MS}ms, mock=${MOCK_MODE}, bets sync every ${BETS_SYNC_MS}ms, FORCE_BETFAIR_TEST_MODE=${FORCE_BETFAIR_TEST_MODE}`);

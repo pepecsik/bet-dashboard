@@ -6583,10 +6583,26 @@ function hasAnyCombos() {
     if (!window.globalHeaders || !window.allMatches) return false;
     const headers = window.globalHeaders;
     const matches = window.allMatches;
- 
+
+    // Confirmed live (2026-10-31): this only ever caught an ADMIN-flagged
+    // dead column (a manually voided bet), never a column that's actually
+    // dead from real results -- a RED leg on an FT match, or an impossible
+    // GRAY exact-score leg, same concept computeColumnStats() already uses
+    // elsewhere in this file. A genuinely-dead column (e.g. a Goals pick
+    // that already missed) was still being compared for compatibility,
+    // which can only ever create false conflicts, never real ones -- hiding
+    // combos that actually exist once the truly-dead columns are excluded.
     const isDead = (idx) => {
         const h = headers[idx];
-        return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
+        if (h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red')) return true;
+        return matches.some((m) => {
+            const c = m.cells[idx];
+            if (!c || !c.value) return false;
+            const st = m.status ? String(m.status).trim().toUpperCase() : '';
+            if (isWrongColor(c.color) && st === 'FT') return true;
+            if (isGrayColor(c.color)) return true;
+            return false;
+        });
     };
     const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());
     const isOver  = (v) => {
@@ -6658,9 +6674,21 @@ function openCombosModal() {
     let combosFound = [];
 
     // ---- Helpers: identical to the matchweek preview ----
+    // Same fix as hasAnyCombos() above -- also catches a column dead from
+    // real results (RED leg at FT, or an impossible GRAY exact-score leg),
+    // not just an admin-flagged one. Kept in sync with hasAnyCombos()'s
+    // own isDead() by hand since they're separate local closures.
     const isDead = (idx) => {
         const h = headers[idx];
-        return h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red');
+        if (h && (h.status === 'red' || h.status === '#ff4d4d' || h.color === 'red')) return true;
+        return matches.some((m) => {
+            const c = m.cells[idx];
+            if (!c || !c.value) return false;
+            const st = m.status ? String(m.status).trim().toUpperCase() : '';
+            if (isWrongColor(c.color) && st === 'FT') return true;
+            if (isGrayColor(c.color)) return true;
+            return false;
+        });
     };
 
     const isScore = (v) => /^\d+\s*[-:]\s*\d+$/.test(String(v).toUpperCase().trim());

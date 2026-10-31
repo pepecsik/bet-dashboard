@@ -239,6 +239,23 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(betsCache, null, 2));
     return;
   }
+  // Diagnostic for rules #3A/#3B specifically -- confirmed live (2026-10-31)
+  // a kickoff reminder went missing, but /bets-debug alone can't tell
+  // whether checkKickoffReminders ever actually ran and reached the fire
+  // point (and sendTelegram itself silently failed) vs. never reaching it
+  // at all (a logic bug). Exposes the guard state + what the trigger logic
+  // currently computes, same openness as /bets-debug and /snapshot.
+  if (req.method === "GET" && req.url === "/kickoff-debug") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      now: new Date().toISOString(),
+      telegramConfigured: !!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID),
+      kickoff30MinFiredForTs,
+      dayBeforeFiredForTs,
+      earliestKickoffGroup: getEarliestKickoffGroup(betsCache.matches),
+    }, null, 2));
+    return;
+  }
   // Raw API-Football stat types/values per tracked fixture, refreshed every
   // poll -- see lastRawStats's own comment. Check this any time (mid-match
   // or after) to see exactly what API-Football is sending, instead of

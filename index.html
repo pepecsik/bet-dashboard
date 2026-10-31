@@ -5491,7 +5491,14 @@ function openSpecialCombosModal() {
   document.getElementById('modalCombos').classList.add('active');
 
   const { total, bets } = bestSpecialCombo();
-  if (bets.length < 2) {
+  // < 1, not < 2 -- the weekly summary's HIGH. POS. WIN row already shows
+  // this same bestSpecialCombo() total even when it's just the single best
+  // still-alive bet, not a genuine 2+ combo (nothing else is compatible
+  // with it right now). This modal used to hide that exact case behind
+  // "No combos possible," contradicting a real, positive figure the
+  // summary was already showing -- now it shows whichever single bet (or
+  // real combo) actually produces that total, consistent either way.
+  if (bets.length < 1) {
     container.innerHTML = "<div style='text-align:center; padding:40px 10px; opacity:0.6;'>No combos possible right now — keep playing!</div>";
     return;
   }

@@ -96,6 +96,20 @@ function detectBetEvents(headers, matches, betSummary, notifiedState) {
 
   if (deaths.length) events.push({ type: "deaths", entries: deaths });
 
+  // Rule #5 -- every column that has a bet is now dead, nobody's still
+  // alive. Reset (not just guarded false) the moment no column has a bet
+  // at all -- bets cleared for a new matchweek -- so it can genuinely fire
+  // again next week rather than staying permanently triggered.
+  const anyBetsAtAll = stats.some((s) => s.hasB);
+  const anyAliveBet = stats.some((s) => s.hasB && !s.isDead);
+  let allDeadFired = notifiedState.allDead || false;
+  if (!anyBetsAtAll) {
+    allDeadFired = false;
+  } else if (!anyAliveBet && !allDeadFired) {
+    allDeadFired = true;
+    events.push({ type: "allBetsDead" });
+  }
+
   oneGoalAwayLegs.forEach((leg) => {
     const key = `${leg.colIdx}:${leg.match}`;
     if (suppressedLegKeys.has(key)) return; // already folded into the merged 5A+5B event above
@@ -108,12 +122,12 @@ function detectBetEvents(headers, matches, betSummary, notifiedState) {
 
   return {
     events,
-    notifiedState: { bigWin: nextBigWin, oneMatchAway: nextOneMatchAway, dead: nextDead, oneGoalAwayKeys: currentOneGoalAwayKeys },
+    notifiedState: { bigWin: nextBigWin, oneMatchAway: nextOneMatchAway, dead: nextDead, oneGoalAwayKeys: currentOneGoalAwayKeys, allDead: allDeadFired },
   };
 }
 
 function emptyNotifiedState() {
-  return { bigWin: new Set(), oneMatchAway: new Set(), dead: new Set(), oneGoalAwayKeys: new Set() };
+  return { bigWin: new Set(), oneMatchAway: new Set(), dead: new Set(), oneGoalAwayKeys: new Set(), allDead: false };
 }
 
 export { detectBetEvents, emptyNotifiedState, parseMinute };

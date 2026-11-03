@@ -14,9 +14,11 @@ function fmtEUR(v) {
 // formatted by the live-score poll loop ("Arsenal - Chelsea", full names
 // straight from API-Football, no team codes available at that call site --
 // unlike betsCache's own "ARS - CHE" code format elsewhere in this relay).
-// Returns null if it can't tell which side actually scored (defensive --
-// shouldn't happen given the caller only calls this when the score string
-// genuinely changed).
+// Scoring team leads in caps ("ARSENAL GOAL!") so it's readable at a
+// glance before the match/score detail, per Winston's own spec. Returns
+// null if it can't tell which side actually scored (defensive -- shouldn't
+// happen given the caller only calls this when the score string genuinely
+// changed).
 function formatGoalMessage(match, prevScore, newScore) {
   const prev = String(prevScore || "0-0").split("-").map((n) => parseInt(n, 10));
   const next = String(newScore || "0-0").split("-").map((n) => parseInt(n, 10));
@@ -30,7 +32,33 @@ function formatGoalMessage(match, prevScore, newScore) {
   if (nextH > prevH) scorer = homeName;
   else if (nextA > prevA) scorer = awayName;
   if (!scorer) return null;
-  return `⚽ GOAL! ${match} is now ${newScore} (${scorer})`;
+  return `⚽ ${scorer.toUpperCase()} GOAL! ${match} is now ${newScore}`;
+}
+
+// #2 -- plain final result, no bet context, same spirit as the goal
+// ticker. Fires from the same "this match just reached FT" point that
+// already writes the final result back to the Sheet, so no new detection
+// needed, just a message alongside it.
+function formatMatchEndedMessage(match, finalScore) {
+  if (!match || !finalScore) return null;
+  return `🏁 FULL TIME: ${match} ${finalScore}`;
+}
+
+// #3 -- red card (or a second yellow -- same "sent off" outcome from a
+// fan's perspective). Player name may be blank if API-Football hasn't
+// attached one to the event; still worth sending, just without a name.
+function formatRedCardMessage(match, side, playerName, homeName, awayName) {
+  if (!match) return null;
+  const team = side === "H" ? homeName : awayName;
+  if (!team) return null;
+  const who = playerName ? ` — ${playerName}` : "";
+  return `🟥 ${team.toUpperCase()} RED CARD!${who} (${match})`;
+}
+
+// #5 -- every column that had a bet is now dead, nobody's still alive.
+// Fires once per matchweek (see betNotificationEvents.js's guard).
+function formatAllBetsDeadMessage() {
+  return `☠️ Betting week officially over — every bet is dead. No one's still alive.`;
 }
 
 // #4 -- over the top on purpose, full wins are rare for this group.
@@ -115,6 +143,9 @@ function formatBetsLockedMessage(day, time, highestWin, highestWinPerPerson) {
 export {
   fmtEUR,
   formatGoalMessage,
+  formatMatchEndedMessage,
+  formatRedCardMessage,
+  formatAllBetsDeadMessage,
   formatBigWinMessage,
   formatOneMatchAwayMessage,
   formatOneGoalAwayMessage,

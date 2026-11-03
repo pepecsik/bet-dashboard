@@ -3,7 +3,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  fmtEUR, formatGoalMessage, formatBigWinMessage, formatOneMatchAwayMessage,
+  fmtEUR, formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatAllBetsDeadMessage,
+  formatBigWinMessage, formatOneMatchAwayMessage,
   formatOneGoalAwayMessage, formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage,
   formatKickoff30MinMessage, formatDayBeforeMessage, formatBetsLockedMessage, whoNeedsToScore,
 } from "./telegramMessages.js";
@@ -14,20 +15,45 @@ test("fmtEUR formats consistently", () => {
   assert.equal(fmtEUR(null), "€0.00");
 });
 
-test("formatGoalMessage identifies the home scorer", () => {
+test("formatGoalMessage leads with the scoring team in caps", () => {
   const msg = formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0");
-  assert.equal(msg, "⚽ GOAL! Arsenal - Chelsea is now 1-0 (Arsenal)");
+  assert.equal(msg, "⚽ ARSENAL GOAL! Arsenal - Chelsea is now 1-0");
 });
 
-test("formatGoalMessage identifies the away scorer", () => {
+test("formatGoalMessage identifies the away scorer, leading in caps", () => {
   const msg = formatGoalMessage("Arsenal - Chelsea", "0-0", "0-1");
-  assert.equal(msg, "⚽ GOAL! Arsenal - Chelsea is now 0-1 (Chelsea)");
+  assert.equal(msg, "⚽ CHELSEA GOAL! Arsenal - Chelsea is now 0-1");
 });
 
 test("formatGoalMessage returns null when neither side's count actually went up, or input is malformed", () => {
   assert.equal(formatGoalMessage("Arsenal - Chelsea", "1-1", "1-1"), null);
   assert.equal(formatGoalMessage("Arsenal - Chelsea", "bad", "1-0"), null);
   assert.equal(formatGoalMessage("ArsenalChelsea", "0-0", "1-0"), null); // no " - " separator to split on
+});
+
+test("formatMatchEndedMessage includes the match and final score", () => {
+  assert.equal(formatMatchEndedMessage("Arsenal - Chelsea", "2-1"), "🏁 FULL TIME: Arsenal - Chelsea 2-1");
+  assert.equal(formatMatchEndedMessage("", "2-1"), null);
+  assert.equal(formatMatchEndedMessage("Arsenal - Chelsea", ""), null);
+});
+
+test("formatRedCardMessage: home side names the home team", () => {
+  const msg = formatRedCardMessage("Arsenal - Chelsea", "H", "Declan Rice", "Arsenal", "Chelsea");
+  assert.equal(msg, "🟥 ARSENAL RED CARD! — Declan Rice (Arsenal - Chelsea)");
+});
+
+test("formatRedCardMessage: away side names the away team", () => {
+  const msg = formatRedCardMessage("Arsenal - Chelsea", "A", "Enzo Fernandez", "Arsenal", "Chelsea");
+  assert.equal(msg, "🟥 CHELSEA RED CARD! — Enzo Fernandez (Arsenal - Chelsea)");
+});
+
+test("formatRedCardMessage: still sends without a player name", () => {
+  const msg = formatRedCardMessage("Arsenal - Chelsea", "H", "", "Arsenal", "Chelsea");
+  assert.equal(msg, "🟥 ARSENAL RED CARD! (Arsenal - Chelsea)");
+});
+
+test("formatAllBetsDeadMessage: static wording", () => {
+  assert.match(formatAllBetsDeadMessage(), /officially over/);
 });
 
 test("formatBigWinMessage is loud, includes player and amount", () => {

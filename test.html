@@ -24,7 +24,7 @@
 
 <title>Juice Bets</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
 
 <style>
 /* =========================================
@@ -359,128 +359,92 @@
 [data-theme="premierleague"] .day-header { color: #ff2882; opacity: 1; }
 
 /* 4. NOIR (Blank-slate redesign experiment, DESIGN.md-driven)
-   True black/graphite base, one sharp electric-blue accent for brand +
-   interactive state. Win/loss stay the universal lime/red signal colors --
-   those are functional, not a style choice, so they're kept rather than
-   reinvented. Gold stays reserved for Hall of Fame / winner highlights only,
-   same as every other theme. */
+   v3: modern glass. Deep near-black base, real glassmorphism (the app's
+   own core CSS already blurs+saturates the big cards -- this version
+   leans into that instead of fighting it with opaque fills), big soft
+   "squircle" radii, refined Inter typography with tight tracking, one
+   indigo->violet gradient accent. Win/loss stay the universal lime/red
+   signal colors -- functional, not a style choice, kept as-is. Gold
+   stays reserved for Hall of Fame / winner highlights only. */
 [data-theme="noir"] {
   --font-main: 'Inter', system-ui, sans-serif;
-  --font-display: 'Oswald', 'Inter', system-ui, sans-serif;  /* broadcast-scoreboard condensed face, headers/numerals only */
   --base-size: 12px;
 
-  --bg-grad: radial-gradient(ellipse at 30% 0%, #141417 0%, #0a0a0c 45%, #000000 100%);
-  --bg-card:  rgba(255, 255, 255, 0.04);
-  --bg-soft:  rgba(255, 255, 255, 0.07);
-  --bg-row:   rgba(255, 255, 255, 0.03);
-  --bg-modal: rgba(8, 8, 10, 0.98);
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #17171f 0%, #0d0d13 45%, #060608 100%);
+  --bg-card:  rgba(255, 255, 255, 0.05);
+  --bg-soft:  rgba(255, 255, 255, 0.08);
+  --bg-row:   rgba(255, 255, 255, 0.035);
+  --bg-modal: rgba(14, 14, 19, 0.92);
 
   --text-main:  #ffffff;
-  --text-muted: #878c96;
+  --text-muted: #9397a8;
 
-  --accent-orange: #00c2ff;  /* brand/interactive cyan-blue -- see .left-header note below for the var's name */
+  --accent-orange: #6c7bff;  /* brand/interactive indigo -- see .left-header note below for the var's name */
   --accent-gold:   #f6c90e;  /* real gold -- Hall of Fame / winner accents only */
   --accent-green:  #00ff85;  /* win signal, kept universal */
 
-  --border-light:  1px solid rgba(0, 194, 255, 0.25);
-  --shadow-card:   0 8px 32px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,194,255,0.07);
+  --border-light:  1px solid rgba(124, 131, 255, 0.16);
+  --shadow-card:   0 20px 50px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 10px 30px rgba(108,123,255,0.08);
 
-  --rad-sm: 4px;
-  --rad-md: 6px;
-  --rad-lg: 18px;
+  --rad-sm: 10px;
+  --rad-md: 14px;
+  --rad-lg: 24px;
 
-  --logo-filter: grayscale(1) brightness(1.4);
-  --modal-overlay: rgba(0, 0, 0, 0.94);
+  --logo-filter: grayscale(1) brightness(1.3);
+  --modal-overlay: rgba(6, 6, 9, 0.82);
 }
 
-/* Header: flat matte black slab, no blur, condensed wide-tracked wordmark */
+/* Header: glass slab, soft indigo->violet underglow instead of a hard line */
 [data-theme="noir"] .left-header {
-  background: #000000;
-  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-  border-bottom: 2px solid #00c2ff;
-  box-shadow: 0 0 20px rgba(0,194,255,0.15);
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(124,131,255,0.2);
+  box-shadow: 0 1px 24px rgba(108,123,255,0.12);
 }
 [data-theme="noir"] .header-main-text {
-  color: #ffffff; font-family: var(--font-display); font-weight: 600;
-  text-transform: uppercase; letter-spacing: 1.5px;
+  color: #ffffff; font-weight: 800; letter-spacing: -0.02em;
 }
 [data-theme="noir"] .header-sub-text {
-  color: #5fd4ff; letter-spacing: 2.5px; font-family: var(--font-display); font-weight: 500;
-}
-[data-theme="noir"] .header-row-sticky { background: #000000 !important; }
-
-/* Cards: matte black slabs, thin cyan rim, square-cut corners (down from
-   the default rounded-lg) -- the roundness budget goes to the big outer
-   cards only; everything inside reads flat and square, scoreboard-like. */
-[data-theme="noir"] .left-card,
-[data-theme="noir"] .right-card,
-[data-theme="noir"] .summary,
-[data-theme="noir"] .modal-card,
-[data-theme="noir"] .ranking-card {
-  background: #09090b !important;
-  border: 1px solid rgba(0, 194, 255, 0.2) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.9);
-}
-[data-theme="noir"] .left-cell,
-[data-theme="noir"] .left-label,
-[data-theme="noir"] .header-pill,
-[data-theme="noir"] .week-row,
-[data-theme="noir"] .rank-row {
-  border-radius: 4px !important;
+  color: #aab4ff; letter-spacing: 1px; font-weight: 600;
 }
 
-/* Bet cells: sharp slab cut, condensed uppercase numerals/codes, wide
-   tracking -- the scoreboard unit of the whole grid, deliberately flatter
-   and squarer than the cards that hold it. */
+/* Modal overlay gets a real blur too, matching the glass language */
+[data-theme="noir"] .modal-overlay { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+/* Bet cells: soft rounded glass chips, bold tight-tracked numerals --
+   same shape family as the cards, just smaller, so the whole grid reads
+   as one coherent system instead of mixed geometry. */
 [data-theme="noir"] .bet {
-  border-radius: 3px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  border-color: rgba(0,194,255,0.18);
-  background-image:
-    linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 42%),
-    linear-gradient(0deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 60%);
+  border-radius: var(--rad-md);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  border-color: rgba(124,131,255,0.18);
 }
-[data-theme="noir"] .score-pill { border-radius: 4px !important; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+[data-theme="noir"] .score-pill { font-variant-numeric: tabular-nums; font-weight: 800; }
 
-/* Avatars: circular with a glowing cyan ring, broadcast player-card style
-   instead of the default rounded-square tile. */
+/* Avatars: soft indigo glow ring instead of a hard scoreboard outline */
 [data-theme="noir"] .header-pill.has-avatar {
-  border-radius: 50% !important;
-  box-shadow: 0 0 0 2px #00c2ff, 0 0 14px rgba(0,194,255,0.5);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.12), 0 0 20px rgba(108,123,255,0.4);
 }
 
-/* Blue active filter */
-[data-theme="noir"] .filter-btn,
-[data-theme="noir"] .toggle-btn,
-[data-theme="noir"] .filter-title,
-[data-theme="noir"] .weekly-title,
-[data-theme="noir"] .ranking-title,
-[data-theme="noir"] .week-label,
-[data-theme="noir"] .rank-name {
-  font-family: var(--font-display); letter-spacing: 0.5px;
-}
+/* Indigo->violet active filter/toggle, gradient not flat */
 [data-theme="noir"] .filter-btn.active,
 [data-theme="noir"] .toggle-btn.active {
-  background: #00c2ff;
-  color: #000;
-  border-color: #00c2ff;
-  box-shadow: 0 3px 12px rgba(0,194,255,0.45);
+  background: linear-gradient(135deg, #6c7bff, #9b6bff);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 16px rgba(108,123,255,0.4);
 }
 
-/* Live row: square-cut slab with a hard left accent bar instead of a
-   rounded glow border -- reads like a broadcast lower-third, not a pill. */
+/* Live row: soft glass halo, not a hard bar or flat glow border */
 [data-theme="noir"] .left-row[data-status="live"] {
-  border: none !important;
-  border-left: 4px solid #00c2ff !important;
-  border-radius: 2px !important;
-  background: rgba(0,194,255,0.08) !important;
-  box-shadow: inset 0 0 0 1px rgba(0,194,255,0.15);
+  border: 1px solid rgba(124,131,255,0.5) !important;
+  background: rgba(124,131,255,0.07) !important;
+  box-shadow: 0 0 0 3px rgba(108,123,255,0.1), 0 4px 20px rgba(108,123,255,0.18);
 }
 [data-theme="noir"] .left-row[data-status="live"] .score-pill span:first-child {
-  background: #00c2ff !important;
-  color: #000 !important;
+  background: linear-gradient(135deg, #6c7bff, #9b6bff) !important;
+  color: #fff !important;
 }
 
 /* Win state: lime, same as every other theme */
@@ -496,49 +460,49 @@
   background-color: #fb923c !important;
 }
 
-/* Ticker bar: pure black slab, square-cut, cyan dot */
+/* Ticker bar: glass slab, soft indigo dot */
 [data-theme="noir"] #matchday-ticker-bar {
-  background: #000000;
-  border-bottom: 1px solid rgba(0,194,255,0.3);
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(124,131,255,0.18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
-[data-theme="noir"] .ticker-countdown        { color: #5fd4ff; font-family: var(--font-display); }
+[data-theme="noir"] .ticker-countdown        { color: #aab4ff; }
 [data-theme="noir"] .ticker-countdown .ticker-time { color: #00ff85; }
-[data-theme="noir"] .ticker-live             { color: #00c2ff; }
-[data-theme="noir"] .ticker-live .ticker-dot { background: #00c2ff; box-shadow: 0 0 8px #00c2ff; }
+[data-theme="noir"] .ticker-live             { color: #9b8cff; }
+[data-theme="noir"] .ticker-live .ticker-dot { background: #6c7bff; box-shadow: 0 0 8px #6c7bff; }
 
-/* Modal tabs: cyan underline */
+/* Modal tabs: indigo underline */
 [data-theme="noir"] .tab-btn.active {
-  color: #00c2ff;
-  border-bottom-color: #00c2ff;
+  color: #9b8cff;
+  border-bottom-color: #6c7bff;
 }
 
-/* Scores/money -- condensed tabular numerals, scoreboard read */
+/* Scores/money -- bold tight-tracked numerals, not a different typeface */
 [data-theme="noir"] .week-gbp, [data-theme="noir"] .rank-money, [data-theme="noir"] .stat-value-high {
-  font-family: var(--font-display); font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap;
 }
 [data-theme="noir"] .week-gbp.green  { color: #00ff85; }
-[data-theme="noir"] .week-gbp.red    { color: #ff3b3b; }
+[data-theme="noir"] .week-gbp.red    { color: #ff5c5c; }
 [data-theme="noir"] .rank-money      { color: #00ff85; }
 [data-theme="noir"] .txt-green       { color: #00ff85 !important; }
 
-/* Action button: electric cyan slab, square-cut, condensed + wide-tracked */
+/* Action button: indigo->violet gradient slab, soft glow */
 [data-theme="noir"] .place-bets-btn {
-  background: linear-gradient(135deg, #00c2ff, #0077a6);
-  color: #000;
-  font-family: var(--font-display); font-weight: 700; letter-spacing: 1px;
-  border-radius: 6px !important;
-  box-shadow: 0 6px 20px rgba(0,194,255,0.45);
+  background: linear-gradient(135deg, #6c7bff, #9b5cf6);
+  color: #fff;
+  font-weight: 800; letter-spacing: -0.01em;
+  box-shadow: 0 10px 30px rgba(108,123,255,0.4);
 }
 [data-theme="noir"] .action-btn {
-  background: linear-gradient(135deg, #00c2ff, #0077a6);
-  color: #000;
+  background: linear-gradient(135deg, #6c7bff, #9b5cf6);
+  color: #fff;
 }
 
 /* Summary toggle */
-[data-theme="noir"] .summary-toggle { background: rgba(0,194,255,0.1); }
+[data-theme="noir"] .summary-toggle { background: rgba(124,131,255,0.1); }
 
 /* Day headers */
-[data-theme="noir"] .day-header { color: #00c2ff; opacity: 1; font-family: var(--font-display); letter-spacing: 1px; }
+[data-theme="noir"] .day-header { color: #9b8cff; opacity: 1; font-weight: 700; }
 
 /* =========================================
    CORE STYLES

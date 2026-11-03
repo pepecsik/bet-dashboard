@@ -7,9 +7,11 @@ colors:
   bgGradientMid: "#24082e"
   bgGradientEnd: "#12040d"
   card: "rgba(45, 10, 58, 0.72)"
+  cardSolid: "#2a0937"
   soft: "rgba(255, 255, 255, 0.06)"
   row: "rgba(255, 255, 255, 0.03)"
   modal: "rgba(20, 4, 26, 0.97)"
+  modalSolid: "#14041a"
   modalOverlay: "rgba(10, 2, 14, 0.9)"
   textMain: "#ffffff"
   textMuted: "#b79ecf"
@@ -61,9 +63,18 @@ identity; treat them as legacy/unused unless told otherwise.
 - `card` -- the base surface for cards/panels, semi-transparent over the
   page gradient (not a flat color -- it's meant to let the gradient show
   through faintly).
+- `cardSolid` -- `card`'s flattened, fully-opaque equivalent (computed by
+  blending `card` at its real alpha over the gradient's `bgGradientMid`
+  stop). Use this wherever a surface can't render translucency over the
+  moving gradient -- the matchweek preview email, and anything else that
+  only gets a flat background to work with. Don't retype your own
+  approximation by hand; this is the one already derived.
 - `soft` / `row` -- subtler fills for nested surfaces and table rows, in
   that order of visibility (`soft` more visible than `row`).
 - `modal` / `modalOverlay` -- modal sheet background and its backdrop dim.
+- `modalSolid` -- `modal`'s flattened opaque equivalent, same reasoning as
+  `cardSolid` (modal's own alpha is high enough, 0.97, that this is nearly
+  identical to its raw RGB values).
 - `textMain` -- primary text, pure white.
 - `textMuted` -- secondary/label text, a muted lavender, not grey. This is
   a deliberate, recognizable part of the identity -- don't substitute a
@@ -116,29 +127,36 @@ of the `spacing` scale above rather than forced into it.
   single source of truth for these values going forward -- it's the most
   structured, intentional home for them (real CSS custom properties, not
   scattered literals).
-- **Don't** retype these hex values by hand in a new surface. Copy them
-  from here. See the note below -- that's exactly how the current drift
-  happened.
-- **Known drift, not yet fixed (flagged, not changed as part of writing
-  this file):** `admin.html` and the preview email's own `JB_THEME`
-  object both reimplement this same palette independently, by hand, and
-  have each drifted slightly from the canonical values and from each
-  other:
-  - Card background: app `rgba(45, 10, 58, 0.72)` (~`#2d0a3a`) vs. email
-    `JB_THEME.cardBg = "#2a0e36"` vs. admin.html's own hardcoded
-    `#1e0a28` / `#1b0a24` / `#1c0925` (three more near-but-not-identical
-    purples, used in different places within admin.html itself).
-  - Card border opacity: app `rgba(255, 40, 130, 0.3)` vs. email
-    `JB_THEME.cardBorder`'s `rgba(255, 40, 130, 0.28)` -- a tiny, almost
-    certainly accidental 0.02 drift.
-  - Background gradient: app uses a **radial** gradient
-    (`ellipse at 30% 0%`, stops at 0%/40%/100%) vs. email's `pageGrad`
-    using a **linear** gradient (`160deg`, stops at 0%/55%/100%) with the
-    same three colors -- different gradient *type*, not just different
-    stops. (Likely intentional here specifically -- email clients render
-    radial gradients unreliably -- but worth confirming rather than
-    assuming.)
-  - Corner radius: app's card radius is 16px; the email's card radius is
-    12px. Possibly deliberate (a smaller radius is safer across email
-    clients), possibly just drift -- also worth confirming rather than
-    assuming either way.
+- **Don't** retype these hex values by hand in a new surface, and don't
+  re-derive a flattened/opaque approximation of `card` or `modal` by eye --
+  use `cardSolid`/`modalSolid` above. That's exactly how the drift fixed
+  below happened in the first place.
+- **Fixed (2026-11-03), now aligned to the canonical values above:**
+  - `admin.html`'s two modal boxes (`.auto-modal-box`, `.email-preview-box`)
+    were using `#1e0a28` with a plain white border (`rgba(255,255,255,0.12)`)
+    and a 14px radius -- these are genuinely *modals* (overlay + centered
+    box), not cards, so they now use `modalSolid` (`#14041a`), the
+    canonical `borderMagenta`, and `rounded.lg` (16px), matching what a
+    modal is actually supposed to look like in this theme.
+  - The preview email's `JB_THEME.cardBg` (`#2a0e36`) is now `cardSolid`
+    (`#2a0937`); `JB_THEME.cardBorder`'s opacity (`0.28`) is now `0.3`,
+    matching `borderMagenta` exactly; the email's main card radius (`12px`,
+    the `cardBox` helper) is now `16px`, matching `rounded.lg`.
+- **Deliberately left alone, not drift:**
+  - `admin.html`'s `.email-preview-frame` background (`#1b0a24`) --
+    confirmed this intentionally matches the email's own `JB_THEME.pageBg`
+    exactly, so there's no flash/mismatch behind the embedded email preview.
+  - `admin.html`'s two sticky-header backgrounds (`#1c0925`) -- a distinct
+    elevation layer for content that stays pinned while the rest scrolls,
+    not a drifted copy of the card color. Left as its own thing.
+  - The preview email's background gradient stays **linear** (`pageGrad`)
+    even though the app uses a **radial** gradient -- kept deliberately
+    different, not fixed: email clients (Outlook especially) render radial
+    gradients unreliably, so a linear gradient is the correct choice for
+    email specifically, not an oversight. The stop percentages (0/55/100
+    in email vs 0/40/100 in the app) were left as-is too, since a radial
+    and a linear gradient's stops aren't directly equivalent and changing
+    them without being able to visually proof the email render risked
+    making it look worse, not better.
+  - The small stat-card radius inside the email (`cardBoxStyle()`, 10px)
+    was never touched -- it already matches `rounded.md` (10px) exactly.

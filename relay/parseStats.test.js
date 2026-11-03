@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseTeamStats, parseLiveStats, parseScorers } from "./parseStats.js";
+import { parseTeamStats, parseLiveStats, parseScorers, parseRedCards } from "./parseStats.js";
 
 test("parseTeamStats maps API-Football's type strings to short field names", () => {
   const raw = [
@@ -64,4 +64,19 @@ test("parseScorers formats goals as \"(H)/(A) Player Name\", comma-joined", () =
 test("parseScorers returns an empty string for no events", () => {
   assert.equal(parseScorers(null, 10), "");
   assert.equal(parseScorers([], 10), "");
+});
+
+test("parseRedCards catches both a straight red and a second yellow, excludes a plain yellow/goal", () => {
+  const events = [
+    { type: "Card", detail: "Red Card", team: { id: 10 }, player: { name: "Declan Rice" } },
+    { type: "Card", detail: "Yellow Card", team: { id: 10 }, player: { name: "Someone Else" } }, // not a sending-off -- excluded
+    { type: "Card", detail: "Second Yellow card", team: { id: 20 }, player: { name: "Enzo Fernandez" } },
+    { type: "Goal", team: { id: 20 }, player: { name: "Haaland" } }, // not a card -- excluded
+  ];
+  assert.equal(parseRedCards(events, 10), "(H) Declan Rice, (A) Enzo Fernandez");
+});
+
+test("parseRedCards returns an empty string for no events", () => {
+  assert.equal(parseRedCards(null, 10), "");
+  assert.equal(parseRedCards([], 10), "");
 });

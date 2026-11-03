@@ -22,7 +22,7 @@ import { WebSocketServer } from "ws";
 import http from "http";
 import { combineState } from "./combine.js";
 import { normalizeStatus } from "./normalizeStatus.js";
-import { parseLiveStats, parseScorers } from "./parseStats.js";
+import { parseLiveStats, parseScorers, parseRedCards } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
 import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
@@ -30,7 +30,8 @@ import { getMatchweekReadiness } from "./matchweekAuto.js";
 import { computeWeeklySummary, SB_PLAYERS } from "./matchweekSummary.js";
 import { detectBetEvents, emptyNotifiedState } from "./betNotificationEvents.js";
 import {
-  formatGoalMessage, formatBigWinMessage, formatOneMatchAwayMessage, formatOneGoalAwayMessage,
+  formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatAllBetsDeadMessage,
+  formatBigWinMessage, formatOneMatchAwayMessage, formatOneGoalAwayMessage,
   formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage, formatKickoff30MinMessage, formatDayBeforeMessage,
 } from "./telegramMessages.js";
 import { getEarliestKickoffGroup, shouldFireKickoff30Min, shouldFireDayBefore, everyoneHasPlaced } from "./kickoffReminders.js";
@@ -707,6 +708,7 @@ async function fetchTrackedFixtures() {
     // yet" rather than asserting a fact about a match with nothing to show.
     stats: parseLiveStats(f.statistics),
     scorers: parseScorers(f.events, f.teams.home.id),
+    redCards: parseRedCards(f.events, f.teams.home.id),
   }));
 }
 
@@ -851,6 +853,8 @@ function renderBetEvent(event) {
       return formatOneGoalAwayAndLastLegMessage(event.player, event.amount, event.match, event.homeCode, event.awayCode, event.pick, event.score, event.minute);
     case "deaths":
       return formatBetDiedMessage(event.entries);
+    case "allBetsDead":
+      return formatAllBetsDeadMessage();
     default:
       return null;
   }
@@ -895,7 +899,8 @@ async function pollOnce() {
     // still a real update once stats are live-tracked, not a no-op.
     const statsChanged = JSON.stringify((prev && prev.stats) || null) !== JSON.stringify(f.stats);
     const scorersChanged = ((prev && prev.scorers) || "") !== (f.scorers || "");
-    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged;
+    const redCardsChanged = ((prev && prev.redCards) || "") !== (f.redCards || "");
+    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged || redCardsChanged;
     // Rule #7 -- plain live score ticker, no bet context. Only a genuine
     // score change (not every status/stat tick that also counts as
     // "changed" above), and only once `prev` actually exists -- otherwise
@@ -905,11 +910,32 @@ async function pollOnce() {
       const goalMsg = formatGoalMessage(f.match, prev.score, f.score);
       if (goalMsg) sendTelegram(goalMsg).catch(() => {});
     }
+    // Rule #3 -- red card (or a second yellow, same outcome). Diffs the
+    // joined "(H)/(A) Name" entries rather than just checking the string
+    // changed, so exactly the NEWLY appeared sending(s)-off get a message
+    // -- not a generic "something about cards changed" ping, and not a
+    // false fire on the very first sighting of a match that already had a
+    // red card recorded before this relay started tracking it.
+    if (prev && redCardsChanged) {
+      const prevEntries = new Set((prev.redCards || "").split(", ").filter(Boolean));
+      const currentEntries = (f.redCards || "").split(", ").filter(Boolean);
+      currentEntries.forEach((entry) => {
+        if (prevEntries.has(entry)) return;
+        const m = entry.match(/^\((H|A)\) (.*)$/);
+        if (!m) return;
+        const [, side, playerName] = m;
+        const parts = String(f.match || "").split(" - ");
+        if (parts.length !== 2) return;
+        const [homeName, awayName] = parts;
+        const cardMsg = formatRedCardMessage(f.match, side, playerName, homeName, awayName);
+        if (cardMsg) sendTelegram(cardMsg).catch(() => {});
+      });
+    }
     if (changed) {
       anyChanged = true;
       lastKnown.set(f.id, {
         status, score: f.score, elapsed: f.elapsed, extra: f.extra, match: f.match,
-        stats: f.stats, scorers: f.scorers, homeTeamId: f.homeTeamId,
+        stats: f.stats, scorers: f.scorers, redCards: f.redCards, homeTeamId: f.homeTeamId,
       });
     }
     // Recorded on the FIRST poll that sees FT, whether or not this counted
@@ -919,7 +945,10 @@ async function pollOnce() {
     // below, off the hot path, so a slow or failing Apps Script call never
     // delays what connected clients see.
     if (!wasFT && status === "FT") {
-      justFinished.push({ id: f.id, score: f.score, status, stats: f.stats, scorers: f.scorers });
+      justFinished.push({ id: f.id, match: f.match, score: f.score, status, stats: f.stats, scorers: f.scorers });
+      // Rule #2 -- plain final result, no bet context.
+      const endedMsg = formatMatchEndedMessage(f.match, f.score);
+      if (endedMsg) sendTelegram(endedMsg).catch(() => {});
     }
   }
   if (anyChanged) {

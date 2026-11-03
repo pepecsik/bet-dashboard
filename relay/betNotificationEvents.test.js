@@ -126,3 +126,38 @@ test("a column nobody picked anything in (hasB false) never fires any event", ()
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
   assert.deepEqual(r.events, []);
 });
+
+test("allBetsDead fires once when every column with a bet is dead, not again next tick", () => {
+  const matches = [{ match: "ARS - CHE", status: "FT", score: "0-1", cells: [{ value: "ARS", color: "RED" }, { value: "CHE", color: "RED" }] }];
+  const r1 = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
+  assert.equal(r1.events.filter((e) => e.type === "allBetsDead").length, 1);
+
+  const r2 = detectBetEvents(headers, matches, betSummary, r1.notifiedState);
+  assert.equal(r2.events.filter((e) => e.type === "allBetsDead").length, 0); // guarded, no repeat
+});
+
+test("allBetsDead does NOT fire while at least one column is still alive", () => {
+  const matches = [{ match: "ARS - CHE", status: "FT", score: "0-1", cells: [{ value: "ARS", color: "RED" }, { value: "CHE", color: "GREEN" }] }];
+  const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
+  assert.equal(r.events.filter((e) => e.type === "allBetsDead").length, 0);
+});
+
+test("allBetsDead resets once bets are cleared (hasB false for everyone), can fire again next matchweek", () => {
+  const dead = [{ match: "ARS - CHE", status: "FT", score: "0-1", cells: [{ value: "ARS", color: "RED" }, { value: "CHE", color: "RED" }] }];
+  const r1 = detectBetEvents(headers, dead, betSummary, emptyNotifiedState());
+  assert.equal(r1.events.filter((e) => e.type === "allBetsDead").length, 1);
+
+  const cleared = [{ match: "ARS - CHE", status: "NS", cells: [{ value: "", color: "" }, { value: "", color: "" }] }];
+  const r2 = detectBetEvents(headers, cleared, betSummary, r1.notifiedState);
+  assert.equal(r2.notifiedState.allDead, false);
+
+  const newDead = [{ match: "LIV - MCI", status: "FT", score: "0-1", cells: [{ value: "LIV", color: "RED" }, { value: "MCI", color: "RED" }] }];
+  const r3 = detectBetEvents(headers, newDead, betSummary, r2.notifiedState);
+  assert.equal(r3.events.filter((e) => e.type === "allBetsDead").length, 1); // fires again next week
+});
+
+test("allBetsDead does not fire when nobody has any bet at all this week", () => {
+  const matches = [{ match: "ARS - CHE", status: "NS", cells: [{ value: "", color: "" }, { value: "", color: "" }] }];
+  const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
+  assert.equal(r.events.filter((e) => e.type === "allBetsDead").length, 0);
+});

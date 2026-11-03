@@ -62,4 +62,26 @@ function parseScorers(rawEvents, homeTeamId) {
   return scored.join(", ");
 }
 
-export { parseTeamStats, parseLiveStats, parseScorers };
+// Same event array parseScorers already reads, filtered to sendings-off
+// instead of goals -- a straight red ("Red Card") or a second yellow
+// ("Second Yellow card") both end in the player being off the pitch, which
+// is the thing worth notifying on, so both count. Format mirrors
+// parseScorers' own "(H) Player Name" shape for consistency, though rule
+// #3 (the relay's red-card Telegram notification) reads the fields
+// individually rather than this joined string -- kept in this same joined
+// shape anyway in case something later wants a quick diff-detectable
+// summary the way `scorers` already is.
+function parseRedCards(rawEvents, homeTeamId) {
+  if (!rawEvents) return "";
+  const sentOff = [];
+  rawEvents.forEach((e) => {
+    if (e.type !== "Card") return;
+    const detail = String(e.detail || "").toLowerCase();
+    if (!detail.includes("red") && !detail.includes("second yellow")) return;
+    const side = e.team && e.team.id === homeTeamId ? "H" : "A";
+    sentOff.push(`(${side}) ${e.player ? e.player.name : ""}`);
+  });
+  return sentOff.join(", ");
+}
+
+export { parseTeamStats, parseLiveStats, parseScorers, parseRedCards };

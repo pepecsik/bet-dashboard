@@ -55,6 +55,17 @@ function formatRedCardMessage(match, side, playerName, homeName, awayName) {
   return `🟥 ${team.toUpperCase()} RED CARD!${who} (${match})`;
 }
 
+// Disallowed goal -- player's own team is the one who had the goal
+// cancelled (confirmed against real VAR-cancelled-goal events, see
+// parseDisallowedGoals' own comment).
+function formatDisallowedGoalMessage(match, side, playerName, homeName, awayName) {
+  if (!match) return null;
+  const team = side === "H" ? homeName : awayName;
+  if (!team) return null;
+  const who = playerName ? ` — ${playerName}` : "";
+  return `🚫 ${team.toUpperCase()} GOAL DISALLOWED BY VAR!${who} (${match})`;
+}
+
 // #5 -- every column that had a bet is now dead, nobody's still alive.
 // Fires once per matchweek (see betNotificationEvents.js's guard).
 function formatAllBetsDeadMessage() {
@@ -145,6 +156,7 @@ export {
   formatGoalMessage,
   formatMatchEndedMessage,
   formatRedCardMessage,
+  formatDisallowedGoalMessage,
   formatAllBetsDeadMessage,
   formatBigWinMessage,
   formatOneMatchAwayMessage,

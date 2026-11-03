@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  fmtEUR, formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatAllBetsDeadMessage,
+  fmtEUR, formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatDisallowedGoalMessage, formatAllBetsDeadMessage,
   formatBigWinMessage, formatOneMatchAwayMessage,
   formatOneGoalAwayMessage, formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage,
   formatKickoff30MinMessage, formatDayBeforeMessage, formatBetsLockedMessage, whoNeedsToScore,
@@ -50,6 +50,16 @@ test("formatRedCardMessage: away side names the away team", () => {
 test("formatRedCardMessage: still sends without a player name", () => {
   const msg = formatRedCardMessage("Arsenal - Chelsea", "H", "", "Arsenal", "Chelsea");
   assert.equal(msg, "🟥 ARSENAL RED CARD! (Arsenal - Chelsea)");
+});
+
+test("formatDisallowedGoalMessage: real example, Man Utd side", () => {
+  const msg = formatDisallowedGoalMessage("Chelsea - Manchester United", "A", "Matheus Cunha", "Chelsea", "Manchester United");
+  assert.equal(msg, "🚫 MANCHESTER UNITED GOAL DISALLOWED BY VAR! — Matheus Cunha (Chelsea - Manchester United)");
+});
+
+test("formatDisallowedGoalMessage: real example, Chelsea (home) side", () => {
+  const msg = formatDisallowedGoalMessage("Chelsea - Manchester United", "H", "Estêvão", "Chelsea", "Manchester United");
+  assert.equal(msg, "🚫 CHELSEA GOAL DISALLOWED BY VAR! — Estêvão (Chelsea - Manchester United)");
 });
 
 test("formatAllBetsDeadMessage: static wording", () => {

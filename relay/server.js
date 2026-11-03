@@ -266,6 +266,45 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(lastRawStats, null, 2));
     return;
   }
+  // One-off raw lookup for a single fixture, by fixture ID -- NOT served
+  // from any cache (lastRawStats/lastKnown only hold what's currently
+  // being actively tracked; a finished match from a past matchweek has
+  // long since dropped out of that set). Confirmed live (2026-11-03):
+  // needed to verify the exact type/detail/comments fields API-Football
+  // actually uses for a disallowed/VAR-cancelled goal, which /stats-debug
+  // can't show (statistics only, no events). Returns the FULL raw
+  // API-Football response for that one fixture, same openness reasoning
+  // as /stats-debug and /bets-debug -- public football data, no secret in
+  // the response itself (the API key stays server-side, used only to make
+  // the request).
+  if (req.method === "GET" && req.url.startsWith("/fixture-debug")) {
+    const fixtureId = new URL(req.url, "http://x").searchParams.get("fixtureId");
+    if (!fixtureId || !/^\d+$/.test(fixtureId)) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Pass a numeric ?fixtureId=" }));
+      return;
+    }
+    (async () => {
+      try {
+        const apiRes = await fetch(
+          `https://v3.football.api-sports.io/fixtures?ids=${fixtureId}`,
+          { headers: { "x-apisports-key": API_KEY } }
+        );
+        if (!apiRes.ok) {
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: `API-Football ${apiRes.status}` }));
+          return;
+        }
+        const data = await apiRes.json();
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(data.response || [], null, 2));
+      } catch (e) {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    })();
+    return;
+  }
   // Phase 3 visibility -- the actual combined output (live score + bets +
   // computed colour) a connecting client would receive right now. Same
   // openness reasoning as /bets-debug.

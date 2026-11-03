@@ -84,4 +84,25 @@ function parseRedCards(rawEvents, homeTeamId) {
   return sentOff.join(", ");
 }
 
-export { parseTeamStats, parseLiveStats, parseScorers, parseRedCards };
+// Confirmed live (2026-11-03) against the Chelsea - Man Utd fixture from
+// 2026-10-31, which genuinely had two VAR-cancelled goals: API-Football
+// reports these as type: "Var", detail: "Goal cancelled" (exact casing --
+// capital V only in "Var", lowercase "cancelled"). Matching on type==="Var"
+// alone is NOT enough -- the same fixture also carries type: "Var",
+// detail: "Penalty confirmed" for an unrelated VAR review (the one that
+// led to Cole Palmer's penalty), so the detail check is what actually
+// isolates a disallowed goal. `comments` was null on both real examples --
+// deliberately not read for detection.
+function parseDisallowedGoals(rawEvents, homeTeamId) {
+  if (!rawEvents) return "";
+  const cancelled = [];
+  rawEvents.forEach((e) => {
+    if (e.type !== "Var") return;
+    if (e.detail !== "Goal cancelled") return;
+    const side = e.team && e.team.id === homeTeamId ? "H" : "A";
+    cancelled.push(`(${side}) ${e.player ? e.player.name : ""}`);
+  });
+  return cancelled.join(", ");
+}
+
+export { parseTeamStats, parseLiveStats, parseScorers, parseRedCards, parseDisallowedGoals };

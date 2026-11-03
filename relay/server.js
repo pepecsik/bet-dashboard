@@ -22,7 +22,7 @@ import { WebSocketServer } from "ws";
 import http from "http";
 import { combineState } from "./combine.js";
 import { normalizeStatus } from "./normalizeStatus.js";
-import { parseLiveStats, parseScorers, parseRedCards } from "./parseStats.js";
+import { parseLiveStats, parseScorers, parseRedCards, parseDisallowedGoals } from "./parseStats.js";
 import { shouldPollNow } from "./pollGate.js";
 import { buildBetfairExport, formatBetfairExportText } from "./betfairExport.js";
 import { addRequest, getNext, completeRequest, activePlayers, expireStaleClaims } from "./betfairQueue.js";
@@ -30,7 +30,7 @@ import { getMatchweekReadiness } from "./matchweekAuto.js";
 import { computeWeeklySummary, SB_PLAYERS } from "./matchweekSummary.js";
 import { detectBetEvents, emptyNotifiedState } from "./betNotificationEvents.js";
 import {
-  formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatAllBetsDeadMessage,
+  formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatDisallowedGoalMessage, formatAllBetsDeadMessage,
   formatBigWinMessage, formatOneMatchAwayMessage, formatOneGoalAwayMessage,
   formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage, formatKickoff30MinMessage, formatDayBeforeMessage,
 } from "./telegramMessages.js";
@@ -748,6 +748,7 @@ async function fetchTrackedFixtures() {
     stats: parseLiveStats(f.statistics),
     scorers: parseScorers(f.events, f.teams.home.id),
     redCards: parseRedCards(f.events, f.teams.home.id),
+    disallowedGoals: parseDisallowedGoals(f.events, f.teams.home.id),
   }));
 }
 
@@ -939,7 +940,8 @@ async function pollOnce() {
     const statsChanged = JSON.stringify((prev && prev.stats) || null) !== JSON.stringify(f.stats);
     const scorersChanged = ((prev && prev.scorers) || "") !== (f.scorers || "");
     const redCardsChanged = ((prev && prev.redCards) || "") !== (f.redCards || "");
-    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged || redCardsChanged;
+    const disallowedGoalsChanged = ((prev && prev.disallowedGoals) || "") !== (f.disallowedGoals || "");
+    const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged || redCardsChanged || disallowedGoalsChanged;
     // Rule #7 -- plain live score ticker, no bet context. Only a genuine
     // score change (not every status/stat tick that also counts as
     // "changed" above), and only once `prev` actually exists -- otherwise
@@ -970,11 +972,29 @@ async function pollOnce() {
         if (cardMsg) sendTelegram(cardMsg).catch(() => {});
       });
     }
+    // Disallowed goal -- same diff-newly-appeared-entries pattern as red
+    // cards above. Matching confirmed live against a real fixture (see
+    // parseDisallowedGoals' own comment).
+    if (prev && disallowedGoalsChanged) {
+      const prevEntries = new Set((prev.disallowedGoals || "").split(", ").filter(Boolean));
+      const currentEntries = (f.disallowedGoals || "").split(", ").filter(Boolean);
+      currentEntries.forEach((entry) => {
+        if (prevEntries.has(entry)) return;
+        const m = entry.match(/^\((H|A)\) (.*)$/);
+        if (!m) return;
+        const [, side, playerName] = m;
+        const parts = String(f.match || "").split(" - ");
+        if (parts.length !== 2) return;
+        const [homeName, awayName] = parts;
+        const disallowedMsg = formatDisallowedGoalMessage(f.match, side, playerName, homeName, awayName);
+        if (disallowedMsg) sendTelegram(disallowedMsg).catch(() => {});
+      });
+    }
     if (changed) {
       anyChanged = true;
       lastKnown.set(f.id, {
         status, score: f.score, elapsed: f.elapsed, extra: f.extra, match: f.match,
-        stats: f.stats, scorers: f.scorers, redCards: f.redCards, homeTeamId: f.homeTeamId,
+        stats: f.stats, scorers: f.scorers, redCards: f.redCards, disallowedGoals: f.disallowedGoals, homeTeamId: f.homeTeamId,
       });
     }
     // Recorded on the FIRST poll that sees FT, whether or not this counted

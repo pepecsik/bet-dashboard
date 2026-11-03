@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseTeamStats, parseLiveStats, parseScorers, parseRedCards } from "./parseStats.js";
+import { parseTeamStats, parseLiveStats, parseScorers, parseRedCards, parseDisallowedGoals } from "./parseStats.js";
 
 test("parseTeamStats maps API-Football's type strings to short field names", () => {
   const raw = [
@@ -79,4 +79,29 @@ test("parseRedCards catches both a straight red and a second yellow, excludes a 
 test("parseRedCards returns an empty string for no events", () => {
   assert.equal(parseRedCards(null, 10), "");
   assert.equal(parseRedCards([], 10), "");
+});
+
+// Real event shapes confirmed live (2026-11-03) against the Chelsea - Man
+// Utd fixture from 2026-10-31, which had two genuine VAR-cancelled goals
+// plus an unrelated VAR-confirmed penalty on the same fixture.
+test("parseDisallowedGoals catches a real Var/\"Goal cancelled\" event, excludes an unrelated Var event", () => {
+  const events = [
+    { time: { elapsed: 34, extra: null }, team: { id: 33, name: "Manchester United" }, player: { id: 1165, name: "Matheus Cunha" }, assist: { id: null, name: null }, type: "Var", detail: "Goal cancelled", comments: null },
+    { time: { elapsed: 61, extra: null }, team: { id: 49, name: "Chelsea" }, player: { id: 1, name: "Cole Palmer" }, assist: { id: null, name: null }, type: "Var", detail: "Penalty confirmed", comments: null }, // real VAR event, NOT a disallowed goal -- must be excluded
+    { time: { elapsed: 71, extra: null }, team: { id: 49, name: "Chelsea" }, player: { id: 425733, name: "Estêvão Willian Almeida de Oliveira Gonçalves" }, assist: { id: null, name: null }, type: "Var", detail: "Goal cancelled", comments: null },
+  ];
+  assert.equal(parseDisallowedGoals(events, 33), "(H) Matheus Cunha, (A) Estêvão Willian Almeida de Oliveira Gonçalves");
+});
+
+test("parseDisallowedGoals excludes a Goal-type event and a Card-type event", () => {
+  const events = [
+    { type: "Goal", team: { id: 33 }, player: { name: "Someone" } },
+    { type: "Card", detail: "Red Card", team: { id: 33 }, player: { name: "Someone Else" } },
+  ];
+  assert.equal(parseDisallowedGoals(events, 33), "");
+});
+
+test("parseDisallowedGoals returns an empty string for no events", () => {
+  assert.equal(parseDisallowedGoals(null, 10), "");
+  assert.equal(parseDisallowedGoals([], 10), "");
 });

@@ -24,7 +24,7 @@
 
 <title>Juice Bets</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=VT323&family=Quicksand:wght@600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 
 <style>
 /* =========================================
@@ -366,68 +366,121 @@
    same as every other theme. */
 [data-theme="noir"] {
   --font-main: 'Inter', system-ui, sans-serif;
+  --font-display: 'Oswald', 'Inter', system-ui, sans-serif;  /* broadcast-scoreboard condensed face, headers/numerals only */
   --base-size: 12px;
 
-  --bg-grad: radial-gradient(ellipse at 30% 0%, #1a1b1f 0%, #101013 45%, #050506 100%);
-  --bg-card:  rgba(255, 255, 255, 0.045);
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #141417 0%, #0a0a0c 45%, #000000 100%);
+  --bg-card:  rgba(255, 255, 255, 0.04);
   --bg-soft:  rgba(255, 255, 255, 0.07);
   --bg-row:   rgba(255, 255, 255, 0.03);
-  --bg-modal: rgba(10, 10, 12, 0.97);
+  --bg-modal: rgba(8, 8, 10, 0.98);
 
   --text-main:  #ffffff;
-  --text-muted: #8a8f98;
+  --text-muted: #878c96;
 
-  --accent-orange: #2f6bff;  /* brand/interactive blue -- see .left-header note below for the var's name */
+  --accent-orange: #00c2ff;  /* brand/interactive cyan-blue -- see .left-header note below for the var's name */
   --accent-gold:   #f6c90e;  /* real gold -- Hall of Fame / winner accents only */
   --accent-green:  #00ff85;  /* win signal, kept universal */
 
-  --border-light:  1px solid rgba(47, 107, 255, 0.28);
-  --shadow-card:   0 8px 32px rgba(0,0,0,0.9), 0 0 0 1px rgba(47,107,255,0.08);
+  --border-light:  1px solid rgba(0, 194, 255, 0.25);
+  --shadow-card:   0 8px 32px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,194,255,0.07);
 
-  --rad-sm: 8px;
-  --rad-md: 14px;
-  --rad-lg: 22px;
+  --rad-sm: 4px;
+  --rad-md: 6px;
+  --rad-lg: 18px;
 
   --logo-filter: grayscale(1) brightness(1.4);
-  --modal-overlay: rgba(0, 0, 0, 0.92);
+  --modal-overlay: rgba(0, 0, 0, 0.94);
 }
 
-/* Header: near-black graphite + blue stripe */
+/* Header: flat matte black slab, no blur, condensed wide-tracked wordmark */
 [data-theme="noir"] .left-header {
-  background: linear-gradient(135deg, #0c0c0e 60%, #16171b 100%);
-  border-bottom: 2px solid #2f6bff;
+  background: #000000;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border-bottom: 2px solid #00c2ff;
+  box-shadow: 0 0 20px rgba(0,194,255,0.15);
 }
-[data-theme="noir"] .header-main-text { color: #ffffff; }
-[data-theme="noir"] .header-sub-text  { color: #7db4ff; letter-spacing: 2px; }
+[data-theme="noir"] .header-main-text {
+  color: #ffffff; font-family: var(--font-display); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+[data-theme="noir"] .header-sub-text {
+  color: #5fd4ff; letter-spacing: 2.5px; font-family: var(--font-display); font-weight: 500;
+}
+[data-theme="noir"] .header-row-sticky { background: #000000 !important; }
 
-/* Cards: black glass with a thin blue rim */
+/* Cards: matte black slabs, thin cyan rim, square-cut corners (down from
+   the default rounded-lg) -- the roundness budget goes to the big outer
+   cards only; everything inside reads flat and square, scoreboard-like. */
 [data-theme="noir"] .left-card,
 [data-theme="noir"] .right-card,
 [data-theme="noir"] .summary,
 [data-theme="noir"] .modal-card,
 [data-theme="noir"] .ranking-card {
-  border: 1px solid rgba(47, 107, 255, 0.22) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.85), inset 0 0 60px rgba(47,107,255,0.025);
+  background: #09090b !important;
+  border: 1px solid rgba(0, 194, 255, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.9);
+}
+[data-theme="noir"] .left-cell,
+[data-theme="noir"] .left-label,
+[data-theme="noir"] .header-pill,
+[data-theme="noir"] .week-row,
+[data-theme="noir"] .rank-row {
+  border-radius: 4px !important;
+}
+
+/* Bet cells: sharp slab cut, condensed uppercase numerals/codes, wide
+   tracking -- the scoreboard unit of the whole grid, deliberately flatter
+   and squarer than the cards that hold it. */
+[data-theme="noir"] .bet {
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-color: rgba(0,194,255,0.18);
+  background-image:
+    linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(0deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 60%);
+}
+[data-theme="noir"] .score-pill { border-radius: 4px !important; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+/* Avatars: circular with a glowing cyan ring, broadcast player-card style
+   instead of the default rounded-square tile. */
+[data-theme="noir"] .header-pill.has-avatar {
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 2px #00c2ff, 0 0 14px rgba(0,194,255,0.5);
 }
 
 /* Blue active filter */
+[data-theme="noir"] .filter-btn,
+[data-theme="noir"] .toggle-btn,
+[data-theme="noir"] .filter-title,
+[data-theme="noir"] .weekly-title,
+[data-theme="noir"] .ranking-title,
+[data-theme="noir"] .week-label,
+[data-theme="noir"] .rank-name {
+  font-family: var(--font-display); letter-spacing: 0.5px;
+}
 [data-theme="noir"] .filter-btn.active,
 [data-theme="noir"] .toggle-btn.active {
-  background: #2f6bff;
-  color: #fff;
-  border-color: #2f6bff;
-  box-shadow: 0 3px 12px rgba(47,107,255,0.45);
+  background: #00c2ff;
+  color: #000;
+  border-color: #00c2ff;
+  box-shadow: 0 3px 12px rgba(0,194,255,0.45);
 }
 
-/* Live row: blue glow */
+/* Live row: square-cut slab with a hard left accent bar instead of a
+   rounded glow border -- reads like a broadcast lower-third, not a pill. */
 [data-theme="noir"] .left-row[data-status="live"] {
-  border: 1px solid #2f6bff !important;
-  background: rgba(47,107,255,0.08) !important;
-  box-shadow: 0 0 16px rgba(47,107,255,0.25);
+  border: none !important;
+  border-left: 4px solid #00c2ff !important;
+  border-radius: 2px !important;
+  background: rgba(0,194,255,0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(0,194,255,0.15);
 }
 [data-theme="noir"] .left-row[data-status="live"] .score-pill span:first-child {
-  background: #2f6bff !important;
-  color: #fff !important;
+  background: #00c2ff !important;
+  color: #000 !important;
 }
 
 /* Win state: lime, same as every other theme */
@@ -443,49 +496,49 @@
   background-color: #fb923c !important;
 }
 
-/* Ticker bar: pure black + blue dot */
+/* Ticker bar: pure black slab, square-cut, cyan dot */
 [data-theme="noir"] #matchday-ticker-bar {
-  background: #050506;
-  border-bottom: 1px solid rgba(47,107,255,0.3);
+  background: #000000;
+  border-bottom: 1px solid rgba(0,194,255,0.3);
 }
-[data-theme="noir"] .ticker-countdown        { color: #7db4ff; }
+[data-theme="noir"] .ticker-countdown        { color: #5fd4ff; font-family: var(--font-display); }
 [data-theme="noir"] .ticker-countdown .ticker-time { color: #00ff85; }
-[data-theme="noir"] .ticker-live             { color: #2f6bff; }
-[data-theme="noir"] .ticker-live .ticker-dot { background: #2f6bff; box-shadow: 0 0 8px #2f6bff; }
+[data-theme="noir"] .ticker-live             { color: #00c2ff; }
+[data-theme="noir"] .ticker-live .ticker-dot { background: #00c2ff; box-shadow: 0 0 8px #00c2ff; }
 
-/* Modal tabs: blue underline */
+/* Modal tabs: cyan underline */
 [data-theme="noir"] .tab-btn.active {
-  color: #2f6bff;
-  border-bottom-color: #2f6bff;
+  color: #00c2ff;
+  border-bottom-color: #00c2ff;
 }
 
-/* Bet pills get a subtle blue-tinted border */
-[data-theme="noir"] .bet {
-  border-color: rgba(47,107,255,0.18);
+/* Scores/money -- condensed tabular numerals, scoreboard read */
+[data-theme="noir"] .week-gbp, [data-theme="noir"] .rank-money, [data-theme="noir"] .stat-value-high {
+  font-family: var(--font-display); font-variant-numeric: tabular-nums;
 }
-
-/* Scores/money */
 [data-theme="noir"] .week-gbp.green  { color: #00ff85; }
 [data-theme="noir"] .week-gbp.red    { color: #ff3b3b; }
 [data-theme="noir"] .rank-money      { color: #00ff85; }
 [data-theme="noir"] .txt-green       { color: #00ff85 !important; }
 
-/* Action button: electric blue */
+/* Action button: electric cyan slab, square-cut, condensed + wide-tracked */
 [data-theme="noir"] .place-bets-btn {
-  background: linear-gradient(135deg, #2f6bff, #0a3fcc);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(47,107,255,0.4);
+  background: linear-gradient(135deg, #00c2ff, #0077a6);
+  color: #000;
+  font-family: var(--font-display); font-weight: 700; letter-spacing: 1px;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 20px rgba(0,194,255,0.45);
 }
 [data-theme="noir"] .action-btn {
-  background: linear-gradient(135deg, #2f6bff, #0a3fcc);
-  color: #fff;
+  background: linear-gradient(135deg, #00c2ff, #0077a6);
+  color: #000;
 }
 
 /* Summary toggle */
-[data-theme="noir"] .summary-toggle { background: rgba(47,107,255,0.1); }
+[data-theme="noir"] .summary-toggle { background: rgba(0,194,255,0.1); }
 
 /* Day headers */
-[data-theme="noir"] .day-header { color: #2f6bff; opacity: 1; }
+[data-theme="noir"] .day-header { color: #00c2ff; opacity: 1; font-family: var(--font-display); letter-spacing: 1px; }
 
 /* =========================================
    CORE STYLES

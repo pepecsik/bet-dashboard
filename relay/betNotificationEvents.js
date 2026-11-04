@@ -35,12 +35,15 @@ function findDeadMatch(matches, colIdx) {
   }) || null;
 }
 
-// notifiedState shape: { bigWin: Set<player>, oneMatchAway: Set<player>,
-// dead: Set<player>, oneGoalAwayKeys: Set<string> }. The first three are
+// notifiedState shape: { bigWin: Set<betLabel>, oneMatchAway: Set<betLabel>,
+// dead: Set<betLabel>, oneGoalAwayKeys: Set<string> }. The first three are
 // once-ever-per-matchweek guards (reset when a column's hasB goes back to
 // false, i.e. bets cleared for a new week); oneGoalAwayKeys instead holds
 // the PREVIOUS tick's set of "colIdx:match" keys so a leg leaving and
 // re-entering the one-goal-away state can genuinely re-fire.
+// Keyed on betLabel ("Snackbar Bet 1"), not the plain player name -- two
+// columns belonging to the same player each get their own guard, so one
+// column's bigWin/oneMatchAway/death can't silently suppress the other's.
 function detectBetEvents(headers, matches, betSummary, notifiedState) {
   const stats = computeColumnStats(headers, matches, betSummary);
   const oneGoalAwayLegs = findOneGoalAwayLegs(headers, matches);
@@ -60,37 +63,37 @@ function detectBetEvents(headers, matches, betSummary, notifiedState) {
 
   stats.forEach((s, colIdx) => {
     if (!s.hasB) {
-      // Cleared for a new matchweek -- reset this player's guards.
-      nextBigWin.delete(s.player);
-      nextOneMatchAway.delete(s.player);
-      nextDead.delete(s.player);
+      // Cleared for a new matchweek -- reset this column's guards.
+      nextBigWin.delete(s.betLabel);
+      nextOneMatchAway.delete(s.betLabel);
+      nextDead.delete(s.betLabel);
       return;
     }
 
-    if (s.allGreen && !nextBigWin.has(s.player)) {
-      nextBigWin.add(s.player);
-      events.push({ type: "bigWin", player: s.player, amount: s.tot });
+    if (s.allGreen && !nextBigWin.has(s.betLabel)) {
+      nextBigWin.add(s.betLabel);
+      events.push({ type: "bigWin", player: s.betLabel, amount: s.tot });
     }
 
-    if (s.orangeCount === 1 && s.redCount === 0 && !nextOneMatchAway.has(s.player)) {
-      nextOneMatchAway.add(s.player);
+    if (s.orangeCount === 1 && s.redCount === 0 && !nextOneMatchAway.has(s.betLabel)) {
+      nextOneMatchAway.add(s.betLabel);
       const leg = oneGoalAwayByCol.get(colIdx);
       if (leg) {
         suppressedLegKeys.add(`${leg.colIdx}:${leg.match}`);
         events.push({
-          type: "oneGoalAwayAndLastLeg", player: s.player, amount: s.tot, match: leg.match,
+          type: "oneGoalAwayAndLastLeg", player: s.betLabel, amount: s.tot, match: leg.match,
           homeCode: leg.homeCode, awayCode: leg.awayCode, pick: leg.pick, score: leg.score, minute: parseMinute(leg.status),
         });
       } else {
         const orangeMatch = findMatchByColor(matches, colIdx, ["ORANGE"]);
-        events.push({ type: "oneMatchAway", player: s.player, amount: s.tot, match: orangeMatch ? orangeMatch.match : "?" });
+        events.push({ type: "oneMatchAway", player: s.betLabel, amount: s.tot, match: orangeMatch ? orangeMatch.match : "?" });
       }
     }
 
-    if (s.isDead && !nextDead.has(s.player)) {
-      nextDead.add(s.player);
+    if (s.isDead && !nextDead.has(s.betLabel)) {
+      nextDead.add(s.betLabel);
       const deadMatch = findDeadMatch(matches, colIdx);
-      deaths.push({ player: s.player, match: deadMatch ? deadMatch.match : "?", finalScore: deadMatch ? deadMatch.score : "?" });
+      deaths.push({ player: s.betLabel, match: deadMatch ? deadMatch.match : "?", finalScore: deadMatch ? deadMatch.score : "?" });
     }
   });
 
@@ -115,7 +118,7 @@ function detectBetEvents(headers, matches, betSummary, notifiedState) {
     if (suppressedLegKeys.has(key)) return; // already folded into the merged 5A+5B event above
     if (notifiedState.oneGoalAwayKeys.has(key)) return; // not newly entered this tick
     events.push({
-      type: "oneGoalAway", player: leg.player, match: leg.match,
+      type: "oneGoalAway", player: leg.betLabel, match: leg.match,
       homeCode: leg.homeCode, awayCode: leg.awayCode, pick: leg.pick, score: leg.score, minute: parseMinute(leg.status),
     });
   });

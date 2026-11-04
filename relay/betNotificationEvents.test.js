@@ -14,8 +14,8 @@ test("bigWin fires once when a column goes fully green, not again next tick", ()
   const r1 = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
   const bigWins = r1.events.filter((e) => e.type === "bigWin");
   assert.equal(bigWins.length, 1);
-  assert.deepEqual(bigWins[0], { type: "bigWin", player: "Pepe", amount: 47.52 });
-  assert.equal(r1.events.find((e) => e.type === "deaths").entries[0].player, "Timbo");
+  assert.deepEqual(bigWins[0], { type: "bigWin", player: "Pepe Bet 1", amount: 47.52 });
+  assert.equal(r1.events.find((e) => e.type === "deaths").entries[0].player, "Timbo Bet 1");
 
   const r2 = detectBetEvents(headers, matches, betSummary, r1.notifiedState);
   assert.equal(r2.events.filter((e) => e.type === "bigWin").length, 0); // guarded, no repeat
@@ -40,7 +40,7 @@ test("oneMatchAway fires when exactly one leg remains (not live/not a plain pick
     { match: "LIV - MCI", status: "NS", homeCode: "LIV", awayCode: "MCI", cells: [{ value: "2-1", color: "ORANGE" }] }, // exact-score pick, excluded from oneGoalAway
   ];
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
-  const evt = r.events.find((e) => e.player === "Pepe");
+  const evt = r.events.find((e) => e.player === "Pepe Bet 1");
   assert.equal(evt.type, "oneMatchAway");
   assert.equal(evt.match, "LIV - MCI");
 });
@@ -51,7 +51,7 @@ test("merge rule: oneMatchAway + live plain-pick one-goal-away on the SAME leg -
     { match: "LIV - MCI", status: "60'", homeCode: "LIV", awayCode: "MCI", score: "1-1", cells: [{ value: "LIV", color: "ORANGE" }] },
   ];
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
-  const pepeEvents = r.events.filter((e) => e.player === "Pepe");
+  const pepeEvents = r.events.filter((e) => e.player === "Pepe Bet 1");
   assert.equal(pepeEvents.length, 1); // one merged event, not two
   assert.equal(pepeEvents[0].type, "oneGoalAwayAndLastLeg");
   assert.equal(pepeEvents[0].match, "LIV - MCI");
@@ -66,7 +66,7 @@ test("standalone oneGoalAway fires for a live orange leg that is NOT the column'
   // orangeCount is 2 here, so this column is NOT oneMatchAway-eligible (needs exactly 1) --
   // but each individual orange live plain-pick leg should still fire its own standalone oneGoalAway.
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
-  const pepeEvents = r.events.filter((e) => e.player === "Pepe" && e.type === "oneGoalAway");
+  const pepeEvents = r.events.filter((e) => e.player === "Pepe Bet 1" && e.type === "oneGoalAway");
   assert.equal(pepeEvents.length, 2);
 });
 
@@ -102,8 +102,8 @@ test("dead fires once per column, batches multiple simultaneous deaths into one 
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
   const deathEvent = r.events.find((e) => e.type === "deaths");
   assert.equal(deathEvent.entries.length, 2);
-  assert.deepEqual(deathEvent.entries[0], { player: "Pepe", match: "ARS - CHE", finalScore: "0-1" });
-  assert.deepEqual(deathEvent.entries[1], { player: "Timbo", match: "LIV - MCI", finalScore: "0-3" });
+  assert.deepEqual(deathEvent.entries[0], { player: "Pepe Bet 1", match: "ARS - CHE", finalScore: "0-1" });
+  assert.deepEqual(deathEvent.entries[1], { player: "Timbo Bet 1", match: "LIV - MCI", finalScore: "0-3" });
 });
 
 test("dead via GRAY (impossible exact score) fires even before FT, doesn't wait", () => {
@@ -111,7 +111,7 @@ test("dead via GRAY (impossible exact score) fires even before FT, doesn't wait"
   const r = detectBetEvents(headers, matches, betSummary, emptyNotifiedState());
   const deathEvent = r.events.find((e) => e.type === "deaths");
   assert.equal(deathEvent.entries.length, 1);
-  assert.equal(deathEvent.entries[0].player, "Pepe");
+  assert.equal(deathEvent.entries[0].player, "Pepe Bet 1");
 });
 
 test("a single death (not batched with anyone else) is still wrapped in the deaths event with one entry", () => {

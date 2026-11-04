@@ -1,3 +1,18 @@
+// A player has two bet columns most weeks (occasionally one) -- "Bet 1"/
+// "Bet 2" are assigned purely by position in `headers`, first occurrence of
+// a name is Bet 1, second is Bet 2. Used so a notification about one of a
+// player's columns never gets confused with their other one, and so the
+// once-per-column guards in betNotificationEvents.js key on the actual
+// column rather than the player (two columns sharing one guard was a real
+// bug: one column's bigWin would silently block the other's).
+function computeBetLabels(headers) {
+  const seen = {};
+  return (headers || []).map((h) => {
+    seen[h.name] = (seen[h.name] || 0) + 1;
+    return `${h.name} Bet ${seen[h.name]}`;
+  });
+}
+
 // Per-column (per-bet) live state, derived from the same GREEN/ORANGE/RED/
 // GRAY vocabulary scoring.js already produces (see combine.js) -- ported
 // from index.html's own computeColumnStats(), just reading the relay's
@@ -5,6 +20,7 @@
 // isCorrectColor/isWrongColor/etc. at all, the relay's own color field
 // already IS that classification).
 function computeColumnStats(headers, matches, betSummary) {
+  const betLabels = computeBetLabels(headers);
   return (headers || []).map((h, i) => {
     let hasB = false, hasDeadFT = false, grayCount = 0, orangeCount = 0, redCount = 0, allGreen = true;
     (matches || []).forEach((m) => {
@@ -25,7 +41,7 @@ function computeColumnStats(headers, matches, betSummary) {
     if (hasB && betSummary && betSummary[1] && betSummary[1].cells && betSummary[1].cells[i]) {
       tot = Number(betSummary[1].cells[i].value) || 0;
     }
-    return { player: h.name, hasB, isDead, allGreen, orangeCount, redCount, tot };
+    return { player: h.name, betLabel: betLabels[i], hasB, isDead, allGreen, orangeCount, redCount, tot };
   });
 }
 
@@ -45,6 +61,7 @@ function isLiveStatus(status) {
 // goals-market picks, which also use ORANGE for a different "one away"
 // concept (one goal/line away from an exact number, not from a result).
 function findOneGoalAwayLegs(headers, matches) {
+  const betLabels = computeBetLabels(headers);
   const results = [];
   (matches || []).forEach((m) => {
     if (!isLiveStatus(m.status)) return;
@@ -56,10 +73,10 @@ function findOneGoalAwayLegs(headers, matches) {
       const bet = String(c.value).trim().toUpperCase();
       const isPlainPick = bet === "X" || (home && bet === home) || (away && bet === away);
       if (!isPlainPick) return;
-      results.push({ colIdx: i, player: h.name, match: m.match, homeCode: m.homeCode, awayCode: m.awayCode, pick: bet, score: m.score, status: m.status });
+      results.push({ colIdx: i, player: h.name, betLabel: betLabels[i], match: m.match, homeCode: m.homeCode, awayCode: m.awayCode, pick: bet, score: m.score, status: m.status });
     });
   });
   return results;
 }
 
-export { computeColumnStats, findOneGoalAwayLegs, isLiveStatus };
+export { computeColumnStats, findOneGoalAwayLegs, isLiveStatus, computeBetLabels };

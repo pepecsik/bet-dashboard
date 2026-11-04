@@ -151,8 +151,18 @@ function formatBetsLockedMessage(day, time, highestWin, highestWinPerPerson) {
   return msg;
 }
 
+// Day/week points wrap. rows: buildWeekPointsRanking()'s output, already
+// sorted. isLastDay swaps in the "final score" wording Winston asked for.
+function formatWeekPointsMessage(rows, isLastDay) {
+  if (!rows || !rows.length) return null;
+  const line = rows.map((r) => `${r.player} +${r.weekPoints} (${r.seasonTotal})`).join(" · ");
+  const lead = isLastDay ? "🏁 Final score this week:" : "📊 This week's points:";
+  return `${lead} ${line}`;
+}
+
 export {
   fmtEUR,
+  formatWeekPointsMessage,
   formatGoalMessage,
   formatMatchEndedMessage,
   formatRedCardMessage,

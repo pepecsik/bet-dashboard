@@ -33,8 +33,10 @@ import {
   formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatDisallowedGoalMessage, formatAllBetsDeadMessage,
   formatBigWinMessage, formatOneMatchAwayMessage, formatOneGoalAwayMessage,
   formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage, formatKickoff30MinMessage, formatDayBeforeMessage,
+  formatWeekPointsMessage,
 } from "./telegramMessages.js";
 import { getEarliestKickoffGroup, shouldFireKickoff30Min, shouldFireDayBefore, everyoneHasPlaced } from "./kickoffReminders.js";
+import { getNewlyCompletedDays, weekDateKeys, buildWeekPointsRanking } from "./weekPointsWrap.js";
 
 const PORT = parseInt(process.env.PORT || "8787", 10);
 // Conservative default matches the Pro plan's safe budget (see the cost
@@ -1255,8 +1257,60 @@ function checkKickoffReminders() {
   }
 }
 
+// Day/week points wrap -- fires once per day, after every match kicking
+// off that day has reached FT. Deliberately fetches the dashboard fresh
+// every time (fetchDashboard(), same as checkAutoMatchweek() just above,
+// and for the same reason per its own comment: this is the one other place
+// in this file that reads money/points state, so it can't trust betsCache
+// -- that's synced from the lighter ?mode=bets endpoint on its own 2-minute
+// cadence and was never confirmed to carry scoreboardCells, which
+// computeWeeklySummary() needs). That fresh-fetch-only habit is also what
+// keeps this from ever firing on stale data: if the matchweek sheet hasn't
+// finished recalculating a match's result yet, this fetch simply won't see
+// it as FT, and the wrap waits for the next tick instead of guessing.
+let weekPointsWrappedDates = new Set();
+let weekPointsKnownWeek = new Set();
+const WEEK_POINTS_CHECK_MS = parseInt(process.env.WEEK_POINTS_CHECK_MS || "120000", 10);
+
+function sameDateSet(a, b) {
+  if (a.size !== b.size) return false;
+  for (const d of a) if (!b.has(d)) return false;
+  return true;
+}
+
+async function checkWeekPointsWrap() {
+  let data;
+  try {
+    data = await fetchDashboard();
+  } catch (err) {
+    console.error("[relay] week-points wrap: could not fetch dashboard:", err.message);
+    return;
+  }
+  if (!data || !Array.isArray(data.matches)) return;
+
+  const currentWeekDates = weekDateKeys(data.matches);
+  if (currentWeekDates.size && !sameDateSet(currentWeekDates, weekPointsKnownWeek)) {
+    // New matchweek's fixtures (or the very first check since startup) --
+    // reset which days have already been wrapped.
+    weekPointsWrappedDates = new Set();
+    weekPointsKnownWeek = currentWeekDates;
+  }
+
+  const newlyCompleted = getNewlyCompletedDays(data.matches, weekPointsWrappedDates);
+  if (!newlyCompleted.length) return;
+
+  const weekSummary = computeWeeklySummary(data);
+  const rows = buildWeekPointsRanking(weekSummary, data.ranking);
+  newlyCompleted.forEach(({ dateKey, isLastDay }) => {
+    weekPointsWrappedDates.add(dateKey);
+    const msg = formatWeekPointsMessage(rows, isLastDay);
+    if (msg) sendTelegram(msg).catch(() => {});
+  });
+}
+
 setInterval(pollOnce, POLL_MS);
 setInterval(fetchBetsSnapshot, BETS_SYNC_MS);
+setInterval(checkWeekPointsWrap, WEEK_POINTS_CHECK_MS);
 // Checked well under PENDING_ALERT_MS's own 2-minute default, so a stale
 // job is actually caught close to the threshold rather than up to a whole
 // extra interval late.

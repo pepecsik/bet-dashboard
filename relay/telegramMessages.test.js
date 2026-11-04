@@ -6,7 +6,7 @@ import {
   fmtEUR, formatGoalMessage, formatMatchEndedMessage, formatRedCardMessage, formatDisallowedGoalMessage, formatAllBetsDeadMessage,
   formatBigWinMessage, formatOneMatchAwayMessage,
   formatOneGoalAwayMessage, formatOneGoalAwayAndLastLegMessage, formatBetDiedMessage,
-  formatKickoff30MinMessage, formatDayBeforeMessage, formatBetsLockedMessage, whoNeedsToScore,
+  formatKickoff30MinMessage, formatDayBeforeMessage, formatBetsLockedMessage, formatWeekPointsMessage, whoNeedsToScore,
 } from "./telegramMessages.js";
 
 test("fmtEUR formats consistently", () => {
@@ -145,4 +145,22 @@ test("formatBetsLockedMessage: includes win line only when there's a real highes
 
   const withoutWin = formatBetsLockedMessage("Friday", "20:00", 0, 0);
   assert.doesNotMatch(withoutWin, /Highest possible win/);
+});
+
+test("formatWeekPointsMessage: regular day uses the running-week header", () => {
+  const rows = [{ player: "Snackbar", weekPoints: 4, seasonTotal: 72 }, { player: "Sjaak", weekPoints: 0, seasonTotal: 25 }];
+  const msg = formatWeekPointsMessage(rows, false);
+  assert.match(msg, /^📊 This week's points:/);
+  assert.match(msg, /Snackbar \+4 \(72\)/);
+  assert.match(msg, /Sjaak \+0 \(25\)/);
+});
+
+test("formatWeekPointsMessage: last day of the week uses the final-score header", () => {
+  const rows = [{ player: "Snackbar", weekPoints: 14, seasonTotal: 82 }];
+  const msg = formatWeekPointsMessage(rows, true);
+  assert.match(msg, /^🏁 Final score this week:/);
+});
+
+test("formatWeekPointsMessage: empty rows returns null", () => {
+  assert.equal(formatWeekPointsMessage([], false), null);
 });

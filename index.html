@@ -1347,6 +1347,18 @@ body {
   pointer-events: none;
 }
 
+/* First Bet lock: this match isn't one of the admin-picked games, so BET 1
+   can't be placed on it this week -- distinct from .locked (which means
+   "already submitted"), this one means "not eligible". */
+.bet-input-slot.restricted {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px dashed rgba(255,255,255,0.1);
+  cursor: default;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .bet-input-slot:active { transform: scale(0.95); }
 
 /* "All Bets Placed" Button Style */
@@ -2405,7 +2417,7 @@ img[alt="AVI"] {
       </div>
     </div>
 
-    <div class="picker-section">
+    <div class="picker-section" id="pickerGoalsSection">
       <div class="picker-label">Goals (Over)</div>
       <div class="picker-grid-goals">
         <div class="picker-btn picker-btn-sm" onclick="pickValue('Goals 0.5')">O 0.5</div>
@@ -2417,14 +2429,16 @@ img[alt="AVI"] {
       </div>
     </div>
 
-    <div class="picker-section">
+    <div class="picker-section" id="pickerScoreSection">
       <div class="picker-label">Correct Score</div>
       <div style="display:flex; gap:10px;">
         <input type="text" id="manualScore" class="score-input" placeholder="e.g. 3-1">
         <button class="picker-btn" onclick="pickValue(document.getElementById('manualScore').value)" style="width: 60px;">OK</button>
       </div>
     </div>
-    
+
+    <div id="pickerFirstBetNote" style="display:none; text-align:center; font-size:11px; font-weight:700; color:var(--accent-orange); padding:4px 0 10px;">🔒 First Bet — Win/Draw/Away only</div>
+
     <div style="text-align:center; padding-top:10px;">
         <span style="font-size:11px; color:#ff4d4d; cursor:pointer;" onclick="pickValue('')">Clear Selection</span>
     </div>
@@ -4122,6 +4136,12 @@ function renderDashboard(data, opts){
         window.specialBets = data.specialBets || [];
         window.seasonHistory = data.seasonHistory || [];
         window.specialBetsEnabled = !!data.specialBetsEnabled;
+        // First Bet lock: admin-selected set of matches (m.isFirstBetGame)
+        // that BET 1 (and only BET 1 -- BET 2 is never touched) gets
+        // restricted to, win/draw/away only, once this is switched on in
+        // Admin. Off by default/after a new matchweek starts -- until
+        // switched on, BET 1 behaves exactly like it always has.
+        window.firstBetLockActive = !!data.firstBetLockActive;
         window.eurRate = (typeof data.eurRate === 'number' && data.eurRate > 0) ? data.eurRate : 1;
         // Every special bet gets its own fixed extra column APPENDED after all the
         // real bet columns (same order in the header and every row) — one avatar
@@ -7031,6 +7051,13 @@ function selectPlayer(name) {
         if (isLocked[i]) {
             return `<div class="bet-input-slot locked">${sheetVal || "-"}</div>`;
         }
+        // First Bet lock: BET 1 (colNum 1) only, and only once Admin has
+        // switched it on -- a match that isn't one of the admin-picked
+        // games simply can't take a BET 1 pick while this is active. BET 2
+        // never has this restriction, regardless of the match.
+        if (colNum === 1 && window.firstBetLockActive && !m.isFirstBetGame) {
+            return `<div class="bet-input-slot restricted" title="First Bet is locked to this week's selected games">🔒</div>`;
+        }
         return `<div class="bet-input-slot ${val ? 'filled' : ''}" id="slot-${m.match}-${colNum}" onclick="openPicker('${m.match}', '${h}', '${a}', ${colNum})">${val || ''}</div>`;
     }).join('');
 
@@ -7086,14 +7113,39 @@ function pickValue(val) {
   closeModal('modalPicker');
 }
 
+// First Bet lock, enforced again right before sending (not just at the
+// picker UI) -- catches a pick that was already pending in localStorage
+// from before Admin switched the lock on, which the slot-rendering guard
+// alone wouldn't touch. Only ever applies to col1 (BET 1); returns a
+// reason string if `val` isn't allowed, or null if it's fine to send.
+function firstBetViolation(matchId, val) {
+  if (!window.firstBetLockActive || val === undefined || val === null || val === '') return null;
+  const m = (window.allMatches || []).find(x => x.match === matchId);
+  if (!m) return null;
+  if (!m.isFirstBetGame) return 'not one of this week\'s First Bet games';
+  const [h, a] = String(matchId).split('-').map(s => s.trim().toUpperCase());
+  const v = String(val).trim().toUpperCase();
+  if (v === 'X' || v === h || v === a) return null;
+  return 'First Bet only allows Win/Draw/Away';
+}
+
 function submitAllBets() {
   const betsToSend = [];
+  const blocked = [];
   for (const [match, data] of Object.entries(pendingBets)) {
+    const reason = firstBetViolation(match, data.col1);
+    if (reason) {
+      blocked.push(`${match} (${reason})`);
+      delete data.col1; // strip just the offending BET 1 pick -- col2 (and any other match) still sends normally
+    }
     if (Object.keys(data).some(k => /^col\d+$/.test(k) && data[k] !== undefined)) {
         betsToSend.push({ match: match, ...data });
     }
   }
-  
+  if (blocked.length) {
+    alert("First Bet is locked to this week's selected games (Win/Draw/Away only) -- these BET 1 picks were skipped:\n\n" + blocked.join("\n"));
+  }
+
   if(betsToSend.length === 0) { alert("No bets to send."); return; }
   
   const btn = document.querySelector('.action-btn'); 
@@ -7447,6 +7499,16 @@ function openPicker(matchId, home, away, colNum) {
   btnAway.onclick = () => pickValue(away);
 
   document.getElementById('manualScore').value = "";
+
+  // First Bet lock: BET 1 on one of this week's selected games only offers
+  // Win/Draw/Away -- the slot-rendering guard already keeps a non-selected
+  // match from reaching this modal at all for BET 1, so reaching here with
+  // colNum===1 while the lock is active means m.isFirstBetGame is true.
+  const firstBetRestricted = colNum === 1 && window.firstBetLockActive && m.isFirstBetGame;
+  document.getElementById('pickerGoalsSection').style.display = firstBetRestricted ? 'none' : '';
+  document.getElementById('pickerScoreSection').style.display = firstBetRestricted ? 'none' : '';
+  document.getElementById('pickerFirstBetNote').style.display = firstBetRestricted ? 'block' : 'none';
+
   document.getElementById('modalPicker').classList.add('active');
 }
 

@@ -172,6 +172,13 @@
   .mw-input { width: 64px; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; margin-left: 6px; font-family: inherit; }
   .mw-edit-btn { margin-top: 10px; background: rgba(255,255,255,0.1) !important; }
 
+  .fb-panel { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px; }
+  .fb-count { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .fb-list { max-height: 260px; overflow-y: auto; margin-bottom: 10px; }
+  .fb-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; cursor: pointer; }
+  .fb-row:last-child { border-bottom: none; }
+  .fb-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #ff2882; }
+
   .mw-summary { display: flex; gap: 8px; margin-bottom: 12px; }
   .mw-summary-col {
     flex: 1; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px 4px;
@@ -842,8 +849,10 @@ function renderMatchGrid(matches) {
 }
 
 function renderScoreboard(data) {
+  window.__lastScoreboardData = data; // so First Bet checkbox clicks can re-render without a fresh fetch
   sbLastResults = computeLiveSummary(data);
   sbLastMatches = data.matches || [];
+  sbFirstBetLockActive = !!data.firstBetLockActive;
 
   const history = data.history || [];
   sbHistoryByRow = {};
@@ -861,6 +870,7 @@ function renderScoreboard(data) {
     ${renderSummaryStrip(sbLastResults)}
     <button class="action" id="btnSaveMatchweek" onclick="runSaveMatchweek()">Save Matchweek</button>
     <div class="status-msg" id="msgSaveMatchweek" style="display:none;"></div>
+    ${renderFirstBetPanel(sbLastMatches)}
   ` : '';
 
   document.getElementById('scoreboardContent').innerHTML = `
@@ -868,6 +878,89 @@ function renderScoreboard(data) {
     <div class="mw-section-title">Saved Matchweeks</div>
     ${renderHistoryList(saved)}
   `;
+}
+
+// First Bet: admin picks which of this week's matches get flagged as
+// isFirstBetGame (feeds the existing "What if" box regardless of the lock
+// below), plus a separate ON/OFF switch that's the only thing that
+// actually restricts player betting -- BET 1 only, win/draw/away only, on
+// just the selected games. Saving a new selection is a plain replace (sets
+// isFirstBetGame true on exactly what's checked, false on everything
+// else this week), which is also what makes "undo" trivial: re-check
+// different boxes and save again -- matches that overlap stay flagged,
+// ones that drop off the list get cleared automatically. The lock itself
+// is reversible on its own via the ON/OFF button, with no effect on the
+// saved game selection either way.
+let sbFirstBetLockActive = false;
+let sbFirstBetSelection = new Set();
+let sbFirstBetTouched = false; // true once the admin has clicked a box this session -- stops a routine refresh from stomping on unsaved picks
+
+function renderFirstBetPanel(matches) {
+  if (!sbFirstBetTouched) {
+    sbFirstBetSelection = new Set(matches.filter(m => m.isFirstBetGame).map(m => m.match));
+  }
+  const upcoming = matches.filter(m => m.status === 'NS' || (m.status && m.status.includes(':')));
+  const rows = upcoming.map(m => {
+    const checked = sbFirstBetSelection.has(m.match) ? 'checked' : '';
+    const id = 'fbChk_' + m.match.replace(/[^a-zA-Z0-9]/g, '_');
+    return `
+      <label class="fb-row" for="${id}">
+        <input type="checkbox" id="${id}" ${checked} onchange="toggleFirstBetMatch(${JSON.stringify(m.match)})">
+        <span>${m.match}</span>
+      </label>`;
+  }).join('') || '<div class="placeholder">No upcoming matches.</div>';
+
+  const count = sbFirstBetSelection.size;
+  const countOk = count === 6;
+
+  return `
+    <div class="mw-section-title" style="margin-top:24px;">First Bet Games</div>
+    <div class="fb-panel">
+      <div class="fb-count" style="color:${countOk ? 'var(--accent-green, #7cff5b)' : '#ffb400'};">${count} of 6 selected</div>
+      <div class="fb-list">${rows}</div>
+      <button class="action" onclick="saveFirstBetGames()">Save Selection</button>
+      <div class="status-msg" id="msgFirstBetSave" style="display:none;"></div>
+      <div class="fb-lock-row" style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
+        <span>Restriction is currently <strong>${sbFirstBetLockActive ? 'ON' : 'OFF'}</strong></span>
+        <button class="action" style="width:auto; padding:8px 16px; background:${sbFirstBetLockActive ? '#ff4d4d' : ''};" onclick="toggleFirstBetLock()">${sbFirstBetLockActive ? 'Turn OFF' : 'Turn ON'}</button>
+      </div>
+      <div class="status-msg" id="msgFirstBetLock" style="display:none;"></div>
+    </div>`;
+}
+
+function toggleFirstBetMatch(match) {
+  sbFirstBetTouched = true;
+  if (sbFirstBetSelection.has(match)) sbFirstBetSelection.delete(match);
+  else sbFirstBetSelection.add(match);
+  renderScoreboard(window.__lastScoreboardData);
+}
+
+function saveFirstBetGames() {
+  postAdmin('adminSetFirstBetGames', { matches: Array.from(sbFirstBetSelection) })
+    .then(res => {
+      if (res.status === 'success') {
+        sbFirstBetTouched = false;
+        showStatus('msgFirstBetSave', true, 'Saved — ' + sbFirstBetSelection.size + ' game(s) set as this week\'s First Bet games.');
+      } else {
+        showStatus('msgFirstBetSave', false, res.message || 'Failed to save.');
+      }
+    })
+    .catch(() => showStatus('msgFirstBetSave', false, 'Request failed -- check your connection and try again.'));
+}
+
+function toggleFirstBetLock() {
+  const next = !sbFirstBetLockActive;
+  postAdmin('adminSetFirstBetLockActive', { active: next })
+    .then(res => {
+      if (res.status === 'success') {
+        sbFirstBetLockActive = next;
+        showStatus('msgFirstBetLock', true, next ? 'First Bet restriction is now ON -- BET 1 is locked to the saved games, Win/Draw/Away only.' : 'First Bet restriction is now OFF -- BET 1 is back to normal.');
+        renderScoreboard(window.__lastScoreboardData);
+      } else {
+        showStatus('msgFirstBetLock', false, res.message || 'Failed to update.');
+      }
+    })
+    .catch(() => showStatus('msgFirstBetLock', false, 'Request failed -- check your connection and try again.'));
 }
 
 function renderHistoryList(saved) {

@@ -105,7 +105,7 @@
   }
   .email-preview-footer .status-msg { flex: 1; margin-top: 0; }
 
-  .gear-wrap { position: relative; margin-left: auto; }
+  .gear-wrap { position: relative; }
   .gear-btn {
     background: rgba(255,255,255,0.1); border: none; color: #fff;
     width: 34px; height: 34px; border-radius: 8px; font-size: 15px; cursor: pointer; flex-shrink: 0;
@@ -359,6 +359,7 @@
       <h1>Admin</h1>
       <div class="sub">Hidden panel</div>
     </div>
+    <button class="start-mw-btn" id="btnStartNewMatchweek" onclick="startNewMatchweek()">🚀 Start New Matchweek</button>
     <div class="gear-wrap">
       <button class="gear-btn" id="gearBtn" onclick="toggleGearMenu()" aria-label="More">⚙️</button>
       <div class="gear-menu" id="gearMenu">
@@ -369,7 +370,6 @@
         <button onclick="openGearPane('home')">🏠 Home</button>
       </div>
     </div>
-    <button class="start-mw-btn" id="btnStartNewMatchweek" onclick="startNewMatchweek()">🚀 Start New Matchweek</button>
   </header>
 
   <div class="auto-modal-overlay" id="autoModal">

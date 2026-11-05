@@ -173,8 +173,13 @@
   .mw-edit-btn { margin-top: 10px; background: rgba(255,255,255,0.1) !important; }
 
   .fb-panel { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px; }
+  .fb-status { font-size: 12px; font-weight: 800; margin-bottom: 8px; padding: 7px 10px; border-radius: 8px; }
+  .fb-status-on { background: rgba(0,255,133,0.12); color: #00ff85; }
+  .fb-status-off { background: rgba(255,255,255,0.06); color: #b79ecf; }
   .fb-count { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-  .fb-list { max-height: 260px; overflow-y: auto; margin-bottom: 10px; }
+  .fb-list { max-height: 320px; overflow-y: auto; margin-bottom: 10px; }
+  .fb-day-header { font-size: 10px; font-weight: 800; color: #ff7ac6; text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 4px; }
+  .fb-day-header:first-child { margin-top: 0; }
   .fb-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; cursor: pointer; }
   .fb-row:last-child { border-bottom: none; }
   .fb-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #ff2882; }
@@ -881,16 +886,11 @@ function renderScoreboard(data) {
 }
 
 // First Bet: admin picks which of this week's matches get flagged as
-// isFirstBetGame (feeds the existing "What if" box regardless of the lock
-// below), plus a separate ON/OFF switch that's the only thing that
-// actually restricts player betting -- BET 1 only, win/draw/away only, on
-// just the selected games. Saving a new selection is a plain replace (sets
-// isFirstBetGame true on exactly what's checked, false on everything
-// else this week), which is also what makes "undo" trivial: re-check
-// different boxes and save again -- matches that overlap stay flagged,
-// ones that drop off the list get cleared automatically. The lock itself
-// is reversible on its own via the ON/OFF button, with no effect on the
-// saved game selection either way.
+// isFirstBetGame (feeds the existing "What if" box regardless of the
+// restriction), grouped by day for easier picking. One "Done" button saves
+// the selection AND turns the restriction on in one step; "Clear" wipes
+// the selection AND turns the restriction off, so starting over is just
+// Clear then pick-and-Done again -- no separate on/off switch to forget.
 let sbFirstBetLockActive = false;
 let sbFirstBetSelection = new Set();
 let sbFirstBetTouched = false; // true once the admin has clicked a box this session -- stops a routine refresh from stomping on unsaved picks
@@ -900,31 +900,40 @@ function renderFirstBetPanel(matches) {
     sbFirstBetSelection = new Set(matches.filter(m => m.isFirstBetGame).map(m => m.match));
   }
   const upcoming = matches.filter(m => m.status === 'NS' || (m.status && m.status.includes(':')));
+
+  let currentDay = null;
   const rows = upcoming.map(m => {
     const checked = sbFirstBetSelection.has(m.match) ? 'checked' : '';
     const id = 'fbChk_' + m.match.replace(/[^a-zA-Z0-9]/g, '_');
-    return `
+    let dayHeader = '';
+    if (m.startDay && m.startDay !== currentDay) {
+      currentDay = m.startDay;
+      dayHeader = `<div class="fb-day-header">${currentDay}</div>`;
+    }
+    return dayHeader + `
       <label class="fb-row" for="${id}">
-        <input type="checkbox" id="${id}" ${checked} onchange="toggleFirstBetMatch(${JSON.stringify(m.match)})">
+        <input type="checkbox" id="${id}" ${checked} onchange="toggleFirstBetMatch('${m.match}')">
         <span>${m.match}</span>
       </label>`;
   }).join('') || '<div class="placeholder">No upcoming matches.</div>';
 
   const count = sbFirstBetSelection.size;
   const countOk = count === 6;
+  const statusLine = sbFirstBetLockActive
+    ? `<div class="fb-status fb-status-on">🔒 Restriction is ON — ${count} game(s)</div>`
+    : `<div class="fb-status fb-status-off">Restriction is OFF</div>`;
 
   return `
     <div class="mw-section-title" style="margin-top:24px;">First Bet Games</div>
     <div class="fb-panel">
+      ${statusLine}
       <div class="fb-count" style="color:${countOk ? 'var(--accent-green, #7cff5b)' : '#ffb400'};">${count} of 6 selected</div>
       <div class="fb-list">${rows}</div>
-      <button class="action" onclick="saveFirstBetGames()">Save Selection</button>
-      <div class="status-msg" id="msgFirstBetSave" style="display:none;"></div>
-      <div class="fb-lock-row" style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
-        <span>Restriction is currently <strong>${sbFirstBetLockActive ? 'ON' : 'OFF'}</strong></span>
-        <button class="action" style="width:auto; padding:8px 16px; background:${sbFirstBetLockActive ? '#ff4d4d' : ''};" onclick="toggleFirstBetLock()">${sbFirstBetLockActive ? 'Turn OFF' : 'Turn ON'}</button>
+      <div style="display:flex; gap:8px; margin-top:4px;">
+        <button class="action" style="flex:1; width:auto; background:rgba(255,255,255,0.1);" onclick="clearFirstBet()">Clear</button>
+        <button class="action" style="flex:1; width:auto;" onclick="doneFirstBet()">Done</button>
       </div>
-      <div class="status-msg" id="msgFirstBetLock" style="display:none;"></div>
+      <div class="status-msg" id="msgFirstBet" style="display:none;"></div>
     </div>`;
 }
 
@@ -935,32 +944,51 @@ function toggleFirstBetMatch(match) {
   renderScoreboard(window.__lastScoreboardData);
 }
 
-function saveFirstBetGames() {
-  postAdmin('adminSetFirstBetGames', { matches: Array.from(sbFirstBetSelection) })
+// Saves the current checklist, then turns the restriction on. Two backend
+// calls chained, not parallel -- if the save fails, the restriction is
+// never turned on over a possibly-stale/empty selection.
+function doneFirstBet() {
+  const chosen = Array.from(sbFirstBetSelection);
+  postAdmin('adminSetFirstBetGames', { matches: chosen })
     .then(res => {
+      if (res.status !== 'success') { showStatus('msgFirstBet', false, res.message || 'Failed to save.'); return null; }
+      return postAdmin('adminSetFirstBetLockActive', { active: true });
+    })
+    .then(res => {
+      if (!res) return; // the save step above already failed and reported it
       if (res.status === 'success') {
         sbFirstBetTouched = false;
-        showStatus('msgFirstBetSave', true, 'Saved — ' + sbFirstBetSelection.size + ' game(s) set as this week\'s First Bet games.');
-      } else {
-        showStatus('msgFirstBetSave', false, res.message || 'Failed to save.');
-      }
-    })
-    .catch(() => showStatus('msgFirstBetSave', false, 'Request failed -- check your connection and try again.'));
-}
-
-function toggleFirstBetLock() {
-  const next = !sbFirstBetLockActive;
-  postAdmin('adminSetFirstBetLockActive', { active: next })
-    .then(res => {
-      if (res.status === 'success') {
-        sbFirstBetLockActive = next;
-        showStatus('msgFirstBetLock', true, next ? 'First Bet restriction is now ON -- BET 1 is locked to the saved games, Win/Draw/Away only.' : 'First Bet restriction is now OFF -- BET 1 is back to normal.');
+        sbFirstBetLockActive = true;
+        showStatus('msgFirstBet', true, chosen.length + ' game(s) saved — First Bet restriction is now ON.');
         renderScoreboard(window.__lastScoreboardData);
       } else {
-        showStatus('msgFirstBetLock', false, res.message || 'Failed to update.');
+        showStatus('msgFirstBet', false, res.message || 'Saved the games, but failed to turn the restriction on.');
       }
     })
-    .catch(() => showStatus('msgFirstBetLock', false, 'Request failed -- check your connection and try again.'));
+    .catch(() => showStatus('msgFirstBet', false, 'Request failed -- check your connection and try again.'));
+}
+
+// Wipes the saved selection AND turns the restriction off, so the admin
+// can just pick fresh games and press Done again.
+function clearFirstBet() {
+  postAdmin('adminSetFirstBetGames', { matches: [] })
+    .then(res => {
+      if (res.status !== 'success') { showStatus('msgFirstBet', false, res.message || 'Failed to clear.'); return null; }
+      return postAdmin('adminSetFirstBetLockActive', { active: false });
+    })
+    .then(res => {
+      if (!res) return;
+      if (res.status === 'success') {
+        sbFirstBetTouched = false;
+        sbFirstBetSelection = new Set();
+        sbFirstBetLockActive = false;
+        showStatus('msgFirstBet', true, 'Cleared — First Bet restriction is now OFF.');
+        renderScoreboard(window.__lastScoreboardData);
+      } else {
+        showStatus('msgFirstBet', false, res.message || 'Cleared the games, but failed to turn the restriction off.');
+      }
+    })
+    .catch(() => showStatus('msgFirstBet', false, 'Request failed -- check your connection and try again.'));
 }
 
 function renderHistoryList(saved) {

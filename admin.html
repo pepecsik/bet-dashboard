@@ -105,7 +105,26 @@
   }
   .email-preview-footer .status-msg { flex: 1; margin-top: 0; }
 
-  .tabs { display: flex; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .gear-wrap { position: relative; margin-left: auto; }
+  .gear-btn {
+    background: rgba(255,255,255,0.1); border: none; color: #fff;
+    width: 34px; height: 34px; border-radius: 8px; font-size: 15px; cursor: pointer; flex-shrink: 0;
+  }
+  .gear-menu {
+    display: none; position: absolute; top: 42px; right: 0; z-index: 60;
+    background: #14041a; border: 1px solid rgba(255,40,130,0.3); border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 170px; overflow: hidden;
+  }
+  .gear-menu.open { display: block; }
+  .gear-menu button {
+    display: block; width: 100%; text-align: left; padding: 11px 14px;
+    background: transparent; border: none; color: #fff; font-size: 13px; font-weight: 700;
+    cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .gear-menu button:last-child { border-bottom: none; }
+  .gear-menu button:active { background: rgba(255,255,255,0.08); }
+
+  .tabs { display: none; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
   .tab-btn {
     flex: 1; padding: 12px; text-align: center; font-size: 11px; font-weight: 700;
     color: #b79ecf; background: transparent; border: none; border-bottom: 2px solid transparent;
@@ -340,6 +359,16 @@
       <h1>Admin</h1>
       <div class="sub">Hidden panel</div>
     </div>
+    <div class="gear-wrap">
+      <button class="gear-btn" id="gearBtn" onclick="toggleGearMenu()" aria-label="More">⚙️</button>
+      <div class="gear-menu" id="gearMenu">
+        <button onclick="openGearPane('betfair')">Betano</button>
+        <button onclick="openGearPane('matchweek')">Bets</button>
+        <button onclick="openGearPane('scoreboard')">Scoreboard</button>
+        <button onclick="openGearPane('balance')">Balance</button>
+        <button onclick="openGearPane('home')">🏠 Home</button>
+      </div>
+    </div>
     <button class="start-mw-btn" id="btnStartNewMatchweek" onclick="startNewMatchweek()">🚀 Start New Matchweek</button>
   </header>
 
@@ -367,14 +396,32 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="tabBtnBetfair" onclick="switchTab('betfair')">Betano</button>
+    <button class="tab-btn active" id="tabBtnHome" onclick="switchTab('home')">Home</button>
+    <button class="tab-btn" id="tabBtnBetfair" onclick="switchTab('betfair')">Betano</button>
     <button class="tab-btn" id="tabBtnMatchweek" onclick="switchTab('matchweek')">BETS</button>
     <button class="tab-btn" id="tabBtnScoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
     <button class="tab-btn" id="tabBtnBalance" onclick="switchTab('balance')">Balance</button>
   </div>
 
   <main>
-    <div class="tab-pane active" id="paneBetfair">
+    <div class="tab-pane active" id="paneHome">
+      <div class="mw-section-title">First Bet Games</div>
+      <div id="homeFirstBetContent"><div class="placeholder">Loading…</div></div>
+
+      <div class="mw-section-title" style="margin-top:24px;">Betano Ledger</div>
+      <div id="homeBetanoHeroContent"><div class="placeholder">Loading…</div></div>
+
+      <div class="mw-section-title" style="margin-top:24px;">Betano Placement Queue</div>
+      <div id="homeQueueContent"><div class="placeholder">Connecting…</div></div>
+      <button class="action queue-refresh-btn" id="homeQueueRefreshBtn" onclick="loadQueuePanel('homeQueueContent', 'homeQueueRefreshBtn')" disabled>Checking connection…</button>
+
+      <div class="mw-pill" style="margin-top:24px;" onclick="toggleHomeBalance()">Balance</div>
+      <div class="mw-detail" id="homeBalanceDetail" style="display:none;">
+        <div id="homeBalanceContent"><div class="placeholder">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="paneBetfair">
       <div class="mw-section-title">Betano Placement Queue</div>
       <div id="queuePanelContent"><div class="placeholder">Connecting…</div></div>
       <button class="action queue-refresh-btn" id="queueRefreshBtn" onclick="loadQueuePanel()" disabled>Checking connection…</button>
@@ -462,6 +509,7 @@ function switchTab(name) {
 
   // No auto-refresh on the admin page — load once when the tab is opened.
   // Tap the tab again to pull fresh data manually.
+  if (name === 'home') loadHome();
   if (name === 'scoreboard') loadScoreboard();
   if (name === 'matchweek') loadBetsGrid();
   if (name === 'balance') loadBalance();
@@ -470,6 +518,85 @@ function switchTab(name) {
   // whichever tab is open. loadQueuePanel() is the separate relay call for
   // the actual placement queue, unrelated to the Sheet-backed ledger.
   if (name === 'betfair') { loadBalance(); loadQueuePanel(); }
+}
+
+function toggleGearMenu() {
+  document.getElementById('gearMenu').classList.toggle('open');
+}
+function closeGearMenu() {
+  document.getElementById('gearMenu').classList.remove('open');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.gear-wrap')) closeGearMenu();
+});
+function openGearPane(name) {
+  closeGearMenu();
+  switchTab(name);
+}
+
+function toggleHomeBalance() {
+  const el = document.getElementById('homeBalanceDetail');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Home screen -- the stuff actually used week to week. One dashboard fetch
+// covers First Bet, the Betano hero (balance + cost so far only, not the
+// full ledger table), and the collapsed Balance section; the queue is its
+// own relay call, same as the full Betano tab's.
+function loadHome() {
+  fetch(API_URL).then(r => r.json()).then(data => {
+    renderScoreboard(data); // keeps sbLastMatches current (and the gear-menu Scoreboard pane warm) without a second fetch
+    sbFirstBetLockActive = !!data.firstBetLockActive;
+    document.getElementById('homeFirstBetContent').innerHTML = renderFirstBetPanel(sbLastMatches);
+    document.getElementById('homeBetanoHeroContent').innerHTML = renderBetanoHero(data.betfair);
+    document.getElementById('homeBalanceContent').innerHTML = renderBalance(data.balance);
+  }).catch(() => {
+    document.getElementById('homeFirstBetContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+    document.getElementById('homeBetanoHeroContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+    document.getElementById('homeBalanceContent').innerHTML = '<div class="placeholder">Failed to load.</div>';
+  });
+  loadQueuePanel('homeQueueContent', 'homeQueueRefreshBtn');
+}
+
+// Re-renders just the First Bet panel (now Home-only) after a checkbox/
+// Done/Clear action -- cheaper than re-running the whole renderScoreboard,
+// and doesn't require a fresh fetch since sbLastMatches is already current.
+function renderFirstBetOnly() {
+  const c = document.getElementById('homeFirstBetContent');
+  if (c) c.innerHTML = renderFirstBetPanel(sbLastMatches);
+}
+
+// Trimmed copy of renderBetfair()'s top hero block only (balance + cost so
+// far) -- no "This Matchweek"/Paid row, no full ledger table. Those stay in
+// the full Betano tab (gear menu); Home just wants the headline numbers.
+function renderBetanoHero(betfair) {
+  const rows = (betfair && betfair.rows) || [];
+  if (!rows.length) return '<div class="placeholder">No Betano data yet.</div>';
+
+  const played = rows.filter(r => r.played);
+  const lastPlayed = played.length ? played[played.length - 1] : rows[0];
+  const upcoming = rows.find(r => !r.played) || rows[rows.length - 1];
+
+  const warningHtml = upcoming.current <= 0
+    ? `<div class="bf-warning"><span class="bf-warning-icon">⚠️</span>Betano balance is empty -- time to deposit!</div>`
+    : '';
+
+  return `
+    ${warningHtml}
+    <div class="season-card total-card bf-hero">
+      <div class="stat">
+        <div class="stat-label">Betano Balance &mdash; ${upcoming.mw}</div>
+        <div class="stat-value ${balStatClass(upcoming.current)}">${balFmt(upcoming.current)}</div>
+        <div class="stat-pp">as of ${upcoming.date}</div>
+      </div>
+      <div class="bf-hero-sub">
+        <div class="stat">
+          <div class="stat-label">Cost So Far</div>
+          <div class="stat-value">${balFmt(lastPlayed.cost)}</div>
+          <div class="stat-pp">${balFmt(lastPlayed.costPP)} pp</div>
+        </div>
+      </div>
+    </div>`;
 }
 
 function toggleMatchweekSteps() {
@@ -854,10 +981,8 @@ function renderMatchGrid(matches) {
 }
 
 function renderScoreboard(data) {
-  window.__lastScoreboardData = data; // so First Bet checkbox clicks can re-render without a fresh fetch
   sbLastResults = computeLiveSummary(data);
   sbLastMatches = data.matches || [];
-  sbFirstBetLockActive = !!data.firstBetLockActive;
 
   const history = data.history || [];
   sbHistoryByRow = {};
@@ -875,7 +1000,6 @@ function renderScoreboard(data) {
     ${renderSummaryStrip(sbLastResults)}
     <button class="action" id="btnSaveMatchweek" onclick="runSaveMatchweek()">Save Matchweek</button>
     <div class="status-msg" id="msgSaveMatchweek" style="display:none;"></div>
-    ${renderFirstBetPanel(sbLastMatches)}
   ` : '';
 
   document.getElementById('scoreboardContent').innerHTML = `
@@ -924,7 +1048,6 @@ function renderFirstBetPanel(matches) {
     : `<div class="fb-status fb-status-off">Restriction is OFF</div>`;
 
   return `
-    <div class="mw-section-title" style="margin-top:24px;">First Bet Games</div>
     <div class="fb-panel">
       ${statusLine}
       <div class="fb-count" style="color:${countOk ? 'var(--accent-green, #7cff5b)' : '#ffb400'};">${count} of 6 selected</div>
@@ -941,7 +1064,7 @@ function toggleFirstBetMatch(match) {
   sbFirstBetTouched = true;
   if (sbFirstBetSelection.has(match)) sbFirstBetSelection.delete(match);
   else sbFirstBetSelection.add(match);
-  renderScoreboard(window.__lastScoreboardData);
+  renderFirstBetOnly();
 }
 
 // Saves the current checklist, then turns the restriction on. Two backend
@@ -960,7 +1083,7 @@ function doneFirstBet() {
         sbFirstBetTouched = false;
         sbFirstBetLockActive = true;
         showStatus('msgFirstBet', true, chosen.length + ' game(s) saved — First Bet restriction is now ON.');
-        renderScoreboard(window.__lastScoreboardData);
+        renderFirstBetOnly();
       } else {
         showStatus('msgFirstBet', false, res.message || 'Saved the games, but failed to turn the restriction on.');
       }
@@ -983,7 +1106,7 @@ function clearFirstBet() {
         sbFirstBetSelection = new Set();
         sbFirstBetLockActive = false;
         showStatus('msgFirstBet', true, 'Cleared — First Bet restriction is now OFF.');
-        renderScoreboard(window.__lastScoreboardData);
+        renderFirstBetOnly();
       } else {
         showStatus('msgFirstBet', false, res.message || 'Cleared the games, but failed to turn the restriction off.');
       }
@@ -1209,9 +1332,12 @@ function renderQueuePanel(queue) {
 // slow to wake from idle) hasn't actually responded yet. Per-row Clear
 // buttons don't need their own version of this guard -- they simply don't
 // exist until real queue data has already loaded successfully.
-function loadQueuePanel() {
-  const content = document.getElementById('queuePanelContent');
-  const refreshBtn = document.getElementById('queueRefreshBtn');
+// contentId/btnId default to the full Betano tab's elements -- Home passes
+// its own ('homeQueueContent'/'homeQueueRefreshBtn') to render the same
+// queue data into its own, separate copy of this panel.
+function loadQueuePanel(contentId, btnId) {
+  const content = document.getElementById(contentId || 'queuePanelContent');
+  const refreshBtn = document.getElementById(btnId || 'queueRefreshBtn');
   refreshBtn.disabled = true; refreshBtn.textContent = 'Checking connection…';
   content.innerHTML = '<div class="placeholder">Connecting…</div>';
   fetch(RELAY_URL + '/betfair-place-request/queue')
@@ -1238,7 +1364,7 @@ function clearQueueEntry(player, btn) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player: player }),
   }).then(r => r.json())
-    .then(() => loadQueuePanel())
+    .then(() => { loadQueuePanel(); loadQueuePanel('homeQueueContent', 'homeQueueRefreshBtn'); })
     .catch(() => { btn.disabled = false; btn.textContent = 'Clear'; alert('Request failed -- try again.'); });
 }
 
@@ -1453,6 +1579,10 @@ async function runAutomation(date) {
 function closeAutoModal() {
   document.getElementById('autoModal').classList.remove('active');
 }
+
+// Home is the default view (no tap-the-tab-once-to-load needed like the
+// others) -- it's meant to be useful the instant the page opens.
+loadHome();
 </script>
 </body>
 </html>

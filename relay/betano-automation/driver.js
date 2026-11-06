@@ -220,12 +220,18 @@ async function attemptAutoLogin(page) {
 // Checked once, right after navigating to the fixtures list, before
 // anything else. A no-op (returns immediately) if already logged in --
 // only attempts recovery when the LOGIN button is actually showing.
+// Returns whether login actually had to run this time -- used as hard-stop
+// diagnostic context (see warmUpAccountBalance's comment: this turned out
+// NOT to correlate with the balance-selector race, but it's cheap to keep
+// logging so that's a measured conclusion, not an assumption, the next
+// time this gets looked at).
 async function ensureLoggedIn(page) {
   const loggedOut = await page.getByRole("button", { name: "LOGIN" }).isVisible().catch(() => false);
-  if (!loggedOut) return;
+  if (!loggedOut) return false;
   console.log(`[betano-driver] Not logged in -- attempting automatic recovery via saved-credential autofill.`);
   await attemptAutoLogin(page);
   console.log(`[betano-driver] Automatic login recovery succeeded.`);
+  return true;
 }
 
 function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -778,6 +784,27 @@ async function getAccountBalance(page) {
   return parseEuNumber(match[1]);
 }
 
+// Confirmed live (2026-11-06): getAccountBalance() is never called anywhere
+// in this file before placeRealBet() -- the very first time a run ever
+// reads BALANCE_SELECTOR is right as real money is about to move. That
+// element has been seen taking longer than getAccountBalance()'s own 10s
+// timeout to hydrate on its first-ever read this run, then working
+// instantly on a retry a few minutes later once the page has settled --
+// seen on both a fresh-login run and an already-logged-in run, so login
+// freshness isn't the variable, first-ever-read is. Called early, right
+// after login, well off the critical path of any real-money click --
+// failure here just logs a warning and lets the run continue; placeRealBet's
+// own read is still the one that actually throws and hard-stops if the
+// balance genuinely can't be read when it matters.
+async function warmUpAccountBalance(page) {
+  try {
+    const balance = await getAccountBalance(page);
+    console.log(`[betano-driver] Balance selector warm-up succeeded (€${balance}).`);
+  } catch (err) {
+    console.warn(`[betano-driver] Balance selector warm-up failed (non-fatal, placeRealBet's own read is the real check):`, err.message);
+  }
+}
+
 // Clicks the real BET NOW button and verifies the outcome purely via the
 // account balance, per Winston's own explicit spec -- no reliance on any
 // assumed on-page success/failure message. balanceBefore is read FIRST,
@@ -993,10 +1020,22 @@ async function uploadScreenshot(localPath) {
 // line) if either env var is unset, or if the send itself fails for any
 // reason -- this must never throw and turn a hard-stop's own error
 // reporting into a second, worse failure.
-async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
+// `diagnostics` (optional): { elapsedMs, loginWasNeeded, lastFallback } --
+// added 2026-11-06 so a hard stop is diagnosable from the Telegram message
+// alone instead of needing a code-reading session each time one shows up.
+async function notifyHardStopDirect(player, errorMessage, screenshotUrl, diagnostics) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error(`[betano-driver] Direct Telegram notify skipped -- TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not set.`);
     return;
+  }
+  const prefix = `🛑 Hard stop building a bet for ${player} (direct notify -- OpenClaw's own relay may not have gotten to this).\n\n`;
+  let diagLine = "";
+  if (diagnostics) {
+    const parts = [];
+    if (typeof diagnostics.elapsedMs === "number") parts.push(`${Math.round(diagnostics.elapsedMs / 1000)}s into this run`);
+    if (typeof diagnostics.loginWasNeeded === "boolean") parts.push(diagnostics.loginWasNeeded ? "login was needed" : "already logged in");
+    if (diagnostics.lastFallback) parts.push(`last AI action: "${diagnostics.lastFallback.slice(0, 120)}"`);
+    if (parts.length) diagLine = `(${parts.join(" · ")})\n\n`;
   }
   // Confirmed live (2026-09-25): a real hard stop's error message can
   // embed a full betslip snapshot dump (every leg's text, odds, bonus
@@ -1006,11 +1045,10 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
   // long." That's exactly the silent-failure blind spot this function
   // exists to close, so it must never fail this way -- truncate
   // conservatively rather than trust the error message to always be
-  // Telegram-safe length.
-  const prefix = `🛑 Hard stop building a bet for ${player} (direct notify -- OpenClaw's own relay may not have gotten to this).\n\n`;
-  const maxErrorLen = 900 - prefix.length;
+  // Telegram-safe length. diagLine is budgeted for too now, not just prefix.
+  const maxErrorLen = 900 - prefix.length - diagLine.length;
   const truncatedError = errorMessage.length > maxErrorLen ? `${errorMessage.slice(0, maxErrorLen)}… (truncated)` : errorMessage;
-  const caption = `${prefix}${truncatedError}`;
+  const caption = `${prefix}${diagLine}${truncatedError}`;
   try {
     const endpoint = screenshotUrl ? "sendPhoto" : "sendMessage";
     const body = screenshotUrl
@@ -1024,6 +1062,31 @@ async function notifyHardStopDirect(player, errorMessage, screenshotUrl) {
     console.error(`[betano-driver] Direct Telegram notify sent (messageId: ${data.result.message_id}).`);
   } catch (err) {
     console.error(`[betano-driver] Direct Telegram notify failed:`, err.message);
+  }
+}
+
+// Every hard stop gets a knowledge-log entry now, not just a resolved
+// recovery (recoverBetslipMismatch's own write has its own call site) --
+// so an unexplained hard stop leaves a queryable trace in the Sheet-backed
+// log instead of only a Telegram message that scrolls out of view. `fix`
+// is deliberately blank: a hard stop is, by definition, unresolved -- the
+// relay's /openclaw-knowledge route accepts that as of 2026-11-06. Never
+// throws, same discipline as every other direct-notify function here.
+async function logHardStopToKnowledge(player, errorMessage, diagnostics, page) {
+  try {
+    await fetch(`${RELAY_URL}/openclaw-knowledge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category: "hard-stop",
+        problem: errorMessage,
+        fix: "",
+        context: `${player} -- ${Math.round(diagnostics.elapsedMs / 1000)}s into run, login ${diagnostics.loginWasNeeded ? "was" : "was not"} needed, last AI action: ${diagnostics.lastFallback || "none"}, page: ${page ? page.url() : "n/a"}`,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    console.warn(`[betano-driver] Hard-stop knowledge-log write failed (non-fatal):`, err.message);
   }
 }
 
@@ -1360,6 +1423,11 @@ async function main() {
   // both need to handle it still being undefined if the browser connection
   // itself is what failed.
   let page;
+  // Hard-stop diagnostic context -- declared here (not inside try) so the
+  // catch block below can still read them even if the failure happens
+  // before they're ever assigned (e.g. the browser connection itself).
+  const runStartedAt = Date.now();
+  let loginWasNeeded = null; // null = never reached ensureLoggedIn
 
   try {
     // Confirmed live (2026-09-28): connectOverCDP() used to run BEFORE
@@ -1397,7 +1465,8 @@ async function main() {
     // downstream. Attempts automatic recovery itself first (saved-
     // credential autofill only, never typing/guessing) -- only reaches
     // Winston as a hard stop if that doesn't work.
-    await ensureLoggedIn(page);
+    loginWasNeeded = await ensureLoggedIn(page);
+    await warmUpAccountBalance(page);
 
     for (const [i, exportedBet] of bets.entries()) {
       const label = `bet${i + 1}`;
@@ -1544,11 +1613,22 @@ async function main() {
         console.error(`[betano-driver] Could not capture hard-stop screenshot:`, screenshotErr.message);
       }
     }
+    // elapsedMs/loginWasNeeded/lastFallback: see warmUpAccountBalance's and
+    // ensureLoggedIn's own comments for why these are worth capturing --
+    // turns "why did it hard-stop" from a code-reading session into
+    // something readable straight off the Telegram message and the
+    // knowledge-log entry below.
+    const hardStopDiagnostics = {
+      elapsedMs: Date.now() - runStartedAt,
+      loginWasNeeded,
+      lastFallback: fallbackLog.length ? fallbackLog[fallbackLog.length - 1].description : null,
+    };
     // Fires regardless of whether the screenshot itself succeeded above --
     // even a text-only notification beats the silent-failure blind spot
     // this exists to close. Never allowed to throw (see the function's
     // own comment), so it can't turn this hard-stop path into a worse one.
-    await notifyHardStopDirect(player, err.message, failureUrl);
+    await notifyHardStopDirect(player, err.message, failureUrl, hardStopDiagnostics);
+    await logHardStopToKnowledge(player, err.message, hardStopDiagnostics, page);
     // Confirmed live (2026-09-24): a hard stop leaves the queue entry
     // stuck "claimed" -- nothing auto-releases it, blocking any future
     // job for anyone until someone notices and clears it manually.

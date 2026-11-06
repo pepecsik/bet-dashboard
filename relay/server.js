@@ -570,15 +570,18 @@ const server = http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/openclaw-knowledge") {
     readJsonBody(req, async (body) => {
       const { category, problem, fix, context } = body || {};
-      if (!problem || !fix) {
+      if (!problem) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Missing problem or fix" }));
+        res.end(JSON.stringify({ error: "Missing problem" }));
         return;
       }
       try {
         const resp = await fetch(APPS_SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "adminLogOpenClawKnowledge", category: category || "general", problem, fix, context: context || "" }),
+          // fix is optional -- an unresolved hard-stop entry legitimately
+          // has no fix yet, and is still worth logging so it's queryable
+          // alongside the entries that do have one.
+          body: JSON.stringify({ action: "adminLogOpenClawKnowledge", category: category || "general", problem, fix: fix || "", context: context || "" }),
         });
         const data = await resp.json();
         res.writeHead(200, { "Content-Type": "application/json" });

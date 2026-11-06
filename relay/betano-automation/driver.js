@@ -612,7 +612,29 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
     // Excluding #my-bets-section's own descendants, same ancestor-based
     // exclusion technique marketCardFor() already uses above, keeps this
     // scoped to the match page's own accordion heading only.
-    await page.locator(`xpath=//*[normalize-space(text())="Correct Score" and not(ancestor::*[@id="my-bets-section"])]`).click();
+    //
+    // Root-caused AGAIN, confirmed live by OpenClaw (2026-11-07): the raw
+    // `//*[normalize-space(text())="Correct Score" ...]` XPath above never
+    // actually worked -- the heading element has THREE text-node children
+    // (empty, "Correct Score", empty), text() returns all of them as a
+    // node-set, and normalize-space() applied to a node-set in a predicate
+    // implicitly takes only the FIRST node (the empty one). The predicate
+    // therefore always evaluated "" === "Correct Score" (false), so this
+    // locator has resolved to 0 elements on every real run that needed it
+    // since the #my-bets-section fix above landed -- a 30s timeout on the
+    // accordion-expand click, every time, regardless of whether a sidebar
+    // ambiguity was ever actually present. Confirmed live: the exact XPath
+    // above resolves to 0 elements; page.getByText("Correct Score", {exact:
+    // true}) on the same page resolves to 1 (or 2, with the sidebar
+    // showing). Fixed by starting from the same getByText(...) marketCardFor()
+    // already uses successfully elsewhere in this file, then filtering with
+    // a `self::*` XPath predicate (tests the matched element itself, not a
+    // raw text() node-set) chained off it -- the my-bets-section exclusion
+    // logic is unchanged, just applied the way the rest of this file proves
+    // actually works. .first() stays as a defensive fallback, not the
+    // primary fix, in case more than one element somehow still survives
+    // the filter.
+    await page.getByText("Correct Score", { exact: true }).locator(`xpath=self::*[not(ancestor::*[@id="my-bets-section"])]`).first().click();
   }
 
   if (step.market === "Correct Score") {

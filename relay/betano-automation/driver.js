@@ -629,9 +629,22 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // of Correct Score's, expanding the wrong section and leaving the
       // target scoreline still hidden -- exactly what Winston watched
       // happen a second time. Scoped to this market's own card now.
+      //
+      // Root-caused, confirmed live by OpenClaw (2026-11-07) after a real
+      // Timbo hard-stop on "3-0" (Arsenal vs Hull City): EVEN scoped to
+      // Correct Score's own card, this locator can resolve to TWO SHOW ALL
+      // elements, not one -- a Playwright strict-mode violation that
+      // .catch(() => {}) was silently swallowing. SHOW ALL then never
+      // actually got clicked, the higher scorelines stayed hidden, and the
+      // AI fallback had nothing real to click -- exactly the "reported
+      // success but the leg never appeared in the betslip" symptom. .first()
+      // removes the ambiguity outright, same fix as marketCardFor() itself
+      // already applies one level up. The .catch() stays -- still needed
+      // for the genuine case where no SHOW ALL exists at all (the scoreline
+      // was already visible without expanding).
       await dismissMarketingPopup(page, "before Correct Score SHOW ALL");
       await dismissSessionTimer(page, "before Correct Score SHOW ALL");
-      await marketCardFor(page, "Correct Score").getByRole("button", { name: "SHOW ALL" }).click().catch(() => {});
+      await marketCardFor(page, "Correct Score").getByRole("button", { name: "SHOW ALL" }).first().click().catch(() => {});
     }
     await dismissMarketingPopup(page, "before Correct Score pick click");
     await dismissSessionTimer(page, "before Correct Score pick click");
@@ -651,9 +664,16 @@ async function executeMatchPagePick(page, step, fixtureEntry) {
       // unscoped page-wide search here could equally click Correct
       // Score's SHOW ALL instead of this one, same ambiguity confirmed
       // live for that branch.
+      //
+      // .first() added proactively (2026-11-07): Correct Score's identical
+      // marketCardFor(...).getByRole("button", {name:"SHOW ALL"}) pattern
+      // was just confirmed live to sometimes resolve to two elements even
+      // within its own scoped card -- no reason to assume this market's
+      // card is structurally different, so the same fix applies here
+      // before it has a chance to cause the same silent-failure symptom.
       await dismissMarketingPopup(page, "before Over/Under SHOW ALL");
       await dismissSessionTimer(page, "before Over/Under SHOW ALL");
-      await marketCardFor(page, "Over/Under Total Goals").getByRole("button", { name: "SHOW ALL" }).click();
+      await marketCardFor(page, "Over/Under Total Goals").getByRole("button", { name: "SHOW ALL" }).first().click();
     }
     await dismissMarketingPopup(page, "before Over/Under pick click");
     await dismissSessionTimer(page, "before Over/Under pick click");

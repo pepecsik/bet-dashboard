@@ -953,7 +953,7 @@ async function pollOnce() {
     // the very first sighting of a fixture (prev undefined, score "0-0")
     // would misfire a false "GOAL" the moment it's first tracked.
     if (prev && prev.score !== f.score) {
-      const goalMsg = formatGoalMessage(f.match, prev.score, f.score);
+      const goalMsg = formatGoalMessage(f.match, prev.score, f.score, status);
       if (goalMsg) sendTelegram(goalMsg).catch(() => {});
     }
     // Rule #3 -- red card (or a second yellow, same outcome). Diffs the

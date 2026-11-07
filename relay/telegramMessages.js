@@ -19,7 +19,7 @@ function fmtEUR(v) {
 // null if it can't tell which side actually scored (defensive -- shouldn't
 // happen given the caller only calls this when the score string genuinely
 // changed).
-function formatGoalMessage(match, prevScore, newScore) {
+function formatGoalMessage(match, prevScore, newScore, minute) {
   const prev = String(prevScore || "0-0").split("-").map((n) => parseInt(n, 10));
   const next = String(newScore || "0-0").split("-").map((n) => parseInt(n, 10));
   if (prev.length !== 2 || next.length !== 2 || prev.some(isNaN) || next.some(isNaN)) return null;
@@ -32,7 +32,11 @@ function formatGoalMessage(match, prevScore, newScore) {
   if (nextH > prevH) scorer = homeName;
   else if (nextA > prevA) scorer = awayName;
   if (!scorer) return null;
-  return `⚽ ${scorer.toUpperCase()} GOAL! ${match} is now ${newScore}`;
+  // `minute` is whatever normalizeStatus() currently has for this fixture
+  // ("58'", "45+2'", ...) -- only shown when it looks like a real live
+  // minute, so a goal caught right at FT/HT doesn't print "(FT)"/"(HT)".
+  const minutePart = minute && /\d/.test(minute) ? ` (${minute})` : "";
+  return `⚽ ${scorer.toUpperCase()} GOAL! ${match} is now ${newScore}${minutePart}`;
 }
 
 // #2 -- plain final result, no bet context, same spirit as the goal

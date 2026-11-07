@@ -15,24 +15,24 @@ test("fmtEUR formats consistently", () => {
   assert.equal(fmtEUR(null), "€0.00");
 });
 
-test("formatGoalMessage leads with the scoring team in caps", () => {
+test("formatGoalMessage leads with the scoring team in caps, score on its own line", () => {
   const msg = formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0");
-  assert.equal(msg, "⚽ ARSENAL GOAL! Arsenal - Chelsea is now 1-0");
+  assert.equal(msg, "⚽ ARSENAL GOAL!\nArsenal |  1 - 0  | Chelsea");
 });
 
 test("formatGoalMessage identifies the away scorer, leading in caps", () => {
   const msg = formatGoalMessage("Arsenal - Chelsea", "0-0", "0-1");
-  assert.equal(msg, "⚽ CHELSEA GOAL! Arsenal - Chelsea is now 0-1");
+  assert.equal(msg, "⚽ CHELSEA GOAL!\nArsenal |  0 - 1  | Chelsea");
 });
 
-test("formatGoalMessage appends the minute after the score when given a live minute", () => {
+test("formatGoalMessage appends the minute after GOAL! when given a live minute", () => {
   const msg = formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0", "58'");
-  assert.equal(msg, "⚽ ARSENAL GOAL! Arsenal - Chelsea is now 1-0 (58')");
+  assert.equal(msg, "⚽ ARSENAL GOAL! (58')\nArsenal |  1 - 0  | Chelsea");
 });
 
 test("formatGoalMessage omits the minute when it's not a live minute (FT/HT/NS) or absent", () => {
-  assert.equal(formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0", "FT"), "⚽ ARSENAL GOAL! Arsenal - Chelsea is now 1-0");
-  assert.equal(formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0"), "⚽ ARSENAL GOAL! Arsenal - Chelsea is now 1-0");
+  assert.equal(formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0", "FT"), "⚽ ARSENAL GOAL!\nArsenal |  1 - 0  | Chelsea");
+  assert.equal(formatGoalMessage("Arsenal - Chelsea", "0-0", "1-0"), "⚽ ARSENAL GOAL!\nArsenal |  1 - 0  | Chelsea");
 });
 
 test("formatGoalMessage returns null when neither side's count actually went up, or input is malformed", () => {

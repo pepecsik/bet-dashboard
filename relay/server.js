@@ -945,7 +945,13 @@ async function pollOnce() {
     // sitting frozen between actual events.
     const status = normalizeStatus(f.status, f.elapsed);
     const prev = lastKnown.get(f.id);
-    const wasFT = !!prev && prev.status === "FT";
+    // On the very first sighting of a fixture (prev undefined -- e.g. right
+    // after a relay restart caused by a deploy), a match that's already FT
+    // is something this process is only just now LEARNING about, not
+    // something that just finished. Without this, every redeploy mid-week
+    // re-broadcast FULL TIME for every already-finished match the instant
+    // the relay came back up.
+    const wasFT = prev ? prev.status === "FT" : status === "FT";
     // extra is compared separately from status -- status itself stays
     // frozen at e.g. "90'" for the whole of stoppage time (elapsed doesn't
     // move), so without this an added-time announcement (extra going from
@@ -1247,11 +1253,26 @@ async function checkAutoMatchweek() {
 // autoHandledLastMatchDate's own guard just above.
 let kickoff30MinFiredForTs = null;
 let dayBeforeFiredForTs = null;
+// shouldFireKickoff30Min/shouldFireDayBefore have no upper bound -- once
+// their window opens they stay "due" forever (see kickoffReminders.js), so
+// without this, a redeploy any time after the real window opened (even
+// hours or days later, same week) would look due again the instant the
+// relay restarted and re-blast a reminder for a kickoff long since passed.
+// Set true on the very first check since this process started, so that
+// check only silently adopts whatever's already true instead of firing.
+let kickoffRemindersFirstCheckDone = false;
 
 function checkKickoffReminders() {
   const { ts, matches } = getEarliestKickoffGroup(betsCache.matches);
   if (ts === null) return;
   const now = Date.now();
+
+  if (!kickoffRemindersFirstCheckDone) {
+    kickoffRemindersFirstCheckDone = true;
+    if (shouldFireKickoff30Min(ts, now)) kickoff30MinFiredForTs = ts;
+    if (shouldFireDayBefore(ts, now)) dayBeforeFiredForTs = ts;
+    return;
+  }
 
   if (shouldFireKickoff30Min(ts, now) && kickoff30MinFiredForTs !== ts) {
     kickoff30MinFiredForTs = ts;
@@ -1286,6 +1307,14 @@ function checkKickoffReminders() {
 // it as FT, and the wrap waits for the next tick instead of guessing.
 let weekPointsWrappedDates = new Set();
 let weekPointsKnownWeek = new Set();
+// True once this process has silently caught up to whichever days are
+// ALREADY complete for the current matchweek, without sending anything for
+// them -- set back to false whenever weekPointsWrappedDates resets (new
+// matchweek, or this relay process just started). Without this, a redeploy
+// mid-week reset weekPointsWrappedDates to empty, so the very next check
+// saw every already-finished day as "newly completed" and re-sent the
+// points-wrap message for all of them at once.
+let weekPointsBaselineSeeded = false;
 const WEEK_POINTS_CHECK_MS = parseInt(process.env.WEEK_POINTS_CHECK_MS || "120000", 10);
 
 function sameDateSet(a, b) {
@@ -1310,10 +1339,22 @@ async function checkWeekPointsWrap() {
     // reset which days have already been wrapped.
     weekPointsWrappedDates = new Set();
     weekPointsKnownWeek = currentWeekDates;
+    weekPointsBaselineSeeded = false;
   }
 
   const newlyCompleted = getNewlyCompletedDays(data.matches, weekPointsWrappedDates);
-  if (!newlyCompleted.length) return;
+  if (!newlyCompleted.length) { weekPointsBaselineSeeded = true; return; }
+
+  if (!weekPointsBaselineSeeded) {
+    // First check since the reset above -- any "newly completed" day found
+    // right now might just be a day that finished BEFORE this process
+    // started (a redeploy mid-week), not a genuinely new event. Adopt it
+    // silently as the baseline instead of re-announcing it; only a day
+    // that completes AFTER this point counts as new from here on.
+    newlyCompleted.forEach(({ dateKey }) => weekPointsWrappedDates.add(dateKey));
+    weekPointsBaselineSeeded = true;
+    return;
+  }
 
   const weekSummary = computeWeeklySummary(data);
   const rows = buildWeekPointsRanking(weekSummary, data.ranking);

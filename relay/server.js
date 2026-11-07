@@ -62,6 +62,17 @@ const TEST_MATCH_AWAY_CODE = process.env.TEST_MATCH_AWAY_CODE || "DEF";
 // testing the real button flow, then unset it before any real matchweek.
 const FORCE_BETFAIR_TEST_MODE = process.env.FORCE_BETFAIR_TEST_MODE === "1";
 
+// Teams Winston already watches live, so the plain live-match-event pings
+// (goal ticker, red card, disallowed goal, full time) are just noise for
+// their games -- bet-outcome notifications (big win, one-goal-away, bet
+// died, bets locked) are unaffected, those are still worth getting since
+// they're about money, not something already visible on screen.
+const MUTED_LIVE_TEAMS = ["Arsenal"];
+function isMutedLiveMatch(match) {
+  const name = String(match || "").toLowerCase();
+  return MUTED_LIVE_TEAMS.some((team) => name.includes(team.toLowerCase()));
+}
+
 // Fast/slow split, Phase 2: a periodic, read-only pull of the week's bets
 // from Code.gs's ?mode=bets (see scoring.js for what it's for). Runs
 // regardless of MOCK_MODE -- bets always come from the real sheet, there's
@@ -952,7 +963,7 @@ async function pollOnce() {
     // "changed" above), and only once `prev` actually exists -- otherwise
     // the very first sighting of a fixture (prev undefined, score "0-0")
     // would misfire a false "GOAL" the moment it's first tracked.
-    if (prev && prev.score !== f.score) {
+    if (prev && prev.score !== f.score && !isMutedLiveMatch(f.match)) {
       const goalMsg = formatGoalMessage(f.match, prev.score, f.score, status);
       if (goalMsg) sendTelegram(goalMsg).catch(() => {});
     }
@@ -962,7 +973,7 @@ async function pollOnce() {
     // -- not a generic "something about cards changed" ping, and not a
     // false fire on the very first sighting of a match that already had a
     // red card recorded before this relay started tracking it.
-    if (prev && redCardsChanged) {
+    if (prev && redCardsChanged && !isMutedLiveMatch(f.match)) {
       const prevEntries = new Set((prev.redCards || "").split(", ").filter(Boolean));
       const currentEntries = (f.redCards || "").split(", ").filter(Boolean);
       currentEntries.forEach((entry) => {
@@ -980,7 +991,7 @@ async function pollOnce() {
     // Disallowed goal -- same diff-newly-appeared-entries pattern as red
     // cards above. Matching confirmed live against a real fixture (see
     // parseDisallowedGoals' own comment).
-    if (prev && disallowedGoalsChanged) {
+    if (prev && disallowedGoalsChanged && !isMutedLiveMatch(f.match)) {
       const prevEntries = new Set((prev.disallowedGoals || "").split(", ").filter(Boolean));
       const currentEntries = (f.disallowedGoals || "").split(", ").filter(Boolean);
       currentEntries.forEach((entry) => {
@@ -1011,8 +1022,10 @@ async function pollOnce() {
     if (!wasFT && status === "FT") {
       justFinished.push({ id: f.id, match: f.match, score: f.score, status, stats: f.stats, scorers: f.scorers });
       // Rule #2 -- plain final result, no bet context.
-      const endedMsg = formatMatchEndedMessage(f.match, f.score);
-      if (endedMsg) sendTelegram(endedMsg).catch(() => {});
+      if (!isMutedLiveMatch(f.match)) {
+        const endedMsg = formatMatchEndedMessage(f.match, f.score);
+        if (endedMsg) sendTelegram(endedMsg).catch(() => {});
+      }
     }
   }
   if (anyChanged) {

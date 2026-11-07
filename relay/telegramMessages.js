@@ -36,7 +36,7 @@ function formatGoalMessage(match, prevScore, newScore, minute) {
   // ("58'", "45+2'", ...) -- only shown when it looks like a real live
   // minute, so a goal caught right at FT/HT doesn't print "(FT)"/"(HT)".
   const minutePart = minute && /\d/.test(minute) ? ` (${minute})` : "";
-  return `⚽ ${scorer.toUpperCase()} GOAL! ${match} is now ${newScore}${minutePart}`;
+  return `⚽ ${scorer.toUpperCase()} GOAL!${minutePart}\n${homeName} |  ${nextH} - ${nextA}  | ${awayName}`;
 }
 
 // #2 -- plain final result, no bet context, same spirit as the goal

@@ -57,19 +57,24 @@ function weekDateKeys(matches) {
 }
 
 // weekSummary: computeWeeklySummary()'s return value (points this week,
-// per player). ranking: the live dashboard's ranking array, each player's
-// OFFICIAL season total as of the last closed matchweek (does not yet
-// include this week's still-in-progress points -- that's exactly why it's
-// added to weekSummary's points here rather than read alone). Returns rows
-// sorted by this week's points (desc), ties broken by the resulting season
-// total (desc) -- matches Winston's explicit ask.
+// per player, used only for the "+N" figure and as the primary sort key).
+// ranking: the live dashboard's ranking array -- Code.gs's buildDashboard()
+// re-syncs the current matchweek's HISTORY row live on every single load
+// (syncCurrentMatchweekToHistory(), well before "Save Matchweek" locks it),
+// and RANKING sums HISTORY, so by the time this relay reads `ranking` it
+// ALREADY includes this week's points-so-far. Adding weekPoints on top of
+// it here double-counted this week's points into the season total (caught
+// live: a reported total was consistently exactly weekPoints higher than
+// the real one). Returns rows sorted by this week's points (desc), ties
+// broken by the resulting season total (desc) -- matches Winston's
+// explicit ask.
 function buildWeekPointsRanking(weekSummary, ranking) {
   const seasonByPlayer = {};
   (ranking || []).forEach((r) => { seasonByPlayer[r.name] = Number(r.matchesRight) || 0; });
 
   const rows = SB_PLAYERS.map((player) => {
     const weekPoints = (weekSummary && weekSummary[player] && weekSummary[player].points) || 0;
-    const seasonTotal = (seasonByPlayer[player] || 0) + weekPoints;
+    const seasonTotal = seasonByPlayer[player] || 0;
     return { player, weekPoints, seasonTotal };
   });
 

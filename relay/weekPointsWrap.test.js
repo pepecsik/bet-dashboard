@@ -86,14 +86,17 @@ test("weekDateKeys returns the set of day-dates for the current matches, used to
   assert.deepEqual([...keys].sort(), ["2026-11-06", "2026-11-07"]);
 });
 
-test("buildWeekPointsRanking: season total = official ranking total + this week's points so far", () => {
+test("buildWeekPointsRanking: season total is read straight from ranking (already includes this week's points) -- not added to weekPoints again", () => {
   const weekSummary = { Snackbar: { points: 4, money: 0 }, Timbo: { points: 1, money: 0 }, Pepe: { points: 2, money: 0 }, Sjaak: { points: 0, money: 0 } };
+  // These ranking totals already reflect this week's live, in-progress
+  // points -- RANKING sums HISTORY, which buildDashboard() keeps synced on
+  // every load, well before "Save Matchweek" locks the current week's row.
   const ranking = [{ name: "Snackbar", matchesRight: 68 }, { name: "Timbo", matchesRight: 52 }, { name: "Pepe", matchesRight: 64 }, { name: "Sjaak", matchesRight: 25 }];
   const rows = buildWeekPointsRanking(weekSummary, ranking);
   assert.deepEqual(rows, [
-    { player: "Snackbar", weekPoints: 4, seasonTotal: 72 },
-    { player: "Pepe", weekPoints: 2, seasonTotal: 66 },
-    { player: "Timbo", weekPoints: 1, seasonTotal: 53 },
+    { player: "Snackbar", weekPoints: 4, seasonTotal: 68 },
+    { player: "Pepe", weekPoints: 2, seasonTotal: 64 },
+    { player: "Timbo", weekPoints: 1, seasonTotal: 52 },
     { player: "Sjaak", weekPoints: 0, seasonTotal: 25 },
   ]);
 });
@@ -102,11 +105,11 @@ test("buildWeekPointsRanking: sorts by week points first, ties broken by season 
   const weekSummary = { Snackbar: { points: 10, money: 0 }, Timbo: { points: 3, money: 0 }, Pepe: { points: 3, money: 0 }, Sjaak: { points: 1, money: 0 } };
   const ranking = [{ name: "Snackbar", matchesRight: 68 }, { name: "Timbo", matchesRight: 53 }, { name: "Pepe", matchesRight: 63 }, { name: "Sjaak", matchesRight: 25 }];
   const rows = buildWeekPointsRanking(weekSummary, ranking);
-  assert.deepEqual(rows.map((r) => r.player), ["Snackbar", "Pepe", "Timbo", "Sjaak"]); // Pepe (66) beats Timbo (56) on the tie
+  assert.deepEqual(rows.map((r) => r.player), ["Snackbar", "Pepe", "Timbo", "Sjaak"]); // Pepe (63) beats Timbo (53) on the tie
 });
 
-test("buildWeekPointsRanking: a player missing from the ranking array still gets a row, season total = just this week's points", () => {
+test("buildWeekPointsRanking: a player missing from the ranking array still gets a row, season total 0", () => {
   const weekSummary = { Snackbar: { points: 2, money: 0 }, Timbo: { points: 0, money: 0 }, Pepe: { points: 0, money: 0 }, Sjaak: { points: 0, money: 0 } };
   const rows = buildWeekPointsRanking(weekSummary, []);
-  assert.equal(rows.find((r) => r.player === "Snackbar").seasonTotal, 2);
+  assert.equal(rows.find((r) => r.player === "Snackbar").seasonTotal, 0);
 });

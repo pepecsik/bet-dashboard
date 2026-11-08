@@ -92,12 +92,14 @@ const clients = new Set();
 
 // What's already been notified for rules #4 (big win), #5A (one match
 // away), #5B (one goal away), #6 (bet died) -- see betNotificationEvents.js
-// for the full shape/semantics. In-memory, same accepted low-stakes
-// restart risk as betfairQueue/alertedStuckMatch -- a relay restart mid-
-// matchweek could in principle re-fire an already-sent notification once,
-// which is just a repeated Telegram message, not a real-money risk like
-// the betfair queue's own equivalent gap.
+// for the full shape/semantics. In-memory, so a relay restart (every
+// deploy) would otherwise wipe it and re-fire notifications for bets that
+// died/won/etc. before the restart -- guarded against below via
+// betNotifiedStateSeeded, same "silently adopt current reality as the
+// baseline on the first check" fix as lastKnown/weekPointsWrappedDates/
+// kickoff30MinFiredForTs use for the exact same restart-resets-memory issue.
 let betNotifiedState = emptyNotifiedState();
+let betNotifiedStateSeeded = false;
 
 // Reads a request body, JSON.parse()s it, and calls onBody(parsedOrEmptyObject)
 // -- malformed/missing JSON becomes {} rather than throwing, so a route
@@ -1043,10 +1045,20 @@ async function pollOnce() {
     // uses, so this never does redundant work on a quiet tick.
     const { events, notifiedState } = detectBetEvents(state.headers, state.matches, betsCache.betSummary, betNotifiedState);
     betNotifiedState = notifiedState;
-    events.forEach((event) => {
-      const msg = renderBetEvent(event);
-      if (msg) sendTelegram(msg).catch(() => {});
-    });
+    if (!betNotifiedStateSeeded) {
+      // First check since this process (re)started -- any event detected
+      // right now (a bet already dead, a big win already won, ...) could
+      // just be something that happened BEFORE the restart, not a fresh
+      // transition. notifiedState above already reflects current reality,
+      // so adopt it silently and skip sending for this one pass; only a
+      // transition detected from here on counts as new.
+      betNotifiedStateSeeded = true;
+    } else {
+      events.forEach((event) => {
+        const msg = renderBetEvent(event);
+        if (msg) sendTelegram(msg).catch(() => {});
+      });
+    }
   }
   justFinished.forEach((fx) => {
     postFinalResult(fx).catch((err) => console.error("final-result POST failed for fixture", fx.id, ":", err.message));

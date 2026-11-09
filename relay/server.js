@@ -88,6 +88,23 @@ if (!MOCK_MODE && !API_KEY) {
 
 // fixtureId -> { status, score, elapsed, match }
 const lastKnown = new Map();
+
+// fixtureId -> { score, prevScore } -- a score change this relay has SEEN
+// but not yet announced. Live providers occasionally report a score for
+// one poll that's just wrong (a glitch/misattributed event, corrected on
+// the very next pull) -- not a disallowed goal (that's a separate, real
+// event with its own data), just bad data that quietly reverts. Confirmed
+// live: Telegram announced a goal twice this weekend for a score that
+// never actually happened and was never followed by a disallowed-goal
+// event either. Requiring the SAME new score to still be there on the
+// NEXT poll (10s later) before announcing it means a one-tick flicker
+// self-corrects before anyone ever sees it, at the cost of a ~10s delay
+// on genuine goals -- an easy trade for a live-score ticker. Deliberately
+// only gates the Telegram announcement, not `lastKnown`/broadcast() (the
+// WebSocket clients, HISTORY sync, etc.) -- those already self-correct on
+// the very next poll regardless, so there's nothing irreversible to guard
+// there the way there is for a push notification.
+const goalCandidates = new Map();
 const clients = new Set();
 
 // What's already been notified for rules #4 (big win), #5A (one match
@@ -971,9 +988,29 @@ async function pollOnce() {
     // "changed" above), and only once `prev` actually exists -- otherwise
     // the very first sighting of a fixture (prev undefined, score "0-0")
     // would misfire a false "GOAL" the moment it's first tracked.
-    if (prev && prev.score !== f.score && !isMutedLiveMatch(f.match)) {
-      const goalMsg = formatGoalMessage(f.match, prev.score, f.score, status);
-      if (goalMsg) sendTelegram(goalMsg).catch(() => {});
+    //
+    // Debounced one poll (see goalCandidates' own comment): a change isn't
+    // announced the instant it's seen -- it has to show the SAME score
+    // again on the very next poll first.
+    const goalCandidate = goalCandidates.get(f.id);
+    if (goalCandidate && goalCandidate.score === f.score) {
+      // Confirmed -- the score that looked new last tick is still here.
+      if (!isMutedLiveMatch(f.match)) {
+        const goalMsg = formatGoalMessage(f.match, goalCandidate.prevScore, f.score, status);
+        if (goalMsg) sendTelegram(goalMsg).catch(() => {});
+      }
+      goalCandidates.delete(f.id);
+    } else if (goalCandidate) {
+      // The score moved again before confirming -- that candidate was
+      // either a glitch (reverted) or got overtaken by a second real goal
+      // before the first could be confirmed; either way, drop it rather
+      // than announce something that's no longer the live score. If
+      // THIS tick's score is itself new vs. what's already confirmed,
+      // fall through below to start a fresh candidate for it.
+      goalCandidates.delete(f.id);
+      if (prev && prev.score !== f.score) goalCandidates.set(f.id, { score: f.score, prevScore: prev.score });
+    } else if (prev && prev.score !== f.score) {
+      goalCandidates.set(f.id, { score: f.score, prevScore: prev.score });
     }
     // Rule #3 -- red card (or a second yellow, same outcome). Diffs the
     // joined "(H)/(A) Name" entries rather than just checking the string

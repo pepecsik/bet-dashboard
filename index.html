@@ -3642,6 +3642,20 @@ function patchFastScores(data) {
 
   if (leftRows.length !== matches.length || rightRows.length !== matches.length) return;
 
+  // Matched by `data-match` key, NOT by array position -- `matches` here is
+  // this payload's own order, which isn't guaranteed to be byte-identical
+  // to the DOM's current row order on every single call (e.g. a match with
+  // no real kickoffTs, like an admin test row, has nothing to anchor a
+  // stable sort position to and can land in a different spot between reads
+  // -- confirmed live: a fake test match's row ended up patched against a
+  // DIFFERENT match's DOM element once the two orders drifted, which looked
+  // exactly like a spurious repeating goal flash). renderDashboard() itself
+  // already avoids this exact trap the same way, via prevLeftRowByMatch/
+  // prevRightRowByMatch -- this mirrors that.
+  const leftRowByMatch = {}, rightRowByMatch = {};
+  leftRows.forEach(el => { const key = el.getAttribute('data-match'); if (key) leftRowByMatch[key] = el; });
+  rightRows.forEach(el => { const key = el.getAttribute('data-match'); if (key) rightRowByMatch[key] = el; });
+
   // This payload is live/current data actually reaching the screen -- any
   // "still fetching" spinner from a manual refresh (see __awaitingFreshData)
   // has done its job.
@@ -3650,7 +3664,11 @@ function patchFastScores(data) {
     document.querySelectorAll('.live-refresh-spinner').forEach(el => el.remove());
   }
 
-  matches.forEach((m, i) => {
+  matches.forEach((m) => {
+    const myLeftRow = leftRowByMatch[m.match];
+    const myRightRow = rightRowByMatch[m.match];
+    if (!myLeftRow || !myRightRow) return; // no DOM row for this match -- nothing to patch
+
     // Once a match is confirmed finished, its result is permanent -- lock
     // it and ignore every subsequent update for it from any source, forever.
     // Why this is needed even with window.__liveMatchState above: the relay
@@ -3695,7 +3713,7 @@ function patchFastScores(data) {
     // ~10-15s, flickering against the real kickoff time the full render
     // just set. Simplest fix: leave it alone while still NS: there's
     // nothing time-critical to update on a match that hasn't kicked off.
-    const spans = leftRows[i].querySelectorAll('.score-pill > span');
+    const spans = myLeftRow.querySelectorAll('.score-pill > span');
     if (spans.length === 2 && m.status !== 'NS') {
       spans[0].innerHTML = (live ? '<div class="live-dot"></div>' : '') + formatMatchMinute(m);
       spans[1].textContent = m.score || '';
@@ -3745,7 +3763,7 @@ function patchFastScores(data) {
     // the element may already carry (e.g. two goals in quick succession)
     // wouldn't restart the animation, so force it: remove, reflow, re-add.
     if (scoreChanged) {
-      const scorePill = leftRows[i].querySelector('.score-pill');
+      const scorePill = myLeftRow.querySelector('.score-pill');
       if (scorePill) {
         scorePill.classList.remove('flash-active');
         void scorePill.offsetWidth; // force reflow so the re-add is seen as a fresh start
@@ -3766,7 +3784,7 @@ function patchFastScores(data) {
     // next to the name changes (see the header loop below). So this payload's
     // cell order always matches DOM column order directly by position, same
     // as every other index-based lookup in this file.
-    const cells = rightRows[i].querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)');
+    const cells = myRightRow.querySelectorAll('.bet:not(.special-bet):not(.whatif-pill)');
     (m.cells || []).forEach((c, ci) => {
       const el = cells[ci];
       if (!el) return;
@@ -4368,7 +4386,20 @@ function renderDashboard(data, opts){
             return;
           }
 
-          const hasChanged = !isFirstLoad && prevMatches[m.match] && prevMatches[m.match].score !== m.score;
+          // Normalized (not a raw string compare) for the same reason
+          // patchFastScores()'s own scoreChanged is -- the sheet-derived
+          // score string isn't always byte-identical between reads
+          // (whitespace/formatting), and a raw compare here would read
+          // that as a goal. This branch is only actually reached when the
+          // reuse branch just above couldn't find an existing row to
+          // reuse (normally just a match's very first render) -- but
+          // confirmed live it can also fire on a LATER cycle for a row
+          // the reuse lookup failed to match (e.g. a match with no real
+          // kickoffTs to anchor a stable sort position), so it needs the
+          // same guard the fast path already has, not just a "shouldn't
+          // normally run" assumption.
+          const normScore = s => String(s || '0-0').split('-').map(x => parseInt(x, 10) || 0).join('-');
+          const hasChanged = !isFirstLoad && prevMatches[m.match] && normScore(prevMatches[m.match].score) !== normScore(m.score);
           prevMatches[m.match]={score:m.score};
 
           const lr=document.createElement("div");

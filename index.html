@@ -3768,6 +3768,7 @@ function patchFastScores(data) {
         scorePill.classList.remove('flash-active');
         void scorePill.offsetWidth; // force reflow so the re-add is seen as a fresh start
         scorePill.classList.add('flash-active');
+        clearFlashAfter(scorePill);
       }
     }
 
@@ -3797,6 +3798,7 @@ function patchFastScores(data) {
         el.classList.remove('flash-active');
         void el.offsetWidth;
         el.classList.add('flash-active');
+        clearFlashAfter(el);
       }
       if (c.value) {
         el.textContent = c.value;
@@ -4102,6 +4104,21 @@ function addEnterAnimation(el, delaySeconds) {
   el.classList.add('animate-enter');
   el.style.animationDelay = delaySeconds + 's';
   setTimeout(() => { el.classList.remove('animate-enter'); el.style.animationDelay = ''; }, (delaySeconds + 0.5) * 1000 + 150);
+}
+
+// Exact same bug, same fix, as addEnterAnimation() above -- flash-active's
+// one-shot goalFlash (1.3s) was never stripped after playing, so a row that
+// still carried it from the last real goal replayed the animation on every
+// later disconnect/reconnect (a "reused" live row still gets torn out of
+// and back into the DOM on every render -- see canReuse above), with no
+// score actually changing. Confirmed live: a fake match pinned at a
+// constant score kept re-flashing every ~30s, and neither classList.add()
+// nor any className/innerHTML write ever fired at those moments -- the
+// class was already sitting there from the one genuine add, and simply
+// reconnecting it was enough to restart the CSS animation on its own.
+function clearFlashAfter(el) {
+  if (!el) return;
+  setTimeout(() => el.classList.remove('flash-active'), 1450);
 }
 
 function renderDashboard(data, opts){
@@ -4435,6 +4452,7 @@ function renderDashboard(data, opts){
 
           lr.innerHTML=`<div class="left-cell match"><div class="match-teams"><div class="team-wrap-rel">${renderTeam(h)}${m.stats?.h_red>0?'<div class="rc-badge"></div>':''}</div><span>-</span><div class="team-wrap-rel">${renderTeam(a)}${m.stats?.a_red>0?'<div class="rc-badge"></div>':''}</div></div></div><div class="left-cell"><div class="score-pill ${hasChanged ? 'flash-active' : ''} ${goldenClass}" style="display:flex;justify-content:center;gap:6px;align-items:center;padding:2px 6px;border-radius:6px;transition:all 0.3s;"><span style="color:${bc};background:${bg};border:${bb};padding:2px 4px;border-radius:5px;font-size:11px;font-weight:800;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center;">${live?'<div class="live-dot"></div>':''}${displayStatus}</span><span style="color:var(--text-main);font-size:12px;font-weight:700;white-space:nowrap;">${m.score||""}</span>${live && window.__awaitingFreshData ? '<div class="live-refresh-spinner"></div>' : ''}</div></div>`;
           left.appendChild(lr);
+          if (hasChanged) clearFlashAfter(lr.querySelector('.score-pill'));
           const rr=document.createElement("div"); rr.className="row";
           rr.setAttribute('data-match', m.match);
           if(isFirstLoad) { addEnterAnimation(rr, idx * 0.05); }
@@ -4442,6 +4460,7 @@ function renderDashboard(data, opts){
           m.cells.forEach((c, cellIndex)=>{
               const el=document.createElement("div");
               el.className=`bet ${hasChanged ? 'flash-active' : ''}`;
+              if (hasChanged) clearFlashAfter(el);
               el.setAttribute('data-col-idx', cellIndex);
 
               if(c.value){

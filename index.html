@@ -866,13 +866,14 @@ body {
 .weekly-title, .ranking-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
 
 .week-row{
-  height:var(--week-row-h); display:grid; grid-template-columns: 90px 1fr 65px;
+  height:var(--week-row-h); display:grid; grid-template-columns: 90px 1fr;
   align-items:center; background:var(--bg-row); border-radius:var(--rad-sm);
   padding:0 4px; margin-bottom:4px; font-size:11px; font-weight:700;
 }
 .week-label{ color:var(--text-main); white-space: nowrap; overflow: hidden; }
-.week-gbp { text-align: right; padding-right: 6px; }
-.week-eur { text-align: right; opacity:.6; }
+.week-amounts{ display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:1px; padding-right:6px; }
+.week-gbp { text-align: right; white-space: nowrap; }
+.week-eur { text-align: right; opacity:.6; font-size:9px; font-weight:600; white-space: nowrap; }
 .week-gbp.red{color:var(--text-main); opacity: 0.8;} /* Fallback */
 [data-theme="carbon"] .week-gbp.red { color: #ef4444; opacity: 1; }
 [data-theme="candy"] .week-gbp.red { color: #d00000; opacity: 1; }
@@ -4582,7 +4583,7 @@ function renderDashboard(data, opts){
               }
               converted = window.eurRate ? native * window.eurRate : native; // eurRate is GBP-per-1-EUR (ECB convention) -- EUR -> GBP is *, not /
           }
-          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-gbp ${green?'green':'red'}">${formatEUR(native)}</div><div class="week-eur">${formatGBP(converted)}</div></div>`;
+          weekly.innerHTML+=`<div class="week-row"><div class="week-label">${t.label}</div><div class="week-amounts"><div class="week-gbp ${green?'green':'red'}">${formatEUR(native)}</div><div class="week-eur">${formatGBP(converted)}</div></div></div>`;
         });
 
         // Ranking card podium -- respects whichever scope (Season / All Time)

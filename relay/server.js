@@ -89,21 +89,27 @@ if (!MOCK_MODE && !API_KEY) {
 // fixtureId -> { status, score, elapsed, match }
 const lastKnown = new Map();
 
-// fixtureId -> { score, prevScore } -- a score change this relay has SEEN
-// but not yet announced. Live providers occasionally report a score for
-// one poll that's just wrong (a glitch/misattributed event, corrected on
-// the very next pull) -- not a disallowed goal (that's a separate, real
-// event with its own data), just bad data that quietly reverts. Confirmed
-// live: Telegram announced a goal twice this weekend for a score that
-// never actually happened and was never followed by a disallowed-goal
-// event either. Requiring the SAME new score to still be there on the
-// NEXT poll (10s later) before announcing it means a one-tick flicker
-// self-corrects before anyone ever sees it, at the cost of a ~10s delay
-// on genuine goals -- an easy trade for a live-score ticker. Deliberately
-// only gates the Telegram announcement, not `lastKnown`/broadcast() (the
-// WebSocket clients, HISTORY sync, etc.) -- those already self-correct on
-// the very next poll regardless, so there's nothing irreversible to guard
-// there the way there is for a push notification.
+// fixtureId -> { score } -- a score change this relay has SEEN but not yet
+// trusted. Live providers occasionally report a score for one poll that's
+// just wrong (a glitch/misattributed event, corrected on the very next
+// pull) -- not a disallowed goal (that's a separate, real event with its
+// own data), just bad data that quietly reverts. Confirmed live twice: (1)
+// Telegram announced a goal for a score that never actually happened, not
+// followed by a disallowed-goal event either; (2) even after that was
+// debounced for Telegram only (the original version of this comment said
+// that was enough, since `lastKnown`/broadcast() would "already
+// self-correct on the very next poll" -- true for the DATA, but not for
+// what a client had already done with it), the dashboard's client-side
+// goal-flash animation kept re-firing ~20-30s after a real goal: the
+// glitch's own self-correction looked like a brand-new goal relative to
+// the bad value that had already been broadcast and stored. Now gates
+// `lastKnown`/broadcast()/Telegram together (see pollOnce(), right after
+// `prev` is read) -- requiring the SAME new score to still be there on the
+// NEXT poll (10s later) before anything downstream trusts it means a
+// one-tick flicker self-corrects before anyone/anything ever sees it, at
+// the cost of a ~10s delay on genuine goals, an easy trade for a live
+// ticker. Skipped once a match reaches FT, where the score must never be
+// held back a tick -- see that code's own comment.
 const goalCandidates = new Map();
 const clients = new Set();
 
@@ -971,6 +977,51 @@ async function pollOnce() {
     // re-broadcast FULL TIME for every already-finished match the instant
     // the relay came back up.
     const wasFT = prev ? prev.status === "FT" : status === "FT";
+
+    // A reported score that differs from what's already confirmed
+    // (prev.score) isn't trusted until it's seen AGAIN, unchanged, on the
+    // very next poll -- applied here, BEFORE anything downstream (lastKnown,
+    // the broadcast to every client, `changed` detection, the final-result
+    // write below) ever sees it, not just the Telegram announcement this
+    // used to only guard. Needed because API-Football occasionally reports
+    // a wrong score for exactly one poll that self-corrects the next --
+    // without this, a glitch's own self-correction looked like a brand-new
+    // goal relative to whatever got stored from the glitch, re-flashing the
+    // dashboard's client-side goal animation for no real goal (confirmed
+    // live, ~20-30s after the real goal, timing varying with when a glitchy
+    // poll happened to land). A plain "scores only ever go up" rule would be
+    // simpler but unsafe: it can't tell a glitch from a genuine
+    // VAR-disallowed goal correcting the score back down, and would freeze
+    // on the wrong (too-high) score forever in that case -- confirming
+    // either direction over two polls handles both, at the cost of one
+    // extra ~10s poll of latency on a genuine goal, which doesn't matter for
+    // a live ticker. Skipped entirely once the match is FT: that score is
+    // final and gets written straight to the Sheet below (postFinalResult)
+    // -- it must never be held back a tick on a genuine last-minute winner
+    // that reaches FT in the same poll it's first seen.
+    const goalCandidate = goalCandidates.get(f.id);
+    if (status === "FT") {
+      goalCandidates.delete(f.id);
+    } else if (prev && f.score !== prev.score) {
+      if (goalCandidate && goalCandidate.score === f.score) {
+        // Confirmed -- the score that looked new last tick is still here.
+        goalCandidates.delete(f.id);
+        if (!isMutedLiveMatch(f.match)) {
+          const goalMsg = formatGoalMessage(f.match, prev.score, f.score, status);
+          if (goalMsg) sendTelegram(goalMsg).catch(() => {});
+        }
+      } else {
+        // Not yet confirmed (first sighting of this value, or it moved
+        // again before confirming) -- hold at the last confirmed score for
+        // now; lastKnown/the broadcast/`changed` below all see this held
+        // value, not the unconfirmed one.
+        goalCandidates.set(f.id, { score: f.score });
+        f.score = prev.score;
+      }
+    } else {
+      goalCandidates.delete(f.id); // back in sync with what's confirmed -- nothing pending
+    }
+
     // extra is compared separately from status -- status itself stays
     // frozen at e.g. "90'" for the whole of stoppage time (elapsed doesn't
     // move), so without this an added-time announcement (extra going from
@@ -983,35 +1034,11 @@ async function pollOnce() {
     const redCardsChanged = ((prev && prev.redCards) || "") !== (f.redCards || "");
     const disallowedGoalsChanged = ((prev && prev.disallowedGoals) || "") !== (f.disallowedGoals || "");
     const changed = !prev || prev.status !== status || prev.score !== f.score || prev.extra !== f.extra || statsChanged || scorersChanged || redCardsChanged || disallowedGoalsChanged;
-    // Rule #7 -- plain live score ticker, no bet context. Only a genuine
-    // score change (not every status/stat tick that also counts as
-    // "changed" above), and only once `prev` actually exists -- otherwise
-    // the very first sighting of a fixture (prev undefined, score "0-0")
-    // would misfire a false "GOAL" the moment it's first tracked.
-    //
-    // Debounced one poll (see goalCandidates' own comment): a change isn't
-    // announced the instant it's seen -- it has to show the SAME score
-    // again on the very next poll first.
-    const goalCandidate = goalCandidates.get(f.id);
-    if (goalCandidate && goalCandidate.score === f.score) {
-      // Confirmed -- the score that looked new last tick is still here.
-      if (!isMutedLiveMatch(f.match)) {
-        const goalMsg = formatGoalMessage(f.match, goalCandidate.prevScore, f.score, status);
-        if (goalMsg) sendTelegram(goalMsg).catch(() => {});
-      }
-      goalCandidates.delete(f.id);
-    } else if (goalCandidate) {
-      // The score moved again before confirming -- that candidate was
-      // either a glitch (reverted) or got overtaken by a second real goal
-      // before the first could be confirmed; either way, drop it rather
-      // than announce something that's no longer the live score. If
-      // THIS tick's score is itself new vs. what's already confirmed,
-      // fall through below to start a fresh candidate for it.
-      goalCandidates.delete(f.id);
-      if (prev && prev.score !== f.score) goalCandidates.set(f.id, { score: f.score, prevScore: prev.score });
-    } else if (prev && prev.score !== f.score) {
-      goalCandidates.set(f.id, { score: f.score, prevScore: prev.score });
-    }
+    // Rule #7 (plain live score ticker) and the goal-confirmation itself are
+    // both handled above now, right after `prev` is read -- see the
+    // goalCandidates block's own comment there for why it moved: it has to
+    // run before `changed` is computed, since `changed` depends on the
+    // already-corrected `f.score`.
     // Rule #3 -- red card (or a second yellow, same outcome). Diffs the
     // joined "(H)/(A) Name" entries rather than just checking the string
     // changed, so exactly the NEWLY appeared sending(s)-off get a message

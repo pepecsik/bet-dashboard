@@ -941,7 +941,34 @@ function renderBetEvent(event) {
   }
 }
 
+// setInterval fires on a fixed clock regardless of whether the PREVIOUS
+// call has finished -- pollOnce is async (awaits a real network call to
+// API-Football, which has no latency guarantee), so without a guard, a
+// slow poll and the next scheduled one could run CONCURRENTLY, both
+// reading/writing lastKnown/goalCandidates/betNotifiedState at the same
+// time with no mutual exclusion between them -- a textbook race, and one
+// that predates every Telegram feature: this plain `async function` on a
+// bare `setInterval` is how the live-score relay has always been wired.
+// Two interleaved polls processing the same tracked fixtures independently
+// is exactly the kind of thing that could make a client-side animation
+// (or anything else downstream of a broadcast) look like it's firing on
+// its own at inconsistent, un-timer-like intervals. Simplest safe fix: a
+// new tick that finds one still in flight just skips itself entirely --
+// the next scheduled tick (POLL_MS later) tries again, nothing is lost,
+// same "skip this tick" shape shouldPollNow's own gate below already uses
+// for a different reason.
+let pollInFlight = false;
 async function pollOnce() {
+  if (pollInFlight) return;
+  pollInFlight = true;
+  try {
+    await pollOnceLocked();
+  } finally {
+    pollInFlight = false;
+  }
+}
+
+async function pollOnceLocked() {
   // Gated -- see pollGate.js. MOCK_MODE always polls regardless (there's no
   // real quota to protect, and the manual /trigger page expects every tick
   // to actually run).
